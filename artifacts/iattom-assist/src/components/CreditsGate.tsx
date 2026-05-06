@@ -61,11 +61,11 @@ export function CreditsGate({ feature, onSuccess, disabled, children }: CreditsG
 
   return (
     <>
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex-1">{children({ trigger, isLoading: mutation.isPending })}</div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">{children({ trigger, isLoading: mutation.isPending })}</div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 shrink-0">
           <Zap className="w-3 h-3 text-primary fill-primary" />
-          <span className="text-xs font-medium text-muted-foreground">{cost} credits</span>
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{cost} cr</span>
         </div>
       </div>
 

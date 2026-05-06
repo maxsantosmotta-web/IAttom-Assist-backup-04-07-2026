@@ -264,12 +264,21 @@ function ClerkProviderWithRoutes() {
 }
 
 function App() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      if (sessionStorage.getItem("iattom_splash_seen")) return false;
+      sessionStorage.setItem("iattom_splash_seen", "1");
+      return true;
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1600);
+    if (!isLoading) return;
+    const timer = setTimeout(() => setIsLoading(false), 1200);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isLoading]);
 
   return (
     <WouterRouter base={basePath}>
