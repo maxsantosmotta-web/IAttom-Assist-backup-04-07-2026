@@ -4,6 +4,7 @@ import {
   Users,
   TrendingUp,
   Activity,
+  Rocket,
   Menu,
   X,
   LogOut,
@@ -30,6 +31,7 @@ const navItems = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/admin/activity", label: "Activity", icon: Activity },
+  { href: "/admin/launch-checklist", label: "Launch Checklist", icon: Rocket },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");

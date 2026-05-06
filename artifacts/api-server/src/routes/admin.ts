@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, ilike, count, desc, and, gte, or } from "drizzle-orm";
-import { db, users, projectsTable, historyTable } from "@workspace/db";
+import { db, users, projectsTable, historyTable, creditsTransactions } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import {
   GetAdminStatsResponse,
@@ -13,6 +13,7 @@ import {
   AdminAdjustCreditsResponse,
 } from "@workspace/api-zod";
 import { adjustCredits } from "../lib/credits";
+import { getPlansWithPrices } from "../lib/stripeStorage.js";
 
 const router: IRouter = Router();
 
@@ -204,6 +205,81 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
   ];
 
   res.json(GetAdminAnalyticsResponse.parse({ userGrowth, featureUsage, planRevenue }));
+});
+
+router.get("/admin/launch-status", requireAdmin, async (_req, res): Promise<void> => {
+  const requiredEnvVars = [
+    "DATABASE_URL",
+    "CLERK_SECRET_KEY",
+    "CLERK_PUBLISHABLE_KEY",
+    "AI_INTEGRATIONS_OPENAI_BASE_URL",
+    "AI_INTEGRATIONS_OPENAI_API_KEY",
+    "SESSION_SECRET",
+  ];
+
+  const envVars: Record<string, boolean> = {};
+  for (const key of requiredEnvVars) {
+    envVars[key] = !!(process.env[key]?.trim());
+  }
+  const allEnvVarsConfigured = Object.values(envVars).every(Boolean);
+
+  let dbStatus: "ready" | "error" = "ready";
+  let userCount = 0;
+  let adminCount = 0;
+  let transactionCount = 0;
+
+  try {
+    const [[uRes], [aRes], [tRes]] = await Promise.all([
+      db.select({ count: count() }).from(users),
+      db.select({ count: count() }).from(users).where(eq(users.role, "admin")),
+      db.select({ count: count() }).from(creditsTransactions),
+    ]);
+    userCount = uRes.count;
+    adminCount = aRes.count;
+    transactionCount = tRes.count;
+  } catch {
+    dbStatus = "error";
+  }
+
+  let stripeProductCount = 0;
+  try {
+    const rows = await getPlansWithPrices();
+    stripeProductCount = rows.filter((r) => r.product.metadata?.plan).length;
+  } catch {
+    stripeProductCount = 0;
+  }
+
+  res.json({
+    database: {
+      status: dbStatus,
+      userCount,
+      message:
+        dbStatus === "ready"
+          ? `Connected — ${userCount} user${userCount !== 1 ? "s" : ""} registered`
+          : "Database connection failed",
+    },
+    adminUsers: {
+      status: adminCount > 0 ? "ready" : "needs_attention",
+      count: adminCount,
+    },
+    creditsSystem: {
+      status: "ready",
+      transactionCount,
+    },
+    stripeProducts: {
+      status: stripeProductCount >= 3 ? "ready" : "not_configured",
+      count: stripeProductCount,
+    },
+    aiConfig: {
+      status:
+        envVars["AI_INTEGRATIONS_OPENAI_BASE_URL"] &&
+        envVars["AI_INTEGRATIONS_OPENAI_API_KEY"]
+          ? "ready"
+          : "not_configured",
+    },
+    envVars,
+    allEnvVarsConfigured,
+  });
 });
 
 export default router;

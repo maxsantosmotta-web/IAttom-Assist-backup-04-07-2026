@@ -30,6 +30,7 @@ import { AdminOverview } from "@/pages/admin/AdminOverview";
 import { AdminUsers } from "@/pages/admin/AdminUsers";
 import { AdminAnalytics } from "@/pages/admin/AdminAnalytics";
 import { AdminActivity } from "@/pages/admin/AdminActivity";
+import { AdminLaunchChecklist } from "@/pages/admin/AdminLaunchChecklist";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -187,6 +188,7 @@ function ProtectedAdmin() {
               <Route path="/admin/users" component={AdminUsers} />
               <Route path="/admin/analytics" component={AdminAnalytics} />
               <Route path="/admin/activity" component={AdminActivity} />
+              <Route path="/admin/launch-checklist" component={AdminLaunchChecklist} />
               <Route component={NotFound} />
             </Switch>
           </AdminLayout>
