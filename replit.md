@@ -23,6 +23,12 @@ A premium dark-themed AI business assistant SaaS platform for product discovery,
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
+## Brand Identity
+
+- Logo mark: `artifacts/iattom-assist/public/logo.svg` — "iA" lettermark (A with dot above), gold gradient, dark background. Same design as favicon.svg (32px version).
+- React logo component: `artifacts/iattom-assist/src/components/ui/Logo.tsx` — exports `<LogoMark size>` and `<Logo size showWordmark>`. Use in all layouts instead of Sparkles icon.
+- Loading screen: `artifacts/iattom-assist/src/components/LoadingScreen.tsx` — animated brand splash. Rendered via `AnimatePresence` in App.tsx, auto-dismisses after 1.6s.
+
 ## Where things live
 
 - `artifacts/iattom-assist/src/App.tsx` — ClerkProvider, routing, sign-in/sign-up, admin routes

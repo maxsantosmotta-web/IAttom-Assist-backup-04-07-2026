@@ -37,6 +37,7 @@ import {
   getGetCreditsBalanceQueryKey,
 } from "@workspace/api-client-react";
 import { getCreditColor, getCreditBarColor } from "@/lib/credits";
+import { Logo } from "@/components/ui/Logo";
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -108,179 +109,204 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {isMobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/80 md:hidden" onClick={closeSidebar} />
+        <div
+          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden"
+          onClick={closeSidebar}
+        />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0a0a0a] border-r border-white/[0.06] transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static flex flex-col ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between h-16 px-6 border-b border-sidebar-border shrink-0">
-            <Link href="/dashboard" className="flex items-center gap-2" onClick={closeSidebar}>
-              <div className="w-8 h-8 rounded bg-primary/20 flex items-center justify-center border border-primary/30">
-                <Sparkles className="w-5 h-5 text-primary" />
-              </div>
-              <span className="font-bold text-lg tracking-tight">IAttom Assist</span>
-            </Link>
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={closeSidebar}>
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
+        {/* Logo */}
+        <div className="flex items-center justify-between h-16 px-5 border-b border-white/[0.06] shrink-0">
+          <Link href="/dashboard" onClick={closeSidebar}>
+            <Logo size={30} />
+          </Link>
+          <Button variant="ghost" size="icon" className="md:hidden text-muted-foreground" onClick={closeSidebar}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
 
-          <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1 scrollbar-thin">
-            {navItems.map((item) => {
-              const isActive = location === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${
-                    isActive
-                      ? "bg-primary/10 text-primary border border-primary/20"
-                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                  }`}
-                  onClick={closeSidebar}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                  {item.href === "/dashboard/credits" && isLowCredit && (
-                    <span className="ml-auto w-2 h-2 rounded-full bg-red-400 shrink-0" />
-                  )}
-                </Link>
-              );
-            })}
-
-            {isAdmin && (
-              <div className="pt-2 mt-2 border-t border-white/5">
-                <Link
-                  href="/admin"
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${
-                    location.startsWith("/admin")
-                      ? "bg-primary/10 text-primary border border-primary/20"
-                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                  }`}
-                  onClick={closeSidebar}
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  Admin Panel
-                  <Badge className="ml-auto text-[9px] px-1 py-0 bg-primary/20 text-primary border-primary/30 font-semibold">
-                    ADMIN
-                  </Badge>
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {creditsData && (
-            <div className="px-4 py-3 border-t border-sidebar-border shrink-0">
+        {/* Nav */}
+        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 sidebar-scroll">
+          <p className="px-3 pb-2 text-[10px] font-semibold tracking-widest text-zinc-600 uppercase">
+            Workspace
+          </p>
+          {navItems.map((item) => {
+            const isActive = location === item.href;
+            const Icon = item.icon;
+            return (
               <Link
-                href="/dashboard/credits"
+                key={item.href}
+                href={item.href}
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium group ${
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
+                }`}
                 onClick={closeSidebar}
-                className="block group"
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <Zap className="w-3 h-3 text-primary fill-primary" />
-                    <span className="text-xs text-muted-foreground font-medium">Credits</span>
-                  </div>
-                  <span className={`text-xs font-semibold tabular-nums ${creditTextColor}`}>
-                    {creditBalance.toLocaleString()}
-                    <span className="text-muted-foreground font-normal"> / {creditsData.planLimit.toLocaleString()}</span>
-                  </span>
-                </div>
-                <div className="h-1 rounded-full bg-white/5 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${creditBarColor}`}
-                    style={{ width: `${Math.min(creditPct, 100)}%` }}
-                  />
-                </div>
-                {isLowCredit && (
-                  <p className="text-[10px] text-red-400 mt-1">Low credits — tap to upgrade</p>
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
                 )}
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                {item.href === "/dashboard/credits" && isLowCredit && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                )}
+              </Link>
+            );
+          })}
+
+          {isAdmin && (
+            <div className="pt-3 mt-2 border-t border-white/[0.06]">
+              <p className="px-3 pb-2 text-[10px] font-semibold tracking-widest text-zinc-600 uppercase">
+                Admin
+              </p>
+              <Link
+                href="/admin"
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium ${
+                  location.startsWith("/admin")
+                    ? "bg-primary/10 text-primary"
+                    : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
+                }`}
+                onClick={closeSidebar}
+              >
+                {location.startsWith("/admin") && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
+                )}
+                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <span className="flex-1">Admin Panel</span>
+                <Badge className="text-[9px] px-1.5 py-0 h-4 bg-primary/20 text-primary border-primary/30 font-bold leading-4">
+                  ADMIN
+                </Badge>
               </Link>
             </div>
           )}
+        </div>
 
-          <div className="p-4 border-t border-sidebar-border shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 p-2 rounded-md hover:bg-white/5 transition-colors w-full text-left">
-                  <Avatar className="w-9 h-9 border border-primary/20 shrink-0">
-                    {user?.imageUrl && <AvatarImage src={user.imageUrl} alt={displayName} />}
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                      {isLoaded ? initials : ""}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col overflow-hidden flex-1 min-w-0">
-                    <span className="text-sm font-medium truncate text-white">
-                      {isLoaded ? displayName : "Loading..."}
-                    </span>
-                    <span className="text-xs text-muted-foreground truncate">{email}</span>
-                  </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="start" className="w-56 bg-[#111111] border-white/10">
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/dashboard/settings"
-                    className="flex items-center gap-2 cursor-pointer"
-                    onClick={closeSidebar}
-                  >
-                    <Settings className="w-4 h-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/dashboard/credits"
-                    className="flex items-center gap-2 cursor-pointer"
-                    onClick={closeSidebar}
-                  >
-                    <Zap className="w-4 h-4" />
-                    Credits
-                  </Link>
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/admin"
-                      className="flex items-center gap-2 cursor-pointer text-primary focus:text-primary focus:bg-primary/10"
-                      onClick={closeSidebar}
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                      Admin Panel
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator className="bg-white/10" />
-                <DropdownMenuItem
-                  onClick={handleSignOut}
-                  className="text-red-400 focus:text-red-400 focus:bg-red-400/10 cursor-pointer gap-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        {/* Credits Widget */}
+        {creditsData && (
+          <div className="px-4 py-3 border-t border-white/[0.06] shrink-0">
+            <Link href="/dashboard/credits" onClick={closeSidebar} className="block group">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Zap className="w-3 h-3 text-primary fill-primary" />
+                  <span className="text-[11px] text-zinc-500 font-medium tracking-wide">Credits</span>
+                </div>
+                <span className={`text-[11px] font-semibold tabular-nums ${creditTextColor}`}>
+                  {creditBalance.toLocaleString()}
+                  <span className="text-zinc-600 font-normal"> / {creditsData.planLimit.toLocaleString()}</span>
+                </span>
+              </div>
+              <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${creditBarColor}`}
+                  style={{ width: `${Math.min(creditPct, 100)}%` }}
+                />
+              </div>
+              {isLowCredit && (
+                <p className="text-[10px] text-red-400 mt-1.5">Low credits — upgrade plan</p>
+              )}
+            </Link>
           </div>
+        )}
+
+        {/* User Section */}
+        <div className="p-3 border-t border-white/[0.06] shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/[0.04] transition-colors w-full text-left group">
+                <Avatar className="w-8 h-8 border border-white/10 shrink-0">
+                  {user?.imageUrl && <AvatarImage src={user.imageUrl} alt={displayName} />}
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                    {isLoaded ? initials : ""}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col overflow-hidden flex-1 min-w-0">
+                  <span className="text-xs font-semibold truncate text-zinc-200">
+                    {isLoaded ? displayName : "Loading..."}
+                  </span>
+                  <span className="text-[10px] text-zinc-600 truncate">{email}</span>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-600 shrink-0 group-hover:text-zinc-400 transition-colors" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-56 bg-[#111111] border-white/10">
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/dashboard/settings"
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={closeSidebar}
+                >
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/dashboard/credits"
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={closeSidebar}
+                >
+                  <Zap className="w-4 h-4" />
+                  Credits
+                </Link>
+              </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-2 cursor-pointer text-primary focus:text-primary focus:bg-primary/10"
+                    onClick={closeSidebar}
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    Admin Panel
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem
+                onClick={handleSignOut}
+                className="text-red-400 focus:text-red-400 focus:bg-red-400/10 cursor-pointer gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
 
+      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 flex items-center justify-between px-6 border-b border-border bg-background shrink-0">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileOpen(true)}>
+        <header className="h-16 flex items-center justify-between px-5 md:px-6 border-b border-white/[0.06] bg-[#080808] shrink-0">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden text-zinc-400 hover:text-white"
+              onClick={() => setIsMobileOpen(true)}
+            >
               <Menu className="w-5 h-5" />
             </Button>
-            <h1 className="text-lg font-semibold">{currentPage}</h1>
+            <h1 className="text-sm font-semibold text-zinc-200 tracking-wide">{currentPage}</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {isLowCredit && (
+              <Link href="/dashboard/credits">
+                <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[10px] px-2 cursor-pointer hover:bg-red-500/15">
+                  Low Credits
+                </Badge>
+              </Link>
+            )}
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-[#0a0a0a] p-6">
+        <main className="flex-1 overflow-y-auto bg-[#0a0a0a] p-5 md:p-6">
           <div className="max-w-6xl mx-auto h-full">{children}</div>
         </main>
       </div>

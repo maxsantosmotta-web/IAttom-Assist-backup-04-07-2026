@@ -1,3 +1,22 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="7" fill="#080707"/>
+  <rect width="32" height="32" rx="7" fill="url(#bg)" opacity="0.7"/>
+  <path d="M16 9 L24.5 25 L21.5 25 L16 14 L10.5 25 L7.5 25 Z" fill="url(#a)"/>
+  <path d="M12.5 20 L19.5 20 L18.5 18 L13.5 18 Z" fill="#080707"/>
+  <circle cx="16" cy="6" r="1.9" fill="url(#dot)"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C9A84C" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#C9A84C" stop-opacity="0.02"/>
+    </linearGradient>
+    <linearGradient id="a" x1="16" y1="9" x2="16" y2="25" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EDD078"/>
+      <stop offset="0.55" stop-color="#C9A84C"/>
+      <stop offset="1" stop-color="#8B6914"/>
+    </linearGradient>
+    <linearGradient id="dot" x1="14.1" y1="4.1" x2="17.9" y2="7.9" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4E090"/>
+      <stop offset="1" stop-color="#C9A84C"/>
+    </linearGradient>
+  </defs>
 </svg>

@@ -1,11 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Switch, Route, Redirect, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
+import { AnimatePresence } from "framer-motion";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import NotFound from "@/pages/not-found";
 
 import { SidebarLayout } from "@/components/layout/SidebarLayout";
@@ -103,8 +105,9 @@ const clerkAppearance = {
 
 function SignInPage() {
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center bg-[#0a0a0a] px-4">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(201,168,76,0.06)_0%,_transparent_70%)] pointer-events-none" />
+    <div className="relative flex min-h-[100dvh] items-center justify-center bg-[#080808] px-4">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-5%,_rgba(201,168,76,0.1)_0%,_transparent_60%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_80%_80%,_rgba(201,168,76,0.04)_0%,_transparent_60%)] pointer-events-none" />
       <SignIn
         routing="path"
         path={`${basePath}/sign-in`}
@@ -117,8 +120,9 @@ function SignInPage() {
 
 function SignUpPage() {
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center bg-[#0a0a0a] px-4">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(201,168,76,0.06)_0%,_transparent_70%)] pointer-events-none" />
+    <div className="relative flex min-h-[100dvh] items-center justify-center bg-[#080808] px-4">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-5%,_rgba(201,168,76,0.1)_0%,_transparent_60%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_80%_80%,_rgba(201,168,76,0.04)_0%,_transparent_60%)] pointer-events-none" />
       <SignUp
         routing="path"
         path={`${basePath}/sign-up`}
@@ -260,8 +264,18 @@ function ClerkProviderWithRoutes() {
 }
 
 function App() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1600);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <WouterRouter base={basePath}>
+      <AnimatePresence mode="wait">
+        {isLoading && <LoadingScreen key="loading" />}
+      </AnimatePresence>
       <ClerkProviderWithRoutes />
     </WouterRouter>
   );
