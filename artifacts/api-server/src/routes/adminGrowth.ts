@@ -95,7 +95,7 @@ router.get("/admin/growth-stats", requireAdmin, async (req, res): Promise<void> 
     },
   });
   } catch (err: unknown) {
-    _req.log.error({ err }, "Failed to fetch growth stats");
+    req.log.error({ err }, "Failed to fetch growth stats");
     res.status(500).json({ error: "Internal server error" });
   }
 });

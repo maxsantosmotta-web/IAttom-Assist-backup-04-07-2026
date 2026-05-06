@@ -7,7 +7,7 @@ const APP_ORIGIN =
     ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
     : "http://localhost:80";
 
-const BASE_PATH = process.env.VITE_BASE_PATH ?? "/iattom-assist";
+const BASE_PATH = (process.env.BASE_PATH ?? "/").replace(/\/$/, "");
 
 export async function ensureStripeCustomer(
   clerkUserId: string,

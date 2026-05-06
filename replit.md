@@ -105,6 +105,9 @@ A premium dark-themed AI business assistant SaaS platform for product discovery,
 - Stripe products need `metadata: { plan: 'pro' }` etc. — run seed-products once after connecting Stripe
 - Referral/feedback/waitlist/admin-growth routes use direct fetch (not generated hooks) — no codegen needed
 - `credits.ts`: percentage is `Math.min(100, ...)` — referral bonuses can push balance above plan limit, capped at 100% display
+- **Stripe env selector**: `stripeClient.ts` always uses `"development"` (test/sandbox) connector unless `STRIPE_USE_LIVE_KEYS=true` is set — do NOT set this until ready for live payments
+- `stripeService.ts` `BASE_PATH` uses `process.env.BASE_PATH` (server env), not `VITE_BASE_PATH` — these are different vars
+- `VITE_BETA_MODE=true` is set as a shared env var AND baked into the frontend production build via `[services.production.build.env]` in artifact.toml
 
 ## Pointers
 

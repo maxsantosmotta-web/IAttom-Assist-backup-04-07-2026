@@ -18,8 +18,10 @@ async function getStripeCredentials(): Promise<{
     );
   }
 
-  const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
-  const targetEnvironment = isProduction ? "production" : "development";
+  // Always use the test/sandbox Stripe connector environment.
+  // Set STRIPE_USE_LIVE_KEYS=true only when ready for live payments.
+  const targetEnvironment =
+    process.env.STRIPE_USE_LIVE_KEYS === "true" ? "production" : "development";
 
   const url = new URL(`https://${hostname}/api/v2/connection`);
   url.searchParams.set("include_secrets", "true");
