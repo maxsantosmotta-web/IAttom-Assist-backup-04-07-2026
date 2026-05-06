@@ -192,6 +192,11 @@ router.post(
       const url = await createCheckoutSession(clerkUserId, priceId, planKey);
       return res.json({ url });
     } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("not configured")) {
+        req.log.warn("Stripe checkout attempted but billing is not configured");
+        return res.status(503).json({ error: "Billing is not available in this environment." });
+      }
       req.log.error({ err }, "Failed to create checkout session");
       return res.status(500).json({ error: "Failed to create checkout session" });
     }
@@ -208,6 +213,11 @@ router.post(
       const url = await createBillingPortalSession(clerkUserId);
       return res.json({ url });
     } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("not configured")) {
+        req.log.warn("Stripe portal attempted but billing is not configured");
+        return res.status(503).json({ error: "Billing is not available in this environment." });
+      }
       req.log.error({ err }, "Failed to create billing portal session");
       return res.status(500).json({ error: "Failed to create billing portal session" });
     }

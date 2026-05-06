@@ -1,10 +1,16 @@
 import Stripe from "stripe";
 import { StripeSync } from "stripe-replit-sync";
 
-async function getStripeCredentials(): Promise<{
-  secretKey: string;
-  publishableKey: string;
-}> {
+// Resolve the Stripe secret key from available sources:
+//   1. STRIPE_SECRET_KEY env secret (primary — works everywhere, no Replit connector needed)
+//   2. Replit connector proxy (fallback — used when the connector integration is active in dev)
+// Returns null if neither source is available — Stripe features will be gracefully disabled.
+async function resolveStripeKey(): Promise<string | null> {
+  // 1. Direct env secret — preferred for all environments
+  const directKey = process.env.STRIPE_SECRET_KEY;
+  if (directKey) return directKey;
+
+  // 2. Replit connector proxy fallback
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY
@@ -12,56 +18,46 @@ async function getStripeCredentials(): Promise<{
       ? "depl " + process.env.WEB_REPL_RENEWAL
       : null;
 
-  if (!hostname || !xReplitToken) {
-    throw new Error(
-      "Stripe integration not connected. Connect Stripe via the Integrations tab.",
-    );
+  if (!hostname || !xReplitToken) return null;
+
+  try {
+    // Always use test/sandbox keys. Set STRIPE_USE_LIVE_KEYS=true only for live payments.
+    const targetEnvironment =
+      process.env.STRIPE_USE_LIVE_KEYS === "true" ? "production" : "development";
+
+    const url = new URL(`https://${hostname}/api/v2/connection`);
+    url.searchParams.set("include_secrets", "true");
+    url.searchParams.set("connector_names", "stripe");
+    url.searchParams.set("environment", targetEnvironment);
+
+    const resp = await fetch(url.toString(), {
+      headers: {
+        Accept: "application/json",
+        "X-Replit-Token": xReplitToken,
+      },
+      signal: AbortSignal.timeout(8_000),
+    });
+
+    if (!resp.ok) return null;
+
+    const data = await resp.json() as {
+      items?: Array<{ settings?: { secret?: string } }>;
+    };
+
+    return data.items?.[0]?.settings?.secret ?? null;
+  } catch {
+    return null;
   }
-
-  // Always use the test/sandbox Stripe connector environment.
-  // Set STRIPE_USE_LIVE_KEYS=true only when ready for live payments.
-  const targetEnvironment =
-    process.env.STRIPE_USE_LIVE_KEYS === "true" ? "production" : "development";
-
-  const url = new URL(`https://${hostname}/api/v2/connection`);
-  url.searchParams.set("include_secrets", "true");
-  url.searchParams.set("connector_names", "stripe");
-  url.searchParams.set("environment", targetEnvironment);
-
-  const resp = await fetch(url.toString(), {
-    headers: {
-      Accept: "application/json",
-      "X-Replit-Token": xReplitToken,
-    },
-    signal: AbortSignal.timeout(10_000),
-  });
-
-  if (!resp.ok) {
-    throw new Error(
-      `Failed to fetch Stripe credentials: ${resp.status} ${resp.statusText}`,
-    );
-  }
-
-  const data = await resp.json() as {
-    items?: Array<{ settings?: { secret?: string; publishable?: string } }>;
-  };
-  const settings = data.items?.[0]?.settings;
-
-  if (!settings?.secret) {
-    throw new Error(
-      "Stripe integration missing secret key. Connect Stripe via the Integrations tab.",
-    );
-  }
-
-  return {
-    secretKey: settings.secret,
-    publishableKey: settings.publishable ?? "",
-  };
 }
 
 export async function getUncachableStripeClient(): Promise<Stripe> {
-  const { secretKey } = await getStripeCredentials();
-  return new Stripe(secretKey, {
+  const key = await resolveStripeKey();
+  if (!key) {
+    throw new Error(
+      "Stripe is not configured. Set STRIPE_SECRET_KEY to enable billing features.",
+    );
+  }
+  return new Stripe(key, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     apiVersion: "2025-08-27.basil" as any,
   });
@@ -73,9 +69,15 @@ export async function getStripeSync(): Promise<StripeSync> {
     throw new Error("DATABASE_URL environment variable is required");
   }
 
-  const { secretKey } = await getStripeCredentials();
+  const key = await resolveStripeKey();
+  if (!key) {
+    throw new Error(
+      "Stripe is not configured. Set STRIPE_SECRET_KEY to enable billing features.",
+    );
+  }
+
   return new StripeSync({
     poolConfig: { connectionString: databaseUrl, max: 2 },
-    stripeSecretKey: secretKey,
+    stripeSecretKey: key,
   });
 }
