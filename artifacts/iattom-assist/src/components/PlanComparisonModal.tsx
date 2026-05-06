@@ -118,6 +118,12 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                     <div key={i} className="h-72 rounded-xl bg-white/[0.03] skeleton-shimmer" />
                   ))}
                 </div>
+              ) : sortedPlans.length === 0 ? (
+                <div className="py-16 text-center">
+                  <Zap className="w-8 h-8 text-white/10 mx-auto mb-3" />
+                  <p className="text-sm text-zinc-500 mb-1">No plans available yet.</p>
+                  <p className="text-xs text-zinc-700">Run the seed-products script to set up Stripe plans.</p>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {sortedPlans.map((plan) => {

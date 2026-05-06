@@ -8,6 +8,7 @@ import { AnimatePresence } from "framer-motion";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 
 import { SidebarLayout } from "@/components/layout/SidebarLayout";
@@ -303,16 +304,16 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <ClerkQueryInvalidator />
-          <Switch>
-            <Route path="/" component={HomeRedirect} />
-            <Route path="/sign-in/*?" component={SignInPage} />
-            <Route path="/sign-up/*?" component={SignUpPage} />
-            <Route path="/dashboard/*?" component={ProtectedDashboard} />
-            <Route path="/dashboard" component={ProtectedDashboard} />
-            <Route path="/admin/*?" component={ProtectedAdmin} />
-            <Route path="/admin" component={ProtectedAdmin} />
-            <Route component={NotFound} />
-          </Switch>
+          <ErrorBoundary>
+            <Switch>
+              <Route path="/" component={HomeRedirect} />
+              <Route path="/sign-in/*?" component={SignInPage} />
+              <Route path="/sign-up/*?" component={SignUpPage} />
+              <Route path="/dashboard/*?" component={ProtectedDashboard} />
+              <Route path="/admin/*?" component={ProtectedAdmin} />
+              <Route component={NotFound} />
+            </Switch>
+          </ErrorBoundary>
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

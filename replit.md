@@ -104,6 +104,7 @@ A premium dark-themed AI business assistant SaaS platform for product discovery,
 - Stripe webhook MUST be registered before `express.json()` in app.ts — `express.raw({ type: 'application/json' })` is applied only to that route
 - Stripe products need `metadata: { plan: 'pro' }` etc. — run seed-products once after connecting Stripe
 - Referral/feedback/waitlist/admin-growth routes use direct fetch (not generated hooks) — no codegen needed
+- `credits.ts`: percentage is `Math.min(100, ...)` — referral bonuses can push balance above plan limit, capped at 100% display
 
 ## Pointers
 

@@ -20,7 +20,7 @@ function generateCode(): string {
 
 router.get("/referral/my", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
-
+  try {
   let [referral] = await db.select().from(referralsTable).where(eq(referralsTable.clerkUserId, clerkUserId));
 
   if (!referral) {
@@ -62,6 +62,10 @@ router.get("/referral/my", requireAuth, async (req, res): Promise<void> => {
       createdAt: u.createdAt,
     })),
   });
+  } catch (err: unknown) {
+    req.log.error({ err }, "Failed to fetch referral data");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 router.post("/referral/use", requireAuth, async (req, res): Promise<void> => {
@@ -75,83 +79,88 @@ router.post("/referral/use", requireAuth, async (req, res): Promise<void> => {
 
   const normalizedCode = code.toUpperCase().trim();
 
-  const [alreadyReferred] = await db
-    .select()
-    .from(referralUsesTable)
-    .where(eq(referralUsesTable.referredUserId, clerkUserId));
+  try {
+    const [alreadyReferred] = await db
+      .select()
+      .from(referralUsesTable)
+      .where(eq(referralUsesTable.referredUserId, clerkUserId));
 
-  if (alreadyReferred) {
-    res.status(409).json({ error: "You have already used a referral code." });
-    return;
-  }
+    if (alreadyReferred) {
+      res.status(409).json({ error: "You have already used a referral code." });
+      return;
+    }
 
-  const [referral] = await db.select().from(referralsTable).where(eq(referralsTable.code, normalizedCode));
-  if (!referral) {
-    res.status(404).json({ error: "Invalid referral code." });
-    return;
-  }
+    const [referral] = await db.select().from(referralsTable).where(eq(referralsTable.code, normalizedCode));
+    if (!referral) {
+      res.status(404).json({ error: "Invalid referral code." });
+      return;
+    }
 
-  if (referral.clerkUserId === clerkUserId) {
-    res.status(400).json({ error: "You cannot use your own referral code." });
-    return;
-  }
+    if (referral.clerkUserId === clerkUserId) {
+      res.status(400).json({ error: "You cannot use your own referral code." });
+      return;
+    }
 
-  const [[referredUser], [referrerUser]] = await Promise.all([
-    db.select().from(users).where(eq(users.clerkId, clerkUserId)),
-    db.select().from(users).where(eq(users.clerkId, referral.clerkUserId)),
-  ]);
+    const [[referredUser], [referrerUser]] = await Promise.all([
+      db.select().from(users).where(eq(users.clerkId, clerkUserId)),
+      db.select().from(users).where(eq(users.clerkId, referral.clerkUserId)),
+    ]);
 
-  if (!referredUser || !referrerUser) {
-    res.status(404).json({ error: "User not found." });
-    return;
-  }
+    if (!referredUser || !referrerUser) {
+      res.status(404).json({ error: "User not found." });
+      return;
+    }
 
-  await db.transaction(async (tx) => {
-    await tx
-      .update(users)
-      .set({ credits: referredUser.credits + REFERRED_BONUS })
-      .where(eq(users.clerkId, clerkUserId));
-    await tx.insert(creditsTransactions).values({
-      clerkUserId,
-      amount: REFERRED_BONUS,
-      type: "credit",
-      feature: "referral",
-      description: `Referral bonus — joined via code ${normalizedCode}`,
-      balanceBefore: referredUser.credits,
-      balanceAfter: referredUser.credits + REFERRED_BONUS,
+    await db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ credits: referredUser.credits + REFERRED_BONUS })
+        .where(eq(users.clerkId, clerkUserId));
+      await tx.insert(creditsTransactions).values({
+        clerkUserId,
+        amount: REFERRED_BONUS,
+        type: "credit",
+        feature: "referral",
+        description: `Referral bonus — joined via code ${normalizedCode}`,
+        balanceBefore: referredUser.credits,
+        balanceAfter: referredUser.credits + REFERRED_BONUS,
+      });
+
+      await tx
+        .update(users)
+        .set({ credits: referrerUser.credits + REFERRER_BONUS })
+        .where(eq(users.clerkId, referral.clerkUserId));
+      await tx.insert(creditsTransactions).values({
+        clerkUserId: referral.clerkUserId,
+        amount: REFERRER_BONUS,
+        type: "credit",
+        feature: "referral",
+        description: `Referral reward — a friend joined with your code`,
+        balanceBefore: referrerUser.credits,
+        balanceAfter: referrerUser.credits + REFERRER_BONUS,
+      });
+
+      await tx.insert(referralUsesTable).values({
+        referralCode: normalizedCode,
+        referrerUserId: referral.clerkUserId,
+        referredUserId: clerkUserId,
+        creditsAwarded: REFERRER_BONUS,
+      });
+
+      await tx
+        .update(referralsTable)
+        .set({
+          totalUses: referral.totalUses + 1,
+          creditsEarned: referral.creditsEarned + REFERRER_BONUS,
+        })
+        .where(eq(referralsTable.code, normalizedCode));
     });
 
-    await tx
-      .update(users)
-      .set({ credits: referrerUser.credits + REFERRER_BONUS })
-      .where(eq(users.clerkId, referral.clerkUserId));
-    await tx.insert(creditsTransactions).values({
-      clerkUserId: referral.clerkUserId,
-      amount: REFERRER_BONUS,
-      type: "credit",
-      feature: "referral",
-      description: `Referral reward — a friend joined with your code`,
-      balanceBefore: referrerUser.credits,
-      balanceAfter: referrerUser.credits + REFERRER_BONUS,
-    });
-
-    await tx.insert(referralUsesTable).values({
-      referralCode: normalizedCode,
-      referrerUserId: referral.clerkUserId,
-      referredUserId: clerkUserId,
-      creditsAwarded: REFERRER_BONUS,
-    });
-
-    await tx
-      .update(referralsTable)
-      .set({
-        totalUses: referral.totalUses + 1,
-        creditsEarned: referral.creditsEarned + REFERRER_BONUS,
-      })
-      .where(eq(referralsTable.code, normalizedCode));
-  });
-
-  res.json({ success: true, creditsAwarded: REFERRED_BONUS });
+    res.json({ success: true, creditsAwarded: REFERRED_BONUS });
+  } catch (err: unknown) {
+    req.log.error({ err }, "Failed to apply referral code");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 export default router;

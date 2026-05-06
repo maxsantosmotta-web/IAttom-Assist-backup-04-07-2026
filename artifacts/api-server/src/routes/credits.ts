@@ -23,7 +23,7 @@ router.get("/credits/balance", requireAuth, async (req, res): Promise<void> => {
 
   const plan = user.plan as keyof typeof PLAN_CREDITS;
   const planLimit = PLAN_CREDITS[plan] ?? PLAN_CREDITS.free;
-  const percentage = planLimit > 0 ? Math.round((user.credits / planLimit) * 100) : 0;
+  const percentage = planLimit > 0 ? Math.min(100, Math.round((user.credits / planLimit) * 100)) : 0;
   const lowCredit = percentage < 20;
 
   res.json(GetCreditsBalanceResponse.parse({

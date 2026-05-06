@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Zap, TrendingUp, X, AlertTriangle } from "lucide-react";
+import { Zap, AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUseCredits, useGetCreditsBalance, getGetCreditsBalanceQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "wouter";
 import type { FeatureKey } from "@/lib/credits";
-import { FEATURE_COSTS, PLAN_CREDITS, PLAN_PRICES } from "@/lib/credits";
+import { FEATURE_COSTS, PLAN_CREDITS } from "@/lib/credits";
+import { PlanComparisonModal } from "@/components/PlanComparisonModal";
 
 interface CreditsGateProps {
   feature: FeatureKey;
@@ -22,6 +22,7 @@ interface InsufficientState {
 
 export function CreditsGate({ feature, onSuccess, disabled, children }: CreditsGateProps) {
   const [insufficient, setInsufficient] = useState<InsufficientState | null>(null);
+  const [showPlans, setShowPlans] = useState(false);
   const qc = useQueryClient();
   const cost = FEATURE_COSTS[feature];
 
@@ -55,7 +56,7 @@ export function CreditsGate({ feature, onSuccess, disabled, children }: CreditsG
 
   const currentPlan = balanceData?.plan ?? "free";
   const currentPlanLimit = PLAN_CREDITS[currentPlan as keyof typeof PLAN_CREDITS] ?? 0;
-  const upgradePlans = (Object.keys(PLAN_CREDITS) as Array<keyof typeof PLAN_CREDITS>).filter(
+  const hasUpgrade = (Object.keys(PLAN_CREDITS) as Array<keyof typeof PLAN_CREDITS>).some(
     (p) => PLAN_CREDITS[p] > currentPlanLimit,
   );
 
@@ -69,6 +70,7 @@ export function CreditsGate({ feature, onSuccess, disabled, children }: CreditsG
         </div>
       </div>
 
+      {/* Insufficient credits dialog */}
       <Dialog open={!!insufficient} onOpenChange={(open) => !open && setInsufficient(null)}>
         <DialogContent className="bg-[#111111] border-white/10 max-w-md p-0 gap-0">
           <div className="p-6 border-b border-white/5">
@@ -95,54 +97,44 @@ export function CreditsGate({ feature, onSuccess, disabled, children }: CreditsG
           </div>
 
           <div className="p-6 space-y-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium mb-3">Upgrade to get more credits</p>
-            {upgradePlans.length === 0 ? (
-              <p className="text-sm text-muted-foreground">You are on the highest plan. Contact support to add credits.</p>
-            ) : (
-              upgradePlans.map((plan) => {
-                const info = PLAN_PRICES[plan];
-                const planCredits = PLAN_CREDITS[plan];
-                return (
-                  <div
-                    key={plan}
-                    className="flex items-center justify-between p-3.5 rounded-lg bg-white/5 border border-white/10 hover:border-primary/30 transition-colors"
-                  >
-                    <div>
-                      <p className={`text-sm font-semibold ${info.color}`}>{info.label}</p>
-                      <p className="text-xs text-muted-foreground">{planCredits.toLocaleString()} credits / month</p>
-                    </div>
-                    <p className="text-sm font-bold text-white">${info.monthly}/mo</p>
-                  </div>
-                );
-              })
-            )}
-
-            <div className="pt-2 flex gap-2">
-              <Link
-                href="/dashboard/credits"
-                className="flex-1"
-                onClick={() => setInsufficient(null)}
-              >
-                <Button variant="outline" className="w-full border-white/10 hover:border-primary/30 text-sm">
-                  <TrendingUp className="w-3.5 h-3.5 mr-1.5" />
-                  View Credits
-                </Button>
-              </Link>
-              <Link
-                href="/dashboard/billing"
-                className="flex-1"
-                onClick={() => setInsufficient(null)}
-              >
+            {hasUpgrade ? (
+              <>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium mb-4">
+                  Upgrade to unlock more credits
+                </p>
                 <Button
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm"
+                  className="w-full bg-primary text-black hover:bg-primary/90 font-semibold"
+                  onClick={() => {
+                    setInsufficient(null);
+                    setShowPlans(true);
+                  }}
                 >
-                  Upgrade Plan
+                  <Zap className="w-3.5 h-3.5 mr-2 fill-black" />
+                  Compare Plans
                 </Button>
-              </Link>
-            </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                You are on the highest plan. Contact support to add more credits.
+              </p>
+            )}
+            <Button
+              variant="outline"
+              className="w-full border-white/10 hover:border-primary/30 text-sm"
+              onClick={() => setInsufficient(null)}
+            >
+              Dismiss
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Plan comparison modal */}
+      <PlanComparisonModal
+        open={showPlans}
+        onClose={() => setShowPlans(false)}
+        highlightPlan="pro"
+      />
     </>
   );
 }

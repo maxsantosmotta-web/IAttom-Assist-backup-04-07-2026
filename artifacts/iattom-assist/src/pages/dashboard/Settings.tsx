@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Settings as SettingsIcon, User, Bell, Shield, CreditCard, Zap, ExternalLink } from "lucide-react";
+import { User, Bell, Shield, CreditCard, Zap, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,6 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
 import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 import { useGetMe } from "@workspace/api-client-react";
@@ -26,7 +25,6 @@ const itemVariants = {
 };
 
 export function Settings() {
-  const { toast } = useToast();
   const { user, isLoaded } = useUser();
   const { openUserProfile } = useClerk();
   const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey() } });
@@ -126,31 +124,31 @@ export function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               {[
-                { id: "email-notif", label: "Email Notifications", desc: "Receive updates and results via email", defaultChecked: true },
-                { id: "project-notif", label: "Project Completions", desc: "Notify when AI tasks are completed", defaultChecked: true },
-                { id: "weekly-report", label: "Weekly Report", desc: "Summary of activity and insights", defaultChecked: false },
-                { id: "marketing-notif", label: "Product Updates", desc: "New features and platform updates", defaultChecked: false },
+                { id: "email-notif", label: "In-app Notifications", desc: "Activity alerts in the notification bell", defaultChecked: true },
+                { id: "project-notif", label: "Milestone Celebrations", desc: "Toasts when you hit usage milestones", defaultChecked: true },
+                { id: "upgrade-nudge", label: "Upgrade Reminders", desc: "Banner when credits are running low", defaultChecked: true },
+                { id: "marketing-notif", label: "Product Updates", desc: "Coming soon — email announcements", defaultChecked: false, disabled: true },
               ].map((item, i, arr) => (
                 <div key={item.id}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-white">{item.label}</p>
+                      <p className={`text-sm font-medium ${item.disabled ? "text-zinc-600" : "text-white"}`}>{item.label}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
                     </div>
                     <Switch
                       defaultChecked={item.defaultChecked}
-                      className="data-[state=checked]:bg-primary"
+                      disabled={item.disabled}
+                      className="data-[state=checked]:bg-primary disabled:opacity-40"
                     />
                   </div>
                   {i < arr.length - 1 && <Separator className="mt-4 bg-white/5" />}
                 </div>
               ))}
-              <Button
-                onClick={() => toast({ description: "Notification preferences saved" })}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                Save Preferences
-              </Button>
+              <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] px-3 py-2.5">
+                <p className="text-xs text-zinc-600">
+                  Granular notification controls and email preferences are coming in a future update.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </motion.div>

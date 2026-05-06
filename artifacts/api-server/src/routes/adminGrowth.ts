@@ -20,7 +20,8 @@ const PLAN_MRR: Record<string, number> = {
   agency: 499,
 };
 
-router.get("/admin/growth-stats", requireAdmin, async (_req, res): Promise<void> => {
+router.get("/admin/growth-stats", requireAdmin, async (req, res): Promise<void> => {
+  try {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -93,6 +94,10 @@ router.get("/admin/growth-stats", requireAdmin, async (_req, res): Promise<void>
       agency: allUsers.filter((u) => u.plan === "agency").length,
     },
   });
+  } catch (err: unknown) {
+    _req.log.error({ err }, "Failed to fetch growth stats");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 export default router;

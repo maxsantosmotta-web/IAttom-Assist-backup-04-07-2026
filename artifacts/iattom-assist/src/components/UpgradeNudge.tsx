@@ -62,7 +62,7 @@ export function UpgradeNudge({ totalActions = 0 }: UpgradeNudgeProps) {
       icon: <TrendingUp className="w-4 h-4 text-primary shrink-0" />,
       bg: "bg-primary/6 border-primary/20",
       title: `You're a power user`,
-      body: `${totalActions} AI runs and counting. Pro users get ${PLAN_CREDITS.pro}x the credits and unlock all advanced modules.`,
+      body: `${totalActions} AI runs and counting. Pro users get ${PLAN_CREDITS.pro.toLocaleString()} credits/month — ${PLAN_CREDITS.pro / PLAN_CREDITS.free}× more than the free plan.`,
       cta: "Unlock Pro",
       accentCta: true,
     },
