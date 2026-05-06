@@ -34,12 +34,16 @@ A premium dark-themed AI business assistant SaaS platform for product discovery,
 
 ## Where things live
 
-- `artifacts/iattom-assist/src/App.tsx` — ClerkProvider, routing, sign-in/sign-up, admin routes, BetaGate wrapper
+- `artifacts/iattom-assist/src/App.tsx` — ClerkProvider, routing (lazy-loaded AI + admin pages), BetaGate wrapper, PageLoader fallback
 - `artifacts/iattom-assist/src/pages/` — dashboard pages + admin pages (admin/)
-- `artifacts/iattom-assist/src/components/layout/SidebarLayout.tsx` — user dashboard shell (Beta badge, FeedbackModal, credits widget)
+- `artifacts/iattom-assist/src/components/layout/SidebarLayout.tsx` — user dashboard shell (Cmd+K palette, NotificationsPanel, Beta badge, FeedbackModal)
 - `artifacts/iattom-assist/src/components/layout/AdminLayout.tsx` — admin dashboard shell (7 nav items incl. Waitlist, Feedback, Launch Checklist)
 - `artifacts/iattom-assist/src/components/BetaGate.tsx` — invite-only access gate (reads betaAccess from useGetMe; bypassed for admins; activated by VITE_BETA_MODE=true)
+- `artifacts/iattom-assist/src/components/CommandPalette.tsx` — global Cmd+K palette (fuzzy search, keyboard navigation, all 14 pages)
+- `artifacts/iattom-assist/src/components/NotificationsPanel.tsx` — bell icon + dropdown (DB-backed, mark read/all, auto-poll 60s)
 - `artifacts/iattom-assist/src/components/FeedbackModal.tsx` — floating feedback button + modal (bottom-right, all dashboard pages)
+- `artifacts/iattom-assist/src/pages/dashboard/Analytics.tsx` — user usage analytics (module charts, credits over time, day picker)
+- `artifacts/iattom-assist/src/pages/dashboard/SavedPrompts.tsx` — prompt library (save/copy/delete, filter by module)
 - `artifacts/iattom-assist/src/pages/admin/AdminWaitlist.tsx` — waitlist management (approve/deny, grant direct access, stats)
 - `artifacts/iattom-assist/src/pages/admin/AdminFeedback.tsx` — feedback management (filter by status/category, update status)
 - `artifacts/iattom-assist/src/pages/admin/AdminLaunchChecklist.tsx` — 12-check system status + 8-step guided test flow
@@ -48,6 +52,11 @@ A premium dark-themed AI business assistant SaaS platform for product discovery,
 - `lib/db/src/schema/feedback.ts` — feedback table (clerkUserId, message, category, rating, status, adminNotes)
 - `artifacts/api-server/src/routes/waitlist.ts` — POST /waitlist (public), GET /waitlist/check
 - `artifacts/api-server/src/routes/feedback.ts` — POST /feedback (auth), GET /feedback/mine (auth)
+- `artifacts/api-server/src/routes/notifications.ts` — GET/PATCH/DELETE /notifications, POST /notifications/read-all
+- `artifacts/api-server/src/routes/prompts.ts` — GET/POST/DELETE /prompts (auth, filter by module)
+- `artifacts/api-server/src/routes/userAnalytics.ts` — GET /analytics/user?days=N (module usage, credits chart, project stats)
+- `lib/db/src/schema/notifications.ts` — notifications table (clerkUserId, type, title, message, read, link)
+- `lib/db/src/schema/savedPrompts.ts` — saved_prompts table (clerkUserId, title, prompt, module)
 - `artifacts/api-server/src/routes/admin.ts` — all admin API routes (incl. waitlist + feedback CRUD + launch-status)
 - `artifacts/iattom-assist/src/lib/credits.ts` — FEATURE_COSTS, PLAN_CREDITS, PLAN_PRICES
 - `artifacts/iattom-assist/src/components/CreditsGate.tsx` — wraps AI action buttons; deducts credits, shows 402 upgrade modal
@@ -75,13 +84,19 @@ A premium dark-themed AI business assistant SaaS platform for product discovery,
 
 - Landing page: hero, features, pricing, FAQ, **waitlist section** (email + name + message form → POST /api/waitlist), final CTA
 - Private beta mode: set `VITE_BETA_MODE=true` to gate dashboard access; signed-in users without betaAccess see a "You're on the waitlist" holding page
-- User dashboard with sidebar (12 sections + **Beta badge** in sidebar header)
+- User dashboard with sidebar (14 sections + **Beta badge** + **Cmd+K search bar** in sidebar header)
+- **Command Palette** (Cmd+K / Ctrl+K): global fuzzy search across all 14 pages, keyboard nav (↑↓↵), instant navigation
+- **Notifications center**: bell icon in topbar with unread dot badge, dropdown panel (read/dismiss/mark-all-read), DB-backed, polls every 60s
+- **Analytics page** (`/dashboard/analytics`): bar chart (module usage), area chart (credits spent over time), day-range picker (7/14/30/90d)
+- **Saved Prompts** (`/dashboard/prompts`): save/copy/delete prompts, filter by module, full-page library view
+- **Dashboard Home** enhancements: Recently Used Tools (from history), Quick Resume (last in-progress project), Achievement badges (6 milestone badges from summary stats), footer shortcut links
 - **Onboarding checklist**: shown to beta users on first login (5 steps, localStorage-persisted, dismissible)
 - **Feedback button**: floating bottom-right button on all dashboard pages; modal with category selector, message textarea, star rating
 - Admin dashboard at `/admin/*` — 7 nav items: Overview, Users, Analytics, Activity, **Waitlist**, **Feedback**, Launch Checklist
 - **Admin Waitlist** (`/admin/waitlist`): stat cards, approve/deny buttons, "Grant Direct Access" form by email, search/filter
 - **Admin Feedback** (`/admin/feedback`): filter by status + category, expand entries, update review status
 - All 6 AI feature modules use real OpenAI GPT-5-mini via SSE streaming with structured JSON output
+- Lazy loading: all 6 AI module pages + all 7 admin pages loaded via React.lazy + Suspense (PageLoader fallback)
 
 ## User preferences
 

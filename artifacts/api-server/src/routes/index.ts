@@ -10,6 +10,9 @@ import aiRouter from "./ai.js";
 import stripeRouter from "./stripe.js";
 import waitlistRouter from "./waitlist.js";
 import feedbackRouter from "./feedback.js";
+import notificationsRouter from "./notifications.js";
+import promptsRouter from "./prompts.js";
+import userAnalyticsRouter from "./userAnalytics.js";
 
 const router: IRouter = Router();
 
@@ -24,5 +27,8 @@ router.use(aiRouter);
 router.use(stripeRouter);
 router.use(waitlistRouter);
 router.use(feedbackRouter);
+router.use(notificationsRouter);
+router.use(promptsRouter);
+router.use(userAnalyticsRouter);
 
 export default router;

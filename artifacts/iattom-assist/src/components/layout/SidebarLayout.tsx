@@ -1,46 +1,29 @@
 import { Link, useLocation } from "wouter";
 import {
-  LayoutDashboard,
-  Search,
-  CheckCircle,
-  Megaphone,
-  FileText,
-  Sparkles,
-  Video,
-  FolderOpen,
-  Clock,
-  Settings,
-  Menu,
-  X,
-  LogOut,
-  ChevronDown,
-  ShieldCheck,
-  Zap,
-  CreditCard,
+  LayoutDashboard, Search, CheckCircle, Megaphone, FileText,
+  Sparkles, Video, FolderOpen, Clock, Settings, Menu, X,
+  LogOut, ChevronDown, ShieldCheck, Zap, CreditCard,
+  Command, BarChart2, BookMarked,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useClerk } from "@clerk/react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  useSyncUser,
-  useGetMe,
-  getGetMeQueryKey,
-  useGetCreditsBalance,
-  getGetCreditsBalanceQueryKey,
+  useSyncUser, useGetMe, getGetMeQueryKey,
+  useGetCreditsBalance, getGetCreditsBalanceQueryKey,
 } from "@workspace/api-client-react";
 import { getCreditColor, getCreditBarColor } from "@/lib/credits";
 import { Logo } from "@/components/ui/Logo";
 import { FeedbackModal } from "@/components/FeedbackModal";
+import { CommandPalette } from "@/components/CommandPalette";
+import { NotificationsPanel } from "@/components/NotificationsPanel";
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -52,6 +35,8 @@ const navItems = [
   { href: "/dashboard/video-scripts", label: "Video Scripts", icon: Video },
   { href: "/dashboard/projects", label: "Projects", icon: FolderOpen },
   { href: "/dashboard/history", label: "History", icon: Clock },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart2 },
+  { href: "/dashboard/prompts", label: "Saved Prompts", icon: BookMarked },
   { href: "/dashboard/credits", label: "Credits", icon: Zap },
   { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
@@ -62,6 +47,7 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const { user, isLoaded, isSignedIn } = useUser();
   const { signOut } = useClerk();
   const syncUser = useSyncUser();
@@ -86,10 +72,20 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn]);
 
-  // Close mobile menu on route change
+  useEffect(() => { setIsMobileOpen(false); }, [location]);
+
+  const openPalette = useCallback(() => setCmdOpen(true), []);
+
   useEffect(() => {
-    setIsMobileOpen(false);
-  }, [location]);
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const currentPage = navItems.find((item) => item.href === location)?.label || "Dashboard";
   const displayName = user?.fullName || user?.firstName || user?.username || "User";
@@ -129,8 +125,23 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         </Button>
       </div>
 
+      {/* Command Palette trigger */}
+      <div className="px-3 py-3 border-b border-white/[0.06] shrink-0">
+        <button
+          onClick={openPalette}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.10] transition-all duration-150 group"
+        >
+          <Search className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+          <span className="flex-1 text-left text-xs text-zinc-600 group-hover:text-zinc-400 transition-colors">Search or jump to...</span>
+          <div className="flex items-center gap-0.5 text-zinc-700">
+            <Command className="w-3 h-3" />
+            <span className="text-[10px] font-mono">K</span>
+          </div>
+        </button>
+      </div>
+
       {/* Nav */}
-      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 sidebar-scroll">
+      <div className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5 sidebar-scroll">
         <p className="px-3 pb-2 text-[9px] font-black tracking-widest text-zinc-700 uppercase">
           Workspace
         </p>
@@ -240,6 +251,12 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
+              <Link href="/dashboard/analytics" className="flex items-center gap-2 cursor-pointer">
+                <BarChart2 className="w-4 h-4" />
+                Analytics
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <Link href="/dashboard/credits" className="flex items-center gap-2 cursor-pointer">
                 <Zap className="w-4 h-4" />
                 Credits
@@ -319,6 +336,18 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             <h1 className="text-[13px] font-semibold text-zinc-400 tracking-wide">{currentPage}</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* Cmd+K shortcut hint (desktop) */}
+            <button
+              onClick={openPalette}
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.09] transition-all duration-150 group"
+            >
+              <Command className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+              <span className="text-[10px] font-mono text-zinc-600 group-hover:text-zinc-400 transition-colors">K</span>
+            </button>
+
+            {/* Notifications */}
+            <NotificationsPanel />
+
             {isLowCredit && (
               <Link href="/dashboard/billing">
                 <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[10px] px-2.5 py-0.5 cursor-pointer hover:bg-red-500/15 transition-colors font-semibold">
@@ -343,7 +372,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           <div className="max-w-5xl mx-auto">{children}</div>
         </main>
       </div>
+
       <FeedbackModal />
+      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
     </div>
   );
 }

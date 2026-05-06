@@ -4,3 +4,5 @@ export * from "./history";
 export * from "./creditsTransactions";
 export * from "./waitlist";
 export * from "./feedback";
+export * from "./notifications";
+export * from "./savedPrompts";

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { Switch, Route, Redirect, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
@@ -14,30 +14,58 @@ import { SidebarLayout } from "@/components/layout/SidebarLayout";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { AdminGuard } from "@/pages/admin/AdminGuard";
 import { LandingPage } from "@/pages/LandingPage";
+import { BetaGate } from "@/components/BetaGate";
+
+// Eager load lightweight pages
 import { DashboardHome } from "@/pages/dashboard/DashboardHome";
-import { FindProducts } from "@/pages/dashboard/FindProducts";
-import { ValidateProducts } from "@/pages/dashboard/ValidateProducts";
-import { CreateCampaign } from "@/pages/dashboard/CreateCampaign";
-import { CreateContent } from "@/pages/dashboard/CreateContent";
-import { CreativeGenerator } from "@/pages/dashboard/CreativeGenerator";
-import { VideoScripts } from "@/pages/dashboard/VideoScripts";
-import { Projects } from "@/pages/dashboard/Projects";
-import { History } from "@/pages/dashboard/History";
-import { Settings } from "@/pages/dashboard/Settings";
 import { Credits } from "@/pages/dashboard/Credits";
 import { Billing } from "@/pages/dashboard/Billing";
-import { AdminOverview } from "@/pages/admin/AdminOverview";
-import { AdminUsers } from "@/pages/admin/AdminUsers";
-import { AdminAnalytics } from "@/pages/admin/AdminAnalytics";
-import { AdminActivity } from "@/pages/admin/AdminActivity";
-import { AdminWaitlist } from "@/pages/admin/AdminWaitlist";
-import { AdminFeedback } from "@/pages/admin/AdminFeedback";
-import { AdminLaunchChecklist } from "@/pages/admin/AdminLaunchChecklist";
-import { BetaGate } from "@/components/BetaGate";
+import { Settings } from "@/pages/dashboard/Settings";
+import { Projects } from "@/pages/dashboard/Projects";
+import { History } from "@/pages/dashboard/History";
+
+// Lazy load heavy AI + data pages
+const FindProducts = lazy(() => import("@/pages/dashboard/FindProducts").then((m) => ({ default: m.FindProducts })));
+const ValidateProducts = lazy(() => import("@/pages/dashboard/ValidateProducts").then((m) => ({ default: m.ValidateProducts })));
+const CreateCampaign = lazy(() => import("@/pages/dashboard/CreateCampaign").then((m) => ({ default: m.CreateCampaign })));
+const CreateContent = lazy(() => import("@/pages/dashboard/CreateContent").then((m) => ({ default: m.CreateContent })));
+const CreativeGenerator = lazy(() => import("@/pages/dashboard/CreativeGenerator").then((m) => ({ default: m.CreativeGenerator })));
+const VideoScripts = lazy(() => import("@/pages/dashboard/VideoScripts").then((m) => ({ default: m.VideoScripts })));
+const Analytics = lazy(() => import("@/pages/dashboard/Analytics").then((m) => ({ default: m.Analytics })));
+const SavedPrompts = lazy(() => import("@/pages/dashboard/SavedPrompts").then((m) => ({ default: m.SavedPrompts })));
+
+// Lazy load admin pages
+const AdminOverview = lazy(() => import("@/pages/admin/AdminOverview").then((m) => ({ default: m.AdminOverview })));
+const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers").then((m) => ({ default: m.AdminUsers })));
+const AdminAnalytics = lazy(() => import("@/pages/admin/AdminAnalytics").then((m) => ({ default: m.AdminAnalytics })));
+const AdminActivity = lazy(() => import("@/pages/admin/AdminActivity").then((m) => ({ default: m.AdminActivity })));
+const AdminWaitlist = lazy(() => import("@/pages/admin/AdminWaitlist").then((m) => ({ default: m.AdminWaitlist })));
+const AdminFeedback = lazy(() => import("@/pages/admin/AdminFeedback").then((m) => ({ default: m.AdminFeedback })));
+const AdminLaunchChecklist = lazy(() => import("@/pages/admin/AdminLaunchChecklist").then((m) => ({ default: m.AdminLaunchChecklist })));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[40vh]">
+      <div className="flex gap-1.5">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, refetchOnWindowFocus: false },
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
   },
 });
 
@@ -156,23 +184,27 @@ function ProtectedDashboard() {
     <>
       <Show when="signed-in">
         <BetaGate>
-        <SidebarLayout>
-          <Switch>
-            <Route path="/dashboard" component={DashboardHome} />
-            <Route path="/dashboard/find-products" component={FindProducts} />
-            <Route path="/dashboard/validate-products" component={ValidateProducts} />
-            <Route path="/dashboard/create-campaign" component={CreateCampaign} />
-            <Route path="/dashboard/create-content" component={CreateContent} />
-            <Route path="/dashboard/creative-generator" component={CreativeGenerator} />
-            <Route path="/dashboard/video-scripts" component={VideoScripts} />
-            <Route path="/dashboard/projects" component={Projects} />
-            <Route path="/dashboard/history" component={History} />
-            <Route path="/dashboard/credits" component={Credits} />
-            <Route path="/dashboard/billing" component={Billing} />
-            <Route path="/dashboard/settings" component={Settings} />
-            <Route component={NotFound} />
-          </Switch>
-        </SidebarLayout>
+          <SidebarLayout>
+            <Suspense fallback={<PageLoader />}>
+              <Switch>
+                <Route path="/dashboard" component={DashboardHome} />
+                <Route path="/dashboard/find-products" component={FindProducts} />
+                <Route path="/dashboard/validate-products" component={ValidateProducts} />
+                <Route path="/dashboard/create-campaign" component={CreateCampaign} />
+                <Route path="/dashboard/create-content" component={CreateContent} />
+                <Route path="/dashboard/creative-generator" component={CreativeGenerator} />
+                <Route path="/dashboard/video-scripts" component={VideoScripts} />
+                <Route path="/dashboard/projects" component={Projects} />
+                <Route path="/dashboard/history" component={History} />
+                <Route path="/dashboard/credits" component={Credits} />
+                <Route path="/dashboard/billing" component={Billing} />
+                <Route path="/dashboard/settings" component={Settings} />
+                <Route path="/dashboard/analytics" component={Analytics} />
+                <Route path="/dashboard/prompts" component={SavedPrompts} />
+                <Route component={NotFound} />
+              </Switch>
+            </Suspense>
+          </SidebarLayout>
         </BetaGate>
       </Show>
       <Show when="signed-out">
@@ -188,16 +220,18 @@ function ProtectedAdmin() {
       <Show when="signed-in">
         <AdminGuard>
           <AdminLayout>
-            <Switch>
-              <Route path="/admin" component={AdminOverview} />
-              <Route path="/admin/users" component={AdminUsers} />
-              <Route path="/admin/analytics" component={AdminAnalytics} />
-              <Route path="/admin/activity" component={AdminActivity} />
-              <Route path="/admin/waitlist" component={AdminWaitlist} />
-              <Route path="/admin/feedback" component={AdminFeedback} />
-              <Route path="/admin/launch-checklist" component={AdminLaunchChecklist} />
-              <Route component={NotFound} />
-            </Switch>
+            <Suspense fallback={<PageLoader />}>
+              <Switch>
+                <Route path="/admin" component={AdminOverview} />
+                <Route path="/admin/users" component={AdminUsers} />
+                <Route path="/admin/analytics" component={AdminAnalytics} />
+                <Route path="/admin/activity" component={AdminActivity} />
+                <Route path="/admin/waitlist" component={AdminWaitlist} />
+                <Route path="/admin/feedback" component={AdminFeedback} />
+                <Route path="/admin/launch-checklist" component={AdminLaunchChecklist} />
+                <Route component={NotFound} />
+              </Switch>
+            </Suspense>
           </AdminLayout>
         </AdminGuard>
       </Show>
