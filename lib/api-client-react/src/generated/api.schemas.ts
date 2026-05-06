@@ -116,6 +116,7 @@ export interface UserProfile {
   role: UserProfileRole;
   plan: UserProfilePlan;
   credits: number;
+  betaAccess: boolean;
   createdAt: string;
 }
 

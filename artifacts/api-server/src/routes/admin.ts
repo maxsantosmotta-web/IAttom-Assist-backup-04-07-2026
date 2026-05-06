@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, ilike, count, desc, and, gte, or } from "drizzle-orm";
-import { db, users, projectsTable, historyTable, creditsTransactions } from "@workspace/db";
+import { db, users, projectsTable, historyTable, creditsTransactions, waitlistTable, feedbackTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import {
   GetAdminStatsResponse,
@@ -14,6 +14,7 @@ import {
 } from "@workspace/api-zod";
 import { adjustCredits } from "../lib/credits";
 import { getPlansWithPrices } from "../lib/stripeStorage.js";
+import { z } from "zod/v4";
 
 const router: IRouter = Router();
 
@@ -280,6 +281,109 @@ router.get("/admin/launch-status", requireAdmin, async (_req, res): Promise<void
     envVars,
     allEnvVarsConfigured,
   });
+});
+
+const ReviewWaitlistBody = z.object({
+  status: z.enum(["approved", "denied"]),
+  adminNotes: z.string().max(500).optional(),
+});
+
+router.get("/admin/waitlist", requireAdmin, async (req, res): Promise<void> => {
+  const status = req.query.status as string | undefined;
+  const entries = await db
+    .select()
+    .from(waitlistTable)
+    .orderBy(desc(waitlistTable.createdAt))
+    .limit(200);
+
+  const filtered = status ? entries.filter((e) => e.status === status) : entries;
+  res.json({ waitlist: filtered, total: filtered.length });
+});
+
+router.patch("/admin/waitlist/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params["id"] as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const parsed = ReviewWaitlistBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid body" }); return; }
+
+  const [entry] = await db
+    .update(waitlistTable)
+    .set({ status: parsed.data.status, adminNotes: parsed.data.adminNotes, reviewedAt: new Date() })
+    .where(eq(waitlistTable.id, id))
+    .returning();
+
+  if (!entry) { res.status(404).json({ error: "Not found" }); return; }
+
+  if (parsed.data.status === "approved") {
+    await db
+      .update(users)
+      .set({ betaAccess: true, updatedAt: new Date() })
+      .where(eq(users.email, entry.email));
+  } else if (parsed.data.status === "denied") {
+    await db
+      .update(users)
+      .set({ betaAccess: false, updatedAt: new Date() })
+      .where(eq(users.email, entry.email));
+  }
+
+  res.json({ entry });
+});
+
+router.post("/admin/waitlist/grant", requireAdmin, async (req, res): Promise<void> => {
+  const { email } = z.object({ email: z.email() }).parse(req.body);
+
+  const [existing] = await db.select().from(waitlistTable).where(eq(waitlistTable.email, email));
+  if (!existing) {
+    await db.insert(waitlistTable).values({ email, status: "approved", reviewedAt: new Date() });
+  } else {
+    await db.update(waitlistTable).set({ status: "approved", reviewedAt: new Date() }).where(eq(waitlistTable.email, email));
+  }
+  await db.update(users).set({ betaAccess: true, updatedAt: new Date() }).where(eq(users.email, email));
+  res.json({ granted: true });
+});
+
+const ReviewFeedbackBody = z.object({
+  status: z.enum(["new", "reviewed", "resolved"]).optional(),
+  adminNotes: z.string().max(1000).optional(),
+});
+
+router.get("/admin/feedback", requireAdmin, async (req, res): Promise<void> => {
+  const status = req.query.status as string | undefined;
+  const category = req.query.category as string | undefined;
+
+  const entries = await db
+    .select()
+    .from(feedbackTable)
+    .orderBy(desc(feedbackTable.createdAt))
+    .limit(200);
+
+  let filtered = entries;
+  if (status) filtered = filtered.filter((e) => e.status === status);
+  if (category) filtered = filtered.filter((e) => e.category === category);
+
+  res.json({ feedback: filtered, total: filtered.length });
+});
+
+router.patch("/admin/feedback/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params["id"] as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const parsed = ReviewFeedbackBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid body" }); return; }
+
+  const [entry] = await db
+    .update(feedbackTable)
+    .set({
+      ...(parsed.data.status ? { status: parsed.data.status } : {}),
+      ...(parsed.data.adminNotes !== undefined ? { adminNotes: parsed.data.adminNotes } : {}),
+      reviewedAt: new Date(),
+    })
+    .where(eq(feedbackTable.id, id))
+    .returning();
+
+  if (!entry) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ entry });
 });
 
 export default router;

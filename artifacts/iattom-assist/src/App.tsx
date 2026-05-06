@@ -30,7 +30,10 @@ import { AdminOverview } from "@/pages/admin/AdminOverview";
 import { AdminUsers } from "@/pages/admin/AdminUsers";
 import { AdminAnalytics } from "@/pages/admin/AdminAnalytics";
 import { AdminActivity } from "@/pages/admin/AdminActivity";
+import { AdminWaitlist } from "@/pages/admin/AdminWaitlist";
+import { AdminFeedback } from "@/pages/admin/AdminFeedback";
 import { AdminLaunchChecklist } from "@/pages/admin/AdminLaunchChecklist";
+import { BetaGate } from "@/components/BetaGate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -152,6 +155,7 @@ function ProtectedDashboard() {
   return (
     <>
       <Show when="signed-in">
+        <BetaGate>
         <SidebarLayout>
           <Switch>
             <Route path="/dashboard" component={DashboardHome} />
@@ -169,6 +173,7 @@ function ProtectedDashboard() {
             <Route component={NotFound} />
           </Switch>
         </SidebarLayout>
+        </BetaGate>
       </Show>
       <Show when="signed-out">
         <Redirect to="/" />
@@ -188,6 +193,8 @@ function ProtectedAdmin() {
               <Route path="/admin/users" component={AdminUsers} />
               <Route path="/admin/analytics" component={AdminAnalytics} />
               <Route path="/admin/activity" component={AdminActivity} />
+              <Route path="/admin/waitlist" component={AdminWaitlist} />
+              <Route path="/admin/feedback" component={AdminFeedback} />
               <Route path="/admin/launch-checklist" component={AdminLaunchChecklist} />
               <Route component={NotFound} />
             </Switch>

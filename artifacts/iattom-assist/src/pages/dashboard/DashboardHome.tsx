@@ -3,11 +3,13 @@ import { Link } from "wouter";
 import {
   Search, CheckCircle, Megaphone, FileText, Sparkles, Video,
   ArrowRight, TrendingUp, Layers, Zap, Clock, FolderOpen,
+  X, Rocket, ChevronRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useGetDashboardSummary, useListProjects, useGetCreditsBalance, getGetCreditsBalanceQueryKey } from "@workspace/api-client-react";
+import { useGetDashboardSummary, useListProjects, useGetCreditsBalance, getGetCreditsBalanceQueryKey, useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
+import { useState } from "react";
 
 const quickActions = [
   {
@@ -132,6 +134,16 @@ function StatCard({
   );
 }
 
+const ONBOARDING_KEY = "iattom_beta_onboarding_v1";
+
+const ONBOARDING_STEPS = [
+  { id: "ai", label: "Run your first AI module", href: "/dashboard/find-products" },
+  { id: "credits", label: "Review your credits balance", href: "/dashboard/credits" },
+  { id: "billing", label: "Explore billing and upgrade options", href: "/dashboard/billing" },
+  { id: "project", label: "Save and revisit a project", href: "/dashboard/projects" },
+  { id: "feedback", label: "Send feedback using the button below-right" },
+];
+
 export function DashboardHome() {
   const { data: summary, isLoading: summaryLoading } = useGetDashboardSummary();
   const { data: projects, isLoading: projectsLoading } = useListProjects();
@@ -139,9 +151,35 @@ export function DashboardHome() {
     query: { queryKey: getGetCreditsBalanceQueryKey(), retry: false, staleTime: 30_000 },
   });
   const { user, isLoaded } = useUser();
+  const { data: me } = useGetMe({
+    query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 60_000 },
+  });
+
+  const [onboardingDone, setOnboardingDone] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem(ONBOARDING_KEY) || "{}"); } catch { return {}; }
+  });
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
+    try { return localStorage.getItem(`${ONBOARDING_KEY}_dismissed`) === "1"; } catch { return false; }
+  });
+
+  const toggleOnboarding = (id: string) => {
+    setOnboardingDone((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try { localStorage.setItem(ONBOARDING_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const dismissOnboarding = () => {
+    setOnboardingDismissed(true);
+    try { localStorage.setItem(`${ONBOARDING_KEY}_dismissed`, "1"); } catch {}
+  };
+
+  const onboardingDoneCount = ONBOARDING_STEPS.filter((s) => onboardingDone[s.id]).length;
 
   const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "there";
   const plan = creditsData ? (creditsData as { plan?: string }).plan as string | undefined : undefined;
+  const isBetaUser = me?.betaAccess === true;
 
   const statCards = [
     { label: "Total Projects", value: summary?.totalProjects ?? 0, icon: Layers, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
@@ -152,6 +190,79 @@ export function DashboardHome() {
 
   return (
     <div className="space-y-10 pb-2">
+
+      {/* Beta Onboarding Checklist */}
+      {isBetaUser && !onboardingDismissed && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="rounded-2xl bg-gradient-to-br from-primary/8 via-primary/5 to-transparent border border-primary/20 p-5"
+        >
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
+                <Rocket className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Welcome to the Private Beta</p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Complete these steps to get the most from IAttom Assist.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={dismissOnboarding}
+              className="text-zinc-600 hover:text-zinc-400 transition-colors shrink-0 mt-0.5"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="h-1 rounded-full bg-white/[0.05] overflow-hidden mb-4">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-500"
+              style={{ width: `${(onboardingDoneCount / ONBOARDING_STEPS.length) * 100}%` }}
+            />
+          </div>
+          <div className="space-y-1.5">
+            {ONBOARDING_STEPS.map((step) => {
+              const done = !!onboardingDone[step.id];
+              return (
+                <div key={step.id} className="flex items-center gap-3">
+                  <button
+                    onClick={() => toggleOnboarding(step.id)}
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                      done
+                        ? "border-primary bg-primary"
+                        : "border-white/20 hover:border-primary/50"
+                    }`}
+                  >
+                    {done && <CheckCircle className="w-3 h-3 text-black" />}
+                  </button>
+                  {step.href ? (
+                    <Link href={step.href} className="flex-1 flex items-center gap-1.5 group">
+                      <span className={`text-xs transition-colors ${done ? "text-zinc-600 line-through" : "text-zinc-300 group-hover:text-primary"}`}>
+                        {step.label}
+                      </span>
+                      {!done && <ChevronRight className="w-3 h-3 text-zinc-700 group-hover:text-primary transition-colors" />}
+                    </Link>
+                  ) : (
+                    <span className={`text-xs flex-1 ${done ? "text-zinc-600 line-through" : "text-zinc-300"}`}>
+                      {step.label}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {onboardingDoneCount === ONBOARDING_STEPS.length && (
+            <div className="mt-4 pt-3 border-t border-primary/15 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              <p className="text-xs text-emerald-400 font-medium">All set — you know your way around.</p>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Greeting */}
       <motion.div

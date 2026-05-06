@@ -40,6 +40,7 @@ import {
 } from "@workspace/api-client-react";
 import { getCreditColor, getCreditBarColor } from "@/lib/credits";
 import { Logo } from "@/components/ui/Logo";
+import { FeedbackModal } from "@/components/FeedbackModal";
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -110,9 +111,14 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     <>
       {/* Logo */}
       <div className="flex items-center justify-between h-16 px-5 border-b border-white/[0.06] shrink-0">
-        <Link href="/dashboard">
-          <Logo size={30} showWordmark />
-        </Link>
+        <div className="flex items-center gap-2.5">
+          <Link href="/dashboard">
+            <Logo size={30} showWordmark />
+          </Link>
+          <span className="text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded bg-primary/15 border border-primary/25 text-primary leading-tight">
+            Beta
+          </span>
+        </div>
         <Button
           variant="ghost"
           size="icon"
@@ -337,6 +343,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           <div className="max-w-5xl mx-auto">{children}</div>
         </main>
       </div>
+      <FeedbackModal />
     </div>
   );
 }

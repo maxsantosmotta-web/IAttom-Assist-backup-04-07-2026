@@ -5,6 +5,8 @@ import {
   TrendingUp,
   Activity,
   Rocket,
+  Clock,
+  MessageSquare,
   Menu,
   X,
   LogOut,
@@ -31,6 +33,8 @@ const navItems = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/admin/activity", label: "Activity", icon: Activity },
+  { href: "/admin/waitlist", label: "Waitlist", icon: Clock },
+  { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/admin/launch-checklist", label: "Launch Checklist", icon: Rocket },
 ];
 

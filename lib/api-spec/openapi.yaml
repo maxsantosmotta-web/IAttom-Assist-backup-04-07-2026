@@ -705,6 +705,8 @@ components:
           enum: [free, pro, business, agency]
         credits:
           type: integer
+        betaAccess:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -715,6 +717,7 @@ components:
         - role
         - plan
         - credits
+        - betaAccess
         - createdAt
 
     CreditsBalance:

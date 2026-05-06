@@ -7,6 +7,8 @@ import {
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useRef, useState } from "react";
 import { Logo } from "@/components/ui/Logo";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
@@ -298,6 +300,98 @@ function FAQItem({ q, a }: { q: string; a: string }) {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function WaitlistForm() {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "already" | "error">("idle");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setStatus("loading");
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), name: name.trim() || undefined, message: message.trim() || undefined }),
+      });
+      if (res.status === 409) { setStatus("already"); return; }
+      if (!res.ok) throw new Error("Failed");
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  if (status === "success") {
+    return (
+      <div className="max-w-md mx-auto text-center p-8 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
+        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+          <Check className="w-6 h-6 text-emerald-400" />
+        </div>
+        <p className="text-base font-bold text-emerald-400 mb-1">You're on the list.</p>
+        <p className="text-sm text-zinc-500">We'll reach out to <span className="text-zinc-300 font-medium">{email}</span> when your access is ready.</p>
+      </div>
+    );
+  }
+
+  if (status === "already") {
+    return (
+      <div className="max-w-md mx-auto text-center p-8 rounded-2xl bg-primary/5 border border-primary/20">
+        <p className="text-base font-bold text-primary mb-1">Already registered</p>
+        <p className="text-sm text-zinc-500">That email is already on the waitlist. We'll be in touch.</p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-3">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <Input
+            type="text"
+            placeholder="Your name (optional)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-11 focus:border-primary/40"
+          />
+        </div>
+        <div>
+          <Input
+            type="email"
+            placeholder="Your email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-11 focus:border-primary/40"
+          />
+        </div>
+      </div>
+      <Textarea
+        placeholder="What will you use IAttom Assist for? (optional)"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-20 resize-none focus:border-primary/40"
+        maxLength={500}
+      />
+      {status === "error" && (
+        <p className="text-xs text-red-400">Something went wrong. Please try again.</p>
+      )}
+      <Button
+        type="submit"
+        disabled={!email.trim() || status === "loading"}
+        size="lg"
+        className="w-full h-12 text-sm bg-primary text-black hover:bg-primary/90 font-black rounded-lg shadow-[0_0_40px_-8px_rgba(201,168,76,0.4)] hover:shadow-[0_0_60px_-8px_rgba(201,168,76,0.6)] transition-all duration-300"
+      >
+        {status === "loading" ? "Joining..." : "Request Beta Access"}
+        {status !== "loading" && <ArrowRight className="ml-2 w-4 h-4" />}
+      </Button>
+      <p className="text-center text-xs text-zinc-700">No spam. No credit card. Access granted in batches.</p>
+    </form>
   );
 }
 
@@ -653,6 +747,28 @@ export function LandingPage() {
                 <FAQItem key={faq.q} q={faq.q} a={faq.a} />
               ))}
             </AnimatedSection>
+          </div>
+        </section>
+
+        {/* ─── WAITLIST ─── */}
+        <section id="waitlist" className="py-24 bg-[#060606] border-t border-white/[0.05] relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,_rgba(201,168,76,0.06)_0%,_transparent_70%)] pointer-events-none" />
+          <div className="max-w-6xl mx-auto px-5 sm:px-6 relative z-10">
+            <div className="max-w-xl mx-auto text-center mb-10">
+              <AnimatedSection>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-bold tracking-wider uppercase mb-5">
+                  <Rocket className="w-3 h-3" />
+                  Private Beta
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-4">
+                  Get Early Access
+                </h2>
+                <p className="text-zinc-400 text-sm leading-relaxed">
+                  IAttom Assist is currently in private beta. Join the waitlist and we'll grant access in batches as we scale.
+                </p>
+              </AnimatedSection>
+            </div>
+            <WaitlistForm />
           </div>
         </section>
 

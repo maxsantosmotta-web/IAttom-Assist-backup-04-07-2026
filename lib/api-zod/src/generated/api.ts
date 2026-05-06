@@ -191,6 +191,7 @@ export const SyncUserResponse = zod.object({
   role: zod.enum(["user", "admin"]),
   plan: zod.enum(["free", "pro", "business", "agency"]),
   credits: zod.number(),
+  betaAccess: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 
@@ -205,6 +206,7 @@ export const GetMeResponse = zod.object({
   role: zod.enum(["user", "admin"]),
   plan: zod.enum(["free", "pro", "business", "agency"]),
   credits: zod.number(),
+  betaAccess: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 
@@ -499,6 +501,7 @@ export const BootstrapAdminResponse = zod.object({
   role: zod.enum(["user", "admin"]),
   plan: zod.enum(["free", "pro", "business", "agency"]),
   credits: zod.number(),
+  betaAccess: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 
