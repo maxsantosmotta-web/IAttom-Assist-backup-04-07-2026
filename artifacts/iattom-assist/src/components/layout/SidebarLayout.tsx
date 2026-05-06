@@ -19,6 +19,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +64,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoaded, isSignedIn } = useUser();
   const { signOut } = useClerk();
   const syncUser = useSyncUser();
-  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: false, enabled: !!isSignedIn } });
+  const { data: me } = useGetMe({
+    query: { queryKey: getGetMeQueryKey(), retry: false, enabled: !!isSignedIn },
+  });
   const { data: creditsData } = useGetCreditsBalance({
     query: {
       queryKey: getGetCreditsBalanceQueryKey(),
@@ -77,249 +80,261 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     if (isLoaded && isSignedIn && user) {
       const email = user.primaryEmailAddress?.emailAddress;
       const name = user.fullName ?? user.firstName ?? undefined;
-      if (email) {
-        syncUser.mutate({ data: { email, name } });
-      }
+      if (email) syncUser.mutate({ data: { email, name } });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn]);
 
-  const currentPage = navItems.find((item) => item.href === location)?.label || "Dashboard";
-  const closeSidebar = () => setIsMobileOpen(false);
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [location]);
 
+  const currentPage = navItems.find((item) => item.href === location)?.label || "Dashboard";
   const displayName = user?.fullName || user?.firstName || user?.username || "User";
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
-  const initials = displayName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
   const handleSignOut = () => {
     signOut({ redirectUrl: `${window.location.origin}${basePath}/` });
   };
 
   const isAdmin = me?.role === "admin";
-
   const creditBalance = creditsData?.balance ?? 0;
   const creditPct = creditsData?.percentage ?? 0;
   const creditBarColor = getCreditBarColor(creditPct);
   const creditTextColor = getCreditColor(creditPct);
   const isLowCredit = creditsData?.lowCredit ?? false;
 
-  return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
-      {isMobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden"
-          onClick={closeSidebar}
-        />
+  const SidebarContent = () => (
+    <>
+      {/* Logo */}
+      <div className="flex items-center justify-between h-16 px-5 border-b border-white/[0.06] shrink-0">
+        <Link href="/dashboard">
+          <Logo size={30} showWordmark />
+        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden text-zinc-500 hover:text-white hover:bg-white/[0.05]"
+          onClick={() => setIsMobileOpen(false)}
+        >
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* Nav */}
+      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 sidebar-scroll">
+        <p className="px-3 pb-2 text-[9px] font-black tracking-widest text-zinc-700 uppercase">
+          Workspace
+        </p>
+        {navItems.map((item) => {
+          const isActive = location === item.href;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${
+                isActive
+                  ? "bg-primary/[0.12] text-primary"
+                  : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
+              }`}
+            >
+              {isActive && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
+              )}
+              <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? "text-primary" : ""}`} />
+              <span className="flex-1 text-[13px]">{item.label}</span>
+              {item.href === "/dashboard/credits" && isLowCredit && (
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0 animate-pulse" />
+              )}
+            </Link>
+          );
+        })}
+
+        {isAdmin && (
+          <div className="pt-3 mt-2 border-t border-white/[0.06]">
+            <p className="px-3 pb-2 text-[9px] font-black tracking-widest text-zinc-700 uppercase">
+              Admin
+            </p>
+            <Link
+              href="/admin"
+              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-[13px] font-medium ${
+                location.startsWith("/admin")
+                  ? "bg-primary/[0.12] text-primary"
+                  : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
+              }`}
+            >
+              {location.startsWith("/admin") && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
+              )}
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <span className="flex-1">Admin Panel</span>
+              <Badge className="text-[9px] px-1.5 py-0 h-4 bg-primary/20 text-primary border-primary/30 font-black leading-4">
+                ADMIN
+              </Badge>
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Credits Widget */}
+      {creditsData && (
+        <div className="px-4 py-3.5 border-t border-white/[0.06] shrink-0">
+          <Link href="/dashboard/credits" className="block group">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Zap className="w-3 h-3 text-primary fill-primary" />
+                <span className="text-[11px] text-zinc-500 font-semibold tracking-wide">Credits</span>
+              </div>
+              <span className={`text-[11px] font-bold tabular-nums ${creditTextColor}`}>
+                {creditBalance.toLocaleString()}
+                <span className="text-zinc-700 font-normal"> / {creditsData.planLimit.toLocaleString()}</span>
+              </span>
+            </div>
+            <div className="h-1 rounded-full bg-white/[0.05] overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${creditBarColor}`}
+                style={{ width: `${Math.min(creditPct, 100)}%` }}
+              />
+            </div>
+            {isLowCredit && (
+              <p className="text-[10px] text-red-400 mt-1.5 font-medium">Low credits — upgrade your plan</p>
+            )}
+          </Link>
+        </div>
       )}
 
+      {/* User */}
+      <div className="p-3 border-t border-white/[0.06] shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.04] transition-colors w-full text-left group">
+              <Avatar className="w-8 h-8 border border-white/10 shrink-0">
+                {user?.imageUrl && <AvatarImage src={user.imageUrl} alt={displayName} />}
+                <AvatarFallback className="bg-primary/15 text-primary text-xs font-bold">
+                  {isLoaded ? initials : ""}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col overflow-hidden flex-1 min-w-0">
+                <span className="text-[13px] font-semibold truncate text-zinc-200">
+                  {isLoaded ? displayName : "Loading..."}
+                </span>
+                <span className="text-[10px] text-zinc-600 truncate">{email}</span>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-zinc-600 shrink-0 group-hover:text-zinc-400 transition-colors" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-56 bg-[#111111] border-white/[0.10]">
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/settings" className="flex items-center gap-2 cursor-pointer">
+                <Settings className="w-4 h-4" />
+                Settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/credits" className="flex items-center gap-2 cursor-pointer">
+                <Zap className="w-4 h-4" />
+                Credits
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/billing" className="flex items-center gap-2 cursor-pointer">
+                <CreditCard className="w-4 h-4" />
+                Billing
+              </Link>
+            </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-2 cursor-pointer text-primary focus:text-primary focus:bg-primary/10"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Admin Panel
+                </Link>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator className="bg-white/[0.08]" />
+            <DropdownMenuItem
+              onClick={handleSignOut}
+              className="text-red-400 focus:text-red-400 focus:bg-red-400/10 cursor-pointer gap-2"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-screen bg-[#080808] text-foreground overflow-hidden">
+
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
+            onClick={() => setIsMobileOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0a0a0a] border-r border-white/[0.06] transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static flex flex-col ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-5 border-b border-white/[0.06] shrink-0">
-          <Link href="/dashboard" onClick={closeSidebar}>
-            <Logo size={30} />
-          </Link>
-          <Button variant="ghost" size="icon" className="md:hidden text-muted-foreground" onClick={closeSidebar}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {/* Nav */}
-        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5 sidebar-scroll">
-          <p className="px-3 pb-2 text-[10px] font-semibold tracking-widest text-zinc-600 uppercase">
-            Workspace
-          </p>
-          {navItems.map((item) => {
-            const isActive = location === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium group ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
-                }`}
-                onClick={closeSidebar}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
-                )}
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="flex-1">{item.label}</span>
-                {item.href === "/dashboard/credits" && isLowCredit && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                )}
-              </Link>
-            );
-          })}
-
-          {isAdmin && (
-            <div className="pt-3 mt-2 border-t border-white/[0.06]">
-              <p className="px-3 pb-2 text-[10px] font-semibold tracking-widest text-zinc-600 uppercase">
-                Admin
-              </p>
-              <Link
-                href="/admin"
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 text-sm font-medium ${
-                  location.startsWith("/admin")
-                    ? "bg-primary/10 text-primary"
-                    : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
-                }`}
-                onClick={closeSidebar}
-              >
-                {location.startsWith("/admin") && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
-                )}
-                <ShieldCheck className="w-4 h-4 shrink-0" />
-                <span className="flex-1">Admin Panel</span>
-                <Badge className="text-[9px] px-1.5 py-0 h-4 bg-primary/20 text-primary border-primary/30 font-bold leading-4">
-                  ADMIN
-                </Badge>
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Credits Widget */}
-        {creditsData && (
-          <div className="px-4 py-3 border-t border-white/[0.06] shrink-0">
-            <Link href="/dashboard/credits" onClick={closeSidebar} className="block group">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <Zap className="w-3 h-3 text-primary fill-primary" />
-                  <span className="text-[11px] text-zinc-500 font-medium tracking-wide">Credits</span>
-                </div>
-                <span className={`text-[11px] font-semibold tabular-nums ${creditTextColor}`}>
-                  {creditBalance.toLocaleString()}
-                  <span className="text-zinc-600 font-normal"> / {creditsData.planLimit.toLocaleString()}</span>
-                </span>
-              </div>
-              <div className="h-1 rounded-full bg-white/5 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${creditBarColor}`}
-                  style={{ width: `${Math.min(creditPct, 100)}%` }}
-                />
-              </div>
-              {isLowCredit && (
-                <p className="text-[10px] text-red-400 mt-1.5">Low credits — upgrade plan</p>
-              )}
-            </Link>
-          </div>
-        )}
-
-        {/* User Section */}
-        <div className="p-3 border-t border-white/[0.06] shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/[0.04] transition-colors w-full text-left group">
-                <Avatar className="w-8 h-8 border border-white/10 shrink-0">
-                  {user?.imageUrl && <AvatarImage src={user.imageUrl} alt={displayName} />}
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                    {isLoaded ? initials : ""}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col overflow-hidden flex-1 min-w-0">
-                  <span className="text-xs font-semibold truncate text-zinc-200">
-                    {isLoaded ? displayName : "Loading..."}
-                  </span>
-                  <span className="text-[10px] text-zinc-600 truncate">{email}</span>
-                </div>
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-600 shrink-0 group-hover:text-zinc-400 transition-colors" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start" className="w-56 bg-[#111111] border-white/10">
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/dashboard/settings"
-                  className="flex items-center gap-2 cursor-pointer"
-                  onClick={closeSidebar}
-                >
-                  <Settings className="w-4 h-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/dashboard/credits"
-                  className="flex items-center gap-2 cursor-pointer"
-                  onClick={closeSidebar}
-                >
-                  <Zap className="w-4 h-4" />
-                  Credits
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/dashboard/billing"
-                  className="flex items-center gap-2 cursor-pointer"
-                  onClick={closeSidebar}
-                >
-                  <CreditCard className="w-4 h-4" />
-                  Billing
-                </Link>
-              </DropdownMenuItem>
-              {isAdmin && (
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/admin"
-                    className="flex items-center gap-2 cursor-pointer text-primary focus:text-primary focus:bg-primary/10"
-                    onClick={closeSidebar}
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    Admin Panel
-                  </Link>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator className="bg-white/10" />
-              <DropdownMenuItem
-                onClick={handleSignOut}
-                className="text-red-400 focus:text-red-400 focus:bg-red-400/10 cursor-pointer gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <SidebarContent />
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 flex items-center justify-between px-5 md:px-6 border-b border-white/[0.06] bg-[#080808] shrink-0">
+      {/* Main content */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+
+        {/* Top bar */}
+        <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-white/[0.06] bg-[#080808] shrink-0">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-zinc-400 hover:text-white"
+              className="md:hidden w-8 h-8 text-zinc-500 hover:text-white hover:bg-white/[0.05]"
               onClick={() => setIsMobileOpen(true)}
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-4.5 h-4.5" />
             </Button>
-            <h1 className="text-sm font-semibold text-zinc-200 tracking-wide">{currentPage}</h1>
+            <h1 className="text-[13px] font-semibold text-zinc-400 tracking-wide">{currentPage}</h1>
           </div>
           <div className="flex items-center gap-2">
             {isLowCredit && (
-              <Link href="/dashboard/credits">
-                <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[10px] px-2 cursor-pointer hover:bg-red-500/15">
+              <Link href="/dashboard/billing">
+                <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[10px] px-2.5 py-0.5 cursor-pointer hover:bg-red-500/15 transition-colors font-semibold">
                   Low Credits
                 </Badge>
+              </Link>
+            )}
+            {creditsData && (
+              <Link href="/dashboard/credits">
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] transition-colors cursor-pointer">
+                  <Zap className="w-3 h-3 text-primary fill-primary" />
+                  <span className={`text-[11px] font-bold tabular-nums ${creditTextColor}`}>
+                    {creditBalance.toLocaleString()}
+                  </span>
+                </div>
               </Link>
             )}
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-[#0a0a0a] p-5 md:p-6">
-          <div className="max-w-6xl mx-auto h-full">{children}</div>
+        <main className="flex-1 overflow-y-auto bg-[#0a0a0a] p-5 md:p-6 lg:p-8">
+          <div className="max-w-5xl mx-auto">{children}</div>
         </main>
       </div>
     </div>
