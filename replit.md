@@ -10,13 +10,15 @@ A premium dark-themed AI business assistant SaaS platform for product discovery,
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec (always fix `lib/api-zod/src/index.ts` after — must only export `./generated/api`)
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/scripts run seed-products` — create Stripe products/prices in Stripe dashboard (run once after connecting Stripe integration)
 - Required env: `DATABASE_URL`, `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `VITE_CLERK_PUBLISHABLE_KEY`, `AI_INTEGRATIONS_OPENAI_BASE_URL`, `AI_INTEGRATIONS_OPENAI_API_KEY`
+- Stripe: connected via Replit Stripe integration (no manual API key needed)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - Frontend: React + Vite, Tailwind CSS v4, Framer Motion, shadcn/ui, Recharts, wouter, @clerk/react
-- API: Express 5, @clerk/express
+- API: Express 5, @clerk/express, stripe, stripe-replit-sync
 - DB: PostgreSQL + Drizzle ORM
 - Auth: Clerk (Replit-managed) — email/password + Google OAuth
 - Validation: Zod (`zod/v4`), `drizzle-zod`
@@ -45,7 +47,14 @@ A premium dark-themed AI business assistant SaaS platform for product discovery,
 - `artifacts/iattom-assist/src/index.css` — dark theme, gold accent CSS variables, Clerk layer ordering
 - `artifacts/iattom-assist/public/logo.svg` — branded SVG logo
 - `lib/api-spec/openapi.yaml` — OpenAPI contract (source of truth)
-- `lib/db/src/schema/users.ts` — users table (clerkId, role, plan, credits)
+- `lib/db/src/schema/users.ts` — users table (clerkId, role, plan, credits, stripeCustomerId, stripeSubscriptionId, stripeSubscriptionStatus)
+- `artifacts/api-server/src/lib/stripeClient.ts` — getUncachableStripeClient(), getStripeSync() via Replit connector
+- `artifacts/api-server/src/lib/stripeService.ts` — ensureStripeCustomer(), createCheckoutSession(), createBillingPortalSession()
+- `artifacts/api-server/src/lib/stripeStorage.ts` — queries against stripe.* schema (subscriptions, products, prices)
+- `artifacts/api-server/src/lib/webhookHandlers.ts` — webhook: stripe-replit-sync sync + business logic (plan+credits update)
+- `artifacts/api-server/src/routes/stripe.ts` — GET /stripe/plans, GET /stripe/subscription, POST /stripe/checkout, POST /stripe/portal
+- `artifacts/iattom-assist/src/pages/dashboard/Billing.tsx` — Billing page: plan grid, current sub status, checkout/portal
+- `scripts/src/seed-products.ts` — create Pro/Business/Agency products in Stripe with plan metadata
 - `lib/db/src/schema/projects.ts` — projects table (clerkUserId scoping)
 - `lib/db/src/schema/history.ts` — history/activity table (clerkUserId scoping)
 - `artifacts/api-server/src/middlewares/requireAuth.ts` — Clerk auth guard middleware
@@ -72,18 +81,24 @@ A premium dark-themed AI business assistant SaaS platform for product discovery,
 - User sync: `SidebarLayout` calls `POST /api/auth/sync` on mount to upsert the Clerk user into the users table
 - First admin setup: `AdminGuard` shows a "Claim Admin Access" button when no admins exist → calls `POST /admin/bootstrap`
 - All projects and history records are scoped by `clerkUserId` — full private workspace per user
-- Users table has `role` (user/admin), `plan` (free/pro/business), `credits` fields
+- Users table has `role` (user/admin), `plan` (free/pro/business/agency), `credits`, `stripeCustomerId`, `stripeSubscriptionId`, `stripeSubscriptionStatus`
+- Stripe webhook at `POST /api/stripe/webhook` registered BEFORE `express.json()` in app.ts (needs raw Buffer)
+- Webhook flow: stripe-replit-sync processes → then business logic updates users.plan + users.credits + credits_transactions
+- Subscription activated → plan set from product metadata.plan, credits reset to plan limit; canceled → reverted to free
+- stripe-replit-sync syncs Stripe data to `stripe.*` schema tables; plans queried from there (with fallback hardcoded amounts)
+- Checkout success/cancel URLs redirect back to `/dashboard/billing?payment=success|canceled`
 
 ## Product
 
 - Landing page with hero, features, CTA
 - Clerk sign-in/sign-up pages with dark gold branded appearance
-- User dashboard with sidebar (11 sections): Home, Find Products, Validate Products, Create Campaign, Create Content, Creative Generator, Video Scripts, Projects, History, Credits, Settings
+- User dashboard with sidebar (12 sections): Home, Find Products, Validate Products, Create Campaign, Create Content, Creative Generator, Video Scripts, Projects, History, Credits, Billing, Settings
 - Sidebar shows Admin Panel link for users with admin role; credits widget with balance bar + low-credit indicator
 - Credits system: per-user balance, automatic deduction on AI use (product_discovery=5, product_validation=5, campaign=10, content=8, creative=15, video_script=10)
 - Plans: Free(50), Pro(500), Business(2000), Agency(10000) credits/month
 - `CreditsGate` component wraps every AI action button — shows credit cost badge, calls POST /api/credits/use, shows upgrade modal on 402
 - Credits page (`/dashboard/credits`): balance card with progress bar, feature cost table, full transaction history
+- Billing page (`/dashboard/billing`): current plan status, plan grid (Free/Pro/Business/Agency), Stripe Checkout redirect, Billing Portal redirect; success/canceled URL param toasts
 - Admin dashboard at `/admin/*` — Overview (stats + charts), Users (CRUD table), Analytics (Recharts area/bar/pie), Activity (platform feed)
 - Admin Overview: stat cards (users, projects, AI actions, MRR), area chart (growth), bar chart (plan distribution), recent activity
 - Admin Users: searchable/filterable table, inline edit dialog (role/plan/credits), separate credit adjustment dialog (amount + reason) with `useAdminAdjustCredits`; agency plan color added
@@ -108,6 +123,11 @@ A premium dark-themed AI business assistant SaaS platform for product discovery,
 - `@layer theme, base, clerk, components, utilities;` must come before `@import "tailwindcss"` in index.css
 - After changing schema files, run `pnpm run typecheck:libs` to rebuild composite lib declarations before API server typecheck
 - `useGetMe` hook requires explicit `queryKey: getGetMeQueryKey()` in its options object
+- Generated query hooks (useGetStripePlans, etc.) require `queryKey` in their query options — use `getGet*QueryKey()` helpers
+- Stripe webhook MUST be registered before `express.json()` in app.ts — `express.raw({ type: 'application/json' })` is applied only to that route
+- `runMigrations` from stripe-replit-sync only accepts `{ databaseUrl, ssl?, logger? }` — no `schema` field
+- `stripe-replit-sync` is excluded from `minimumReleaseAge` in pnpm-workspace.yaml
+- Stripe products need `metadata: { plan: 'pro' }` etc. — run `pnpm --filter @workspace/scripts run seed-products` once after connecting Stripe
 
 ## Pointers
 

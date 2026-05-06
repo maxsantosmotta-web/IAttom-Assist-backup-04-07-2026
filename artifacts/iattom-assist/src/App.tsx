@@ -25,6 +25,7 @@ import { Projects } from "@/pages/dashboard/Projects";
 import { History } from "@/pages/dashboard/History";
 import { Settings } from "@/pages/dashboard/Settings";
 import { Credits } from "@/pages/dashboard/Credits";
+import { Billing } from "@/pages/dashboard/Billing";
 import { AdminOverview } from "@/pages/admin/AdminOverview";
 import { AdminUsers } from "@/pages/admin/AdminUsers";
 import { AdminAnalytics } from "@/pages/admin/AdminAnalytics";
@@ -162,6 +163,7 @@ function ProtectedDashboard() {
             <Route path="/dashboard/projects" component={Projects} />
             <Route path="/dashboard/history" component={History} />
             <Route path="/dashboard/credits" component={Credits} />
+            <Route path="/dashboard/billing" component={Billing} />
             <Route path="/dashboard/settings" component={Settings} />
             <Route component={NotFound} />
           </Switch>

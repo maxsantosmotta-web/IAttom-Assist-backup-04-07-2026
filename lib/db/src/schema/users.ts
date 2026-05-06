@@ -11,6 +11,9 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull().default("user"),
   plan: planEnum("plan").notNull().default("free"),
   credits: integer("credits").notNull().default(0),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripeSubscriptionStatus: text("stripe_subscription_status"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -317,6 +317,61 @@ export interface AdminAnalytics {
   planRevenue: AdminAnalyticsPlanRevenueItem[];
 }
 
+export type StripePlanPlanKey =
+  (typeof StripePlanPlanKey)[keyof typeof StripePlanPlanKey];
+
+export const StripePlanPlanKey = {
+  free: "free",
+  pro: "pro",
+  business: "business",
+  agency: "agency",
+} as const;
+
+export interface StripePlan {
+  planKey: StripePlanPlanKey;
+  name: string;
+  description: string;
+  credits: number;
+  amount: number;
+  currency: string;
+  interval: string;
+  priceId?: string | null;
+  features: string[];
+}
+
+export type StripeSubscriptionStatusPlanKey =
+  (typeof StripeSubscriptionStatusPlanKey)[keyof typeof StripeSubscriptionStatusPlanKey];
+
+export const StripeSubscriptionStatusPlanKey = {
+  free: "free",
+  pro: "pro",
+  business: "business",
+  agency: "agency",
+} as const;
+
+export interface StripeSubscriptionStatus {
+  hasSubscription: boolean;
+  status?: string | null;
+  planKey: StripeSubscriptionStatusPlanKey;
+  currentPeriodEnd?: string | null;
+  cancelAtPeriodEnd: boolean;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+}
+
+export interface CreateCheckoutBody {
+  priceId: string;
+  planKey: string;
+}
+
+export interface CheckoutResult {
+  url: string;
+}
+
+export interface BillingPortalResult {
+  url: string;
+}
+
 export interface AiFindProductsBody {
   query: string;
   niche?: string;

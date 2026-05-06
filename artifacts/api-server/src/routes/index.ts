@@ -7,6 +7,7 @@ import authRouter from "./authRoutes.js";
 import adminRouter from "./admin.js";
 import creditsRouter from "./credits.js";
 import aiRouter from "./ai.js";
+import stripeRouter from "./stripe.js";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(authRouter);
 router.use(adminRouter);
 router.use(creditsRouter);
 router.use(aiRouter);
+router.use(stripeRouter);
 
 export default router;

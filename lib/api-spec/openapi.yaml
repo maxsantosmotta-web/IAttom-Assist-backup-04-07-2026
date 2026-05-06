@@ -24,6 +24,8 @@ tags:
     description: Credits management
   - name: ai
     description: AI generation modules
+  - name: billing
+    description: Subscription billing and plan management
 paths:
   /healthz:
     get:
@@ -510,6 +512,70 @@ paths:
         "409":
           description: Admins already exist
 
+  /stripe/plans:
+    get:
+      operationId: getStripePlans
+      tags: [billing]
+      summary: List available subscription plans with prices
+      responses:
+        "200":
+          description: Available plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StripePlan"
+
+  /stripe/subscription:
+    get:
+      operationId: getStripeSubscription
+      tags: [billing]
+      summary: Get current user subscription status
+      responses:
+        "200":
+          description: Subscription status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeSubscriptionStatus"
+
+  /stripe/checkout:
+    post:
+      operationId: createCheckoutSession
+      tags: [billing]
+      summary: Create a Stripe Checkout session for a plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckoutBody"
+      responses:
+        "200":
+          description: Checkout session URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutResult"
+        "500":
+          description: Failed to create session
+
+  /stripe/portal:
+    post:
+      operationId: createBillingPortal
+      tags: [billing]
+      summary: Create a Stripe Billing Portal session
+      responses:
+        "200":
+          description: Portal session URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingPortalResult"
+        "500":
+          description: Failed to create session
+
 components:
   schemas:
     HealthStatus:
@@ -955,6 +1021,96 @@ components:
         - userGrowth
         - featureUsage
         - planRevenue
+
+    StripePlan:
+      type: object
+      properties:
+        planKey:
+          type: string
+          enum: [free, pro, business, agency]
+        name:
+          type: string
+        description:
+          type: string
+        credits:
+          type: integer
+        amount:
+          type: integer
+        currency:
+          type: string
+        interval:
+          type: string
+        priceId:
+          type: string
+          nullable: true
+        features:
+          type: array
+          items:
+            type: string
+      required:
+        - planKey
+        - name
+        - description
+        - credits
+        - amount
+        - currency
+        - interval
+        - features
+
+    StripeSubscriptionStatus:
+      type: object
+      properties:
+        hasSubscription:
+          type: boolean
+        status:
+          type: string
+          nullable: true
+        planKey:
+          type: string
+          enum: [free, pro, business, agency]
+        currentPeriodEnd:
+          type: string
+          format: date-time
+          nullable: true
+        cancelAtPeriodEnd:
+          type: boolean
+        stripeCustomerId:
+          type: string
+          nullable: true
+        stripeSubscriptionId:
+          type: string
+          nullable: true
+      required:
+        - hasSubscription
+        - planKey
+        - cancelAtPeriodEnd
+
+    CreateCheckoutBody:
+      type: object
+      properties:
+        priceId:
+          type: string
+        planKey:
+          type: string
+      required:
+        - priceId
+        - planKey
+
+    CheckoutResult:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    BillingPortalResult:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
 
     AiFindProductsBody:
       type: object

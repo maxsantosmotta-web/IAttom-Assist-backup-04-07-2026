@@ -128,12 +128,17 @@ export function CreditsGate({ feature, onSuccess, disabled, children }: CreditsG
                   View Credits
                 </Button>
               </Link>
-              <Button
-                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 text-sm"
+              <Link
+                href="/dashboard/billing"
+                className="flex-1"
                 onClick={() => setInsufficient(null)}
               >
-                Upgrade Plan
-              </Button>
+                <Button
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm"
+                >
+                  Upgrade Plan
+                </Button>
+              </Link>
             </div>
           </div>
         </DialogContent>

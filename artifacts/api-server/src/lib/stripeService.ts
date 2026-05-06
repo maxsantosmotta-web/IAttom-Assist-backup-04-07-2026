@@ -1,0 +1,80 @@
+import { eq } from "drizzle-orm";
+import { db, users } from "@workspace/db";
+import { getUncachableStripeClient } from "./stripeClient.js";
+
+const APP_ORIGIN =
+  process.env.REPLIT_DOMAINS
+    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+    : "http://localhost:80";
+
+const BASE_PATH = process.env.VITE_BASE_PATH ?? "/iattom-assist";
+
+export async function ensureStripeCustomer(
+  clerkUserId: string,
+): Promise<string> {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.clerkId, clerkUserId));
+  if (!user) throw new Error("User not found");
+
+  if (user.stripeCustomerId) return user.stripeCustomerId;
+
+  const stripe = await getUncachableStripeClient();
+  const customer = await stripe.customers.create({
+    email: user.email,
+    name: user.name ?? undefined,
+    metadata: { clerkUserId },
+  });
+
+  await db
+    .update(users)
+    .set({ stripeCustomerId: customer.id, updatedAt: new Date() })
+    .where(eq(users.clerkId, clerkUserId));
+
+  return customer.id;
+}
+
+export async function createCheckoutSession(
+  clerkUserId: string,
+  priceId: string,
+  planKey: string,
+): Promise<string> {
+  const customerId = await ensureStripeCustomer(clerkUserId);
+  const stripe = await getUncachableStripeClient();
+
+  const billingUrl = `${APP_ORIGIN}${BASE_PATH}/dashboard/billing`;
+
+  const session = await stripe.checkout.sessions.create({
+    customer: customerId,
+    payment_method_types: ["card"],
+    line_items: [{ price: priceId, quantity: 1 }],
+    mode: "subscription",
+    success_url: `${billingUrl}?payment=success`,
+    cancel_url: `${billingUrl}?payment=canceled`,
+    client_reference_id: clerkUserId,
+    subscription_data: {
+      metadata: { clerkUserId, planKey },
+    },
+    allow_promotion_codes: true,
+  });
+
+  if (!session.url) throw new Error("Stripe checkout session URL is null");
+  return session.url;
+}
+
+export async function createBillingPortalSession(
+  clerkUserId: string,
+): Promise<string> {
+  const customerId = await ensureStripeCustomer(clerkUserId);
+  const stripe = await getUncachableStripeClient();
+
+  const billingUrl = `${APP_ORIGIN}${BASE_PATH}/dashboard/billing`;
+
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: billingUrl,
+  });
+
+  return session.url;
+}

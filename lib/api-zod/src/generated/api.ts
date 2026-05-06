@@ -500,3 +500,51 @@ export const BootstrapAdminResponse = zod.object({
   credits: zod.number(),
   createdAt: zod.coerce.date(),
 });
+
+/**
+ * @summary List available subscription plans with prices
+ */
+export const GetStripePlansResponseItem = zod.object({
+  planKey: zod.enum(["free", "pro", "business", "agency"]),
+  name: zod.string(),
+  description: zod.string(),
+  credits: zod.number(),
+  amount: zod.number(),
+  currency: zod.string(),
+  interval: zod.string(),
+  priceId: zod.string().nullish(),
+  features: zod.array(zod.string()),
+});
+export const GetStripePlansResponse = zod.array(GetStripePlansResponseItem);
+
+/**
+ * @summary Get current user subscription status
+ */
+export const GetStripeSubscriptionResponse = zod.object({
+  hasSubscription: zod.boolean(),
+  status: zod.string().nullish(),
+  planKey: zod.enum(["free", "pro", "business", "agency"]),
+  currentPeriodEnd: zod.coerce.date().nullish(),
+  cancelAtPeriodEnd: zod.boolean(),
+  stripeCustomerId: zod.string().nullish(),
+  stripeSubscriptionId: zod.string().nullish(),
+});
+
+/**
+ * @summary Create a Stripe Checkout session for a plan
+ */
+export const CreateCheckoutSessionBody = zod.object({
+  priceId: zod.string(),
+  planKey: zod.string(),
+});
+
+export const CreateCheckoutSessionResponse = zod.object({
+  url: zod.string(),
+});
+
+/**
+ * @summary Create a Stripe Billing Portal session
+ */
+export const CreateBillingPortalResponse = zod.object({
+  url: zod.string(),
+});

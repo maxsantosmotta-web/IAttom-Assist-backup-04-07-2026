@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ShieldCheck,
   Zap,
+  CreditCard,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ const navItems = [
   { href: "/dashboard/projects", label: "Projects", icon: FolderOpen },
   { href: "/dashboard/history", label: "History", icon: Clock },
   { href: "/dashboard/credits", label: "Credits", icon: Zap },
+  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
@@ -254,6 +256,16 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
                 >
                   <Zap className="w-4 h-4" />
                   Credits
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/dashboard/billing"
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={closeSidebar}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Billing
                 </Link>
               </DropdownMenuItem>
               {isAdmin && (
