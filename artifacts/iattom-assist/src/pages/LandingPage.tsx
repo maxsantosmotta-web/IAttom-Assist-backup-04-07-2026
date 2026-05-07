@@ -204,12 +204,9 @@ export function LandingPage() {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/sign-in" className="hidden sm:block text-[13px] font-medium text-zinc-500 hover:text-white transition-colors">
-              Entrar
-            </Link>
-            <Link href="/sign-up">
-              <Button size="sm" className="bg-primary text-black hover:bg-primary/90 font-bold px-5 rounded-lg text-[13px] h-9 shadow-[0_0_20px_-4px_rgba(201,168,76,0.4)]">
-                Começar Agora
+            <Link href="/sign-in">
+              <Button size="sm" variant="outline" className="border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.07] hover:text-white rounded-lg text-[13px] h-9 px-5 transition-all">
+                Entrar
               </Button>
             </Link>
           </div>
