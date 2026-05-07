@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
-import { Logo } from "@/components/ui/Logo";
+import { LogoMark } from "@/components/ui/Logo";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
@@ -18,17 +18,10 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-[#080808] flex flex-col selection:bg-primary/25 selection:text-white">
 
-      {/* ─── NAVBAR ─── */}
-      <header className="fixed top-0 inset-x-0 z-50 bg-[#080808]/80 backdrop-blur-2xl border-b border-white/[0.05]">
-        <div className="max-w-6xl mx-auto px-6 sm:px-8 h-16 flex items-center">
-          <Logo size={30} showWordmark />
-        </div>
-      </header>
-
-      <main className="flex-1 pt-16">
+      <main className="flex-1">
 
         {/* ─── HERO ─── */}
-        <section className="relative flex items-center min-h-[92vh] overflow-hidden">
+        <section className="relative overflow-hidden">
 
           {/* ambient glow */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_-5%,_rgba(201,168,76,0.16)_0%,_transparent_68%)] pointer-events-none" />
@@ -37,13 +30,22 @@ export function LandingPage() {
           {/* subtle grid */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.011)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.011)_1px,transparent_1px)] bg-[size:80px_80px] pointer-events-none" />
 
-          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-28 sm:py-36 relative z-10 w-full">
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 pt-24 pb-20 sm:pt-32 sm:pb-28 relative z-10 w-full">
             <motion.div
               variants={stagger}
               initial="hidden"
               animate="show"
               className="max-w-3xl mx-auto text-center space-y-8 sm:space-y-10"
             >
+
+              {/* logo mark */}
+              <motion.div
+                variants={fadeUp}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="flex justify-center"
+              >
+                <LogoMark size={72} />
+              </motion.div>
 
               {/* headline */}
               <motion.h1
@@ -100,7 +102,7 @@ export function LandingPage() {
 
       {/* ─── FOOTER ─── */}
       <footer className="border-t border-white/[0.05] bg-[#060606]">
-        <div className="max-w-6xl mx-auto px-6 sm:px-8 py-8 text-center">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 py-6 text-center">
           <p className="text-xs text-zinc-700">
             &copy; {new Date().getFullYear()} IAttom Assist. Todos os direitos reservados.
           </p>
