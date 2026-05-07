@@ -142,20 +142,20 @@ export function LandingPage() {
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center selection:bg-yellow-900/30 selection:text-white px-6 py-8 overflow-hidden">
 
       {/* ambient gold glow */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_52%_40%_at_50%_36%,_rgba(180,128,18,0.14)_0%,_transparent_70%)] pointer-events-none"/>
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_45%_35%_at_50%_36%,_rgba(180,128,18,0.06)_0%,_transparent_70%)] pointer-events-none"/>
 
       <motion.div
         variants={stagger}
         initial="hidden"
         animate="show"
-        className="relative z-10 flex flex-col items-center text-center w-full max-w-[320px] sm:max-w-[370px] gap-5 sm:gap-6"
+        className="relative z-10 flex flex-col items-center text-center w-full max-w-[320px] sm:max-w-[370px] gap-7 sm:gap-8"
       >
 
         {/* logo badge */}
         <motion.div
           variants={fadeUp}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="drop-shadow-[0_0_52px_rgba(196,148,28,0.45)]"
+          className="drop-shadow-[0_0_18px_rgba(196,148,28,0.18)]"
         >
           <IAttomBadge size={216} />
         </motion.div>
