@@ -90,9 +90,9 @@ export function Referral() {
   };
 
   const steps = [
-    { n: "1", label: "Share your link", desc: "Send your unique referral link to friends or on social." },
-    { n: "2", label: "They sign up", desc: "Your friend creates a free account using your link." },
-    { n: "3", label: "Both earn credits", desc: `You get ${data?.referrerBonus ?? 50} credits. They get ${data?.referredBonus ?? 25} bonus credits on signup.` },
+    { n: "1", label: "Compartilhe seu link", desc: "Envie seu link único para amigos ou nas redes sociais." },
+    { n: "2", label: "Eles se cadastram", desc: "Seu amigo cria uma conta usando seu link." },
+    { n: "3", label: "Ambos ganham créditos", desc: `Você recebe ${data?.referrerBonus ?? 50} créditos. Eles recebem ${data?.referredBonus ?? 25} créditos de bônus.` },
   ];
 
   return (
@@ -100,19 +100,19 @@ export function Referral() {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
         <div className="flex items-center gap-2 mb-1">
           <Gift className="w-4 h-4 text-primary" />
-          <p className="text-xs text-primary uppercase tracking-widest font-semibold">Referrals</p>
+          <p className="text-xs text-primary uppercase tracking-widest font-semibold">Indicações</p>
         </div>
-        <h1 className="text-2xl font-bold text-white">Invite & Earn</h1>
+        <h1 className="text-2xl font-bold text-white">Indique e Ganhe</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Invite friends and both of you earn credits when they join.
+          Indique amigos e ambos ganham créditos quando eles entram.
         </p>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: "Friends Referred", value: loading ? "—" : (data?.totalUses ?? 0).toString(), icon: Users, color: "text-primary" },
-          { label: "Credits Earned", value: loading ? "—" : (data?.creditsEarned ?? 0).toString(), icon: Zap, color: "text-amber-400" },
-          { label: "Credits Per Referral", value: `${data?.referrerBonus ?? 50}`, icon: Gift, color: "text-emerald-400" },
+          { label: "Amigos Indicados", value: loading ? "—" : (data?.totalUses ?? 0).toString(), icon: Users, color: "text-primary" },
+          { label: "Créditos Ganhos", value: loading ? "—" : (data?.creditsEarned ?? 0).toString(), icon: Zap, color: "text-amber-400" },
+          { label: "Créditos por Indicação", value: `${data?.referrerBonus ?? 50}`, icon: Gift, color: "text-emerald-400" },
         ].map((stat) => (
           <motion.div
             key={stat.label}
@@ -137,7 +137,7 @@ export function Referral() {
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         <div className="absolute top-0 right-0 w-64 h-64 pointer-events-none" style={{ background: "radial-gradient(ellipse at top right, rgba(201,168,76,0.06) 0%, transparent 65%)" }} />
 
-        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-4">Your Referral Code</p>
+        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-4">Seu Código de Indicação</p>
 
         {loading ? (
           <div className="h-16 skeleton-shimmer rounded-xl" />
@@ -157,7 +157,7 @@ export function Referral() {
               className="bg-primary text-black hover:bg-primary/90 font-semibold px-5 gap-2 shrink-0"
             >
               {copied ? <Check className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
-              {copied ? "Copied!" : "Copy share link"}
+              {copied ? "Copiado!" : "Copiar link"}
             </Button>
           </div>
         )}
@@ -172,7 +172,7 @@ export function Referral() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.15 }}
       >
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-4">How it works</h2>
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-4">Como funciona</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {steps.map((step) => (
             <div key={step.n} className="flex gap-3 p-4 rounded-xl border border-white/[0.06] bg-[#111111]">
@@ -194,7 +194,7 @@ export function Referral() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.2 }}
         >
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-3">Recent Referrals</h2>
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-3">Indicações Recentes</h2>
           <div className="rounded-xl border border-white/[0.06] bg-[#111111] divide-y divide-white/[0.04]">
             {data.recentReferrals.map((r, i) => (
               <div key={i} className="flex items-center justify-between px-4 py-3">
@@ -224,9 +224,9 @@ export function Referral() {
         transition={{ duration: 0.35, delay: 0.25 }}
         className="rounded-xl border border-white/[0.06] bg-[#111111] p-5"
       >
-        <h2 className="text-sm font-semibold text-white mb-1">Have a referral code?</h2>
+        <h2 className="text-sm font-semibold text-white mb-1">Tem um código de indicação?</h2>
         <p className="text-xs text-zinc-500 mb-4">
-          Enter a friend's referral code to get {data?.referredBonus ?? 25} bonus credits added to your account.
+          Insira o código de um amigo para receber {data?.referredBonus ?? 25} créditos de bônus na sua conta.
         </p>
         <div className="flex gap-3">
           <input
@@ -242,7 +242,7 @@ export function Referral() {
             disabled={applying || !applyCode.trim()}
             className="bg-white/8 hover:bg-white/12 border border-white/10 text-zinc-200 text-sm gap-1.5"
           >
-            {applying ? "Applying..." : <>Apply <ArrowRight className="w-3.5 h-3.5" /></>}
+            {applying ? "Aplicando..." : <>Aplicar <ArrowRight className="w-3.5 h-3.5" /></>}
           </Button>
         </div>
         {applyError && (

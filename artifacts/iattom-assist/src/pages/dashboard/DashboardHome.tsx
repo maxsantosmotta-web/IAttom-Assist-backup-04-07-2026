@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import {
   Search, CheckCircle, Megaphone, FileText, Sparkles, Video,
   ArrowRight, TrendingUp, Layers, Zap, Clock, FolderOpen,
-  X, Rocket, ChevronRight, Trophy, BarChart2, BookMarked,
+  Rocket, Trophy, BarChart2, BookMarked,
   Award,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -14,17 +14,16 @@ import {
   useListHistory, getListHistoryQueryKey,
 } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
-import { useState } from "react";
 import { useMilestones } from "@/hooks/useMilestones";
 import { UpgradeNudge } from "@/components/UpgradeNudge";
 
 const quickActions = [
-  { href: "/dashboard/find-products", label: "Find Products", icon: Search, desc: "Discover winning products", color: "text-primary", bg: "bg-primary/10 border-primary/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(201,168,76,0.2)]", module: "product_discovery" },
-  { href: "/dashboard/validate-products", label: "Validate Products", icon: CheckCircle, desc: "Test market demand", color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(52,211,153,0.15)]", module: "product_validation" },
-  { href: "/dashboard/create-campaign", label: "Create Campaign", icon: Megaphone, desc: "Launch targeted campaigns", color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(251,191,36,0.15)]", module: "campaign" },
-  { href: "/dashboard/create-content", label: "Create Content", icon: FileText, desc: "Generate compelling copy", color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(96,165,250,0.15)]", module: "content" },
-  { href: "/dashboard/creative-generator", label: "Creative Generator", icon: Sparkles, desc: "Design visual creatives", color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(192,132,252,0.15)]", module: "creative" },
-  { href: "/dashboard/video-scripts", label: "Video Scripts", icon: Video, desc: "Write viral video scripts", color: "text-rose-400", bg: "bg-rose-400/10 border-rose-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(251,113,133,0.15)]", module: "video_script" },
+  { href: "/dashboard/find-products", label: "Buscar Produtos", icon: Search, desc: "Descubra produtos vencedores", color: "text-primary", bg: "bg-primary/10 border-primary/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(201,168,76,0.2)]", module: "product_discovery" },
+  { href: "/dashboard/validate-products", label: "Validar Produtos", icon: CheckCircle, desc: "Teste a demanda do mercado", color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(52,211,153,0.15)]", module: "product_validation" },
+  { href: "/dashboard/create-campaign", label: "Criar Campanha", icon: Megaphone, desc: "Lance campanhas direcionadas", color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(251,191,36,0.15)]", module: "campaign" },
+  { href: "/dashboard/create-content", label: "Criar Conteúdo", icon: FileText, desc: "Gere textos persuasivos", color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(96,165,250,0.15)]", module: "content" },
+  { href: "/dashboard/creative-generator", label: "Gerador Criativo", icon: Sparkles, desc: "Crie materiais visuais", color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(192,132,252,0.15)]", module: "creative" },
+  { href: "/dashboard/video-scripts", label: "Scripts de Vídeo", icon: Video, desc: "Escreva scripts virais", color: "text-rose-400", bg: "bg-rose-400/10 border-rose-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(251,113,133,0.15)]", module: "video_script" },
 ];
 
 const MODULE_TO_ACTION: Record<string, string> = {
@@ -46,12 +45,12 @@ const statusStyles: Record<string, { dot: string; badge: string }> = {
 };
 
 const typeLabels: Record<string, string> = {
-  product_discovery: "Product Discovery",
-  product_validation: "Product Validation",
-  campaign: "Campaign",
-  content: "Content",
-  creative: "Creative",
-  video_script: "Video Script",
+  product_discovery: "Descoberta de Produtos",
+  product_validation: "Validação de Produtos",
+  campaign: "Campanha",
+  content: "Conteúdo",
+  creative: "Criativo",
+  video_script: "Script de Vídeo",
   marketing: "Marketing",
 };
 
@@ -60,9 +59,9 @@ const itemVariants = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 }
 
 function getGreeting() {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
+  if (h < 12) return "Bom dia";
+  if (h < 17) return "Boa tarde";
+  return "Boa noite";
 }
 
 function StatCard({ label, value, icon: Icon, color, bg, loading }: {
@@ -85,21 +84,12 @@ function StatCard({ label, value, icon: Icon, color, bg, loading }: {
 }
 
 const ACHIEVEMENTS = [
-  { id: "first_action", label: "First Strike", desc: "Ran your first AI module", icon: Zap, color: "text-primary bg-primary/10 border-primary/20", check: (s: { totalActions: number }) => s.totalActions >= 1 },
-  { id: "first_project", label: "Builder", desc: "Created your first project", icon: FolderOpen, color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", check: (s: { totalProjects: number }) => s.totalProjects >= 1 },
-  { id: "five_actions", label: "On a Roll", desc: "Completed 5 AI runs", icon: TrendingUp, color: "text-amber-400 bg-amber-400/10 border-amber-400/20", check: (s: { totalActions: number }) => s.totalActions >= 5 },
-  { id: "ten_actions", label: "Power User", desc: "Completed 10 AI runs", icon: Trophy, color: "text-purple-400 bg-purple-400/10 border-purple-400/20", check: (s: { totalActions: number }) => s.totalActions >= 10 },
-  { id: "three_projects", label: "Prolific", desc: "Created 3 or more projects", icon: Layers, color: "text-blue-400 bg-blue-400/10 border-blue-400/20", check: (s: { totalProjects: number }) => s.totalProjects >= 3 },
-  { id: "completed_project", label: "Finisher", desc: "Completed your first project", icon: Award, color: "text-rose-400 bg-rose-400/10 border-rose-400/20", check: (s: { completedProjects: number }) => s.completedProjects >= 1 },
-];
-
-const ONBOARDING_KEY = "iattom_beta_onboarding_v1";
-const ONBOARDING_STEPS = [
-  { id: "ai", label: "Run your first AI module", href: "/dashboard/find-products" },
-  { id: "credits", label: "Review your credits balance", href: "/dashboard/credits" },
-  { id: "billing", label: "Explore billing and upgrade options", href: "/dashboard/billing" },
-  { id: "project", label: "Save and revisit a project", href: "/dashboard/projects" },
-  { id: "feedback", label: "Send feedback using the button below-right" },
+  { id: "first_action", label: "Primeiro Passo", desc: "Executou seu primeiro módulo", icon: Zap, color: "text-primary bg-primary/10 border-primary/20", check: (s: { totalActions: number }) => s.totalActions >= 1 },
+  { id: "first_project", label: "Construtor", desc: "Criou seu primeiro projeto", icon: FolderOpen, color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", check: (s: { totalProjects: number }) => s.totalProjects >= 1 },
+  { id: "five_actions", label: "Em Ritmo", desc: "Completou 5 execuções", icon: TrendingUp, color: "text-amber-400 bg-amber-400/10 border-amber-400/20", check: (s: { totalActions: number }) => s.totalActions >= 5 },
+  { id: "ten_actions", label: "Avançado", desc: "Completou 10 execuções", icon: Trophy, color: "text-purple-400 bg-purple-400/10 border-purple-400/20", check: (s: { totalActions: number }) => s.totalActions >= 10 },
+  { id: "three_projects", label: "Prolífico", desc: "Criou 3 ou mais projetos", icon: Layers, color: "text-blue-400 bg-blue-400/10 border-blue-400/20", check: (s: { totalProjects: number }) => s.totalProjects >= 3 },
+  { id: "completed_project", label: "Finalizador", desc: "Concluiu seu primeiro projeto", icon: Award, color: "text-rose-400 bg-rose-400/10 border-rose-400/20", check: (s: { completedProjects: number }) => s.completedProjects >= 1 },
 ];
 
 export function DashboardHome() {
@@ -117,34 +107,14 @@ export function DashboardHome() {
     query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 60_000 },
   });
 
-  const [onboardingDone, setOnboardingDone] = useState<Record<string, boolean>>(() => {
-    try { return JSON.parse(localStorage.getItem(ONBOARDING_KEY) || "{}"); } catch { return {}; }
-  });
-  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
-    try { return localStorage.getItem(`${ONBOARDING_KEY}_dismissed`) === "1"; } catch { return false; }
-  });
-
-  const toggleOnboarding = (id: string) => {
-    setOnboardingDone((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
-      try { localStorage.setItem(ONBOARDING_KEY, JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
-  const dismissOnboarding = () => {
-    setOnboardingDismissed(true);
-    try { localStorage.setItem(`${ONBOARDING_KEY}_dismissed`, "1"); } catch {}
-  };
-  const onboardingDoneCount = ONBOARDING_STEPS.filter((s) => onboardingDone[s.id]).length;
-
   useMilestones({
     totalActions: summary?.totalActions ?? 0,
     totalProjects: summary?.totalProjects ?? 0,
   });
 
-  const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "there";
-  const plan = creditsData ? (creditsData as { plan?: string }).plan as string | undefined : undefined;
-  const isBetaUser = me?.betaAccess === true;
+  const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "você";
+  const rawPlan = creditsData ? (creditsData as { plan?: string }).plan as string | undefined : undefined;
+  const planLabel = rawPlan === "free" ? "START" : rawPlan ? rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1) : null;
 
   // Recently used tools — derive unique modules from history
   const recentModules = historyData
@@ -169,104 +139,16 @@ export function DashboardHome() {
   const unlockedAchievements = ACHIEVEMENTS.filter((a) => a.check(summaryForBadges));
 
   const statCards = [
-    { label: "Total Projects", value: summary?.totalProjects ?? 0, icon: Layers, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
-    { label: "In Progress", value: summary?.activeProjects ?? 0, icon: TrendingUp, color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20" },
-    { label: "Completed", value: summary?.completedProjects ?? 0, icon: CheckCircle, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" },
-    { label: "AI Actions", value: summary?.totalActions ?? 0, icon: Zap, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },
+    { label: "Projetos", value: summary?.totalProjects ?? 0, icon: Layers, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
+    { label: "Em Andamento", value: summary?.activeProjects ?? 0, icon: TrendingUp, color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20" },
+    { label: "Concluídos", value: summary?.completedProjects ?? 0, icon: CheckCircle, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" },
+    { label: "Execuções", value: summary?.totalActions ?? 0, icon: Zap, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },
   ];
-
-  // DEBUG PANEL — remove once real Clerk ID is confirmed
-  const debugInfo = {
-    clerkId: user?.id ?? "loading...",
-    email: user?.primaryEmailAddress?.emailAddress ?? "loading...",
-    dbUserId: me?.id ?? "not synced",
-    role: me?.role ?? "not synced",
-    plan: me?.plan ?? "not synced",
-    credits: creditsData?.balance ?? "not synced",
-  };
-  console.group("[DEBUG] Session identity");
-  console.log("Clerk ID:", debugInfo.clerkId);
-  console.log("Email:", debugInfo.email);
-  console.log("DB user ID:", debugInfo.dbUserId);
-  console.log("Role:", debugInfo.role);
-  console.log("Plan:", debugInfo.plan);
-  console.log("Credits:", debugInfo.credits);
-  console.groupEnd();
 
   return (
     <div className="space-y-10 pb-2">
 
-      {/* DEBUG PANEL — temporary, remove after Clerk ID confirmed */}
-      {isLoaded && (
-        <div className="rounded-xl border border-yellow-500/40 bg-yellow-500/5 p-4 font-mono text-xs text-yellow-300 space-y-1">
-          <p className="font-bold text-yellow-400 mb-2">DEBUG — Session Identity (remove after use)</p>
-          <p><span className="text-yellow-500">Clerk ID:</span> {debugInfo.clerkId}</p>
-          <p><span className="text-yellow-500">Email:</span> {debugInfo.email}</p>
-          <p><span className="text-yellow-500">DB User ID:</span> {String(debugInfo.dbUserId)}</p>
-          <p><span className="text-yellow-500">Role:</span> {debugInfo.role}</p>
-          <p><span className="text-yellow-500">Plan:</span> {debugInfo.plan}</p>
-          <p><span className="text-yellow-500">Credits:</span> {String(debugInfo.credits)}</p>
-        </div>
-      )}
-
       <UpgradeNudge totalActions={summary?.totalActions ?? 0} />
-
-      {/* Beta Onboarding Checklist */}
-      {isBetaUser && !onboardingDismissed && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="rounded-2xl bg-gradient-to-br from-primary/8 via-primary/5 to-transparent border border-primary/20 p-5"
-        >
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
-                <Rocket className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white">Welcome to the Private Beta</p>
-                <p className="text-xs text-zinc-500 mt-0.5">Complete these steps to get the most from IAttom Assist.</p>
-              </div>
-            </div>
-            <button onClick={dismissOnboarding} className="text-zinc-600 hover:text-zinc-400 transition-colors shrink-0 mt-0.5">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="h-1 rounded-full bg-white/[0.05] overflow-hidden mb-4">
-            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${(onboardingDoneCount / ONBOARDING_STEPS.length) * 100}%` }} />
-          </div>
-          <div className="space-y-1.5">
-            {ONBOARDING_STEPS.map((step) => {
-              const done = !!onboardingDone[step.id];
-              return (
-                <div key={step.id} className="flex items-center gap-3">
-                  <button
-                    onClick={() => toggleOnboarding(step.id)}
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${done ? "border-primary bg-primary" : "border-white/20 hover:border-primary/50"}`}
-                  >
-                    {done && <CheckCircle className="w-3 h-3 text-black" />}
-                  </button>
-                  {step.href ? (
-                    <Link href={step.href} className="flex-1 flex items-center gap-1.5 group">
-                      <span className={`text-xs transition-colors ${done ? "text-zinc-600 line-through" : "text-zinc-300 group-hover:text-primary"}`}>{step.label}</span>
-                      {!done && <ChevronRight className="w-3 h-3 text-zinc-700 group-hover:text-primary transition-colors" />}
-                    </Link>
-                  ) : (
-                    <span className={`text-xs flex-1 ${done ? "text-zinc-600 line-through" : "text-zinc-300"}`}>{step.label}</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {onboardingDoneCount === ONBOARDING_STEPS.length && (
-            <div className="mt-4 pt-3 border-t border-primary/15 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <p className="text-xs text-emerald-400 font-medium">All set — you know your way around.</p>
-            </div>
-          )}
-        </motion.div>
-      )}
 
       {/* Greeting */}
       <motion.div
@@ -278,17 +160,17 @@ export function DashboardHome() {
         <div className="space-y-1">
           <p className="text-[10px] text-primary font-bold tracking-widest uppercase">{getGreeting()}</p>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            {isLoaded ? `Welcome back, ${firstName}.` : "Welcome back."}
+            {isLoaded ? `Bem-vindo, ${firstName}.` : "Bem-vindo."}
           </h2>
-          <p className="text-sm text-zinc-500">Your intelligence platform is ready. What are we building today?</p>
+          <p className="text-sm text-zinc-500">Sua plataforma está pronta. O que vamos construir hoje?</p>
         </div>
-        {plan && (
+        {planLabel && (
           <div className="shrink-0 hidden sm:flex flex-col items-end gap-1">
-            <Badge className="bg-primary/10 text-primary border-primary/25 text-[10px] font-bold uppercase tracking-wider capitalize px-2.5">
-              {plan} plan
+            <Badge className="bg-primary/10 text-primary border-primary/25 text-[10px] font-bold uppercase tracking-wider px-2.5">
+              {planLabel}
             </Badge>
             <Link href="/dashboard/billing" className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors">
-              Manage billing
+              Gerenciar plano
             </Link>
           </div>
         )}
@@ -319,13 +201,13 @@ export function DashboardHome() {
                 <div className="w-6 h-6 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
                   <Rocket className="w-3 h-3 text-primary" />
                 </div>
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest">Quick Resume</span>
+                <span className="text-[10px] font-black text-primary uppercase tracking-widest">Retomar</span>
               </div>
               <p className="text-sm font-bold text-zinc-200 truncate mb-1">{resumeProject.name}</p>
               <p className="text-xs text-zinc-600 mb-3">{typeLabels[resumeProject.type] ?? resumeProject.type}</p>
               <Link href="/dashboard/projects">
                 <button className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors">
-                  Continue project <ArrowRight className="w-3 h-3" />
+                  Continuar projeto <ArrowRight className="w-3 h-3" />
                 </button>
               </Link>
             </motion.div>
@@ -343,7 +225,7 @@ export function DashboardHome() {
                 <div className="w-6 h-6 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
                   <Clock className="w-3 h-3 text-zinc-500" />
                 </div>
-                <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Recently Used</span>
+                <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Usado Recentemente</span>
               </div>
               <div className="space-y-2">
                 {recentModules.map((action) => {
@@ -370,8 +252,8 @@ export function DashboardHome() {
       {unlockedAchievements.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Achievements</p>
-            <span className="text-[10px] text-zinc-700">{unlockedAchievements.length} / {ACHIEVEMENTS.length} unlocked</span>
+            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Conquistas</p>
+            <span className="text-[10px] text-zinc-700">{unlockedAchievements.length} / {ACHIEVEMENTS.length} desbloqueadas</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {ACHIEVEMENTS.map((badge) => {
@@ -392,7 +274,7 @@ export function DashboardHome() {
                 >
                   <Icon className="w-3 h-3 shrink-0" />
                   {badge.label}
-                  {!unlocked && <span className="ml-1 opacity-50">locked</span>}
+                  {!unlocked && <span className="ml-1 opacity-50">bloqueada</span>}
                 </motion.div>
               );
             })}
@@ -400,11 +282,11 @@ export function DashboardHome() {
         </div>
       )}
 
-      {/* AI Modules */}
+      {/* Modules */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">AI Modules</p>
-          <span className="text-[10px] text-zinc-700">6 available</span>
+          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Módulos</p>
+          <span className="text-[10px] text-zinc-700">6 disponíveis</span>
         </div>
         <motion.div
           variants={containerVariants}
@@ -437,9 +319,9 @@ export function DashboardHome() {
       {/* Recent Projects */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Recent Projects</p>
+          <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Projetos Recentes</p>
           <Link href="/dashboard/projects" className="text-xs text-primary hover:text-primary/80 font-semibold transition-colors">
-            View all
+            Ver todos
           </Link>
         </div>
 
@@ -489,12 +371,12 @@ export function DashboardHome() {
                 <span className="text-[9px] text-primary font-bold">0</span>
               </div>
             </div>
-            <p className="text-sm font-semibold text-zinc-500">No projects yet</p>
+            <p className="text-sm font-semibold text-zinc-500">Sem projetos ainda</p>
             <p className="text-xs text-zinc-700 mt-1 max-w-[200px] leading-relaxed">
-              Run an AI module to automatically create your first project
+              Use um módulo para criar seu primeiro projeto
             </p>
             <Link href="/dashboard/projects" className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 mt-3 font-semibold transition-colors">
-              Create a project <ArrowRight className="w-3 h-3" />
+              Criar um projeto <ArrowRight className="w-3 h-3" />
             </Link>
           </motion.div>
         )}
@@ -505,20 +387,20 @@ export function DashboardHome() {
         <div className="flex items-center gap-4">
           <Link href="/dashboard/history" className="inline-flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
             <Clock className="w-3.5 h-3.5" />
-            Activity history
+            Histórico
           </Link>
           <Link href="/dashboard/analytics" className="inline-flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
             <BarChart2 className="w-3.5 h-3.5" />
-            Analytics
+            Análises
           </Link>
           <Link href="/dashboard/prompts" className="inline-flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
             <BookMarked className="w-3.5 h-3.5" />
-            Saved prompts
+            Prompts Salvos
           </Link>
         </div>
         <Link href="/dashboard/credits" className="inline-flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
           <Zap className="w-3.5 h-3.5" />
-          {creditsData ? `${creditsData.balance.toLocaleString()} credits remaining` : "View credits"}
+          {creditsData ? `${creditsData.balance.toLocaleString()} créditos restantes` : "Ver créditos"}
         </Link>
       </div>
 

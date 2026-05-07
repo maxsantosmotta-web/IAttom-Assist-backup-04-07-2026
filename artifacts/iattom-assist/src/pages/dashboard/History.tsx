@@ -25,13 +25,23 @@ const moduleColors: Record<string, string> = {
   marketing: "text-orange-400 bg-orange-400/10 border-orange-400/20",
 };
 
+const moduleLabels: Record<string, string> = {
+  campaign: "campanha",
+  content: "conteúdo",
+  creative: "criativo",
+  video_script: "script de vídeo",
+  product_discovery: "busca de produto",
+  product_validation: "validação",
+  marketing: "marketing",
+};
+
 function timeAgo(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
+  if (seconds < 60) return "agora mesmo";
+  if (seconds < 3600) return `há ${Math.floor(seconds / 60)}min`;
+  if (seconds < 86400) return `há ${Math.floor(seconds / 3600)}h`;
+  return `há ${Math.floor(seconds / 86400)}d`;
 }
 
 const containerVariants = {
@@ -60,9 +70,9 @@ export function History() {
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Activity Log</p>
-        <h2 className="text-2xl font-bold text-white mb-1">History</h2>
-        <p className="text-muted-foreground text-sm">A complete record of all actions taken across your workspace.</p>
+        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Registro de Atividades</p>
+        <h2 className="text-2xl font-bold text-white mb-1">Atividades</h2>
+        <p className="text-muted-foreground text-sm">Histórico completo de todas as ações realizadas no seu espaço de trabalho.</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
@@ -70,7 +80,7 @@ export function History() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             data-testid="input-history-search"
-            placeholder="Search history..."
+            placeholder="Buscar atividades..."
             className="pl-10 bg-[#111111] border-white/5 focus-visible:ring-primary/50"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -98,17 +108,16 @@ export function History() {
             <div className="absolute inset-[-6px] rounded-full border border-white/[0.04] animate-ping" style={{ animationDuration: "3s" }} />
           </div>
           <p className="text-base font-semibold text-zinc-300 mb-1.5">
-            {search ? "No matching activity" : "No activity yet"}
+            {search ? "Nenhuma atividade encontrada" : "Nenhuma atividade ainda"}
           </p>
           <p className="text-sm text-zinc-600 max-w-[220px] leading-relaxed">
             {search
-              ? "Try a different search term."
-              : "Your AI actions will appear here as you use the platform."}
+              ? "Tente outro termo de busca."
+              : "Suas ações aparecerão aqui conforme você usar a plataforma."}
           </p>
         </motion.div>
       ) : (
         <motion.div variants={containerVariants} initial="hidden" animate="show" className="relative">
-          {/* Timeline line */}
           <div className="absolute left-[18px] top-5 bottom-5 w-px bg-gradient-to-b from-transparent via-white/[0.05] to-transparent pointer-events-none" />
           <div className="space-y-2">
             {filtered.map((item) => {
@@ -131,7 +140,7 @@ export function History() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-xs text-zinc-500">{timeAgo(item.createdAt)}</p>
-                      <p className="text-[10px] text-zinc-700 capitalize mt-0.5">{item.module.replace(/_/g, " ")}</p>
+                      <p className="text-[10px] text-zinc-700 capitalize mt-0.5">{moduleLabels[item.module] ?? item.module.replace(/_/g, " ")}</p>
                     </div>
                   </div>
                 </motion.div>

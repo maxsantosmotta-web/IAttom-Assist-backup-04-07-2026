@@ -76,8 +76,8 @@ export function Analytics() {
       >
         <div className="space-y-1">
           <p className="text-[10px] text-primary font-bold tracking-widest uppercase">Insights</p>
-          <h2 className="text-2xl font-black tracking-tight text-white">Your Analytics</h2>
-          <p className="text-sm text-zinc-500">Usage and performance across your workspace</p>
+          <h2 className="text-2xl font-black tracking-tight text-white">Seus Dados</h2>
+          <p className="text-sm text-zinc-500">Uso e desempenho no seu espaço de trabalho</p>
         </div>
         <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.07] rounded-xl p-1">
           {DAYS_OPTIONS.map((d) => (
@@ -101,10 +101,10 @@ export function Analytics() {
         initial="hidden" animate="show"
       >
         {[
-          { label: "AI Runs", value: totalAiRuns, icon: Zap, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
-          { label: "Credits Used", value: totalCredits, icon: BarChart2, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },
-          { label: "Total Projects", value: data?.projectStats.total ?? 0, icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" },
-          { label: "Completed", value: data?.projectStats.completed ?? 0, icon: Award, color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20" },
+          { label: "Execuções", value: totalAiRuns, icon: Zap, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
+          { label: "Créditos Usados", value: totalCredits, icon: BarChart2, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },
+          { label: "Projetos Totais", value: data?.projectStats.total ?? 0, icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" },
+          { label: "Concluídos", value: data?.projectStats.completed ?? 0, icon: Award, color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20" },
         ].map((card) => (
           <motion.div key={card.label} variants={fadeUp}
             className="p-4 bg-[#0f0f0f] border border-white/[0.06] rounded-2xl hover:border-white/[0.10] transition-colors"
@@ -130,15 +130,15 @@ export function Analytics() {
               <BarChart2 className="w-3.5 h-3.5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-bold text-zinc-200">AI Module Usage</p>
-              <p className="text-xs text-zinc-600">Runs per module in last {days} days</p>
+              <p className="text-sm font-bold text-zinc-200">Uso por Módulo</p>
+              <p className="text-xs text-zinc-600">Execuções por módulo nos últimos {days} dias</p>
             </div>
           </div>
           {loading ? (
             <Skeleton className="h-[180px] w-full bg-white/[0.03] rounded-xl" />
           ) : chartModules.length === 0 ? (
             <div className="h-[180px] flex items-center justify-center">
-              <p className="text-sm text-zinc-700">No activity yet in this period</p>
+              <p className="text-sm text-zinc-700">Nenhuma atividade neste período</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
@@ -165,15 +165,15 @@ export function Analytics() {
               <Zap className="w-3.5 h-3.5 text-blue-400" />
             </div>
             <div>
-              <p className="text-sm font-bold text-zinc-200">Credits Consumed</p>
-              <p className="text-xs text-zinc-600">Daily usage over last {days} days</p>
+              <p className="text-sm font-bold text-zinc-200">Créditos Consumidos</p>
+              <p className="text-xs text-zinc-600">Uso diário nos últimos {days} dias</p>
             </div>
           </div>
           {loading ? (
             <Skeleton className="h-[160px] w-full bg-white/[0.03] rounded-xl" />
           ) : creditsChart.length === 0 ? (
             <div className="h-[160px] flex items-center justify-center">
-              <p className="text-sm text-zinc-700">No credits spent in this period</p>
+              <p className="text-sm text-zinc-700">Nenhum crédito consumido neste período</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={160}>
@@ -202,7 +202,7 @@ export function Analytics() {
               <div className="w-7 h-7 rounded-lg bg-zinc-800 border border-white/[0.07] flex items-center justify-center">
                 <Clock className="w-3.5 h-3.5 text-zinc-500" />
               </div>
-              <p className="text-sm font-bold text-zinc-200">Recent Activity</p>
+              <p className="text-sm font-bold text-zinc-200">Atividade Recente</p>
             </div>
             <div className="space-y-2">
               {data.recentHistory.map((item) => {
@@ -215,7 +215,7 @@ export function Analytics() {
                     </div>
                     <p className="text-xs text-zinc-400 flex-1 truncate">{item.action}</p>
                     <span className="text-[10px] text-zinc-700 shrink-0">
-                      {new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {new Date(item.createdAt).toLocaleDateString("pt-BR", { month: "short", day: "numeric" })}
                     </span>
                   </div>
                 );

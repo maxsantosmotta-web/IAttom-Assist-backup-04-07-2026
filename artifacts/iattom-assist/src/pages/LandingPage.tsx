@@ -61,77 +61,77 @@ function StaggerSection({ children, className = "" }: { children: React.ReactNod
 const modules = [
   {
     icon: Target,
-    title: "Product Discovery",
-    desc: "Uncover hidden market opportunities before your competitors even know they exist. Our AI maps demand signals across 200+ categories.",
+    title: "Buscar Produtos",
+    desc: "Descubra oportunidades de mercado ocultas antes da concorrência. Mapeamos sinais de demanda em 200+ categorias.",
     accent: "text-primary",
     bg: "bg-primary/8 border-primary/15",
     glow: "group-hover:shadow-[0_0_40px_-8px_rgba(201,168,76,0.3)]",
-    tag: "5 credits",
+    tag: "5 créditos",
   },
   {
     icon: BarChart3,
-    title: "Market Validation",
-    desc: "Test viability with synthetic audience models and competitive density scoring. Kill bad ideas fast, back winners with data.",
+    title: "Validar Produtos",
+    desc: "Teste a viabilidade com modelos de audiência e pontuação de densidade competitiva. Elimine más ideias rápido, apoie vencedoras com dados.",
     accent: "text-blue-400",
     bg: "bg-blue-400/8 border-blue-400/15",
     glow: "group-hover:shadow-[0_0_40px_-8px_rgba(96,165,250,0.25)]",
-    tag: "5 credits",
+    tag: "5 créditos",
   },
   {
     icon: Rocket,
-    title: "Campaign Generator",
-    desc: "Deploy full-funnel marketing campaigns tailored to your niche. Audience targeting, messaging frameworks, channel strategies.",
+    title: "Criar Campanha",
+    desc: "Lance campanhas de marketing de funil completo adaptadas ao seu nicho. Segmentação, frameworks de mensagem, estratégias de canal.",
     accent: "text-amber-400",
     bg: "bg-amber-400/8 border-amber-400/15",
     glow: "group-hover:shadow-[0_0_40px_-8px_rgba(251,191,36,0.25)]",
-    tag: "10 credits",
+    tag: "10 créditos",
   },
   {
     icon: Brain,
-    title: "Content Engine",
-    desc: "Generate SEO-optimized blog posts, email sequences, landing page copy, and social content. Conversion-focused by default.",
+    title: "Criar Conteúdo",
+    desc: "Gere posts de blog otimizados para SEO, sequências de e-mail, copy de landing page e conteúdo social. Focado em conversão.",
     accent: "text-emerald-400",
     bg: "bg-emerald-400/8 border-emerald-400/15",
     glow: "group-hover:shadow-[0_0_40px_-8px_rgba(52,211,153,0.25)]",
-    tag: "8 credits",
+    tag: "8 créditos",
   },
   {
     icon: Sparkles,
-    title: "Creative Generator",
-    desc: "Studio-quality creative concepts, visual briefs, ad frameworks, and brand direction — without the agency price tag.",
+    title: "Gerador Criativo",
+    desc: "Conceitos criativos de qualidade, briefings visuais, frameworks de anúncio e direção de marca — sem preço de agência.",
     accent: "text-purple-400",
     bg: "bg-purple-400/8 border-purple-400/15",
     glow: "group-hover:shadow-[0_0_40px_-8px_rgba(192,132,252,0.25)]",
-    tag: "15 credits",
+    tag: "15 créditos",
   },
   {
     icon: Play,
-    title: "Video Scripts",
-    desc: "Craft viral-ready YouTube, TikTok, and ad scripts with hooks that stop the scroll, stories that build trust, and CTAs that convert.",
+    title: "Scripts de Vídeo",
+    desc: "Crie scripts virais para YouTube, TikTok e anúncios com ganchos que param o scroll, histórias que geram confiança e CTAs que convertem.",
     accent: "text-rose-400",
     bg: "bg-rose-400/8 border-rose-400/15",
     glow: "group-hover:shadow-[0_0_40px_-8px_rgba(251,113,133,0.25)]",
-    tag: "10 credits",
+    tag: "10 créditos",
   },
 ];
 
 const steps = [
   {
     num: "01",
-    title: "Describe your goal",
-    desc: "Tell the AI what you're building, validating, or launching. No prompting expertise needed.",
+    title: "Descreva seu objetivo",
+    desc: "Diga o que você está construindo, validando ou lançando. Sem necessidade de expertise em prompts.",
     icon: Brain,
   },
   {
     num: "02",
-    title: "AI generates intelligence",
-    desc: "GPT-5 processes your input against real market patterns and generates structured, actionable output.",
+    title: "Inteligência gerada",
+    desc: "O GPT-5 processa sua entrada contra padrões reais de mercado e gera resultados estruturados e acionáveis.",
     icon: Zap,
   },
   {
     num: "03",
-    title: "Save, refine, launch",
-    desc: "Export insights to your private workspace, iterate, and move from idea to execution in minutes.",
+    title: "Salve, refine, lance",
+    desc: "Exporte insights para seu espaço privado, itere e vá da ideia à execução em minutos.",
     icon: Rocket,
   },
 ];
@@ -166,17 +166,17 @@ const testimonials = [
 const plans = [
   {
     key: "free",
-    name: "Free",
+    name: "START",
     price: "$0",
     period: "",
-    credits: "50 credits / month",
+    credits: "50 créditos / mês",
     features: [
-      "All 6 AI modules",
-      "Private workspace",
-      "Project management",
-      "Activity history",
+      "Todos os 6 módulos",
+      "Espaço privado",
+      "Gestão de projetos",
+      "Histórico de atividades",
     ],
-    cta: "Get Started Free",
+    cta: "Começar Agora",
     highlight: false,
     badge: null,
   },
@@ -185,32 +185,32 @@ const plans = [
     name: "Pro",
     price: "$79",
     period: "/mo",
-    credits: "500 credits / month",
+    credits: "500 créditos / mês",
     features: [
-      "All 6 AI modules",
-      "Priority AI processing",
-      "Unlimited projects",
-      "Export results",
-      "Priority support",
+      "Todos os 6 módulos",
+      "Processamento prioritário",
+      "Projetos ilimitados",
+      "Exportar resultados",
+      "Suporte prioritário",
     ],
-    cta: "Start Pro",
+    cta: "Assinar Pro",
     highlight: true,
-    badge: "Most Popular",
+    badge: "Mais Popular",
   },
   {
     key: "business",
     name: "Business",
     price: "$199",
     period: "/mo",
-    credits: "2,000 credits / month",
+    credits: "2.000 créditos / mês",
     features: [
-      "Everything in Pro",
-      "Team workspace",
-      "Advanced analytics",
-      "API access",
-      "Dedicated support",
+      "Tudo do Pro",
+      "Workspace de equipe",
+      "Análises avançadas",
+      "Acesso via API",
+      "Suporte dedicado",
     ],
-    cta: "Start Business",
+    cta: "Assinar Business",
     highlight: false,
     badge: null,
   },
@@ -219,52 +219,52 @@ const plans = [
     name: "Agency",
     price: "$499",
     period: "/mo",
-    credits: "10,000 credits / month",
+    credits: "10.000 créditos / mês",
     features: [
-      "Everything in Business",
-      "Multi-client workspaces",
-      "White-label reports",
-      "Custom integrations",
-      "SLA + dedicated CSM",
+      "Tudo do Business",
+      "Multi-clientes",
+      "Relatórios white-label",
+      "Integrações customizadas",
+      "SLA + CSM dedicado",
     ],
-    cta: "Start Agency",
+    cta: "Assinar Agency",
     highlight: false,
-    badge: "Best Value",
+    badge: "Melhor Custo",
   },
 ];
 
 const faqs = [
   {
-    q: "What are credits and how do they work?",
-    a: "Credits are consumed each time you run an AI module. Different modules have different costs based on complexity — Product Discovery costs 5 credits, Campaign Generation costs 10, and Creative Generator costs 15. Credits reset every month on your billing date.",
+    q: "O que são créditos e como funcionam?",
+    a: "Créditos são consumidos a cada vez que você executa um módulo. Diferentes módulos têm custos diferentes: Busca de Produto custa 5 créditos, Criar Campanha custa 10, e Gerador Criativo custa 15. Os créditos renovam todo mês na data de faturamento.",
   },
   {
-    q: "Can I upgrade or downgrade my plan?",
-    a: "Yes, anytime. Upgrades take effect immediately and you're prorated for the remainder of your billing cycle. Downgrades apply at the start of your next billing period.",
+    q: "Posso mudar de plano a qualquer momento?",
+    a: "Sim. Upgrades entram em vigor imediatamente e são proporcionais ao restante do ciclo. Downgrades aplicam-se no início do próximo período.",
   },
   {
-    q: "Is my data private and secure?",
-    a: "Completely. Every account has an isolated private workspace. Your queries, results, and projects are never shared with other users or used to train AI models. All data is encrypted at rest and in transit.",
+    q: "Meus dados são privados e seguros?",
+    a: "Completamente. Cada conta tem um espaço de trabalho privado isolado. Suas consultas, resultados e projetos nunca são compartilhados com outros usuários nem usados para treinar modelos. Todos os dados são criptografados.",
   },
   {
-    q: "Which AI model powers IAttom Assist?",
-    a: "IAttom Assist runs on GPT-5 mini, accessed through a secure Replit-managed integration. You get frontier-model intelligence without managing API keys or worrying about rate limits.",
+    q: "Qual modelo de inteligência artificial é usado?",
+    a: "A plataforma roda em GPT-5 mini, acessado através de uma integração segura gerenciada pela Replit. Você tem acesso a inteligência de ponta sem gerenciar chaves de API.",
   },
   {
-    q: "What happens if I run out of credits?",
-    a: "You'll see a clear notification and won't be charged for partial results. You can upgrade your plan immediately to get more credits, or wait until your next monthly reset if you're on Free.",
+    q: "O que acontece se eu ficar sem créditos?",
+    a: "Você verá uma notificação clara e não será cobrado por resultados parciais. Você pode atualizar seu plano imediatamente para obter mais créditos, ou aguardar a renovação mensal.",
   },
   {
-    q: "Is there a free trial for paid plans?",
-    a: "The Free plan lets you explore all 6 AI modules with 50 credits — no credit card required. This gives you a real taste of the platform before you decide to upgrade.",
+    q: "Existe uma versão gratuita?",
+    a: "Sim. O plano START permite explorar todos os 6 módulos com 50 créditos — sem cartão de crédito. Isso dá uma experiência real da plataforma antes de decidir fazer upgrade.",
   },
 ];
 
 const stats = [
-  { value: "6", label: "AI Modules", icon: Brain },
-  { value: "GPT-5", label: "Powered By", icon: Sparkles },
-  { value: "100%", label: "Private Workspace", icon: Shield },
-  { value: "4", label: "Plan Tiers", icon: TrendingUp },
+  { value: "6", label: "Módulos", icon: Brain },
+  { value: "GPT-5", label: "Tecnologia", icon: Sparkles },
+  { value: "100%", label: "Espaço Privado", icon: Shield },
+  { value: "4", label: "Planos", icon: TrendingUp },
 ];
 
 function FAQItem({ q, a }: { q: string; a: string }) {
@@ -342,8 +342,8 @@ function WaitlistForm() {
   if (status === "already") {
     return (
       <div className="max-w-md mx-auto text-center p-8 rounded-2xl bg-primary/5 border border-primary/20">
-        <p className="text-base font-bold text-primary mb-1">Already registered</p>
-        <p className="text-sm text-zinc-500">That email is already on the waitlist. We'll be in touch.</p>
+        <p className="text-base font-bold text-primary mb-1">Já cadastrado</p>
+        <p className="text-sm text-zinc-500">Esse e-mail já está registrado. Entraremos em contato.</p>
       </div>
     );
   }
@@ -354,7 +354,7 @@ function WaitlistForm() {
         <div>
           <Input
             type="text"
-            placeholder="Your name (optional)"
+            placeholder="Seu nome (opcional)"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-11 focus:border-primary/40"
@@ -363,7 +363,7 @@ function WaitlistForm() {
         <div>
           <Input
             type="email"
-            placeholder="Your email address"
+            placeholder="Seu endereço de e-mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -372,14 +372,14 @@ function WaitlistForm() {
         </div>
       </div>
       <Textarea
-        placeholder="What will you use IAttom Assist for? (optional)"
+        placeholder="Para que você usará IAttom Assist? (opcional)"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-20 resize-none focus:border-primary/40"
         maxLength={500}
       />
       {status === "error" && (
-        <p className="text-xs text-red-400">Something went wrong. Please try again.</p>
+        <p className="text-xs text-red-400">Algo deu errado. Por favor, tente novamente.</p>
       )}
       <Button
         type="submit"
@@ -387,10 +387,10 @@ function WaitlistForm() {
         size="lg"
         className="w-full h-12 text-sm bg-primary text-black hover:bg-primary/90 font-black rounded-lg shadow-[0_0_40px_-8px_rgba(201,168,76,0.4)] hover:shadow-[0_0_60px_-8px_rgba(201,168,76,0.6)] transition-all duration-300"
       >
-        {status === "loading" ? "Joining..." : "Request Beta Access"}
+        {status === "loading" ? "Entrando..." : "Solicitar Acesso"}
         {status !== "loading" && <ArrowRight className="ml-2 w-4 h-4" />}
       </Button>
-      <p className="text-center text-xs text-zinc-700">No spam. No credit card. Access granted in batches.</p>
+      <p className="text-center text-xs text-zinc-700">Sem spam. Sem cartão de crédito. Acesso concedido em lotes.</p>
     </form>
   );
 }
@@ -404,7 +404,7 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
           <Logo size={30} showWordmark />
           <nav className="hidden md:flex items-center gap-6">
-            {[["Features", "#features"], ["How it Works", "#how-it-works"], ["Pricing", "#pricing"], ["FAQ", "#faq"]].map(([label, href]) => (
+            {[["Recursos", "#features"], ["Como Funciona", "#how-it-works"], ["Preços", "#pricing"], ["FAQ", "#faq"]].map(([label, href]) => (
               <a
                 key={href}
                 href={href}
@@ -416,11 +416,11 @@ export function LandingPage() {
           </nav>
           <div className="flex items-center gap-3">
             <Link href="/sign-in" className="hidden sm:block text-sm font-medium text-zinc-500 hover:text-white transition-colors">
-              Sign In
+              Entrar
             </Link>
             <Link href="/sign-up">
               <Button size="sm" className="bg-primary text-black hover:bg-primary/90 font-bold px-5 rounded-lg text-sm">
-                Get Started
+                Começar
               </Button>
             </Link>
           </div>
@@ -450,7 +450,7 @@ export function LandingPage() {
               <motion.div variants={fadeUp} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
                 <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-bold tracking-wider uppercase">
                   <Sparkles className="w-3 h-3" />
-                  Private intelligence for elite founders
+                  Inteligência privada para fundadores de elite
                 </span>
               </motion.div>
 
@@ -473,8 +473,8 @@ export function LandingPage() {
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 className="text-base md:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed"
               >
-                Not another chatbot. IAttom Assist is a surgical business intelligence platform — 
-                built to find products, validate markets, and generate campaigns with lethal precision.
+                Não é mais um chatbot. IAttom Assist é uma plataforma de inteligência de negócios —
+                construída para descobrir produtos, validar mercados e gerar campanhas com precisão cirúrgica.
               </motion.p>
 
               {/* CTAs */}
@@ -488,7 +488,7 @@ export function LandingPage() {
                     size="lg"
                     className="h-12 px-8 text-sm bg-primary text-black hover:bg-primary/90 font-bold rounded-lg w-full sm:w-auto shadow-[0_0_40px_-8px_rgba(201,168,76,0.5)] hover:shadow-[0_0_60px_-8px_rgba(201,168,76,0.6)] transition-all duration-300"
                   >
-                    Start Free Today <ArrowRight className="ml-2 w-4 h-4" />
+                    Começar Agora <ArrowRight className="ml-2 w-4 h-4" />
                   </Button>
                 </Link>
                 <Link href="/sign-in">
@@ -497,7 +497,7 @@ export function LandingPage() {
                     variant="outline"
                     className="h-12 px-8 text-sm border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.07] hover:text-white rounded-lg w-full sm:w-auto transition-all"
                   >
-                    Sign In
+                    Entrar
                   </Button>
                 </Link>
               </motion.div>
@@ -508,7 +508,7 @@ export function LandingPage() {
                 transition={{ duration: 0.45 }}
                 className="text-xs text-zinc-600 mt-2"
               >
-                No credit card required &middot; Free plan forever &middot; Cancel anytime
+                Sem cartão de crédito &middot; Cancele quando quiser
               </motion.p>
             </motion.div>
           </div>
@@ -539,14 +539,14 @@ export function LandingPage() {
           <div className="max-w-6xl mx-auto px-5 sm:px-6">
             <AnimatedSection className="text-center mb-16">
               <p className="text-xs text-primary uppercase tracking-widest font-bold mb-3">
-                How it Works
+                Como Funciona
               </p>
               <h2 className="text-3xl md:text-[42px] font-black text-white tracking-tight mb-4 leading-[1.1]">
-                From idea to intelligence <br className="hidden sm:block" />
-                <span className="text-zinc-400">in three steps.</span>
+                Da ideia à inteligência <br className="hidden sm:block" />
+                <span className="text-zinc-400">em três passos.</span>
               </h2>
               <p className="text-zinc-500 max-w-md mx-auto text-sm leading-relaxed">
-                No training required. No complex setups. Just describe what you need and let the AI work.
+                Sem treinamento. Sem configurações complexas. Descreva o que precisa e a inteligência faz o resto.
               </p>
             </AnimatedSection>
 
@@ -583,13 +583,13 @@ export function LandingPage() {
           <div className="max-w-6xl mx-auto px-5 sm:px-6">
             <AnimatedSection className="text-center mb-16">
               <p className="text-xs text-primary uppercase tracking-widest font-bold mb-3">
-                The Platform
+                A Plataforma
               </p>
               <h2 className="text-3xl md:text-[42px] font-black text-white tracking-tight mb-4 leading-[1.1]">
-                Six modules. <span className="text-zinc-400">Surgical precision.</span>
+                Seis módulos. <span className="text-zinc-400">Precisão cirúrgica.</span>
               </h2>
               <p className="text-zinc-500 max-w-lg mx-auto text-sm leading-relaxed">
-                Every AI module is purpose-built for a specific business problem — not a generic chat interface.
+                Cada módulo é construído para um problema específico de negócio — não uma interface de chat genérica.
               </p>
             </AnimatedSection>
 
@@ -625,10 +625,10 @@ export function LandingPage() {
           <div className="max-w-6xl mx-auto px-5 sm:px-6">
             <AnimatedSection className="text-center mb-16">
               <p className="text-xs text-primary uppercase tracking-widest font-bold mb-3">
-                Trusted by Founders
+                Confiado por Fundadores
               </p>
               <h2 className="text-3xl md:text-[42px] font-black text-white tracking-tight leading-[1.1]">
-                Results that speak <span className="text-zinc-400">for themselves.</span>
+                Resultados que <span className="text-zinc-400">falam por si.</span>
               </h2>
             </AnimatedSection>
 
@@ -666,13 +666,13 @@ export function LandingPage() {
           <div className="max-w-6xl mx-auto px-5 sm:px-6">
             <AnimatedSection className="text-center mb-16">
               <p className="text-xs text-primary uppercase tracking-widest font-bold mb-3">
-                Pricing
+                Preços
               </p>
               <h2 className="text-3xl md:text-[42px] font-black text-white tracking-tight mb-4 leading-[1.1]">
-                Start free. <span className="text-zinc-400">Scale when ready.</span>
+                Planos para cada etapa. <span className="text-zinc-400">Escale quando precisar.</span>
               </h2>
               <p className="text-zinc-500 max-w-md mx-auto text-sm">
-                Credits reset monthly. No hidden fees. Cancel anytime. Upgrade or downgrade instantly.
+                Créditos renovam mensalmente. Sem taxas ocultas. Cancele quando quiser.
               </p>
             </AnimatedSection>
 
@@ -738,7 +738,7 @@ export function LandingPage() {
                 FAQ
               </p>
               <h2 className="text-3xl md:text-[42px] font-black text-white tracking-tight leading-[1.1]">
-                Questions answered.
+                Perguntas respondidas.
               </h2>
             </AnimatedSection>
 
@@ -750,7 +750,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ─── WAITLIST ─── */}
+        {/* ─── SIGNUP CTA ─── */}
         <section id="waitlist" className="py-24 bg-[#060606] border-t border-white/[0.05] relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_50%_50%,_rgba(201,168,76,0.06)_0%,_transparent_70%)] pointer-events-none" />
           <div className="max-w-6xl mx-auto px-5 sm:px-6 relative z-10">
@@ -758,17 +758,27 @@ export function LandingPage() {
               <AnimatedSection>
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-bold tracking-wider uppercase mb-5">
                   <Rocket className="w-3 h-3" />
-                  Private Beta
+                  Acesso Antecipado
                 </div>
                 <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-4">
-                  Get Early Access
+                  Comece Gratuitamente
                 </h2>
                 <p className="text-zinc-400 text-sm leading-relaxed">
-                  IAttom Assist is currently in private beta. Join the waitlist and we'll grant access in batches as we scale.
+                  Crie sua conta e comece a usar todos os módulos agora mesmo.
                 </p>
               </AnimatedSection>
             </div>
-            <WaitlistForm />
+            <div className="max-w-xs mx-auto">
+              <Link href="/sign-up">
+                <Button
+                  size="lg"
+                  className="w-full h-12 text-sm bg-primary text-black hover:bg-primary/90 font-black rounded-lg shadow-[0_0_40px_-8px_rgba(201,168,76,0.4)] hover:shadow-[0_0_60px_-8px_rgba(201,168,76,0.6)] transition-all duration-300"
+                >
+                  Criar Conta <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
+              <p className="text-center text-xs text-zinc-700 mt-3">Sem cartão de crédito. Configuração em segundos.</p>
+            </div>
           </div>
         </section>
 
@@ -779,19 +789,19 @@ export function LandingPage() {
             <AnimatedSection className="max-w-2xl mx-auto space-y-7">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-bold tracking-wider uppercase">
                 <Users className="w-3 h-3" />
-                Join the founding cohort
+                Junte-se aos primeiros usuários
               </div>
               <h2 className="text-3xl md:text-[48px] font-black text-white tracking-tight leading-[1.08]">
-                Your competition is already{" "}
+                Sua concorrência já está{" "}
                 <br className="hidden sm:block" />
-                using AI.{" "}
+                usando inteligência.{" "}
                 <span className="bg-gradient-to-r from-[#F0DC8A] via-[#C9A84C] to-[#9A6F28] bg-clip-text text-transparent">
-                  Are you?
+                  E você?
                 </span>
               </h2>
               <p className="text-zinc-400 text-base leading-relaxed max-w-lg mx-auto">
-                Start free in under 60 seconds. No credit card. No setup. 
-                Just the most powerful AI business platform you'll ever use.
+                Comece em menos de 60 segundos. Sem cartão de crédito. Sem configuração.
+                A plataforma de inteligência de negócios mais poderosa que você vai usar.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
                 <Link href="/sign-up">
@@ -799,10 +809,10 @@ export function LandingPage() {
                     size="lg"
                     className="h-12 px-10 text-sm bg-primary text-black hover:bg-primary/90 font-black rounded-lg shadow-[0_0_60px_-8px_rgba(201,168,76,0.5)] hover:shadow-[0_0_80px_-8px_rgba(201,168,76,0.65)] transition-all duration-300"
                   >
-                    Start Free Today <ArrowRight className="ml-2 w-4 h-4" />
+                    Começar Agora <ArrowRight className="ml-2 w-4 h-4" />
                   </Button>
                 </Link>
-                <p className="text-xs text-zinc-600">Free forever &middot; Upgrade anytime</p>
+                <p className="text-xs text-zinc-600">Comece gratuitamente &middot; Cancele quando quiser</p>
               </div>
             </AnimatedSection>
           </div>
@@ -817,13 +827,13 @@ export function LandingPage() {
             <div>
               <Logo size={28} showWordmark />
               <p className="text-xs text-zinc-600 mt-3 leading-relaxed max-w-[220px]">
-                Private AI intelligence for founders who refuse to build on guesswork.
+                Inteligência privada para fundadores que se recusam a construir no achismo.
               </p>
             </div>
             <div>
-              <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Platform</p>
+              <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Plataforma</p>
               <ul className="space-y-2.5">
-                {[["Features", "#features"], ["How it Works", "#how-it-works"], ["Pricing", "#pricing"]].map(([label, href]) => (
+                {[["Recursos", "#features"], ["Como Funciona", "#how-it-works"], ["Preços", "#pricing"]].map(([label, href]) => (
                   <li key={href}>
                     <a href={href} className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors">{label}</a>
                   </li>
@@ -831,9 +841,9 @@ export function LandingPage() {
               </ul>
             </div>
             <div>
-              <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Account</p>
+              <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Conta</p>
               <ul className="space-y-2.5">
-                {[["Sign In", "/sign-in"], ["Create Account", "/sign-up"], ["Dashboard", "/dashboard"]].map(([label, href]) => (
+                {[["Entrar", "/sign-in"], ["Criar Conta", "/sign-up"], ["Painel", "/dashboard"]].map(([label, href]) => (
                   <li key={href}>
                     <Link href={href} className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors">{label}</Link>
                   </li>
@@ -843,7 +853,7 @@ export function LandingPage() {
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-8 border-t border-white/[0.06]">
             <p className="text-xs text-zinc-700">
-              &copy; {new Date().getFullYear()} IAttom Assist. All rights reserved.
+              &copy; {new Date().getFullYear()} IAttom Assist. Todos os direitos reservados.
             </p>
             <p className="text-xs text-zinc-700">
               Powered by GPT-5 &middot; Built on Replit

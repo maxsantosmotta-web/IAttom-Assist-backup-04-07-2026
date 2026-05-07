@@ -49,15 +49,15 @@ function formatDate(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 function formatAmount(amount: number): string {
-  if (amount === 0) return "Free";
+  if (amount === 0) return "START";
   return `$${(amount / 100).toFixed(0)}/mo`;
 }
 
 const PRO_UNLOCKS = [
-  { icon: Zap, label: "500 credits / month", desc: "10× more AI runs" },
-  { icon: TrendingUp, label: "Advanced analytics", desc: "Full usage dashboard" },
-  { icon: Star, label: "Priority support", desc: "Faster response times" },
-  { icon: Gift, label: "Referral bonuses", desc: "Earn extra credits" },
+  { icon: Zap, label: "500 créditos / mês", desc: "10× mais execuções" },
+  { icon: TrendingUp, label: "Analytics avançado", desc: "Painel de uso completo" },
+  { icon: Star, label: "Suporte prioritário", desc: "Respostas mais rápidas" },
+  { icon: Gift, label: "Bônus de indicação", desc: "Ganhe créditos extras" },
 ];
 
 export function Billing() {
@@ -93,10 +93,10 @@ export function Billing() {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     if (payment === "success") {
-      toast({ title: "Payment successful", description: "Your plan has been upgraded. Credits have been added to your account." });
+      toast({ title: "Pagamento realizado", description: "Seu plano foi atualizado. Créditos foram adicionados à sua conta." });
       window.history.replaceState({}, "", window.location.pathname);
     } else if (payment === "canceled") {
-      toast({ title: "Checkout canceled", description: "No charges were made." });
+      toast({ title: "Checkout cancelado", description: "Nenhuma cobrança foi realizada." });
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [location]);
@@ -128,10 +128,10 @@ export function Billing() {
       <div>
         <div className="flex items-center gap-2 mb-1">
           <CreditCard className="w-4 h-4 text-primary" />
-          <p className="text-xs text-primary uppercase tracking-widest font-semibold">Billing</p>
+          <p className="text-xs text-primary uppercase tracking-widest font-semibold">Faturamento</p>
         </div>
-        <h1 className="text-2xl font-bold text-white">Subscription & Plans</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage your plan and billing preferences.</p>
+        <h1 className="text-2xl font-bold text-white">Assinatura e Planos</h1>
+        <p className="text-sm text-muted-foreground mt-1">Gerencie seu plano e preferências de faturamento.</p>
       </div>
 
       {/* Free plan upgrade nudge */}
@@ -143,12 +143,12 @@ export function Billing() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Crown className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-primary uppercase tracking-widest">You're on the Free Plan</span>
+                <span className="text-xs font-bold text-primary uppercase tracking-widest">Você está no Plano START</span>
               </div>
               <p className="text-sm text-zinc-300 mb-1">
-                You've used <span className="font-bold text-white">{creditsLeft}</span> of <span className="font-bold text-white">{planLimit}</span> credits ({pct}% remaining).
+                Você usou <span className="font-bold text-white">{creditsLeft}</span> de <span className="font-bold text-white">{planLimit}</span> créditos ({pct}% restantes).
               </p>
-              <p className="text-xs text-zinc-500">Upgrade to Pro for 500 credits/month, advanced analytics, and priority support.</p>
+              <p className="text-xs text-zinc-500">Atualize para o Pro: 500 créditos/mês, análises avançadas e suporte prioritário.</p>
             </div>
             <div className="flex gap-2 shrink-0">
               <Button
@@ -157,7 +157,7 @@ export function Billing() {
                 className="bg-primary text-black hover:bg-primary/90 font-semibold gap-1.5"
               >
                 <Crown className="w-3.5 h-3.5" />
-                Compare plans
+                Comparar planos
               </Button>
             </div>
           </div>
@@ -182,11 +182,11 @@ export function Billing() {
       <div className="rounded-xl border border-white/10 bg-[#111111] p-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium mb-1">Current Plan</p>
+            <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium mb-1">Plano Atual</p>
             <div className="flex items-center gap-2.5">
               <Crown className={`w-5 h-5 ${PLAN_COLORS[currentPlan] ?? "text-zinc-400"}`} />
               <span className={`text-2xl font-bold ${PLAN_COLORS[currentPlan] ?? "text-white"}`}>
-                {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
+                {currentPlan === "free" ? "START" : currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
               </span>
               {subStatus && STATUS_LABELS[subStatus] && (
                 <Badge className={`text-[10px] px-2 py-0 h-5 border ${
@@ -217,7 +217,7 @@ export function Billing() {
                 className="border-white/10 hover:border-primary/30 text-sm text-zinc-300 gap-1.5"
               >
                 <TrendingUp className="w-3.5 h-3.5" />
-                Upgrade
+                Atualizar
               </Button>
             )}
             {hasActiveSub && (
@@ -229,7 +229,7 @@ export function Billing() {
                 disabled={portal.isPending}
               >
                 {portal.isPending ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5 mr-1.5" />}
-                Manage Subscription
+                Gerenciar Assinatura
               </Button>
             )}
           </div>
@@ -246,13 +246,13 @@ export function Billing() {
       {/* Plans Grid */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">Available Plans</h2>
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">Planos Disponíveis</h2>
           {sortedPlans.length > 0 && (
             <button
               onClick={() => setShowComparison(true)}
               className="text-xs text-primary hover:text-primary/80 font-semibold transition-colors flex items-center gap-1"
             >
-              <Star className="w-3 h-3" /> Full comparison
+              <Star className="w-3 h-3" /> Comparação completa
             </button>
           )}
         </div>
@@ -269,10 +269,9 @@ export function Billing() {
               <Lock className="w-5 h-5 text-zinc-500" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-zinc-300 mb-1">Billing not configured for beta</p>
+              <p className="text-sm font-semibold text-zinc-300 mb-1">Faturamento em configuração</p>
               <p className="text-xs text-zinc-500 max-w-sm">
-                Paid plans are not available during the private beta. Credits and all AI features work normally.
-                Billing will be enabled when the beta concludes.
+                Os planos pagos serão disponibilizados em breve. Créditos e todos os módulos funcionam normalmente.
               </p>
             </div>
           </div>
@@ -323,7 +322,7 @@ export function Billing() {
                   <div className="flex items-center gap-1.5 mb-4 p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
                     <Zap className="w-3.5 h-3.5 text-primary fill-primary shrink-0" />
                     <span className="text-xs font-semibold text-zinc-300">
-                      {(PLAN_CREDITS[planKey as keyof typeof PLAN_CREDITS] ?? plan.credits).toLocaleString()} credits / month
+                      {(PLAN_CREDITS[planKey as keyof typeof PLAN_CREDITS] ?? plan.credits).toLocaleString()} créditos / mês
                     </span>
                   </div>
 
@@ -343,16 +342,16 @@ export function Billing() {
                   ) : planKey === "free" ? (
                     hasActiveSub ? (
                       <Button size="sm" variant="outline" className="w-full border-white/10 text-zinc-400 text-xs hover:border-white/20" onClick={() => portal.mutate()} disabled={portal.isPending}>
-                        Downgrade via Portal
+                        Fazer Downgrade
                       </Button>
                     ) : (
                       <Button disabled size="sm" className="w-full bg-white/5 text-zinc-500 border border-white/10 text-xs cursor-default">
-                        Free Plan
+                        Plano START
                       </Button>
                     )
                   ) : hasActiveSub && isDowngrade ? (
                     <Button size="sm" variant="outline" className="w-full border-white/10 text-zinc-400 text-xs hover:border-white/20" onClick={() => portal.mutate()} disabled={portal.isPending}>
-                      Downgrade via Portal
+                        Fazer Downgrade
                     </Button>
                   ) : (
                     <Button
@@ -362,7 +361,7 @@ export function Billing() {
                       disabled={checkout.isPending}
                     >
                       {checkout.isPending ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}
-                      {hasActiveSub && isUpgrade ? "Upgrade" : "Get Started"}
+                      {hasActiveSub && isUpgrade ? "Atualizar" : "Começar"}
                     </Button>
                   )}
                 </div>
@@ -379,23 +378,23 @@ export function Billing() {
             <Gift className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">Invite friends, earn credits</p>
+            <p className="text-sm font-semibold text-white">Indique amigos e ganhe créditos</p>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Earn 50 credits for every friend who joins. They get 25 bonus credits too.
+              Ganhe 50 créditos por cada amigo que entrar. Eles recebem 25 créditos de bônus.
             </p>
           </div>
         </div>
         <Link href="/dashboard/referral">
           <Button size="sm" variant="outline" className="border-white/10 hover:border-primary/30 text-zinc-300 gap-1.5 shrink-0">
             <Gift className="w-3.5 h-3.5" />
-            View Referrals
+            Ver Indicações
           </Button>
         </Link>
       </div>
 
       {/* Bottom note */}
       <p className="text-xs text-zinc-600">
-        Payments are processed securely via Stripe. Cancel anytime. Credits reset monthly.
+        Pagamentos processados com segurança via Stripe. Cancele quando quiser. Créditos renovam mensalmente.
       </p>
 
       <PlanComparisonModal open={showComparison} onClose={() => setShowComparison(false)} highlightPlan="pro" />

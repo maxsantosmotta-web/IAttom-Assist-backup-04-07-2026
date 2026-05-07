@@ -98,9 +98,9 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                   <Crown className="w-4 h-4 text-primary" />
                   <p className="text-xs text-primary uppercase tracking-widest font-semibold">Upgrade</p>
                 </div>
-                <h2 className="text-xl font-bold text-white">Choose your plan</h2>
+                <h2 className="text-xl font-bold text-white">Escolha seu plano</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Unlock more credits and advanced features.
+                  Desbloqueie mais créditos e recursos avançados.
                 </p>
               </div>
               <button
@@ -162,7 +162,7 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
 
                         <div className="mb-3">
                           {plan.amount === 0 ? (
-                            <span className="text-2xl font-bold text-white">Free</span>
+                            <span className="text-2xl font-bold text-white">START</span>
                           ) : (
                             <>
                               <span className="text-2xl font-bold text-white">${plan.amount / 100}</span>
@@ -189,11 +189,11 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
 
                         {isCurrent ? (
                           <Button disabled size="sm" className="w-full text-xs bg-white/5 border border-white/10 text-zinc-500">
-                            Current Plan
+                            Plano Atual
                           </Button>
                         ) : !isUpgrade ? (
                           <Button size="sm" variant="outline" className="w-full text-xs border-white/10 text-zinc-400">
-                            Downgrade
+                            Fazer Downgrade
                           </Button>
                         ) : (
                           <Button
@@ -203,7 +203,7 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                             disabled={checkout.isPending}
                           >
                             {checkout.isPending && <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />}
-                            Get {plan.name}
+                            Assinar {plan.name}
                           </Button>
                         )}
                       </div>
@@ -215,7 +215,7 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
 
             <div className="px-6 pb-5">
               <p className="text-[11px] text-zinc-600 text-center">
-                Secure checkout via Stripe. Cancel anytime. Credits reset monthly.
+                Pagamento seguro via Stripe. Cancele quando quiser. Créditos renovam mensalmente.
               </p>
             </div>
           </motion.div>

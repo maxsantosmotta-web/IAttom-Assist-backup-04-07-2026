@@ -45,9 +45,9 @@ export function Settings() {
   return (
     <div className="space-y-8 max-w-2xl">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Configuration</p>
-        <h2 className="text-2xl font-bold text-white mb-1">Settings</h2>
-        <p className="text-muted-foreground text-sm">Manage your account, notifications, and workspace preferences.</p>
+        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Configuração</p>
+        <h2 className="text-2xl font-bold text-white mb-1">Configurações</h2>
+        <p className="text-muted-foreground text-sm">Gerencie sua conta, notificações e preferências do workspace.</p>
       </motion.div>
 
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-5">
@@ -56,7 +56,7 @@ export function Settings() {
           <Card className="bg-[#111111] border-white/5">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <User className="w-4 h-4 text-primary" /> Profile
+                <User className="w-4 h-4 text-primary" /> Perfil
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -98,14 +98,14 @@ export function Settings() {
                     />
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-white/5 border border-white/5 p-3">
-                    <p className="text-xs text-muted-foreground">Name, email, and avatar are managed through your Clerk account.</p>
+                    <p className="text-xs text-muted-foreground">Nome, e-mail e avatar são gerenciados pela sua conta Clerk.</p>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={openClerkProfile}
                       className="text-primary hover:text-primary/80 text-xs shrink-0 ml-3"
                     >
-                      <ExternalLink className="w-3 h-3 mr-1.5" /> Manage Profile
+                      <ExternalLink className="w-3 h-3 mr-1.5" /> Gerenciar Perfil
                     </Button>
                   </div>
                 </>
@@ -119,15 +119,15 @@ export function Settings() {
           <Card className="bg-[#111111] border-white/5">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <Bell className="w-4 h-4 text-primary" /> Notifications
+                <Bell className="w-4 h-4 text-primary" /> Notificações
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {[
-                { id: "email-notif", label: "In-app Notifications", desc: "Activity alerts in the notification bell", defaultChecked: true },
-                { id: "project-notif", label: "Milestone Celebrations", desc: "Toasts when you hit usage milestones", defaultChecked: true },
-                { id: "upgrade-nudge", label: "Upgrade Reminders", desc: "Banner when credits are running low", defaultChecked: true },
-                { id: "marketing-notif", label: "Product Updates", desc: "Coming soon — email announcements", defaultChecked: false, disabled: true },
+                { id: "email-notif", label: "Notificações no app", desc: "Alertas de atividade no sininho", defaultChecked: true },
+                { id: "project-notif", label: "Celebrações de marcos", desc: "Avisos ao atingir marcos de uso", defaultChecked: true },
+                { id: "upgrade-nudge", label: "Lembretes de atualização", desc: "Banner quando créditos estão baixos", defaultChecked: true },
+                { id: "marketing-notif", label: "Atualizações do produto", desc: "Em breve — anúncios por e-mail", defaultChecked: false, disabled: true },
               ].map((item, i, arr) => (
                 <div key={item.id}>
                   <div className="flex items-center justify-between">
@@ -146,7 +146,7 @@ export function Settings() {
               ))}
               <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] px-3 py-2.5">
                 <p className="text-xs text-zinc-600">
-                  Granular notification controls and email preferences are coming in a future update.
+                  Controles detalhados de notificação e preferências de e-mail chegam em breve.
                 </p>
               </div>
             </CardContent>
@@ -158,21 +158,21 @@ export function Settings() {
           <Card className="bg-[#111111] border-white/5">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <Shield className="w-4 h-4 text-primary" /> Security
+                <Shield className="w-4 h-4 text-primary" /> Segurança
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-lg bg-white/5 border border-white/5 p-4 space-y-3">
-                <p className="text-sm text-white font-medium">Password & 2FA</p>
+                <p className="text-sm text-white font-medium">Senha e 2FA</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Password changes, two-factor authentication, and connected accounts are managed securely through your Clerk account portal.
+                  Alterações de senha, autenticação em dois fatores e contas conectadas são gerenciadas com segurança pelo seu portal de conta.
                 </p>
                 <Button
                   variant="outline"
                   onClick={openClerkProfile}
                   className="border-white/10 text-white hover:bg-white/5 text-sm"
                 >
-                  <ExternalLink className="w-3.5 h-3.5 mr-2" /> Open Security Settings
+                  <ExternalLink className="w-3.5 h-3.5 mr-2" /> Abrir Configurações de Segurança
                 </Button>
               </div>
             </CardContent>
@@ -184,7 +184,7 @@ export function Settings() {
           <Card className="bg-[#111111] border-primary/20">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-primary" /> Current Plan
+                <CreditCard className="w-4 h-4 text-primary" /> Plano Atual
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -201,11 +201,11 @@ export function Settings() {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="text-lg font-bold text-white capitalize">{planInfo?.label ?? plan} Plan</p>
-                        <Badge className="bg-primary/20 text-primary border-primary/30">Active</Badge>
+                        <p className="text-lg font-bold text-white capitalize">{plan === "free" ? "START" : (planInfo?.label ?? plan)}</p>
+                        <Badge className="bg-primary/20 text-primary border-primary/30">Ativo</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {planInfo?.monthly === 0 ? "Free tier" : `$${planInfo?.monthly} / month — billed monthly`}
+                        {planInfo?.monthly === 0 ? "Plano START" : `$${planInfo?.monthly} / mês — cobrado mensalmente`}
                       </p>
                     </div>
                     <Zap className="w-8 h-8 text-primary/40" />
@@ -213,11 +213,11 @@ export function Settings() {
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="bg-white/5 border border-white/5 rounded-lg p-3 text-center">
                       <p className="text-sm font-semibold text-white">{me.credits.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">Credits Remaining</p>
+                      <p className="text-xs text-muted-foreground">Créditos Restantes</p>
                     </div>
                     <div className="bg-white/5 border border-white/5 rounded-lg p-3 text-center">
                       <p className="text-sm font-semibold text-white">{planCredits.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">Credits / Month</p>
+                      <p className="text-xs text-muted-foreground">Créditos / Mês</p>
                     </div>
                   </div>
                   {plan !== "agency" && (
@@ -225,7 +225,7 @@ export function Settings() {
                       onClick={() => navigate("/dashboard/billing")}
                       className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
                     >
-                      Upgrade Plan
+                      Atualizar Plano
                     </Button>
                   )}
                 </>

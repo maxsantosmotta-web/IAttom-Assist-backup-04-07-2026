@@ -28,21 +28,21 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { NotificationsPanel } from "@/components/NotificationsPanel";
 
 const navItems = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/dashboard/find-products", label: "Find Products", icon: Search },
-  { href: "/dashboard/validate-products", label: "Validate Products", icon: CheckCircle },
-  { href: "/dashboard/create-campaign", label: "Create Campaign", icon: Megaphone },
-  { href: "/dashboard/create-content", label: "Create Content", icon: FileText },
-  { href: "/dashboard/creative-generator", label: "Creative Generator", icon: Sparkles },
-  { href: "/dashboard/video-scripts", label: "Video Scripts", icon: Video },
-  { href: "/dashboard/projects", label: "Projects", icon: FolderOpen },
-  { href: "/dashboard/history", label: "History", icon: Clock },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart2 },
-  { href: "/dashboard/prompts", label: "Saved Prompts", icon: BookMarked },
-  { href: "/dashboard/referral", label: "Referrals", icon: Gift },
-  { href: "/dashboard/credits", label: "Credits", icon: Zap },
-  { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
+  { href: "/dashboard/find-products", label: "Buscar Produtos", icon: Search },
+  { href: "/dashboard/validate-products", label: "Validar Produtos", icon: CheckCircle },
+  { href: "/dashboard/create-campaign", label: "Criar Campanha", icon: Megaphone },
+  { href: "/dashboard/create-content", label: "Criar Conteúdo", icon: FileText },
+  { href: "/dashboard/creative-generator", label: "Gerador Criativo", icon: Sparkles },
+  { href: "/dashboard/video-scripts", label: "Scripts de Vídeo", icon: Video },
+  { href: "/dashboard/projects", label: "Projetos", icon: FolderOpen },
+  { href: "/dashboard/history", label: "Atividades", icon: Clock },
+  { href: "/dashboard/analytics", label: "Análises", icon: BarChart2 },
+  { href: "/dashboard/prompts", label: "Prompts Salvos", icon: BookMarked },
+  { href: "/dashboard/referral", label: "Indicações", icon: Gift },
+  { href: "/dashboard/credits", label: "Créditos", icon: Zap },
+  { href: "/dashboard/billing", label: "Faturamento", icon: CreditCard },
+  { href: "/dashboard/settings", label: "Configurações", icon: Settings },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -123,9 +123,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           <Link href="/dashboard">
             <Logo size={30} showWordmark />
           </Link>
-          <span className="text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded bg-primary/15 border border-primary/25 text-primary leading-tight">
-            Beta
-          </span>
         </div>
         <Button
           variant="ghost"
@@ -155,7 +152,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       {/* Nav */}
       <div className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5 sidebar-scroll">
         <p className="px-3 pb-2 text-[9px] font-black tracking-widest text-zinc-700 uppercase">
-          Workspace
+          Espaço de Trabalho
         </p>
         {navItems.map((item) => {
           const isActive = location === item.href;
@@ -219,9 +216,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
                 transition={{ duration: 0.18 }}
               />
               <ShieldCheck className="w-4 h-4 shrink-0 relative z-10" />
-              <span className="flex-1 relative z-10">Admin Panel</span>
+              <span className="flex-1 relative z-10">Painel Admin</span>
               <Badge className="text-[9px] px-1.5 py-0 h-4 bg-primary/20 text-primary border-primary/30 font-black leading-4 relative z-10">
-                ADMIN
+                ADM
               </Badge>
             </Link>
           </div>
@@ -235,7 +232,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
                 <Zap className="w-3 h-3 text-primary fill-primary" />
-                <span className="text-[11px] text-zinc-500 font-semibold tracking-wide">Credits</span>
+                <span className="text-[11px] text-zinc-500 font-semibold tracking-wide">Créditos</span>
               </div>
               <span className={`text-[11px] font-bold tabular-nums ${creditTextColor}`}>
                 {creditBalance.toLocaleString()}
@@ -249,7 +246,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               />
             </div>
             {isLowCredit && (
-              <p className="text-[10px] text-red-400 mt-1.5 font-medium">Low credits — upgrade your plan</p>
+              <p className="text-[10px] text-red-400 mt-1.5 font-medium">Créditos baixos — atualize seu plano</p>
             )}
           </Link>
         </div>
@@ -279,25 +276,25 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenuItem asChild>
               <Link href="/dashboard/settings" className="flex items-center gap-2 cursor-pointer">
                 <Settings className="w-4 h-4" />
-                Settings
+                Configurações
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/dashboard/analytics" className="flex items-center gap-2 cursor-pointer">
                 <BarChart2 className="w-4 h-4" />
-                Analytics
+                Análises
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/dashboard/credits" className="flex items-center gap-2 cursor-pointer">
                 <Zap className="w-4 h-4" />
-                Credits
+                Créditos
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/dashboard/billing" className="flex items-center gap-2 cursor-pointer">
                 <CreditCard className="w-4 h-4" />
-                Billing
+                Faturamento
               </Link>
             </DropdownMenuItem>
             {isAdmin && (
@@ -307,7 +304,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
                   className="flex items-center gap-2 cursor-pointer text-primary focus:text-primary focus:bg-primary/10"
                 >
                   <ShieldCheck className="w-4 h-4" />
-                  Admin Panel
+                  Painel Admin
                 </Link>
               </DropdownMenuItem>
             )}
@@ -317,7 +314,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               className="text-red-400 focus:text-red-400 focus:bg-red-400/10 cursor-pointer gap-2"
             >
               <LogOut className="w-4 h-4" />
-              Sign out
+              Sair
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -383,7 +380,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             {isLowCredit && (
               <Link href="/dashboard/billing">
                 <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[10px] px-2.5 py-0.5 cursor-pointer hover:bg-red-500/15 transition-colors font-semibold">
-                  Low Credits
+                  Créditos Baixos
                 </Badge>
               </Link>
             )}
