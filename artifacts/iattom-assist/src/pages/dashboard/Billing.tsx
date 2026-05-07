@@ -247,12 +247,14 @@ export function Billing() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">Available Plans</h2>
-          <button
-            onClick={() => setShowComparison(true)}
-            className="text-xs text-primary hover:text-primary/80 font-semibold transition-colors flex items-center gap-1"
-          >
-            <Star className="w-3 h-3" /> Full comparison
-          </button>
+          {sortedPlans.length > 0 && (
+            <button
+              onClick={() => setShowComparison(true)}
+              className="text-xs text-primary hover:text-primary/80 font-semibold transition-colors flex items-center gap-1"
+            >
+              <Star className="w-3 h-3" /> Full comparison
+            </button>
+          )}
         </div>
 
         {isLoading ? (
@@ -260,6 +262,19 @@ export function Billing() {
             {[0,1,2,3].map((i) => (
               <div key={i} className="rounded-xl border border-white/10 bg-[#111111] p-5 h-64 skeleton-shimmer" />
             ))}
+          </div>
+        ) : sortedPlans.length === 0 ? (
+          <div className="rounded-xl border border-white/10 bg-[#111111] p-8 flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+              <Lock className="w-5 h-5 text-zinc-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-zinc-300 mb-1">Billing not configured for beta</p>
+              <p className="text-xs text-zinc-500 max-w-sm">
+                Paid plans are not available during the private beta. Credits and all AI features work normally.
+                Billing will be enabled when the beta concludes.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
