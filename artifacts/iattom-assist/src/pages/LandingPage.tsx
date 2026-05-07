@@ -1,8 +1,8 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowRight, BarChart3, Sparkles, Target, Check,
-  ChevronDown, Play, Users, Brain, Rocket,
+  ArrowRight, Sparkles, Check,
+  ChevronDown, Users,
 } from "lucide-react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useRef, useState } from "react";
@@ -50,63 +50,6 @@ function StaggerSection({ children, className = "" }: { children: React.ReactNod
     </motion.div>
   );
 }
-
-const modules = [
-  {
-    icon: Target,
-    title: "Buscar Produtos",
-    desc: "Descubra oportunidades com alta demanda e baixa concorrência antes que o mercado perceba.",
-    accent: "text-primary",
-    bg: "bg-primary/8 border-primary/15",
-    glow: "group-hover:shadow-[0_0_40px_-8px_rgba(201,168,76,0.28)]",
-    tag: "5 créditos",
-  },
-  {
-    icon: BarChart3,
-    title: "Validar Mercados",
-    desc: "Analise viabilidade com profundidade real. Elimine riscos antes de investir tempo e capital.",
-    accent: "text-blue-400",
-    bg: "bg-blue-400/8 border-blue-400/15",
-    glow: "group-hover:shadow-[0_0_40px_-8px_rgba(96,165,250,0.22)]",
-    tag: "5 créditos",
-  },
-  {
-    icon: Rocket,
-    title: "Criar Campanhas",
-    desc: "Estratégias de funil completo adaptadas ao seu nicho — segmentação, mensagem e canal definidos.",
-    accent: "text-amber-400",
-    bg: "bg-amber-400/8 border-amber-400/15",
-    glow: "group-hover:shadow-[0_0_40px_-8px_rgba(251,191,36,0.22)]",
-    tag: "10 créditos",
-  },
-  {
-    icon: Brain,
-    title: "Criar Conteúdo",
-    desc: "Textos, e-mails e copy de conversão para todos os canais — diretos, estratégicos e acionáveis.",
-    accent: "text-emerald-400",
-    bg: "bg-emerald-400/8 border-emerald-400/15",
-    glow: "group-hover:shadow-[0_0_40px_-8px_rgba(52,211,153,0.22)]",
-    tag: "8 créditos",
-  },
-  {
-    icon: Sparkles,
-    title: "Gerador Criativo",
-    desc: "Conceitos de campanha, briefings visuais e direção de marca com qualidade de agência.",
-    accent: "text-purple-400",
-    bg: "bg-purple-400/8 border-purple-400/15",
-    glow: "group-hover:shadow-[0_0_40px_-8px_rgba(192,132,252,0.22)]",
-    tag: "15 créditos",
-  },
-  {
-    icon: Play,
-    title: "Scripts de Vídeo",
-    desc: "Scripts para YouTube, TikTok e anúncios com gancho forte, narrativa clara e chamada para ação.",
-    accent: "text-rose-400",
-    bg: "bg-rose-400/8 border-rose-400/15",
-    glow: "group-hover:shadow-[0_0_40px_-8px_rgba(251,113,133,0.22)]",
-    tag: "10 créditos",
-  },
-];
 
 const plans = [
   {
@@ -250,7 +193,7 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
           <Logo size={30} showWordmark />
           <nav className="hidden md:flex items-center gap-7">
-            {[["Módulos", "#features"], ["Preços", "#pricing"], ["FAQ", "#faq"]].map(([label, href]) => (
+            {[["Preços", "#pricing"], ["FAQ", "#faq"]].map(([label, href]) => (
               <a
                 key={href}
                 href={href}
@@ -313,7 +256,7 @@ export function LandingPage() {
                 className="text-[15px] sm:text-base md:text-lg text-zinc-400 max-w-xl sm:max-w-2xl mx-auto leading-relaxed px-2"
               >
                 Uma plataforma completa para fundadores e equipes que recusam construir no achismo.
-                Seis módulos especializados. Resultados estruturados. Execução imediata.
+                Estratégia, validação e execução — tudo em um único lugar.
               </motion.p>
 
               <motion.div
@@ -340,48 +283,6 @@ export function LandingPage() {
                 </Link>
               </motion.div>
             </motion.div>
-          </div>
-        </section>
-
-        {/* ─── MODULES ─── */}
-        <section id="features" className="py-24 sm:py-28 bg-[#080808] border-t border-white/[0.05]">
-          <div className="max-w-6xl mx-auto px-5 sm:px-6">
-            <AnimatedSection className="text-center mb-14 sm:mb-16">
-              <p className="text-[11px] text-primary uppercase tracking-widest font-bold mb-3">
-                A Plataforma
-              </p>
-              <h2 className="text-[28px] sm:text-4xl md:text-[42px] font-black text-white tracking-tight mb-4 leading-[1.1]">
-                Seis módulos. <span className="text-zinc-400">Precisão cirúrgica.</span>
-              </h2>
-              <p className="text-zinc-500 max-w-sm sm:max-w-lg mx-auto text-sm leading-relaxed">
-                Cada módulo é construído para um problema específico de negócio — não uma interface genérica.
-              </p>
-            </AnimatedSection>
-
-            <StaggerSection className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 max-w-5xl mx-auto">
-              {modules.map((mod) => {
-                const Icon = mod.icon;
-                return (
-                  <motion.div
-                    key={mod.title}
-                    variants={fadeUp}
-                    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                    className={`group relative p-5 sm:p-6 bg-[#0d0d0d] border border-white/[0.06] rounded-2xl hover:border-white/[0.12] transition-all duration-300 ${mod.glow}`}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl border ${mod.bg}`}>
-                        <Icon className={`w-5 h-5 ${mod.accent}`} />
-                      </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${mod.bg} ${mod.accent}`}>
-                        {mod.tag}
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-bold text-white mb-2">{mod.title}</h3>
-                    <p className="text-xs text-zinc-500 leading-relaxed">{mod.desc}</p>
-                  </motion.div>
-                );
-              })}
-            </StaggerSection>
           </div>
         </section>
 
