@@ -33,7 +33,7 @@ export function LandingPage() {
           className=""
         >
           <img
-            src="/iattom-logo.png"
+            src="/iattom-logo-transparent.png"
             alt="IAttom Assist"
             width={216}
             height={216}
