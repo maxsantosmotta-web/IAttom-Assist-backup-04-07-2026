@@ -4,11 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>IAttom Assist</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="/iattom-assist/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/iattom-assist/icon-192.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/iattom-assist/icon-512.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/iattom-assist/apple-touch-icon.png" />
-    <link rel="manifest" href="/iattom-assist/manifest.json" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#000000" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
@@ -20,5 +20,12 @@
   <body style="margin:0;background:#000000;">
     <div id="root" style="background:#000000;"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js');
+        });
+      }
+    </script>
   </body>
 </html>
