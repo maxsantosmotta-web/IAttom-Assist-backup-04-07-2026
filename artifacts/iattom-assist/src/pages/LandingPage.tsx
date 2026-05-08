@@ -34,10 +34,10 @@ const errMap: Record<string, string> = {
   username_exists_in_instance:             "Este usuário já está em uso.",
 
   /* estratégia / método */
-  strategy_for_user_invalid:               "Método de acesso inválido para esta conta.",
+  strategy_for_user_invalid:               "Usuário ou senha inválidos.",
   not_allowed_access:                      "Acesso não permitido para esta conta.",
   client_state_invalid:                    "Sessão expirada. Recarregue a página.",
-  strategy_not_allowed_for_instance:       "Método de acesso inválido para esta conta.",
+  strategy_not_allowed_for_instance:       "Usuário ou senha inválidos.",
 
   /* código de verificação */
   form_code_incorrect:                     "Código incorreto. Tente novamente.",
@@ -73,8 +73,8 @@ const errMap: Record<string, string> = {
 /* frases em inglês que podem vir em longMessage/message */
 const msgPhrases: Array<[RegExp, string]> = [
   [/password is incorrect/i,                           "Usuário ou senha inválidos."],
-  [/verification strategy is not valid/i,              "Método de acesso inválido para esta conta."],
-  [/strategy.*not.*valid/i,                           "Método de acesso inválido para esta conta."],
+  [/verification strategy is not valid/i,              "Usuário ou senha inválidos."],
+  [/strategy.*not.*valid/i,                           "Usuário ou senha inválidos."],
   [/identifier (is )?not found/i,                      "Usuário não encontrado."],
   [/already (exists|taken)/i,                          "Este email já possui cadastro."],
   [/external.*account|oauth.*account|google.*account/i,"Esta conta usa outro método de acesso."],
