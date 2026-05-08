@@ -280,7 +280,7 @@ function ErrLine({ msg }: { msg: string }) {
 /* ═══════════════════════════════════════════════════════════════════════
    SIGN-UP DRAWER
 ═══════════════════════════════════════════════════════════════════════ */
-type SignUpStep = "form" | "verify" | "exists_code";
+type SignUpStep = "form" | "verify" | "exists_code" | "reset_form";
 
 function SignUpDrawer({ onClose, onOpenLogin }: { onClose: () => void; onOpenLogin: () => void }) {
   const [, navigate] = useLocation();
@@ -470,21 +470,14 @@ function SignUpDrawer({ onClose, onOpenLogin }: { onClose: () => void; onOpenLog
 
             <ErrLine msg={err} />
 
-            {/* Link discreto "Redefinir senha" — aparece só quando conta existe */}
+            {/* Link "Redefinir senha" — aparece quando conta já existe */}
             {showResetLink && (
               <button
                 type="button"
-                disabled={busy}
-                onClick={handleSendResetCode}
-                className="text-[12px] text-[#C9A030] hover:text-[#F0D050] transition-colors underline underline-offset-2 w-full text-center -mt-1 disabled:opacity-50"
+                onClick={() => { setStep("reset_form"); setErr(""); }}
+                className="text-[12px] text-[#C9A030] hover:text-[#F0D050] transition-colors underline underline-offset-2 w-full text-center -mt-1"
               >
-                {busy
-                  ? <span className="inline-flex items-center gap-1.5">
-                      <span className="w-3 h-3 border border-[#C9A030]/50 border-t-[#C9A030] rounded-full animate-spin inline-block" />
-                      Enviando...
-                    </span>
-                  : "Redefinir senha"
-                }
+                Redefinir senha
               </button>
             )}
 
@@ -577,7 +570,82 @@ function SignUpDrawer({ onClose, onOpenLogin }: { onClose: () => void; onOpenLog
         </>
       )}
 
+      {/* ── Redefinir senha (a partir de conta existente detectada) ─── */}
+      {step === "reset_form" && (
+        <ResetFormStep
+          initialIdentifier={method === "email" ? email : phone}
+          onBack={() => { setStep("form"); setErr(""); setReset(true); }}
+          backLabel="Voltar"
+        />
+      )}
+
     </DrawerShell>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESET FORM STEP — reutilizado nos dois drawers
+═══════════════════════════════════════════════════════════════════════ */
+function ResetFormStep({
+  initialIdentifier = "",
+  onBack,
+  backLabel = "Voltar para entrar",
+}: {
+  initialIdentifier?: string;
+  onBack: () => void;
+  backLabel?: string;
+}) {
+  const [identifier, setId] = useState(initialIdentifier);
+  const [sent, setSent]     = useState(false);
+
+  function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    setSent(true);
+  }
+
+  return (
+    <>
+      <p className="text-[11px] text-white/30 uppercase tracking-[0.18em] font-semibold mb-5 text-center">
+        Redefinir senha
+      </p>
+
+      {!sent ? (
+        <form onSubmit={handleSend} className="flex flex-col gap-3">
+          <input
+            type="text"
+            placeholder="Email ou telefone"
+            value={identifier}
+            onChange={e => setId(e.target.value)}
+            className={inputBase}
+            autoComplete="username"
+            required
+          />
+          <GoldBtn label="Enviar instruções" busy={false} />
+        </form>
+      ) : (
+        <div
+          className="rounded-xl px-4 py-5 flex flex-col items-center gap-2"
+          style={{ background: "rgba(201,160,48,0.07)", border: "1px solid rgba(201,160,48,0.18)" }}
+        >
+          <p className="text-[13px] text-white/80 text-center font-medium leading-snug">
+            Instruções enviadas
+          </p>
+          <p className="text-[12px] text-white/40 text-center leading-snug">
+            Verifique seu email ou telefone e siga as instruções para redefinir sua senha.
+          </p>
+        </div>
+      )}
+
+      <p className="text-center text-[11.5px] text-white/35 mt-5">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-[#C9A030] hover:text-[#F0D050] transition-colors font-semibold"
+        >
+          {backLabel}
+        </button>
+      </p>
+    </>
   );
 }
 
@@ -588,6 +656,7 @@ function SignInDrawer({ onClose, onOpenSignUp }: { onClose: () => void; onOpenSi
   const [, navigate] = useLocation();
   const { signIn, fetchStatus } = useSignIn();
 
+  const [step, setStep]     = useState<"login" | "reset_form">("login");
   const [identifier, setId] = useState("");
   const [password, setPass] = useState("");
   const [err, setErr]       = useState("");
@@ -616,45 +685,62 @@ function SignInDrawer({ onClose, onOpenSignUp }: { onClose: () => void; onOpenSi
 
   return (
     <DrawerShell onClose={onClose}>
-      <p className="text-[11px] text-white/30 uppercase tracking-[0.18em] font-semibold mb-5 text-center">
-        Entrar
-      </p>
-      <form onSubmit={handleLogin} className="flex flex-col gap-3">
-        <input
-          type="text"
-          placeholder="Email ou telefone"
-          value={identifier}
-          onChange={e => setId(e.target.value)}
-          className={inputBase}
-          autoComplete="username"
-          required
+
+      {/* ── Login ───────────────────────────────────────────────────── */}
+      {step === "login" && (
+        <>
+          <p className="text-[11px] text-white/30 uppercase tracking-[0.18em] font-semibold mb-5 text-center">
+            Entrar
+          </p>
+          <form onSubmit={handleLogin} className="flex flex-col gap-3">
+            <input
+              type="text"
+              placeholder="Email ou telefone"
+              value={identifier}
+              onChange={e => setId(e.target.value)}
+              className={inputBase}
+              autoComplete="username"
+              required
+            />
+            <PasswordInput
+              placeholder="Sua senha"
+              value={password}
+              onChange={setPass}
+              autoComplete="current-password"
+            />
+            <div className="flex justify-end -mt-1">
+              <button
+                type="button"
+                onClick={() => { setStep("reset_form"); setErr(""); }}
+                className="text-[11.5px] text-white/35 hover:text-[#C9A030] transition-colors duration-150"
+              >
+                Esqueci minha senha
+              </button>
+            </div>
+            <ErrLine msg={err} />
+            <GoldBtn label="Entrar" busy={busy} />
+          </form>
+          <p className="text-center text-[11.5px] text-white/35 mt-5">
+            Nao possui conta?{" "}
+            <button
+              onClick={() => { onClose(); onOpenSignUp(); }}
+              className="text-[#C9A030] hover:text-[#F0D050] transition-colors font-semibold"
+            >
+              Criar conta
+            </button>
+          </p>
+        </>
+      )}
+
+      {/* ── Redefinir senha ─────────────────────────────────────────── */}
+      {step === "reset_form" && (
+        <ResetFormStep
+          initialIdentifier={identifier}
+          onBack={() => { setStep("login"); }}
+          backLabel="Voltar para entrar"
         />
-        <PasswordInput
-          placeholder="Sua senha"
-          value={password}
-          onChange={setPass}
-          autoComplete="current-password"
-        />
-        <div className="flex justify-end -mt-1">
-          <button
-            type="button"
-            className="text-[11.5px] text-white/35 hover:text-[#C9A030] transition-colors duration-150"
-          >
-            Esqueci minha senha
-          </button>
-        </div>
-        <ErrLine msg={err} />
-        <GoldBtn label="Entrar" busy={busy} />
-      </form>
-      <p className="text-center text-[11.5px] text-white/35 mt-5">
-        Nao possui conta?{" "}
-        <button
-          onClick={() => { onClose(); onOpenSignUp(); }}
-          className="text-[#C9A030] hover:text-[#F0D050] transition-colors font-semibold"
-        >
-          Criar conta
-        </button>
-      </p>
+      )}
+
     </DrawerShell>
   );
 }
