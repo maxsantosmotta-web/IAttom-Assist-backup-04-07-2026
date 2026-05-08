@@ -7,6 +7,8 @@ import {
   useGetStripePlans,
   getGetStripePlansQueryKey,
   useCreateCheckoutSession,
+  useGetMe,
+  getGetMeQueryKey,
 } from "@workspace/api-client-react";
 import { PLAN_CREDITS } from "@/lib/credits";
 import { useToast } from "@/hooks/use-toast";
@@ -119,12 +121,19 @@ export function Onboarding() {
   const { toast } = useToast();
   const [selecting, setSelecting] = useState<PlanKey | null>(null);
 
+  const { data: me, isLoading: meLoading } = useGetMe({
+    query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 30_000 },
+  });
+
+  // Redirect to dashboard only when user already has a paid plan
   useEffect(() => {
-    if (!isLoaded || !user) return;
-    if (localStorage.getItem(onboardingKey(user.id))) {
+    if (!isLoaded || !user || meLoading || me === undefined) return;
+    const isAdmin    = me?.role === "admin";
+    const hasPaidPlan = me?.plan !== undefined && me.plan !== "free";
+    if (isAdmin || hasPaidPlan) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isLoaded, user]);
+  }, [isLoaded, user, me, meLoading]);
 
   const { data: stripePlans = [] } = useGetStripePlans({
     query: {

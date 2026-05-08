@@ -7,7 +7,7 @@ interface BetaGateProps {
 }
 
 export function BetaGate({ children }: BetaGateProps) {
-  const { user, isLoaded } = useUser();
+  const { isLoaded } = useUser();
   const { data: me, isLoading: meLoading } = useGetMe({
     query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 30_000 },
   });
@@ -20,12 +20,10 @@ export function BetaGate({ children }: BetaGateProps) {
     );
   }
 
-  const hasOnboarded = user
-    ? !!localStorage.getItem(`iattom_onboarded_${user.id}`)
-    : false;
+  const isAdmin    = me?.role === "admin";
   const hasPaidPlan = me?.plan !== undefined && me.plan !== "free";
 
-  if (!hasOnboarded && !hasPaidPlan) {
+  if (!isAdmin && !hasPaidPlan) {
     return <Redirect to="/onboarding" />;
   }
 
