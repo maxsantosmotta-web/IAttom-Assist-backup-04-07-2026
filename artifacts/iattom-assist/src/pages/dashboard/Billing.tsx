@@ -16,25 +16,25 @@ import {
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { PlanComparisonModal } from "@/components/PlanComparisonModal";
-import { PLAN_CREDITS } from "@/lib/credits";
+import { PLAN_CREDITS, PLAN_NAMES } from "@/lib/credits";
 
 const PLAN_COLORS: Record<string, string> = {
-  free: "text-zinc-400", pro: "text-primary", business: "text-emerald-400", agency: "text-purple-400",
+  free: "text-sky-100", pro: "text-rose-400", business: "text-emerald-400", agency: "text-slate-100",
 };
 const PLAN_BORDER: Record<string, string> = {
-  free: "border-white/10", pro: "border-primary/40", business: "border-emerald-500/40", agency: "border-purple-500/40",
+  free: "border-sky-300/20", pro: "border-rose-500/40", business: "border-emerald-500/40", agency: "border-slate-300/25",
 };
 const PLAN_BADGE_STYLE: Record<string, string> = {
-  free: "bg-zinc-800 text-zinc-400 border-zinc-700",
-  pro: "bg-primary/15 text-primary border-primary/30",
+  free: "bg-sky-500/10 text-sky-200 border-sky-300/20",
+  pro: "bg-rose-500/15 text-rose-400 border-rose-500/30",
   business: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  agency: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+  agency: "bg-white/10 text-slate-200 border-white/20",
 };
 const PLAN_BTN_STYLE: Record<string, string> = {
-  free: "bg-white/8 text-zinc-300 hover:bg-white/12 border border-white/10",
-  pro: "bg-primary text-black hover:bg-primary/90 font-bold",
-  business: "bg-emerald-500 text-black hover:bg-emerald-500/90 font-bold",
-  agency: "bg-purple-500 text-white hover:bg-purple-500/90 font-bold",
+  free: "bg-sky-400/15 text-sky-100 hover:bg-sky-400/25 border border-sky-300/25",
+  pro: "bg-rose-600 text-white hover:bg-rose-500 font-bold",
+  business: "bg-emerald-600 text-white hover:bg-emerald-500 font-bold",
+  agency: "bg-white text-black hover:bg-slate-100 font-bold",
 };
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   active: { label: "Active", color: "text-emerald-400" },
@@ -49,7 +49,7 @@ function formatDate(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 function formatAmount(amount: number): string {
-  if (amount === 0) return "START";
+  if (amount === 0) return "$29/mo";
   return `$${(amount / 100).toFixed(0)}/mo`;
 }
 
@@ -143,12 +143,12 @@ export function Billing() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Crown className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-primary uppercase tracking-widest">Você está no Plano START</span>
+                <span className="text-xs font-bold text-primary uppercase tracking-widest">Você está no Plano Cristal</span>
               </div>
               <p className="text-sm text-zinc-300 mb-1">
                 Você usou <span className="font-bold text-white">{creditsLeft}</span> de <span className="font-bold text-white">{planLimit}</span> créditos ({pct}% restantes).
               </p>
-              <p className="text-xs text-zinc-500">Atualize para o Pro: 500 créditos/mês, análises avançadas e suporte prioritário.</p>
+              <p className="text-xs text-zinc-500">Atualize para o Rubi: 500 créditos/mês, análises avançadas e suporte prioritário.</p>
             </div>
             <div className="flex gap-2 shrink-0">
               <Button
@@ -186,7 +186,7 @@ export function Billing() {
             <div className="flex items-center gap-2.5">
               <Crown className={`w-5 h-5 ${PLAN_COLORS[currentPlan] ?? "text-zinc-400"}`} />
               <span className={`text-2xl font-bold ${PLAN_COLORS[currentPlan] ?? "text-white"}`}>
-                {currentPlan === "free" ? "START" : currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
+                {PLAN_NAMES[currentPlan] ?? currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
               </span>
               {subStatus && STATUS_LABELS[subStatus] && (
                 <Badge className={`text-[10px] px-2 py-0 h-5 border ${
@@ -311,7 +311,7 @@ export function Billing() {
                   )}
 
                   <div className="mb-4 mt-1">
-                    <p className={`text-sm font-bold mb-0.5 ${PLAN_COLORS[planKey] ?? "text-white"}`}>{plan.name}</p>
+                    <p className={`text-sm font-bold mb-0.5 ${PLAN_COLORS[planKey] ?? "text-white"}`}>{PLAN_NAMES[planKey] ?? plan.name}</p>
                     <p className="text-xs text-zinc-600 leading-snug">{plan.description}</p>
                   </div>
 
@@ -346,7 +346,7 @@ export function Billing() {
                       </Button>
                     ) : (
                       <Button disabled size="sm" className="w-full bg-white/5 text-zinc-500 border border-white/10 text-xs cursor-default">
-                        Plano START
+                        Plano Cristal
                       </Button>
                     )
                   ) : hasActiveSub && isDowngrade ? (

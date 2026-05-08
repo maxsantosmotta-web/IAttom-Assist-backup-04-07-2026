@@ -201,11 +201,11 @@ export function Settings() {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="text-lg font-bold text-white capitalize">{plan === "free" ? "START" : (planInfo?.label ?? plan)}</p>
+                        <p className="text-lg font-bold text-white capitalize">{plan === "free" ? "Cristal" : (planInfo?.label ?? plan)}</p>
                         <Badge className="bg-primary/20 text-primary border-primary/30">Ativo</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {planInfo?.monthly === 0 ? "Plano START" : `$${planInfo?.monthly} / mês — cobrado mensalmente`}
+                        {planInfo?.monthly === 0 ? "Plano Cristal" : `$${planInfo?.monthly} / mês — cobrado mensalmente`}
                       </p>
                     </div>
                     <Zap className="w-8 h-8 text-primary/40" />

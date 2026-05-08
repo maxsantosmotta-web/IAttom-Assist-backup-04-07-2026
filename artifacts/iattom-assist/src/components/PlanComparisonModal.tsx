@@ -10,32 +10,32 @@ import {
   getGetMeQueryKey,
   useCreateCheckoutSession,
 } from "@workspace/api-client-react";
-import { PLAN_CREDITS } from "@/lib/credits";
+import { PLAN_CREDITS, PLAN_NAMES } from "@/lib/credits";
 
 const PLAN_ORDER = ["free", "pro", "business", "agency"];
 const PLAN_ACCENT: Record<string, string> = {
-  free: "border-white/10",
-  pro: "border-primary/50",
-  business: "border-emerald-500/50",
-  agency: "border-purple-500/50",
+  free: "border-sky-300/20",
+  pro: "border-rose-500/40",
+  business: "border-emerald-500/40",
+  agency: "border-slate-300/25",
 };
 const PLAN_GLOW: Record<string, string> = {
-  free: "",
-  pro: "shadow-[0_0_32px_rgba(201,168,76,0.12)]",
-  business: "shadow-[0_0_32px_rgba(52,211,153,0.12)]",
-  agency: "shadow-[0_0_32px_rgba(168,85,247,0.12)]",
+  free: "shadow-[0_0_32px_rgba(186,230,253,0.05)]",
+  pro: "shadow-[0_0_32px_rgba(244,63,94,0.09)]",
+  business: "shadow-[0_0_32px_rgba(16,185,129,0.09)]",
+  agency: "shadow-[0_0_40px_rgba(226,232,240,0.06)]",
 };
 const PLAN_COLOR: Record<string, string> = {
-  free: "text-zinc-400",
-  pro: "text-primary",
+  free: "text-sky-100",
+  pro: "text-rose-400",
   business: "text-emerald-400",
-  agency: "text-purple-400",
+  agency: "text-slate-100",
 };
 const PLAN_BTN: Record<string, string> = {
-  free: "bg-white/8 text-zinc-300 hover:bg-white/12 border border-white/10",
-  pro: "bg-primary text-black hover:bg-primary/90 font-bold",
-  business: "bg-emerald-500 text-black hover:bg-emerald-500/90 font-bold",
-  agency: "bg-purple-500 text-white hover:bg-purple-500/90 font-bold",
+  free: "bg-sky-400/15 text-sky-100 hover:bg-sky-400/25 border border-sky-300/25",
+  pro: "bg-rose-600 text-white hover:bg-rose-500 font-bold",
+  business: "bg-emerald-600 text-white hover:bg-emerald-500 font-bold",
+  agency: "bg-white text-black hover:bg-slate-100 font-bold",
 };
 
 interface PlanComparisonModalProps {
@@ -157,18 +157,14 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                           </div>
                         )}
 
-                        <p className={`text-sm font-bold mb-0.5 mt-1 ${PLAN_COLOR[key]}`}>{plan.name}</p>
+                        <p className={`text-sm font-bold mb-0.5 mt-1 ${PLAN_COLOR[key]}`}>{PLAN_NAMES[key] ?? plan.name}</p>
                         <p className="text-xs text-zinc-600 leading-snug mb-3">{plan.description}</p>
 
                         <div className="mb-3">
-                          {plan.amount === 0 ? (
-                            <span className="text-2xl font-bold text-white">START</span>
-                          ) : (
-                            <>
-                              <span className="text-2xl font-bold text-white">${plan.amount / 100}</span>
-                              <span className="text-xs text-zinc-500">/mo</span>
-                            </>
-                          )}
+                          <span className="text-2xl font-bold text-white">
+                            {plan.amount === 0 ? "$29" : `$${plan.amount / 100}`}
+                          </span>
+                          <span className="text-xs text-zinc-500">/mo</span>
                         </div>
 
                         <div className="flex items-center gap-1.5 mb-4 p-2 rounded-lg bg-white/[0.04] border border-white/[0.06]">
@@ -203,7 +199,7 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                             disabled={checkout.isPending}
                           >
                             {checkout.isPending && <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />}
-                            Assinar {plan.name}
+                            Assinar {PLAN_NAMES[key] ?? plan.name}
                           </Button>
                         )}
                       </div>

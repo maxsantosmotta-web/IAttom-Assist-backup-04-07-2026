@@ -114,7 +114,8 @@ export function DashboardHome() {
 
   const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "você";
   const rawPlan = creditsData ? (creditsData as { plan?: string }).plan as string | undefined : undefined;
-  const planLabel = rawPlan === "free" ? "START" : rawPlan ? rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1) : null;
+  const PLAN_DISPLAY_NAMES: Record<string, string> = { free: "Cristal", pro: "Rubi", business: "Esmeralda", agency: "Diamante" };
+  const planLabel = rawPlan ? (PLAN_DISPLAY_NAMES[rawPlan] ?? rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)) : null;
 
   // Recently used tools — derive unique modules from history
   const recentModules = historyData

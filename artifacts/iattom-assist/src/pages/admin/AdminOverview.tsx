@@ -97,10 +97,10 @@ export function AdminOverview() {
   ];
 
   const planBar = analytics ? [
-    { name: "Free", users: analytics.planRevenue.find(p => p.plan === "Free")?.users ?? 0, fill: MUTED },
-    { name: "Pro", users: analytics.planRevenue.find(p => p.plan === "Pro")?.users ?? 0, fill: GOLD },
-    { name: "Business", users: analytics.planRevenue.find(p => p.plan === "Business")?.users ?? 0, fill: GOLD_LIGHT },
-    { name: "Agency", users: analytics.planRevenue.find(p => p.plan === "Agency")?.users ?? 0, fill: "#a78bfa" },
+    { name: "Cristal", users: analytics.planRevenue.find(p => p.plan === "free")?.users ?? 0, fill: "#bae6fd" },
+    { name: "Rubi", users: analytics.planRevenue.find(p => p.plan === "pro")?.users ?? 0, fill: "#fb7185" },
+    { name: "Esmeralda", users: analytics.planRevenue.find(p => p.plan === "business")?.users ?? 0, fill: GOLD_LIGHT },
+    { name: "Diamante", users: analytics.planRevenue.find(p => p.plan === "agency")?.users ?? 0, fill: "#e2e8f0" },
   ] : [];
 
   return (

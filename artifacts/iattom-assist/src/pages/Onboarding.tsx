@@ -15,73 +15,81 @@ type PlanKey = "free" | "pro" | "business" | "agency";
 
 const PLAN_ORDER: PlanKey[] = ["free", "pro", "business", "agency"];
 
-const PLAN_NAMES: Record<PlanKey, string> = {
-  free: "START",
-  pro: "Pro",
-  business: "Business",
-  agency: "Agency",
-};
-
-const PLAN_PRICES_DISPLAY: Record<PlanKey, string> = {
-  free: "Grátis",
-  pro: "$79/mês",
-  business: "$199/mês",
-  agency: "$499/mês",
-};
-
-const PLAN_COLORS: Record<PlanKey, string> = {
-  free: "text-zinc-400",
-  pro: "text-primary",
-  business: "text-emerald-400",
-  agency: "text-purple-400",
-};
-
-const PLAN_BORDER: Record<PlanKey, string> = {
-  free: "border-white/10",
-  pro: "border-primary/40",
-  business: "border-emerald-500/30",
-  agency: "border-purple-500/30",
-};
-
-const PLAN_GLOW: Record<PlanKey, string> = {
-  free: "",
-  pro: "shadow-[0_0_40px_rgba(201,168,76,0.07)]",
-  business: "shadow-[0_0_40px_rgba(16,185,129,0.05)]",
-  agency: "shadow-[0_0_40px_rgba(168,85,247,0.05)]",
-};
-
-const PLAN_BTN: Record<PlanKey, string> = {
-  free: "bg-white/8 hover:bg-white/12 text-zinc-200 border border-white/10",
-  pro: "bg-primary hover:bg-primary/90 text-black",
-  business: "bg-emerald-500 hover:bg-emerald-500/90 text-black",
-  agency: "bg-purple-500 hover:bg-purple-500/90 text-white",
-};
-
-const STATIC_FEATURES: Record<PlanKey, string[]> = {
-  free: [
-    "50 créditos por mês",
-    "Todos os módulos de IA",
-    "Histórico básico",
-    "Suporte por email",
-  ],
-  pro: [
-    "500 créditos por mês",
-    "Analytics avançado",
-    "Suporte prioritário",
-    "Bônus de indicação 2×",
-  ],
-  business: [
-    "2.000 créditos por mês",
-    "Tudo do Pro",
-    "Relatórios exportáveis",
-    "Suporte dedicado",
-  ],
-  agency: [
-    "10.000 créditos por mês",
-    "Tudo do Business",
-    "Multi-workspace",
-    "Acesso à API",
-  ],
+const PLAN_DISPLAY: Record<PlanKey, {
+  name: string;
+  price: string;
+  tagline: string;
+  color: string;
+  border: string;
+  glow: string;
+  badgeColor: string;
+  btnClass: string;
+  features: string[];
+}> = {
+  free: {
+    name: "Cristal",
+    price: "$29/mês",
+    tagline: "Clareza e começo",
+    color: "text-sky-100",
+    border: "border-sky-300/20",
+    glow: "shadow-[0_0_40px_rgba(186,230,253,0.06)]",
+    badgeColor: "bg-sky-500/10 text-sky-200 border-sky-300/20",
+    btnClass: "bg-sky-400/15 hover:bg-sky-400/25 text-sky-100 border border-sky-300/25",
+    features: [
+      "50 créditos por mês",
+      "Todos os módulos de IA",
+      "Histórico básico",
+      "Suporte por email",
+    ],
+  },
+  pro: {
+    name: "Rubi",
+    price: "$79/mês",
+    tagline: "Energia e crescimento",
+    color: "text-rose-400",
+    border: "border-rose-500/40",
+    glow: "shadow-[0_0_40px_rgba(244,63,94,0.09)]",
+    badgeColor: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+    btnClass: "bg-rose-600 hover:bg-rose-500 text-white font-bold",
+    features: [
+      "500 créditos por mês",
+      "Analytics avançado",
+      "Suporte prioritário",
+      "Bônus de indicação 2×",
+    ],
+  },
+  business: {
+    name: "Esmeralda",
+    price: "$199/mês",
+    tagline: "Inteligência e expansão",
+    color: "text-emerald-400",
+    border: "border-emerald-500/40",
+    glow: "shadow-[0_0_40px_rgba(16,185,129,0.09)]",
+    badgeColor: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    btnClass: "bg-emerald-600 hover:bg-emerald-500 text-white font-bold",
+    features: [
+      "2.000 créditos por mês",
+      "Tudo do Rubi",
+      "Relatórios exportáveis",
+      "Suporte dedicado",
+    ],
+  },
+  agency: {
+    name: "Diamante",
+    price: "$499/mês",
+    tagline: "Elite e máximo poder",
+    color: "text-slate-100",
+    border: "border-slate-300/25",
+    glow: "shadow-[0_0_50px_rgba(226,232,240,0.07)]",
+    badgeColor: "bg-white/10 text-slate-200 border-white/20",
+    btnClass: "bg-gradient-to-br from-slate-100 to-white hover:from-white hover:to-slate-200 text-black font-bold",
+    features: [
+      "10.000 créditos por mês",
+      "Tudo do Esmeralda",
+      "Multi-workspace",
+      "Acesso à API",
+    ],
+  },
 };
 
 function onboardingKey(userId: string) {
@@ -145,17 +153,11 @@ export function Onboarding() {
   const handleSelect = (planKey: PlanKey) => {
     if (!user || selecting) return;
 
-    if (planKey === "free") {
-      localStorage.setItem(onboardingKey(user.id), "1");
-      navigate("/dashboard", { replace: true });
-      return;
-    }
-
     const stripePlan = stripePlans.find((p) => p.planKey === planKey);
     if (!stripePlan?.priceId) {
       toast({
-        title: "Plano indisponível",
-        description: "Os planos pagos serão ativados em breve.",
+        title: "Plano em configuração",
+        description: "Este plano será disponibilizado em breve.",
         variant: "destructive",
       });
       return;
@@ -225,7 +227,7 @@ export function Onboarding() {
             Conta criada com sucesso
           </h1>
           <p className="text-[13px] text-zinc-400 max-w-xs mx-auto leading-relaxed">
-            Escolha seu plano para começar a usar o iAttom Assist.
+            Escolha seu plano para desbloquear o iAttom Assist.
           </p>
         </motion.div>
 
@@ -236,32 +238,34 @@ export function Onboarding() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full"
         >
           {PLAN_ORDER.map((planKey) => {
-            const isPopular = planKey === "pro";
+            const plan = PLAN_DISPLAY[planKey];
+            const isRecommended = planKey === "pro";
             const isPending = selecting === planKey;
 
             return (
               <motion.div
                 key={planKey}
                 variants={cardVariants}
-                className={`relative rounded-2xl border bg-[#111111] p-5 flex flex-col ${PLAN_BORDER[planKey]} ${PLAN_GLOW[planKey]}`}
+                className={`relative rounded-2xl border bg-[#111111] p-5 flex flex-col ${plan.border} ${plan.glow}`}
               >
-                {isPopular && (
+                {isRecommended && (
                   <div className="absolute -top-px left-1/2 -translate-x-1/2">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-3 py-[3px] rounded-b-lg bg-primary text-black tracking-wide">
-                      <Star className="w-2.5 h-2.5 fill-black" />
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-3 py-[3px] rounded-b-lg bg-rose-600 text-white tracking-wide">
+                      <Star className="w-2.5 h-2.5 fill-white" />
                       RECOMENDADO
                     </span>
                   </div>
                 )}
 
                 <div className="mb-4 mt-2">
-                  <p
-                    className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${PLAN_COLORS[planKey]}`}
-                  >
-                    {PLAN_NAMES[planKey]}
+                  <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${plan.color}`}>
+                    {plan.name}
                   </p>
                   <p className="text-[26px] font-black text-white tracking-tight leading-none">
-                    {PLAN_PRICES_DISPLAY[planKey]}
+                    {plan.price}
+                  </p>
+                  <p className="text-[11px] text-zinc-500 mt-1 tracking-wide">
+                    {plan.tagline}
                   </p>
                 </div>
 
@@ -273,9 +277,9 @@ export function Onboarding() {
                 </div>
 
                 <ul className="space-y-2.5 mb-6 flex-1">
-                  {STATIC_FEATURES[planKey].map((feat) => (
+                  {plan.features.map((feat) => (
                     <li key={feat} className="flex items-start gap-2">
-                      <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-[1px]" />
+                      <Check className={`w-3.5 h-3.5 shrink-0 mt-[1px] ${plan.color}`} />
                       <span className="text-[12px] text-zinc-400 leading-snug">
                         {feat}
                       </span>
@@ -286,14 +290,12 @@ export function Onboarding() {
                 <button
                   onClick={() => handleSelect(planKey)}
                   disabled={!!selecting}
-                  className={`w-full h-[42px] rounded-xl text-[12px] font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${PLAN_BTN[planKey]}`}
+                  className={`w-full h-[42px] rounded-xl text-[12px] transition-all duration-200 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${plan.btnClass}`}
                 >
                   {isPending ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : planKey === "free" ? (
-                    "Começar grátis"
                   ) : (
-                    `Escolher ${PLAN_NAMES[planKey]}`
+                    `Assinar ${plan.name}`
                   )}
                 </button>
               </motion.div>
@@ -307,7 +309,7 @@ export function Onboarding() {
           transition={{ delay: 0.9, duration: 0.5 }}
           className="text-center text-[11px] text-zinc-600 mt-9 tracking-wide"
         >
-          Cancele quando quiser · Cobrado mensalmente · Créditos renovam todo mês
+          Pagamento seguro via Stripe · Cancele quando quiser · Créditos renovam todo mês
         </motion.p>
       </div>
     </div>

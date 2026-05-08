@@ -14,11 +14,18 @@ export const PLAN_CREDITS = {
   agency: 10000,
 } as const;
 
+export const PLAN_NAMES: Record<string, string> = {
+  free: "Cristal",
+  pro: "Rubi",
+  business: "Esmeralda",
+  agency: "Diamante",
+};
+
 export const PLAN_PRICES: Record<string, { monthly: number; label: string; color: string }> = {
-  free: { monthly: 0, label: "Free", color: "text-zinc-400" },
-  pro: { monthly: 79, label: "Pro", color: "text-primary" },
-  business: { monthly: 199, label: "Business", color: "text-emerald-400" },
-  agency: { monthly: 499, label: "Agency", color: "text-purple-400" },
+  free: { monthly: 29, label: "Cristal", color: "text-sky-100" },
+  pro: { monthly: 79, label: "Rubi", color: "text-rose-400" },
+  business: { monthly: 199, label: "Esmeralda", color: "text-emerald-400" },
+  agency: { monthly: 499, label: "Diamante", color: "text-slate-100" },
 };
 
 export type FeatureKey = keyof typeof FEATURE_COSTS;

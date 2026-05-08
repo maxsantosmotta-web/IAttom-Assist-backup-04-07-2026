@@ -107,10 +107,10 @@ export function AdminAnalytics() {
 
   const planBar = growthStats
     ? [
-        { name: "Free", users: growthStats.planBreakdown.free, fill: "#71717a" },
-        { name: "Pro", users: growthStats.planBreakdown.pro, fill: GOLD },
-        { name: "Business", users: growthStats.planBreakdown.business, fill: EMERALD },
-        { name: "Agency", users: growthStats.planBreakdown.agency, fill: PURPLE },
+        { name: "Cristal", users: growthStats.planBreakdown.free, fill: "#bae6fd" },
+        { name: "Rubi", users: growthStats.planBreakdown.pro, fill: "#fb7185" },
+        { name: "Esmeralda", users: growthStats.planBreakdown.business, fill: EMERALD },
+        { name: "Diamante", users: growthStats.planBreakdown.agency, fill: "#e2e8f0" },
       ].filter((p) => p.users > 0)
     : [];
 
