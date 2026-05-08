@@ -311,12 +311,56 @@ function SignUpDrawer({ onClose, onOpenLogin }: { onClose: () => void; onOpenLog
   const [err, setErr]             = useState("");
   const [loading, setLoading]     = useState(false);
   const [showResetLink, setReset] = useState(false);
+  const [checking, setChecking]   = useState(false);
+  const [lastChecked, setLastChecked] = useState("");
 
   const busy = loading;
+
+  const NOT_FOUND_CODES = new Set([
+    "form_identifier_not_found", "user_not_found", "resource_not_found",
+  ]);
+
+  async function handleIdentifierBlur() {
+    const value = method === "email" ? email.trim() : phone.trim();
+    if (!value || value === lastChecked) return;
+    setLastChecked(value);
+    setChecking(true);
+    try {
+      const { error } = await withTimeout(
+        signIn.create({ identifier: value }),
+        5000,
+      );
+      if (!error) {
+        // Clerk accepted the identifier → user exists
+        setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
+        setReset(true);
+      } else {
+        const code = (error as { code?: string }).code ?? "";
+        if (NOT_FOUND_CODES.has(code)) {
+          // User not found → clear any stale existing-account message
+          if (showResetLink) { setErr(""); setReset(false); }
+        } else {
+          // Different error (e.g. strategy mismatch) → account exists with different method
+          setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
+          setReset(true);
+        }
+      }
+    } catch (ex) {
+      // timeout or network: silently ignore — normal submit flow handles it
+      if (ex instanceof Error && ex.message === "__timeout__") return;
+      if (isExistingAccount(ex)) {
+        setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
+        setReset(true);
+      }
+    } finally {
+      setChecking(false);
+    }
+  }
 
   function handleMethodChange(m: "email" | "phone") {
     setMethod(m); setErr(""); setEmail(""); setPhone("");
     setPass(""); setConfirm(""); setStep("form"); setReset(false);
+    setLastChecked(""); setChecking(false);
   }
 
   /* ── PASSO 1: tentativa de cadastro ─────────────────────────────── */
@@ -453,27 +497,41 @@ function SignUpDrawer({ onClose, onOpenLogin }: { onClose: () => void; onOpenLog
           <MethodToggle value={method} onChange={handleMethodChange} />
           <form onSubmit={handleCreate} className="flex flex-col gap-3 mt-3">
             {method === "email" ? (
-              <input
-                key="email"
-                type="email"
-                placeholder="Digite seu email"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setErr(""); setReset(false); }}
-                className={inputBase}
-                autoComplete="email"
-                required
-              />
+              <div key="email" className="relative">
+                <input
+                  type="email"
+                  placeholder="Digite seu email"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setErr(""); setReset(false); setLastChecked(""); }}
+                  onBlur={handleIdentifierBlur}
+                  className={inputBase}
+                  autoComplete="email"
+                  required
+                />
+                {checking && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/30 tracking-wide">
+                    verificando...
+                  </span>
+                )}
+              </div>
             ) : (
-              <input
-                key="phone"
-                type="tel"
-                placeholder="Digite seu telefone (ex: +5511999999999)"
-                value={phone}
-                onChange={e => { setPhone(e.target.value); setErr(""); setReset(false); }}
-                className={inputBase}
-                autoComplete="tel"
-                required
-              />
+              <div key="phone" className="relative">
+                <input
+                  type="tel"
+                  placeholder="Digite seu telefone (ex: +5511999999999)"
+                  value={phone}
+                  onChange={e => { setPhone(e.target.value); setErr(""); setReset(false); setLastChecked(""); }}
+                  onBlur={handleIdentifierBlur}
+                  className={inputBase}
+                  autoComplete="tel"
+                  required
+                />
+                {checking && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/30 tracking-wide">
+                    verificando...
+                  </span>
+                )}
+              </div>
             )}
             <PasswordInput
               placeholder="Crie uma senha (mín. 8 caracteres)"
