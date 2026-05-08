@@ -16,7 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { PlanComparisonModal } from "@/components/PlanComparisonModal";
-import { PLAN_CREDITS, PLAN_NAMES } from "@/lib/credits";
+import { PLAN_CREDITS, PLAN_NAMES, PLAN_PRICES } from "@/lib/credits";
 
 const PLAN_COLORS: Record<string, string> = {
   free: "text-sky-100", pro: "text-rose-400", business: "text-emerald-400", agency: "text-slate-100",
@@ -48,9 +48,8 @@ function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
-function formatAmount(amount: number): string {
-  if (amount === 0) return "$29/mo";
-  return `$${(amount / 100).toFixed(0)}/mo`;
+function formatAmount(_amount: number): string {
+  return "";
 }
 
 const PRO_UNLOCKS = [
@@ -316,7 +315,7 @@ export function Billing() {
                   </div>
 
                   <div className="mb-4">
-                    <span className="text-2xl font-bold text-white">{formatAmount(plan.amount)}</span>
+                    <span className="text-2xl font-bold text-white">{PLAN_PRICES[planKey]?.monthlyDisplay ?? "—"}</span>
                   </div>
 
                   <div className="flex items-center gap-1.5 mb-4 p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">

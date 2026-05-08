@@ -21,11 +21,11 @@ export const PLAN_NAMES: Record<string, string> = {
   agency: "Diamante",
 };
 
-export const PLAN_PRICES: Record<string, { monthly: number; label: string; color: string }> = {
-  free: { monthly: 29, label: "Cristal", color: "text-sky-100" },
-  pro: { monthly: 79, label: "Rubi", color: "text-rose-400" },
-  business: { monthly: 199, label: "Esmeralda", color: "text-emerald-400" },
-  agency: { monthly: 499, label: "Diamante", color: "text-slate-100" },
+export const PLAN_PRICES: Record<string, { monthly: number; yearly: number; monthlyDisplay: string; yearlyDisplay: string; label: string; color: string }> = {
+  free:     { monthly: 19.90, yearly: 197,  monthlyDisplay: "R$19,90/mês", yearlyDisplay: "R$197/ano",    label: "Cristal",   color: "text-sky-100"     },
+  pro:      { monthly: 89,    yearly: 968,  monthlyDisplay: "R$89/mês",    yearlyDisplay: "R$968/ano",    label: "Rubi",      color: "text-rose-400"    },
+  business: { monthly: 197,   yearly: 1997, monthlyDisplay: "R$197/mês",   yearlyDisplay: "R$1.997/ano",  label: "Esmeralda", color: "text-emerald-400" },
+  agency:   { monthly: 497,   yearly: 4997, monthlyDisplay: "R$497/mês",   yearlyDisplay: "R$4.997/ano",  label: "Diamante",  color: "text-slate-100"   },
 };
 
 export type FeatureKey = keyof typeof FEATURE_COSTS;

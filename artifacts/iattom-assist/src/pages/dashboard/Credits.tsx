@@ -10,7 +10,7 @@ import {
   useListCreditTransactions,
   getListCreditTransactionsQueryKey,
 } from "@workspace/api-client-react";
-import { PLAN_CREDITS, PLAN_PRICES, getCreditColor, getCreditBarColor } from "@/lib/credits";
+import { PLAN_CREDITS, PLAN_NAMES, PLAN_PRICES, getCreditColor, getCreditBarColor } from "@/lib/credits";
 
 const featureLabels: Record<string, string> = {
   product_discovery: "Buscar Produtos",
@@ -149,7 +149,7 @@ export function Credits() {
                     onClick={() => navigate("/dashboard/billing")}
                     className="text-xs px-3 py-1.5 rounded-md bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors capitalize font-medium"
                   >
-                    {plan} — ${PLAN_PRICES[plan].monthly}/mo
+                    {PLAN_NAMES[plan] ?? plan} — {PLAN_PRICES[plan].monthlyDisplay}
                   </button>
                 ))}
               </div>

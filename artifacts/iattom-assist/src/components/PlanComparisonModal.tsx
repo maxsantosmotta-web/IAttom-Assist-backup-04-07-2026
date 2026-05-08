@@ -10,7 +10,7 @@ import {
   getGetMeQueryKey,
   useCreateCheckoutSession,
 } from "@workspace/api-client-react";
-import { PLAN_CREDITS, PLAN_NAMES } from "@/lib/credits";
+import { PLAN_CREDITS, PLAN_NAMES, PLAN_PRICES } from "@/lib/credits";
 
 const PLAN_ORDER = ["free", "pro", "business", "agency"];
 const PLAN_ACCENT: Record<string, string> = {
@@ -162,15 +162,14 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
 
                         <div className="mb-3">
                           <span className="text-2xl font-bold text-white">
-                            {plan.amount === 0 ? "$29" : `$${plan.amount / 100}`}
+                            {PLAN_PRICES[key]?.monthlyDisplay ?? "—"}
                           </span>
-                          <span className="text-xs text-zinc-500">/mo</span>
                         </div>
 
                         <div className="flex items-center gap-1.5 mb-4 p-2 rounded-lg bg-white/[0.04] border border-white/[0.06]">
                           <Zap className="w-3 h-3 text-primary fill-primary shrink-0" />
                           <span className="text-xs font-semibold text-zinc-300">
-                            {(PLAN_CREDITS[key as keyof typeof PLAN_CREDITS] ?? plan.credits).toLocaleString()} credits/mo
+                            {(PLAN_CREDITS[key as keyof typeof PLAN_CREDITS] ?? plan.credits).toLocaleString()} créditos/mês
                           </span>
                         </div>
 

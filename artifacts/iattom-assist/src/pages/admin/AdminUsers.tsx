@@ -311,10 +311,10 @@ export function AdminUsers() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-[#111111] border-white/10">
-                  <SelectItem value="free">Free — 50 credits</SelectItem>
-                  <SelectItem value="pro">Pro — $79/mo — 500 credits</SelectItem>
-                  <SelectItem value="business">Business — $199/mo — 2,000 credits</SelectItem>
-                  <SelectItem value="agency">Agency — $499/mo — 10,000 credits</SelectItem>
+                  <SelectItem value="free">Cristal — R$19,90/mês — 50 créditos</SelectItem>
+                  <SelectItem value="pro">Rubi — R$89/mês — 500 créditos</SelectItem>
+                  <SelectItem value="business">Esmeralda — R$197/mês — 2.000 créditos</SelectItem>
+                  <SelectItem value="agency">Diamante — R$497/mês — 10.000 créditos</SelectItem>
                 </SelectContent>
               </Select>
             </div>

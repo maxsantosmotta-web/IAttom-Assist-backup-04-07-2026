@@ -88,7 +88,7 @@ const TEST_STEPS = [
     id: "test_billing",
     label: "Test Billing Upgrade",
     description:
-      "Go to Billing, click Upgrade on the Pro plan ($79/mo). Verify the Stripe Checkout page opens. Cancel without completing to avoid charges.",
+      "Acesse Faturamento, clique em Assinar no plano Rubi (R$89/mês). Verifique se o Checkout do Stripe abre. Cancele sem completar para evitar cobranças.",
     link: "/dashboard/billing",
     linkLabel: "View Billing",
   },
@@ -125,7 +125,7 @@ const MANUAL_CONFIG = [
     steps: [
       "Connect the Stripe integration in the Replit Integrations panel",
       "Run: pnpm --filter @workspace/scripts run seed-products",
-      "Verify Pro ($79), Business ($199), and Agency ($499) products appear in your Stripe dashboard",
+      "Verifique se os produtos Rubi (R$89), Esmeralda (R$197) e Diamante (R$497) aparecem no painel do Stripe",
       "Confirm webhook is registered — the server auto-registers it on startup",
     ],
   },

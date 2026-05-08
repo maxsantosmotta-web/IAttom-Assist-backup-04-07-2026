@@ -28,7 +28,7 @@ const PLAN_DISPLAY: Record<PlanKey, {
 }> = {
   free: {
     name: "Cristal",
-    price: "$29/mês",
+    price: "R$19,90/mês",
     tagline: "Clareza e começo",
     color: "text-sky-100",
     border: "border-sky-300/20",
@@ -44,7 +44,7 @@ const PLAN_DISPLAY: Record<PlanKey, {
   },
   pro: {
     name: "Rubi",
-    price: "$79/mês",
+    price: "R$89/mês",
     tagline: "Energia e crescimento",
     color: "text-rose-400",
     border: "border-rose-500/40",
@@ -60,7 +60,7 @@ const PLAN_DISPLAY: Record<PlanKey, {
   },
   business: {
     name: "Esmeralda",
-    price: "$199/mês",
+    price: "R$197/mês",
     tagline: "Inteligência e expansão",
     color: "text-emerald-400",
     border: "border-emerald-500/40",
@@ -76,7 +76,7 @@ const PLAN_DISPLAY: Record<PlanKey, {
   },
   agency: {
     name: "Diamante",
-    price: "$499/mês",
+    price: "R$497/mês",
     tagline: "Elite e máximo poder",
     color: "text-slate-100",
     border: "border-slate-300/25",

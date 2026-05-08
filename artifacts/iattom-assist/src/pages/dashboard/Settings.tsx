@@ -205,7 +205,7 @@ export function Settings() {
                         <Badge className="bg-primary/20 text-primary border-primary/30">Ativo</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {planInfo?.monthly === 0 ? "Plano Cristal" : `$${planInfo?.monthly} / mês — cobrado mensalmente`}
+                        {planInfo?.monthlyDisplay ?? "—"} — cobrado mensalmente
                       </p>
                     </div>
                     <Zap className="w-8 h-8 text-primary/40" />
