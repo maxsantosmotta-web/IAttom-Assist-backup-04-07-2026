@@ -14,25 +14,86 @@ const inputBase =
 
 /* ─── error mapper ───────────────────────────────────────────────────── */
 const errMap: Record<string, string> = {
-  form_password_pwned:             "Senha muito comum. Escolha uma senha mais forte.",
-  form_identifier_exists:          "Este email já está cadastrado.",
-  form_password_incorrect:         "Senha incorreta.",
-  form_identifier_not_found:       "Usuário não encontrado.",
-  too_many_requests:               "Muitas tentativas. Aguarde um momento.",
-  form_code_incorrect:             "Código incorreto. Tente novamente.",
-  form_code_expired:               "Código expirado. Solicite um novo.",
-  form_param_format_invalid:       "Formato inválido. Verifique os dados.",
-  session_exists:                  "Você já está autenticado.",
-  form_password_length_too_short:  "A senha deve ter pelo menos 8 caracteres.",
-  form_param_nil:                  "Preencha todos os campos obrigatórios.",
-  phone_number_exists:             "Este número já está cadastrado.",
+  /* senhas */
+  form_password_pwned:                     "Senha muito comum. Escolha uma senha mais forte.",
+  form_password_incorrect:                 "Senha incorreta. Verifique e tente novamente.",
+  form_password_length_too_short:          "A senha deve ter pelo menos 8 caracteres.",
+  form_password_size_in_bytes_exceeded:    "Senha muito longa. Reduza o tamanho.",
+  form_password_no_password:              "Informe uma senha para continuar.",
+
+  /* identificadores */
+  form_identifier_exists:                  "Este email já está cadastrado.",
+  form_identifier_not_found:               "Usuário não encontrado. Verifique os dados.",
+  phone_number_exists:                     "Este número de telefone já está cadastrado.",
+  username_exists_in_instance:             "Este nome de usuário já está em uso.",
+
+  /* estratégia / método */
+  strategy_for_user_invalid:               "Este método de acesso não está disponível para esta conta. Tente entrar usando a mesma opção utilizada no cadastro.",
+  not_allowed_access:                      "Acesso não permitido para esta conta.",
+  client_state_invalid:                    "Sessão inválida. Recarregue a página e tente novamente.",
+  strategy_not_allowed_for_instance:       "Este método de autenticação não está habilitado.",
+
+  /* código de verificação */
+  form_code_incorrect:                     "Código incorreto. Tente novamente.",
+  form_code_expired:                       "Código expirado. Solicite um novo.",
+  verification_failed:                     "Verificação falhou. Tente novamente.",
+  verification_expired:                    "Verificação expirada. Recomece o processo.",
+
+  /* campos / formato */
+  form_param_format_invalid:               "Formato inválido. Verifique os dados informados.",
+  form_param_nil:                          "Preencha todos os campos obrigatórios.",
+  form_param_missing:                      "Campo obrigatório não preenchido.",
+  form_param_unknown:                      "Dados não reconhecidos pelo sistema.",
+  form_conditional_param_value_disallowed: "Combinação de dados inválida.",
+
+  /* sessão */
+  session_exists:                          "Você já está autenticado.",
+  session_not_found:                       "Sessão não encontrada. Faça login novamente.",
+
+  /* limites */
+  too_many_requests:                       "Muitas tentativas. Aguarde alguns instantes.",
+  quota_exceeded:                          "Limite de tentativas excedido. Tente mais tarde.",
+  captcha_invalid:                         "Verificação de segurança falhou. Tente novamente.",
+
+  /* conta */
+  account_transfer_invalid:                "Erro na transferência de conta. Tente novamente.",
+  user_locked:                             "Conta temporariamente bloqueada. Aguarde e tente novamente.",
+  user_not_found:                          "Usuário não encontrado.",
 };
+
+/* frases em inglês que podem vir no campo message/longMessage */
+const msgPhrases: Array<[RegExp, string]> = [
+  [/verification strategy is not valid/i,        "Este método de acesso não está disponível para esta conta. Tente entrar usando a mesma opção utilizada no cadastro."],
+  [/password is incorrect/i,                     "Senha incorreta. Verifique e tente novamente."],
+  [/identifier (is )?not found/i,                "Usuário não encontrado. Verifique os dados."],
+  [/already (exists|taken)/i,                    "Estes dados já estão cadastrados. Tente fazer login."],
+  [/too many (requests|attempts)/i,              "Muitas tentativas. Aguarde alguns instantes."],
+  [/code (is )?incorrect/i,                      "Código incorreto. Tente novamente."],
+  [/code (is )?expired/i,                        "Código expirado. Solicite um novo."],
+  [/is not allowed/i,                            "Ação não permitida para esta conta."],
+  [/strategy.*not.*valid/i,                      "Este método de acesso não está disponível para esta conta. Tente entrar usando a mesma opção utilizada no cadastro."],
+  [/locked/i,                                    "Conta temporariamente bloqueada. Aguarde e tente novamente."],
+  [/session.*not found/i,                        "Sessão não encontrada. Faça login novamente."],
+  [/is invalid/i,                                "Dado inválido. Verifique e tente novamente."],
+];
 
 type ClerkErr = { code: string; longMessage?: string; message?: string };
 
 function clerkMsg(e: ClerkErr | null): string {
   if (!e) return "Erro desconhecido.";
-  return errMap[e.code] ?? e.longMessage ?? e.message ?? "Erro ao autenticar. Tente novamente.";
+
+  // 1. código mapeado diretamente
+  if (errMap[e.code]) return errMap[e.code];
+
+  // 2. busca na mensagem por frases em inglês conhecidas
+  const raw = e.longMessage ?? e.message ?? "";
+  for (const [pattern, pt] of msgPhrases) {
+    if (pattern.test(raw)) return pt;
+  }
+
+  // 3. fallback: retorna o texto original se já estiver em pt, ou mensagem genérica
+  if (raw) return raw;
+  return "Erro ao autenticar. Tente novamente.";
 }
 
 /* ─── drawer shell ───────────────────────────────────────────────────── */
