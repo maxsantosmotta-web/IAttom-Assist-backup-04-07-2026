@@ -19,6 +19,7 @@ export function LoadingScreen() {
           width={260}
           height={260}
           className="object-contain"
+          style={{ opacity: 0 }}
           initial={{ scale: 0.82, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}

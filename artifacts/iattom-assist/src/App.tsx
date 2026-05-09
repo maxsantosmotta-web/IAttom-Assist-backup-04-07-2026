@@ -316,7 +316,16 @@ function App() {
       <AnimatePresence mode="wait">
         {isLoading && <LoadingScreen key="loading" />}
       </AnimatePresence>
-      <ClerkProviderWithRoutes />
+      <div
+        style={
+          isLoading
+            ? { visibility: "hidden", position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none" }
+            : undefined
+        }
+        aria-hidden={isLoading}
+      >
+        <ClerkProviderWithRoutes />
+      </div>
     </WouterRouter>
   );
 }
