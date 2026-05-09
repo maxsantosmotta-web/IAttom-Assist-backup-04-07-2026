@@ -327,31 +327,30 @@ function SignUpDrawer({ onClose, onOpenLogin }: { onClose: () => void; onOpenLog
     setLastChecked(value);
     setChecking(true);
     try {
-      // signIn.create() retorna { error } — não lança.
-      // error === null → email existe (sign-in criado com sucesso)
-      // error.code === "form_identifier_not_found" → email novo, sem cadastro
-      const { error } = await withTimeout(signIn.create({ identifier: value }));
+      // signUp.password() é o único probe que não interfere no fluxo de cadastro.
+      // Para email EXISTENTE: Clerk retorna { error: { code: "form_identifier_exists" } }
+      // Para email NOVO: Clerk retorna { error: null } ou qualquer outro erro (senha, etc.)
+      // — nenhum desses outros erros indica email existente.
+      const { error } = await withTimeout(signUp.password({ emailAddress: value, password: "Temp1234!" }));
       if (error) {
-        const ce = extractFirstClerkErr(error);
-        const code = ce?.code ?? "";
-        if (NOT_FOUND_CODES.has(code)) {
-          // Email novo — sem erro, libera o cadastro
-          setErr("");
-          setReset(false);
-        } else if (isExistingAccount(error)) {
-          // Conta existe via outro método (ex: Google/OAuth)
+        const code = extractFirstClerkErr(error)?.code ?? "";
+        if (code === "form_identifier_exists") {
           setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
           setReset(true);
+        } else {
+          // Qualquer outro erro (senha fraca, parâmetro, etc.) = email NOVO
+          setErr("");
+          setReset(false);
         }
-        // Outros erros (ex: formato inválido) → silencioso, submit trata
       } else {
-        // Sem erro → email existe com senha configurada
-        setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
-        setReset(true);
+        // Sem erro = email novo, signUp pré-configurado com emailAddress
+        setErr("");
+        setReset(false);
       }
-    } catch (ex) {
-      // Timeout ou rede → não tratar como conta existente, silencioso
-      // O submit vai tratar adequadamente se necessário
+    } catch {
+      // Timeout ou falha de rede → silencioso, não bloqueia o usuário
+      setErr("");
+      setReset(false);
     } finally {
       setChecking(false);
     }
