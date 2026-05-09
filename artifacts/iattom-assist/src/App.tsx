@@ -295,7 +295,7 @@ function ClerkProviderWithRoutes() {
 }
 
 function App() {
-  const [isLoading, setIsLoading] = useState(() => {
+  const splashNeeded = (() => {
     try {
       if (sessionStorage.getItem("iattom_splash_seen")) return false;
       sessionStorage.setItem("iattom_splash_seen", "1");
@@ -303,7 +303,12 @@ function App() {
     } catch {
       return true;
     }
-  });
+  })();
+
+  const [isLoading, setIsLoading] = useState(splashNeeded);
+  // Content stays hidden until the splash EXIT ANIMATION fully completes
+  // This prevents any bleed-through during the 0.6s fade-out
+  const [showContent, setShowContent] = useState(!splashNeeded);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -313,16 +318,19 @@ function App() {
 
   return (
     <WouterRouter base={basePath}>
-      <AnimatePresence mode="wait">
+      <AnimatePresence
+        mode="wait"
+        onExitComplete={() => setShowContent(true)}
+      >
         {isLoading && <LoadingScreen key="loading" />}
       </AnimatePresence>
       <div
         style={
-          isLoading
+          !showContent
             ? { visibility: "hidden", position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none" }
             : undefined
         }
-        aria-hidden={isLoading}
+        aria-hidden={!showContent}
       >
         <ClerkProviderWithRoutes />
       </div>
