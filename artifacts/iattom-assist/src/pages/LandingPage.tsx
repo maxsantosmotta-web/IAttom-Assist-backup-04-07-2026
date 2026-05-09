@@ -321,10 +321,34 @@ function SignUpDrawer({ onClose, onOpenLogin }: { onClose: () => void; onOpenLog
   ]);
 
   async function handleIdentifierBlur() {
-    // Pre-check removido: signIn.create() no Clerk v6 com tenant Replit-managed resolve
-    // sem lançar mesmo para emails inexistentes, gerando falso-positivo "já existe".
-    // O signUp.create() em handleCreate já lança form_identifier_exists quando necessário.
-    return;
+    if (method !== "email") return;
+    const value = email.trim();
+    if (!value || value === lastChecked) return;
+    setLastChecked(value);
+    setChecking(true);
+    try {
+      const { error } = await withTimeout(signUp.password({ emailAddress: value, password: "Temp1234!" }));
+      if (error) {
+        const code = extractFirstClerkErr(error)?.code ?? "";
+        if (code === "form_identifier_exists") {
+          setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
+          setReset(true);
+        } else if (code) {
+          setErr("");
+        }
+      } else {
+        setErr("");
+        setReset(false);
+      }
+    } catch (ex) {
+      const code = extractFirstClerkErr(ex)?.code ?? "";
+      if (code === "form_identifier_exists") {
+        setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
+        setReset(true);
+      }
+    } finally {
+      setChecking(false);
+    }
   }
 
   function handleMethodChange(m: "email" | "phone") {
