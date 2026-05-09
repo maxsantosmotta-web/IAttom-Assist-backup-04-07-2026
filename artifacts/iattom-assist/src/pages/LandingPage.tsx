@@ -326,32 +326,31 @@ function SignUpDrawer({ onClose, onOpenLogin }: { onClose: () => void; onOpenLog
     setLastChecked(value);
     setChecking(true);
     try {
-      const { error } = await withTimeout(
-        signIn.create({ identifier: value }),
-        5000,
-      );
-      if (!error) {
-        // Clerk accepted the identifier → user exists
-        setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
-        setReset(true);
-      } else {
-        const code = (error as { code?: string }).code ?? "";
-        if (NOT_FOUND_CODES.has(code)) {
-          // User not found → clear any stale existing-account message
-          if (showResetLink) { setErr(""); setReset(false); }
-        } else {
-          // Different error (e.g. strategy mismatch) → account exists with different method
-          setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
-          setReset(true);
-        }
-      }
+      // signIn.create() throws on error in Clerk v6 — it does NOT return { error }
+      await withTimeout(signIn.create({ identifier: value }), 5000);
+      // Resolved without throwing → identifier exists in Clerk
+      setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
+      setReset(true);
     } catch (ex) {
-      // timeout or network: silently ignore — normal submit flow handles it
+      // Timeout or network error → silently ignore, let submit handle it
       if (ex instanceof Error && ex.message === "__timeout__") return;
-      if (isExistingAccount(ex)) {
+      // Network / fetch error → silently ignore
+      if (ex instanceof TypeError || (ex instanceof Error && /fetch|network/i.test(ex.message))) return;
+
+      // Extract Clerk error code
+      const ce = extractFirstClerkErr(ex);
+      const code = ce?.code ?? "";
+
+      if (NOT_FOUND_CODES.has(code)) {
+        // Identifier genuinely not found → clear any stale message
+        setErr("");
+        setReset(false);
+      } else if (isExistingAccount(ex)) {
+        // Strategy mismatch or other "account exists" signal
         setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
         setReset(true);
       }
+      // Any other error → silently ignore, normal submit will handle it
     } finally {
       setChecking(false);
     }
