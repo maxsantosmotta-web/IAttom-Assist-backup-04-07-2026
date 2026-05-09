@@ -321,39 +321,10 @@ function SignUpDrawer({ onClose, onOpenLogin }: { onClose: () => void; onOpenLog
   ]);
 
   async function handleIdentifierBlur() {
-    const value = method === "email" ? email.trim() : phone.trim();
-    if (!value || value === lastChecked) return;
-    setLastChecked(value);
-    setChecking(true);
-    try {
-      // signIn.create() throws on error in Clerk v6 — it does NOT return { error }
-      await withTimeout(signIn.create({ identifier: value }), 5000);
-      // Resolved without throwing → identifier exists in Clerk
-      setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
-      setReset(true);
-    } catch (ex) {
-      // Timeout or network error → silently ignore, let submit handle it
-      if (ex instanceof Error && ex.message === "__timeout__") return;
-      // Network / fetch error → silently ignore
-      if (ex instanceof TypeError || (ex instanceof Error && /fetch|network/i.test(ex.message))) return;
-
-      // Extract Clerk error code
-      const ce = extractFirstClerkErr(ex);
-      const code = ce?.code ?? "";
-
-      if (NOT_FOUND_CODES.has(code)) {
-        // Identifier genuinely not found → clear any stale message
-        setErr("");
-        setReset(false);
-      } else if (isExistingAccount(ex)) {
-        // Strategy mismatch or other "account exists" signal
-        setErr("Usuário já possui cadastro. Faça login ou redefina sua senha.");
-        setReset(true);
-      }
-      // Any other error → silently ignore, normal submit will handle it
-    } finally {
-      setChecking(false);
-    }
+    // Pre-check removido: signIn.create() no Clerk v6 com tenant Replit-managed resolve
+    // sem lançar mesmo para emails inexistentes, gerando falso-positivo "já existe".
+    // O signUp.create() em handleCreate já lança form_identifier_exists quando necessário.
+    return;
   }
 
   function handleMethodChange(m: "email" | "phone") {
