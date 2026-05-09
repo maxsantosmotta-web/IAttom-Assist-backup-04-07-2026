@@ -12,17 +12,13 @@ export function LoadingScreen() {
     >
       <div className="flex flex-col items-center gap-4">
 
-        {/* Logo */}
-        <motion.img
+        {/* Logo — começa visível para coincidir com splash nativa do Chrome/PWA */}
+        <img
           src={logoSplash}
           alt="IAttom Assist"
           width={260}
           height={260}
           className="object-contain"
-          style={{ opacity: 0 }}
-          initial={{ scale: 0.82, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
         />
 
         {/* Ondulação dourada premium */}
@@ -38,6 +34,7 @@ export function LoadingScreen() {
               filter: "blur(8px)",
               borderRadius: "50%",
             }}
+            initial={{ opacity: 0 }}
             animate={{
               opacity: [0, 0.3, 1, 1, 0.5, 0],
               scaleX: [0.4, 0.8, 1.2, 1.4, 1.1, 0.8],
@@ -84,7 +81,7 @@ export function LoadingScreen() {
           className="flex items-center gap-2 mt-1"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.5 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
         >
           {[0, 1, 2].map((i) => (
             <motion.div
