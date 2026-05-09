@@ -17,7 +17,6 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { AdminGuard } from "@/pages/admin/AdminGuard";
 import { LandingPage } from "@/pages/LandingPage";
 import { BetaGate } from "@/components/BetaGate";
-import { Onboarding } from "@/pages/Onboarding";
 
 // Eager load lightweight pages
 import { DashboardHome } from "@/pages/dashboard/DashboardHome";
@@ -167,7 +166,7 @@ function ProtectedOnboarding() {
   return (
     <>
       <Show when="signed-in">
-        <Onboarding />
+        <Redirect to="/dashboard" />
       </Show>
       <Show when="signed-out">
         <Redirect to="/sign-up" />
