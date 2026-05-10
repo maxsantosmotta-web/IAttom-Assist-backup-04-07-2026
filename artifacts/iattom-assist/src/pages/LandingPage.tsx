@@ -96,7 +96,7 @@ function clerkMsg(e: ClerkErr | null | unknown): string {
 
   // timeout de 5 segundos
   if (e instanceof Error && e.message === "__timeout__") {
-    return "Ocorreu um erro inesperado. Tente novamente.";
+    return "A conexão demorou demais. Verifique sua internet e tente novamente.";
   }
 
   // erro de rede / fetch
