@@ -17,6 +17,7 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import { AdminGuard } from "@/pages/admin/AdminGuard";
 import { LandingPage } from "@/pages/LandingPage";
 import { BetaGate } from "@/components/BetaGate";
+import { PlanGate } from "@/components/PlanGate";
 
 // Eager load lightweight pages
 import { DashboardHome } from "@/pages/dashboard/DashboardHome";
@@ -181,26 +182,28 @@ function ProtectedDashboard() {
       <Show when="signed-in">
         <BetaGate>
           <SidebarLayout>
-            <Suspense fallback={<PageLoader />}>
-              <Switch>
-                <Route path="/dashboard" component={DashboardHome} />
-                <Route path="/dashboard/find-products" component={FindProducts} />
-                <Route path="/dashboard/validate-products" component={ValidateProducts} />
-                <Route path="/dashboard/create-campaign" component={CreateCampaign} />
-                <Route path="/dashboard/create-content" component={CreateContent} />
-                <Route path="/dashboard/creative-generator" component={CreativeGenerator} />
-                <Route path="/dashboard/video-scripts" component={VideoScripts} />
-                <Route path="/dashboard/projects" component={Projects} />
-                <Route path="/dashboard/history" component={History} />
-                <Route path="/dashboard/credits" component={Credits} />
-                <Route path="/dashboard/billing" component={Billing} />
-                <Route path="/dashboard/settings" component={Settings} />
-                <Route path="/dashboard/analytics" component={Analytics} />
-                <Route path="/dashboard/prompts" component={SavedPrompts} />
-                <Route path="/dashboard/referral" component={Referral} />
-                <Route component={NotFound} />
-              </Switch>
-            </Suspense>
+            <PlanGate>
+              <Suspense fallback={<PageLoader />}>
+                <Switch>
+                  <Route path="/dashboard" component={DashboardHome} />
+                  <Route path="/dashboard/find-products" component={FindProducts} />
+                  <Route path="/dashboard/validate-products" component={ValidateProducts} />
+                  <Route path="/dashboard/create-campaign" component={CreateCampaign} />
+                  <Route path="/dashboard/create-content" component={CreateContent} />
+                  <Route path="/dashboard/creative-generator" component={CreativeGenerator} />
+                  <Route path="/dashboard/video-scripts" component={VideoScripts} />
+                  <Route path="/dashboard/projects" component={Projects} />
+                  <Route path="/dashboard/history" component={History} />
+                  <Route path="/dashboard/credits" component={Credits} />
+                  <Route path="/dashboard/billing" component={Billing} />
+                  <Route path="/dashboard/settings" component={Settings} />
+                  <Route path="/dashboard/analytics" component={Analytics} />
+                  <Route path="/dashboard/prompts" component={SavedPrompts} />
+                  <Route path="/dashboard/referral" component={Referral} />
+                  <Route component={NotFound} />
+                </Switch>
+              </Suspense>
+            </PlanGate>
           </SidebarLayout>
         </BetaGate>
       </Show>

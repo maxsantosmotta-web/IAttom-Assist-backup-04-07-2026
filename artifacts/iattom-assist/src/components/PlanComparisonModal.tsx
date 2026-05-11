@@ -8,6 +8,8 @@ import {
   getGetStripePlansQueryKey,
   useGetMe,
   getGetMeQueryKey,
+  useGetStripeSubscription,
+  getGetStripeSubscriptionQueryKey,
   useCreateCheckoutSession,
 } from "@workspace/api-client-react";
 import { PLAN_CREDITS, PLAN_NAMES, PLAN_PRICES, PLAN_SAVINGS } from "@/lib/credits";
@@ -65,6 +67,9 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
     query: { queryKey: getGetStripePlansQueryKey(), staleTime: 60_000 },
   });
   const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey() } });
+  const { data: subscription } = useGetStripeSubscription({
+    query: { queryKey: getGetStripeSubscriptionQueryKey(), staleTime: 30_000 },
+  });
 
   const checkout = useCreateCheckoutSession({
     mutation: {
@@ -73,19 +78,21 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
     },
   });
 
-  const currentPlan = me?.plan ?? "free";
-  const sortedPlans = [...plans].sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));
+  const currentPlan  = me?.plan ?? "free";
+  const hasActiveSub = subscription?.hasSubscription === true;
+  const sortedPlans  = [...plans].sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));
 
   const handleUpgrade = (priceId: string | null | undefined, planKey: string) => {
     if (!priceId) return;
     checkout.mutate({ data: { priceId, planKey } });
   };
 
-  const getPriceDisplay = (planKey: string) => {
+  const getMainPrice = (planKey: string) => {
     const p = PLAN_PRICES[planKey];
     if (!p) return "—";
-    return billing === "annual" ? p.yearlyMonthlyDisplay : p.monthlyDisplay;
+    return billing === "annual" ? p.yearlyDisplay : p.monthlyDisplay;
   };
+  const getPerMonth = (planKey: string) => PLAN_PRICES[planKey]?.yearlyMonthlyDisplay ?? null;
 
   return (
     <AnimatePresence>
@@ -133,7 +140,7 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                       {opt === "monthly" ? "Mensal" : "Anual"}
                       {opt === "annual" && (
                         <span className="text-[9px] font-black px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
-                          -16%
+                          -17%
                         </span>
                       )}
                     </button>
@@ -160,11 +167,13 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {sortedPlans.map((plan) => {
                     const key        = plan.planKey;
-                    const isCurrent  = key === currentPlan;
+                    /* ← only mark as current when user has active subscription */
+                    const isCurrent  = key === currentPlan && hasActiveSub;
                     const isHighlight= key === highlightPlan;
                     const isUpgrade  = PLAN_ORDER.indexOf(key) > PLAN_ORDER.indexOf(currentPlan);
                     const savings    = PLAN_SAVINGS[key] ?? 0;
                     const PlanIcon   = PLAN_ICON_MAP[key] ?? PLAN_ICON_MAP.free;
+                    const perMonth   = getPerMonth(key);
 
                     return (
                       <div
@@ -175,7 +184,6 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                           isHighlight ? "bg-white/[0.025]" : "bg-[#111111]"
                         }`}
                       >
-                        {/* top gold line for popular */}
                         {isHighlight && key === "pro" && (
                           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#C9A84C]/55 to-transparent rounded-t-xl" />
                         )}
@@ -213,19 +221,23 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
 
                         <p className="text-[11px] text-zinc-600 leading-snug mb-3">{PLAN_DESC[key] ?? plan.description}</p>
 
-                        {/* price */}
-                        <div className="mb-1">
-                          <span className="text-2xl font-bold text-white">{getPriceDisplay(key)}</span>
+                        {/* price — annual shows full annual as main */}
+                        <div className="mb-3">
+                          <div className="text-2xl font-bold text-white leading-none">{getMainPrice(key)}</div>
+                          {billing === "annual" && perMonth ? (
+                            <div className="mt-1 space-y-0.5">
+                              <p className="text-[10px] text-zinc-500">equivale a {perMonth}</p>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] text-zinc-600">cobrado anualmente</span>
+                                <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                                  -{savings}%
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-zinc-600 mt-1">cobrado mensalmente</p>
+                          )}
                         </div>
-                        {billing === "annual" && (
-                          <div className="flex items-center gap-1.5 mb-3">
-                            <span className="text-[10px] text-zinc-600">{PLAN_PRICES[key]?.yearlyDisplay}/ano</span>
-                            <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                              -{savings}%
-                            </span>
-                          </div>
-                        )}
-                        {billing === "monthly" && <div className="mb-3" />}
 
                         {/* credits */}
                         <div className="flex items-center gap-1.5 mb-4 p-2 rounded-lg bg-white/[0.04] border border-white/[0.06]">
@@ -250,7 +262,7 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                           <Button disabled size="sm" className="w-full text-xs bg-white/5 border border-white/10 text-zinc-500">
                             Plano Atual
                           </Button>
-                        ) : !isUpgrade ? (
+                        ) : hasActiveSub && !isUpgrade ? (
                           <Button size="sm" variant="outline" className="w-full text-xs border-white/10 text-zinc-400 hover:border-white/20">
                             Fazer Downgrade
                           </Button>
@@ -262,7 +274,9 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                             disabled={checkout.isPending}
                           >
                             {checkout.isPending && <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />}
-                            Assinar {PLAN_NAMES[key] ?? plan.name}
+                            {hasActiveSub && isUpgrade
+                              ? `Fazer Upgrade`
+                              : `Assinar ${PLAN_NAMES[key] ?? plan.name}`}
                           </Button>
                         )}
                       </div>

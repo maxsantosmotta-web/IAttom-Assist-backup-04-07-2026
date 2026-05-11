@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import {
   Crown, Check, Zap, ExternalLink, AlertTriangle, RefreshCw,
   CreditCard, Gift, TrendingUp, Star, Lock, ChevronDown, ChevronUp,
-  Sparkles, Building2, Rocket,
+  Sparkles, Building2, Rocket, CircleSlash,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,11 +63,11 @@ const PLAN_DESC: Record<string, string> = {
   agency:   "Experiência máxima. Ideal para agências e times.",
 };
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  active:   { label: "Ativo",        color: "text-emerald-400" },
-  trialing: { label: "Trial",        color: "text-blue-400"    },
-  past_due: { label: "Pagamento em atraso", color: "text-amber-400" },
-  canceled: { label: "Cancelado",    color: "text-red-400"     },
-  unpaid:   { label: "Não pago",     color: "text-red-400"     },
+  active:   { label: "Ativo",               color: "text-emerald-400" },
+  trialing: { label: "Trial",               color: "text-blue-400"    },
+  past_due: { label: "Pagamento em atraso", color: "text-amber-400"   },
+  canceled: { label: "Cancelado",           color: "text-red-400"     },
+  unpaid:   { label: "Não pago",            color: "text-red-400"     },
 };
 
 function formatDate(iso: string | null | undefined): string {
@@ -132,16 +132,14 @@ function BillingToggle({ value, onChange }: { value: "monthly" | "annual"; onCha
         <button
           key={opt}
           onClick={() => onChange(opt)}
-          className={`relative flex items-center gap-2 px-4 py-1.5 rounded-lg text-[11.5px] font-semibold tracking-wide transition-all duration-200 ${
-            value === opt
-              ? "bg-white/[0.08] text-white"
-              : "text-zinc-500 hover:text-zinc-300"
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[11.5px] font-semibold tracking-wide transition-all duration-200 ${
+            value === opt ? "bg-white/[0.08] text-white" : "text-zinc-500 hover:text-zinc-300"
           }`}
         >
           {opt === "monthly" ? "Mensal" : "Anual"}
           {opt === "annual" && (
             <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 tracking-widest">
-              -16%
+              economize até 17%
             </span>
           )}
         </button>
@@ -177,7 +175,7 @@ export function Billing() {
   const portal = useCreateBillingPortal({
     mutation: {
       onSuccess: (data) => { if (data.url) window.location.href = data.url; },
-      onError: () => toast({ title: "Portal indisponível", description: "Não foi possível abrir o portal de faturamento. Tente novamente.", variant: "destructive" }),
+      onError: () => toast({ title: "Portal indisponível", description: "Não foi possível abrir o portal. Tente novamente.", variant: "destructive" }),
     },
   });
 
@@ -185,7 +183,7 @@ export function Billing() {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     if (payment === "success") {
-      toast({ title: "Pagamento realizado", description: "Seu plano foi atualizado. Créditos adicionados à sua conta." });
+      toast({ title: "Pagamento realizado", description: "Seu plano foi ativado. Créditos adicionados à sua conta." });
       window.history.replaceState({}, "", window.location.pathname);
     } else if (payment === "canceled") {
       toast({ title: "Checkout cancelado", description: "Nenhuma cobrança foi realizada." });
@@ -193,17 +191,15 @@ export function Billing() {
     }
   }, [location]);
 
-  const currentPlan = me?.plan ?? "free";
-  const hasActiveSub = subscription?.hasSubscription;
-  const subStatus = subscription?.status;
-  const isLoading = plansLoading || subLoading;
-  const isFree = currentPlan === "free";
+  const currentPlan  = me?.plan ?? "free";
+  const hasActiveSub = subscription?.hasSubscription === true;
+  const subStatus    = subscription?.status;
+  const isLoading    = plansLoading || subLoading;
 
-  const pct = creditsData?.percentage ?? 100;
   const creditsLeft = creditsData?.balance ?? 0;
-  const planLimit = PLAN_CREDITS[currentPlan as keyof typeof PLAN_CREDITS] ?? 50;
+  const planLimit   = PLAN_CREDITS[currentPlan as keyof typeof PLAN_CREDITS] ?? 50;
 
-  const PLAN_ORDER = ["free", "pro", "business", "agency"];
+  const PLAN_ORDER  = ["free", "pro", "business", "agency"];
   const sortedPlans = [...plans].sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));
 
   const handleUpgrade = (priceId: string | null | undefined, planKey: string) => {
@@ -211,13 +207,16 @@ export function Billing() {
     checkout.mutate({ data: { priceId, planKey } });
   };
 
-  const getPriceDisplay = (planKey: string) => {
+  /* ─── price display helpers ────────────────────────────────────────── */
+  const getMainPrice = (planKey: string) => {
     const p = PLAN_PRICES[planKey];
     if (!p) return "—";
-    return billing === "annual" ? p.yearlyMonthlyDisplay : p.monthlyDisplay;
+    return billing === "annual" ? p.yearlyDisplay : p.monthlyDisplay;
+  };
+  const getPerMonth = (planKey: string) => {
+    return PLAN_PRICES[planKey]?.yearlyMonthlyDisplay ?? null;
   };
 
-  const currentPlanName = PLAN_NAMES[currentPlan] ?? currentPlan.toUpperCase();
   const PlanIcon = PLAN_ICON[currentPlan] ?? PLAN_ICON.free;
 
   return (
@@ -230,89 +229,47 @@ export function Billing() {
           <p className="text-xs text-primary uppercase tracking-widest font-semibold">Faturamento</p>
         </div>
         <h1 className="text-2xl font-bold text-white">Assinatura e Planos</h1>
-        <p className="text-sm text-muted-foreground mt-1">Gerencie seu plano e preferências de faturamento.</p>
+        <p className="text-sm text-muted-foreground mt-1">Escolha o plano ideal e libere todos os recursos da plataforma.</p>
       </div>
 
-      {/* ── Free plan upgrade nudge ────────────────────────────────────── */}
-      {isFree && (
-        <div className="relative rounded-2xl border border-[#C9A84C]/20 bg-gradient-to-br from-[#C9A84C]/6 via-[#C9A84C]/3 to-transparent p-5 overflow-hidden">
-          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#C9A84C]/35 to-transparent" />
-          <div className="absolute top-0 right-0 w-64 h-40 pointer-events-none" style={{ background: "radial-gradient(ellipse at top right, rgba(201,168,76,0.07) 0%, transparent 65%)" }} />
+      {/* ── Current Plan Status ────────────────────────────────────────── */}
+      {subLoading ? (
+        <div className="rounded-xl border border-white/10 bg-[#111111] p-5 h-24 skeleton-shimmer" />
+      ) : hasActiveSub ? (
+        /* — has active subscription — */
+        <div className={`rounded-xl border bg-[#111111] p-5 ${PLAN_BORDER[currentPlan] ?? "border-white/10"} ${PLAN_GLOW[currentPlan] ?? ""}`}>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Crown className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-primary uppercase tracking-widest">Plano START — entrada gratuita</span>
+              <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium mb-1">Plano Atual</p>
+              <div className="flex items-center gap-2.5">
+                <PlanIcon className={`w-5 h-5 ${PLAN_COLORS[currentPlan] ?? "text-zinc-400"}`} />
+                <span className={`text-2xl font-bold ${PLAN_COLORS[currentPlan] ?? "text-white"}`}>
+                  {PLAN_NAMES[currentPlan] ?? currentPlan.toUpperCase()}
+                </span>
+                {subStatus && STATUS_LABELS[subStatus] && (
+                  <Badge className={`text-[10px] px-2 py-0 h-5 border ${
+                    subStatus === "active"   ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                    subStatus === "trialing" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                    subStatus === "past_due" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                    "bg-red-500/10 text-red-400 border-red-500/20"
+                  }`}>
+                    {STATUS_LABELS[subStatus].label}
+                  </Badge>
+                )}
               </div>
-              <p className="text-sm text-zinc-300 mb-1">
-                Você tem <span className="font-bold text-white">{creditsLeft}</span> de <span className="font-bold text-white">{planLimit}</span> créditos restantes ({pct}%).
+              <p className="text-xs text-zinc-500 mt-1">{PLAN_DESC[currentPlan]}</p>
+              <p className="text-xs text-zinc-600 mt-1">
+                {creditsLeft.toLocaleString("pt-BR")} de {planLimit.toLocaleString("pt-BR")} créditos restantes este mês
               </p>
-              <p className="text-xs text-zinc-500">Faça upgrade para o COMPLETO: 500 créditos/mês, todos os módulos e suporte prioritário.</p>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => setShowComparison(true)}
-              className="bg-[#C9A84C] text-black hover:bg-[#E8C96A] font-bold gap-1.5 shrink-0"
-            >
-              <Crown className="w-3.5 h-3.5" />
-              Ver planos
-            </Button>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { icon: Zap,        label: "500 créditos/mês",    desc: "10× mais execuções"     },
-              { icon: TrendingUp, label: "Analytics avançado",  desc: "Painel completo de uso" },
-              { icon: Star,       label: "Suporte prioritário", desc: "Respostas mais rápidas" },
-              { icon: Gift,       label: "Bônus de indicação",  desc: "Créditos extras"        },
-            ].map((item) => (
-              <div key={item.label} className="flex items-start gap-2 p-2.5 rounded-lg bg-black/20 border border-white/[0.06]">
-                <div className="w-5 h-5 rounded-md bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
-                  <item.icon className="w-3 h-3 text-primary" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold text-zinc-200 leading-tight">{item.label}</p>
-                  <p className="text-[10px] text-zinc-600 mt-0.5">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Current Plan Status ────────────────────────────────────────── */}
-      <div className={`rounded-xl border bg-[#111111] p-5 ${PLAN_BORDER[currentPlan] ?? "border-white/10"} ${PLAN_GLOW[currentPlan] ?? ""}`}>
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium mb-1">Plano Atual</p>
-            <div className="flex items-center gap-2.5">
-              <PlanIcon className={`w-5 h-5 ${PLAN_COLORS[currentPlan] ?? "text-zinc-400"}`} />
-              <span className={`text-2xl font-bold ${PLAN_COLORS[currentPlan] ?? "text-white"}`}>
-                {currentPlanName}
-              </span>
-              {subStatus && STATUS_LABELS[subStatus] && (
-                <Badge className={`text-[10px] px-2 py-0 h-5 border ${
-                  subStatus === "active"   ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                  subStatus === "trialing" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                  subStatus === "past_due" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
-                  "bg-red-500/10 text-red-400 border-red-500/20"
-                }`}>
-                  {STATUS_LABELS[subStatus].label}
-                </Badge>
+              {subscription?.currentPeriodEnd && (
+                <p className="text-xs text-zinc-600 mt-1">
+                  {subscription.cancelAtPeriodEnd
+                    ? `Cancela em ${formatDate(subscription.currentPeriodEnd)}`
+                    : `Renova em ${formatDate(subscription.currentPeriodEnd)}`}
+                </p>
               )}
             </div>
-            <p className="text-xs text-zinc-500 mt-1">{PLAN_DESC[currentPlan]}</p>
-            {subscription?.currentPeriodEnd && (
-              <p className="text-xs text-zinc-600 mt-1.5">
-                {subscription.cancelAtPeriodEnd
-                  ? `Cancela em ${formatDate(subscription.currentPeriodEnd)}`
-                  : `Renova em ${formatDate(subscription.currentPeriodEnd)}`}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {!isFree && (
+            <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 variant="outline"
@@ -322,8 +279,6 @@ export function Billing() {
                 <Rocket className="w-3.5 h-3.5" />
                 Fazer Upgrade
               </Button>
-            )}
-            {hasActiveSub && (
               <Button
                 variant="outline"
                 size="sm"
@@ -333,26 +288,46 @@ export function Billing() {
               >
                 {portal.isPending
                   ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  : <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                }
+                  : <ExternalLink className="w-3.5 h-3.5 mr-1.5" />}
                 Gerenciar Assinatura
               </Button>
-            )}
+            </div>
+          </div>
+          {subStatus === "past_due" && (
+            <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-300">Pagamento em atraso. Atualize seu método de pagamento para manter o plano ativo.</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* — no active subscription — */
+        <div className="relative rounded-xl border border-white/[0.08] bg-[#111111] p-5 overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
+              <CircleSlash className="w-4.5 h-4.5 text-zinc-500" />
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium mb-1">Status do Plano</p>
+              <p className="text-lg font-bold text-zinc-400">Sem plano ativo</p>
+              <p className="text-sm text-zinc-600 mt-0.5">
+                Escolha um plano abaixo para liberar todos os módulos e recursos da plataforma.
+              </p>
+            </div>
           </div>
         </div>
-
-        {subStatus === "past_due" && (
-          <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-300">Pagamento em atraso. Atualize seu método de pagamento para manter o plano ativo.</p>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* ── Plans Grid ────────────────────────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">Planos Disponíveis</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-widest">Escolha seu Plano</h2>
+            {!hasActiveSub && (
+              <p className="text-xs text-zinc-600 mt-0.5">Selecione um plano para liberar o acesso completo à plataforma.</p>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <BillingToggle value={billing} onChange={setBilling} />
             {sortedPlans.length > 0 && (
@@ -370,7 +345,7 @@ export function Billing() {
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[0,1,2,3].map((i) => (
-              <div key={i} className="rounded-xl border border-white/10 bg-[#111111] p-5 h-72 skeleton-shimmer" />
+              <div key={i} className="rounded-xl border border-white/10 bg-[#111111] p-5 h-80 skeleton-shimmer" />
             ))}
           </div>
         ) : sortedPlans.length === 0 ? (
@@ -386,13 +361,15 @@ export function Billing() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {sortedPlans.map((plan) => {
-              const isCurrent  = plan.planKey === currentPlan;
               const planKey    = plan.planKey;
+              /* ← a card is only "current" when the user actually has an active subscription */
+              const isCurrent  = planKey === currentPlan && hasActiveSub;
               const isUpgrade  = PLAN_ORDER.indexOf(planKey) > PLAN_ORDER.indexOf(currentPlan);
               const isDowngrade= PLAN_ORDER.indexOf(planKey) < PLAN_ORDER.indexOf(currentPlan);
               const isPopular  = planKey === "pro";
               const PIcon      = PLAN_ICON[planKey] ?? PLAN_ICON.free;
               const savings    = PLAN_SAVINGS[planKey] ?? 0;
+              const perMonth   = getPerMonth(planKey);
 
               return (
                 <div
@@ -405,7 +382,6 @@ export function Billing() {
                       : "border-white/[0.07] hover:border-white/[0.14] hover:bg-white/[0.01]"
                   }`}
                 >
-                  {/* top accent line for popular */}
                   {isPopular && (
                     <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#C9A84C]/60 to-transparent rounded-t-xl" />
                   )}
@@ -427,7 +403,7 @@ export function Billing() {
                     </div>
                   )}
 
-                  {/* plan icon + name */}
+                  {/* plan header */}
                   <div className="mb-3 mt-1 flex items-center gap-2">
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                       planKey === "free"     ? "bg-blue-500/12 border border-blue-400/20" :
@@ -437,28 +413,32 @@ export function Billing() {
                     }`}>
                       <PIcon className={`w-3.5 h-3.5 ${PLAN_COLORS[planKey] ?? "text-zinc-400"}`} />
                     </div>
-                    <div>
-                      <p className={`text-sm font-bold leading-none ${PLAN_COLORS[planKey] ?? "text-white"}`}>
-                        {PLAN_NAMES[planKey] ?? plan.name}
-                      </p>
-                    </div>
+                    <p className={`text-sm font-bold ${PLAN_COLORS[planKey] ?? "text-white"}`}>
+                      {PLAN_NAMES[planKey] ?? plan.name}
+                    </p>
                   </div>
 
                   <p className="text-[11px] text-zinc-600 leading-snug mb-4">{PLAN_DESC[planKey] ?? plan.description}</p>
 
-                  {/* price */}
-                  <div className="mb-1">
-                    <span className="text-2xl font-bold text-white">{getPriceDisplay(planKey)}</span>
-                  </div>
-                  {billing === "annual" && (
-                    <div className="flex items-center gap-1.5 mb-3">
-                      <span className="text-[10px] text-zinc-600">{PLAN_PRICES[planKey]?.yearlyDisplay} cobrado anualmente</span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                        -{savings}%
-                      </span>
+                  {/* price — annual shows full year price as main */}
+                  <div className="mb-4">
+                    <div className="text-2xl font-bold text-white leading-none">
+                      {getMainPrice(planKey)}
                     </div>
-                  )}
-                  {billing === "monthly" && <div className="mb-3" />}
+                    {billing === "annual" && perMonth ? (
+                      <div className="mt-1.5 space-y-0.5">
+                        <p className="text-[11px] text-zinc-500">equivale a {perMonth}</p>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-zinc-600">cobrado anualmente</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                            -{savings}%
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-zinc-600 mt-1">cobrado mensalmente</p>
+                    )}
+                  </div>
 
                   {/* credits */}
                   <div className="flex items-center gap-1.5 mb-4 p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
@@ -485,16 +465,6 @@ export function Billing() {
                     <Button disabled size="sm" className="w-full bg-white/5 text-zinc-500 border border-white/10 text-xs cursor-default">
                       Plano Atual
                     </Button>
-                  ) : planKey === "free" ? (
-                    hasActiveSub ? (
-                      <Button size="sm" variant="outline" className="w-full border-white/10 text-zinc-400 text-xs hover:border-white/20" onClick={() => portal.mutate()} disabled={portal.isPending}>
-                        Fazer Downgrade
-                      </Button>
-                    ) : (
-                      <Button disabled size="sm" className="w-full bg-white/5 text-zinc-500 border border-white/10 text-xs cursor-default">
-                        Plano START
-                      </Button>
-                    )
                   ) : hasActiveSub && isDowngrade ? (
                     <Button size="sm" variant="outline" className="w-full border-white/10 text-zinc-400 text-xs hover:border-white/20" onClick={() => portal.mutate()} disabled={portal.isPending}>
                       Fazer Downgrade
@@ -507,7 +477,9 @@ export function Billing() {
                       disabled={checkout.isPending}
                     >
                       {checkout.isPending && <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                      {hasActiveSub && isUpgrade ? "Fazer Upgrade" : `Assinar ${PLAN_NAMES[planKey] ?? plan.name}`}
+                      {hasActiveSub && isUpgrade
+                        ? `Fazer Upgrade`
+                        : `Assinar ${PLAN_NAMES[planKey] ?? plan.name}`}
                     </Button>
                   )}
                 </div>
@@ -515,40 +487,38 @@ export function Billing() {
             })}
           </div>
         )}
-
-        {billing === "annual" && (
-          <p className="text-[11px] text-zinc-600 mt-3 text-center">
-            Faturamento anual processado via portal Stripe. Preços mensais exibidos como referência.
-          </p>
-        )}
       </div>
 
-      {/* ── Referral CTA ──────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-5 flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-            <Gift className="w-4 h-4 text-primary" />
+      {/* ── Referral CTA (only shown when user has active plan) ────────── */}
+      {hasActiveSub && (
+        <div className="rounded-xl border border-white/[0.06] bg-[#111111] p-5 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <Gift className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Indique amigos e ganhe créditos</p>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Ganhe 50 créditos por cada amigo que entrar. Eles recebem 25 créditos de bônus.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-white">Indique amigos e ganhe créditos</p>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              Ganhe 50 créditos por cada amigo que entrar. Eles recebem 25 créditos de bônus.
-            </p>
-          </div>
+          <Link href="/dashboard/referral">
+            <Button size="sm" variant="outline" className="border-white/10 hover:border-primary/30 text-zinc-300 gap-1.5 shrink-0">
+              <Gift className="w-3.5 h-3.5" />
+              Ver Indicações
+            </Button>
+          </Link>
         </div>
-        <Link href="/dashboard/referral">
-          <Button size="sm" variant="outline" className="border-white/10 hover:border-primary/30 text-zinc-300 gap-1.5 shrink-0">
-            <Gift className="w-3.5 h-3.5" />
-            Ver Indicações
-          </Button>
-        </Link>
-      </div>
+      )}
 
       {/* ── FAQ ───────────────────────────────────────────────────────── */}
       <div className="rounded-xl border border-white/[0.07] bg-[#111111] p-6">
-        <div className="flex items-center gap-2 mb-5">
+        <div className="flex items-center gap-2 mb-1">
+          <TrendingUp className="w-3.5 h-3.5 text-primary" />
           <p className="text-xs text-primary uppercase tracking-widest font-semibold">Perguntas Frequentes</p>
         </div>
+        <p className="text-xs text-zinc-600 mb-5">Tudo que você precisa saber antes de escolher seu plano.</p>
         {FAQ_ITEMS.map((item) => (
           <FaqItem key={item.q} q={item.q} a={item.a} />
         ))}
