@@ -54,9 +54,10 @@ router.get("/stripe/plans", async (_req: Request, res: Response) => {
       priceId: priceIdMap["free"] ?? null,
       features: [
         "50 créditos/mês",
-        "Todos os 6 módulos de IA",
-        "Espaço de projetos",
-        "Histórico de atividades",
+        "Acesso aos módulos essenciais",
+        "Projetos limitados",
+        "Histórico básico",
+        "Suporte padrão",
       ],
     },
     {
@@ -70,8 +71,9 @@ router.get("/stripe/plans", async (_req: Request, res: Response) => {
       priceId: priceIdMap["pro"] ?? null,
       features: [
         "500 créditos/mês",
-        "Todos os 6 módulos de IA",
+        "Acesso a todos os módulos",
         "Projetos ilimitados",
+        "Histórico completo",
         "Suporte prioritário",
       ],
     },
@@ -86,9 +88,10 @@ router.get("/stripe/plans", async (_req: Request, res: Response) => {
       priceId: priceIdMap["business"] ?? null,
       features: [
         "2.000 créditos/mês",
-        "Todos os 6 módulos de IA",
+        "Acesso a todos os módulos",
         "Espaço de equipe",
         "Análises avançadas",
+        "Automações premium",
         "Suporte prioritário",
       ],
     },
@@ -103,9 +106,10 @@ router.get("/stripe/plans", async (_req: Request, res: Response) => {
       priceId: priceIdMap["agency"] ?? null,
       features: [
         "10.000 créditos/mês",
-        "Todos os 6 módulos de IA",
+        "Acesso total da plataforma",
         "Espaços multiclientes",
         "Relatórios white-label",
+        "Prioridade máxima",
         "Suporte dedicado",
       ],
     },
