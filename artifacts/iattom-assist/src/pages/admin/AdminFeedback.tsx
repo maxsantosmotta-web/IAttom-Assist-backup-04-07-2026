@@ -27,16 +27,16 @@ interface FeedbackEntry {
 }
 
 const CATEGORY_META: Record<FeedbackEntry["category"], { label: string; icon: React.ElementType; color: string; bg: string }> = {
-  bug: { label: "Bug", icon: Bug, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
-  feature: { label: "Feature", icon: Lightbulb, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
-  general: { label: "General", icon: Info, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
-  other: { label: "Other", icon: HelpCircle, color: "text-zinc-400", bg: "bg-white/5 border-white/10" },
+  bug: { label: "Erro", icon: Bug, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
+  feature: { label: "Recurso", icon: Lightbulb, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
+  general: { label: "Geral", icon: Info, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
+  other: { label: "Outros", icon: HelpCircle, color: "text-zinc-400", bg: "bg-white/5 border-white/10" },
 };
 
 const STATUS_META: Record<FeedbackEntry["status"], { label: string; icon: React.ElementType; color: string }> = {
-  new: { label: "New", icon: Clock, color: "text-amber-400" },
-  reviewed: { label: "Reviewed", icon: CheckCircle2, color: "text-blue-400" },
-  resolved: { label: "Resolved", icon: Archive, color: "text-emerald-400" },
+  new: { label: "Novo", icon: Clock, color: "text-amber-400" },
+  reviewed: { label: "Revisado", icon: CheckCircle2, color: "text-blue-400" },
+  resolved: { label: "Resolvido", icon: Archive, color: "text-emerald-400" },
 };
 
 function StarRating({ rating }: { rating: number | null }) {
@@ -114,7 +114,7 @@ export function AdminFeedback() {
             <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Beta</p>
             <h2 className="text-2xl font-bold text-white mb-1">Feedback</h2>
             <p className="text-muted-foreground text-sm">
-              Review and manage feedback submitted by beta users.
+              Revisar e gerenciar feedbacks enviados pelos usuários beta.
             </p>
           </div>
           <Button
@@ -125,7 +125,7 @@ export function AdminFeedback() {
             className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 shrink-0"
           >
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
+            Atualizar
           </Button>
         </div>
       </motion.div>
@@ -133,10 +133,10 @@ export function AdminFeedback() {
       {/* Status filter pills */}
       <div className="flex flex-wrap gap-2">
         {([
-          { key: "all", label: `All (${entries.length})` },
-          { key: "new", label: `New (${counts.new})` },
-          { key: "reviewed", label: `Reviewed (${counts.reviewed})` },
-          { key: "resolved", label: `Resolved (${counts.resolved})` },
+          { key: "all", label: `Todos (${entries.length})` },
+          { key: "new", label: `Novos (${counts.new})` },
+          { key: "reviewed", label: `Revisados (${counts.reviewed})` },
+          { key: "resolved", label: `Resolvidos (${counts.resolved})` },
         ] as const).map((f) => (
           <button
             key={f.key}
@@ -161,7 +161,7 @@ export function AdminFeedback() {
                 : "bg-white/[0.03] border-white/[0.07] text-zinc-500 hover:text-zinc-300"
             }`}
           >
-            {cat === "all" ? "All types" : CATEGORY_META[cat].label}
+            {cat === "all" ? "Todos os Tipos" : CATEGORY_META[cat].label}
           </button>
         ))}
       </div>
@@ -172,7 +172,7 @@ export function AdminFeedback() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search feedback..."
+          placeholder="Pesquisar feedback..."
           className="pl-9 bg-[#111111] border-white/[0.06] text-sm text-zinc-200 placeholder:text-zinc-700"
         />
       </div>
@@ -187,7 +187,7 @@ export function AdminFeedback() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-zinc-600">
           <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">No feedback found</p>
+          <p className="text-sm">Nenhum feedback encontrado</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -242,7 +242,7 @@ export function AdminFeedback() {
                     <p className="text-xs text-zinc-300 leading-relaxed mb-3">{entry.message}</p>
                     <p className="text-[11px] text-zinc-600 mb-3">{entry.userEmail}</p>
                     <div className="flex items-center gap-2">
-                      <p className="text-[11px] text-zinc-500 font-medium">Status:</p>
+                      <p className="text-[11px] text-zinc-500 font-medium">Status</p>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

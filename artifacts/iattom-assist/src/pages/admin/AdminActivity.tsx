@@ -19,10 +19,10 @@ const moduleColors: Record<string, string> = {
 
 function timeAgo(date: string | Date) {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return new Date(date).toLocaleDateString();
+  if (seconds < 60) return "agora mesmo";
+  if (seconds < 3600) return `há ${Math.floor(seconds / 60)}min`;
+  if (seconds < 86400) return `há ${Math.floor(seconds / 3600)}h`;
+  return new Date(date).toLocaleDateString("pt-BR");
 }
 
 export function AdminActivity() {
@@ -42,9 +42,9 @@ export function AdminActivity() {
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Monitoring</p>
-        <h2 className="text-2xl font-bold text-white mb-1">Platform Activity</h2>
-        <p className="text-muted-foreground text-sm">All user actions across every workspace — real-time feed.</p>
+        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Monitoramento</p>
+        <h2 className="text-2xl font-bold text-white mb-1">Atividade da Plataforma</h2>
+        <p className="text-muted-foreground text-sm">Todas as ações dos usuários em todos os espaços de trabalho — feed em tempo real.</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
@@ -52,7 +52,7 @@ export function AdminActivity() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by action, module, user, or project..."
+              placeholder="Pesquisar por ação, módulo, usuário ou projeto..."
               className="pl-10 bg-[#111111] border-white/5 focus-visible:ring-primary/50"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -60,7 +60,7 @@ export function AdminActivity() {
           </div>
           <div className="text-sm text-muted-foreground flex items-center gap-1.5 shrink-0">
             <Activity className="w-4 h-4" />
-            <span>{isLoading ? "..." : filtered.length} events</span>
+            <span>{isLoading ? "..." : filtered.length} eventos</span>
           </div>
         </div>
       </motion.div>
@@ -71,11 +71,11 @@ export function AdminActivity() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="text-left px-5 py-3 text-xs text-muted-foreground font-medium">Action</th>
-                  <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Module</th>
-                  <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">User</th>
-                  <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Project</th>
-                  <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Time</th>
+                  <th className="text-left px-5 py-3 text-xs text-muted-foreground font-medium">Ação</th>
+                  <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Módulo</th>
+                  <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Usuário</th>
+                  <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Projeto</th>
+                  <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Horário</th>
                 </tr>
               </thead>
               <tbody>
@@ -93,7 +93,7 @@ export function AdminActivity() {
                   <tr>
                     <td colSpan={5} className="text-center py-16">
                       <Activity className="w-8 h-8 text-white/10 mx-auto mb-3" />
-                      <p className="text-muted-foreground text-sm">No activity found.</p>
+                      <p className="text-muted-foreground text-sm">Nenhuma atividade encontrada.</p>
                     </td>
                   </tr>
                 ) : (
@@ -119,7 +119,7 @@ export function AdminActivity() {
                           <div className="flex items-center gap-1.5">
                             <User className="w-3 h-3 text-muted-foreground shrink-0" />
                             <span className="text-xs text-muted-foreground truncate max-w-40">
-                              {item.userName ?? item.userEmail ?? "Unknown"}
+                              {item.userName ?? item.userEmail ?? "Desconhecido"}
                             </span>
                           </div>
                           {item.userName && item.userEmail && (

@@ -27,18 +27,18 @@ function StatusBadge({ status }: { status: WaitlistEntry["status"] }) {
   if (status === "approved")
     return (
       <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold">
-        <CheckCircle2 className="w-2.5 h-2.5" /> Approved
+        <CheckCircle2 className="w-2.5 h-2.5" /> Aprovado
       </span>
     );
   if (status === "denied")
     return (
       <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-semibold">
-        <XCircle className="w-2.5 h-2.5" /> Denied
+        <XCircle className="w-2.5 h-2.5" /> Negado
       </span>
     );
   return (
     <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-semibold">
-      <Clock className="w-2.5 h-2.5" /> Pending
+      <Clock className="w-2.5 h-2.5" /> Pendente
     </span>
   );
 }
@@ -125,9 +125,9 @@ export function AdminWaitlist() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Beta</p>
-            <h2 className="text-2xl font-bold text-white mb-1">Waitlist</h2>
+            <h2 className="text-2xl font-bold text-white mb-1">Lista de Espera</h2>
             <p className="text-muted-foreground text-sm">
-              Approve or deny access for beta applicants.
+              Aprovar ou negar acesso para participantes beta.
             </p>
           </div>
           <Button
@@ -138,7 +138,7 @@ export function AdminWaitlist() {
             className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 shrink-0"
           >
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
+            Atualizar
           </Button>
         </div>
       </motion.div>
@@ -147,9 +147,9 @@ export function AdminWaitlist() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {([
           { key: "all", label: "Total", icon: Users, color: "text-zinc-400", bg: "bg-white/5 border-white/[0.06]" },
-          { key: "pending", label: "Pending", icon: Clock, color: "text-amber-400", bg: "bg-amber-500/5 border-amber-500/10" },
-          { key: "approved", label: "Approved", icon: UserCheck, color: "text-emerald-400", bg: "bg-emerald-500/5 border-emerald-500/10" },
-          { key: "denied", label: "Denied", icon: UserX, color: "text-red-400", bg: "bg-red-500/5 border-red-500/10" },
+          { key: "pending", label: "Pendente", icon: Clock, color: "text-amber-400", bg: "bg-amber-500/5 border-amber-500/10" },
+          { key: "approved", label: "Aprovado", icon: UserCheck, color: "text-emerald-400", bg: "bg-emerald-500/5 border-emerald-500/10" },
+          { key: "denied", label: "Negado", icon: UserX, color: "text-red-400", bg: "bg-red-500/5 border-red-500/10" },
         ] as const).map((stat) => {
           const Icon = stat.icon;
           return (
@@ -172,11 +172,11 @@ export function AdminWaitlist() {
       {/* Grant direct access */}
       <Card className="bg-[#111111] border-white/[0.06]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-zinc-400">Grant Direct Beta Access</CardTitle>
+          <CardTitle className="text-sm font-semibold text-zinc-400">Liberar Acesso Beta Direto</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           <p className="text-xs text-zinc-600 mb-3">
-            Approve a user by email address directly (whether or not they joined the waitlist).
+            Aprovar um usuário diretamente pelo endereço de e-mail (independentemente de ter entrado na lista de espera).
           </p>
           <div className="flex gap-2">
             <Input
@@ -192,7 +192,7 @@ export function AdminWaitlist() {
               size="sm"
               className="bg-primary hover:bg-primary/90 text-black font-semibold shrink-0"
             >
-              {granting ? "Granting..." : "Grant Access"}
+              {granting ? "Liberando..." : "Liberar Acesso"}
             </Button>
           </div>
         </CardContent>
@@ -204,7 +204,7 @@ export function AdminWaitlist() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by email or name..."
+          placeholder="Pesquisar por e-mail ou nome..."
           className="pl-9 bg-[#111111] border-white/[0.06] text-sm text-zinc-200 placeholder:text-zinc-700"
         />
       </div>
@@ -219,7 +219,7 @@ export function AdminWaitlist() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-zinc-600">
           <Mail className="w-8 h-8 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">No waitlist entries found</p>
+          <p className="text-sm">Nenhum registro encontrado na lista de espera</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -260,7 +260,7 @@ export function AdminWaitlist() {
                       className="h-7 px-2.5 text-[11px] bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 font-semibold"
                       variant="outline"
                     >
-                      Approve
+                      Aprovar
                     </Button>
                     <Button
                       size="sm"
@@ -269,7 +269,7 @@ export function AdminWaitlist() {
                       className="h-7 px-2.5 text-[11px] bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 font-semibold"
                       variant="outline"
                     >
-                      Deny
+                      Negar
                     </Button>
                   </>
                 )}
@@ -286,7 +286,7 @@ export function AdminWaitlist() {
                           onClick={() => review(entry.id, "denied")}
                           className="text-red-400 focus:text-red-400 focus:bg-red-400/10 text-xs cursor-pointer"
                         >
-                          Revoke access
+                          Revogar acesso
                         </DropdownMenuItem>
                       )}
                       {entry.status === "denied" && (
@@ -294,7 +294,7 @@ export function AdminWaitlist() {
                           onClick={() => review(entry.id, "approved")}
                           className="text-emerald-400 focus:text-emerald-400 focus:bg-emerald-400/10 text-xs cursor-pointer"
                         >
-                          Approve
+                          Aprovar
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>

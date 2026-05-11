@@ -107,10 +107,10 @@ export function AdminAnalytics() {
 
   const planBar = growthStats
     ? [
-        { name: "Cristal", users: growthStats.planBreakdown.free, fill: "#bae6fd" },
-        { name: "Rubi", users: growthStats.planBreakdown.pro, fill: "#fb7185" },
-        { name: "Esmeralda", users: growthStats.planBreakdown.business, fill: EMERALD },
-        { name: "Diamante", users: growthStats.planBreakdown.agency, fill: "#e2e8f0" },
+        { name: "START", users: growthStats.planBreakdown.free, fill: "#bae6fd" },
+        { name: "COMPLETO", users: growthStats.planBreakdown.pro, fill: "#fb7185" },
+        { name: "PREMIUM", users: growthStats.planBreakdown.business, fill: EMERALD },
+        { name: "PRO", users: growthStats.planBreakdown.agency, fill: "#e2e8f0" },
       ].filter((p) => p.users > 0)
     : [];
 
@@ -124,17 +124,17 @@ export function AdminAnalytics() {
 
       {/* Revenue & Growth KPIs */}
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }}>
-        <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest mb-3">Revenue & Growth</p>
+        <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest mb-3">Receita e Crescimento</p>
         {growthLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[0,1,2,3].map((i) => <div key={i} className="h-24 rounded-xl skeleton-shimmer" />)}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatTile label="Monthly Recurring Revenue" value={`$${growthStats?.mrr?.toLocaleString() ?? 0}`} icon={DollarSign} color="text-primary" />
-            <StatTile label="Paid Subscribers" value={(growthStats?.activeSubscribers ?? 0).toString()} sub={`of ${growthStats?.totalUsers ?? 0} total users`} icon={Users} color="text-emerald-400" />
-            <StatTile label="Conversion Rate" value={`${growthStats?.conversionRate ?? 0}%`} sub="Free → Paid" icon={TrendingUp} color="text-amber-400" />
-            <StatTile label="Activation Rate" value={`${growthStats?.activationRate ?? 0}%`} sub={`${growthStats?.activatedCount ?? 0} users ran AI`} icon={Activity} color="text-blue-400" />
+            <StatTile label="Receita Recorrente Mensal" value={`$${growthStats?.mrr?.toLocaleString() ?? 0}`} icon={DollarSign} color="text-primary" />
+            <StatTile label="Assinantes Pagos" value={(growthStats?.activeSubscribers ?? 0).toString()} sub={`de ${growthStats?.totalUsers ?? 0} usuários no total`} icon={Users} color="text-emerald-400" />
+            <StatTile label="Taxa de Conversão" value={`${growthStats?.conversionRate ?? 0}%`} sub="Gratuito → Pago" icon={TrendingUp} color="text-amber-400" />
+            <StatTile label="Taxa de Ativação" value={`${growthStats?.activationRate ?? 0}%`} sub={`${growthStats?.activatedCount ?? 0} usuários usaram IA`} icon={Activity} color="text-blue-400" />
           </div>
         )}
       </motion.div>
@@ -143,10 +143,10 @@ export function AdminAnalytics() {
       {!growthLoading && growthStats && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatTile label="New Users This Week" value={(growthStats.newUsersThisWeek).toString()} icon={Users} color="text-purple-400" />
-            <StatTile label="New Users This Month" value={(growthStats.newUsersThisMonth).toString()} icon={TrendingUp} color="text-rose-400" />
-            <StatTile label="Referral Codes Active" value={(growthStats.totalReferralCodes).toString()} sub={`${growthStats.totalReferralUses} uses`} icon={GitBranch} color="text-primary" />
-            <StatTile label="Credits Spent (30d)" value={(growthStats.creditsSpentThisMonth).toLocaleString()} icon={Zap} color="text-amber-400" />
+            <StatTile label="Novos Usuários (Semana)" value={(growthStats.newUsersThisWeek).toString()} icon={Users} color="text-purple-400" />
+            <StatTile label="Novos Usuários (Mês)" value={(growthStats.newUsersThisMonth).toString()} icon={TrendingUp} color="text-rose-400" />
+            <StatTile label="Códigos de Indicação Ativos" value={(growthStats.totalReferralCodes).toString()} sub={`${growthStats.totalReferralUses} usos`} icon={GitBranch} color="text-primary" />
+            <StatTile label="Créditos Gastos (30d)" value={(growthStats.creditsSpentThisMonth).toLocaleString()} icon={Zap} color="text-amber-400" />
           </div>
         </motion.div>
       )}
@@ -157,11 +157,11 @@ export function AdminAnalytics() {
           <Card className="bg-[#111111] border-amber-500/15">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400" /> Churn Risk — Paid Users Low on Credits
+                <AlertTriangle className="w-4 h-4 text-amber-400" /> Risco de Churn — Usuários Pagos com Créditos Baixos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-zinc-500 mb-3">Paid subscribers with less than 15% credits remaining this billing period.</p>
+              <p className="text-xs text-zinc-500 mb-3">Assinantes pagos com menos de 15% de créditos restantes neste período de cobrança.</p>
               <div className="space-y-2">
                 {growthStats.churnRisk.map((u) => (
                   <div key={u.clerkId} className="flex items-center gap-3">
@@ -191,7 +191,7 @@ export function AdminAnalytics() {
           <Card className="bg-[#111111] border-white/5">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" /> Plan Distribution
+                <Users className="w-4 h-4 text-primary" /> Distribuição de Planos
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -201,7 +201,7 @@ export function AdminAnalytics() {
                   <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#71717a" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="users" name="Users" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="users" name="Usuários" radius={[4, 4, 0, 0]}>
                     {planBar.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                   </Bar>
                 </BarChart>
@@ -216,7 +216,7 @@ export function AdminAnalytics() {
         <Card className="bg-[#111111] border-white/5">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" /> User & Project Growth (7 Months)
+              <TrendingUp className="w-4 h-4 text-primary" /> Crescimento de Usuários e Projetos (7 Meses)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -239,8 +239,8 @@ export function AdminAnalytics() {
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#71717a" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="users" stroke={GOLD} strokeWidth={2.5} fill="url(#gradUsers2)" name="Users" dot={{ fill: GOLD, r: 3 }} />
-                  <Area type="monotone" dataKey="projects" stroke={PURPLE} strokeWidth={2} fill="url(#gradProjects2)" name="Projects" dot={{ fill: PURPLE, r: 3 }} />
+                  <Area type="monotone" dataKey="users" stroke={GOLD} strokeWidth={2.5} fill="url(#gradUsers2)" name="Usuários" dot={{ fill: GOLD, r: 3 }} />
+                  <Area type="monotone" dataKey="projects" stroke={PURPLE} strokeWidth={2} fill="url(#gradProjects2)" name="Projetos" dot={{ fill: PURPLE, r: 3 }} />
                   <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: "#71717a", paddingTop: 8 }} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -254,14 +254,14 @@ export function AdminAnalytics() {
           <Card className="bg-[#111111] border-white/5 h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <Zap className="w-4 h-4 text-primary" /> Feature Usage Breakdown
+                <Zap className="w-4 h-4 text-primary" /> Uso por Recurso
               </CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <Skeleton className="h-52 w-full bg-white/5 rounded-lg" />
               ) : !featureData.length ? (
-                <p className="text-sm text-muted-foreground text-center py-10">No usage data yet.</p>
+                <p className="text-sm text-muted-foreground text-center py-10">Sem dados de uso ainda.</p>
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={featureData} layout="vertical" margin={{ top: 0, right: 30, left: 8, bottom: 0 }}>
@@ -269,7 +269,7 @@ export function AdminAnalytics() {
                     <XAxis type="number" tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#a1a1aa" }} width={90} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="count" name="Actions" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="count" name="Ações" radius={[0, 4, 4, 0]}>
                       {featureData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                     </Bar>
                   </BarChart>
@@ -283,7 +283,7 @@ export function AdminAnalytics() {
           <Card className="bg-[#111111] border-white/5 h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <PieIcon className="w-4 h-4 text-primary" /> Revenue by Plan
+                <PieIcon className="w-4 h-4 text-primary" /> Receita por Plano
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -291,8 +291,8 @@ export function AdminAnalytics() {
                 <Skeleton className="h-52 w-full bg-white/5 rounded-lg" />
               ) : revenueData.length === 0 || revenueData.every((p) => p.mrr === 0) ? (
                 <div className="flex flex-col items-center justify-center h-52">
-                  <p className="text-sm text-muted-foreground">No paid subscribers yet.</p>
-                  <p className="text-xs text-muted-foreground mt-1">Upgrade users to Pro or Business to see revenue.</p>
+                  <p className="text-sm text-muted-foreground">Nenhum assinante pago ainda.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Faça upgrade de usuários para ver a receita aqui.</p>
                 </div>
               ) : (
                 <>
@@ -325,7 +325,7 @@ export function AdminAnalytics() {
           <Card className="bg-[#111111] border-white/5">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-primary" /> Feature Adoption Summary
+                <BarChart2 className="w-4 h-4 text-primary" /> Resumo de Uso dos Recursos
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -337,7 +337,7 @@ export function AdminAnalytics() {
                       <div className="h-2 rounded-full transition-all duration-700" style={{ width: `${feature.percentage}%`, backgroundColor: feature.fill }} />
                     </div>
                     <p className="text-xs font-semibold text-white w-10 text-right shrink-0">{feature.percentage}%</p>
-                    <p className="text-xs text-muted-foreground w-14 text-right shrink-0">{feature.count} uses</p>
+                    <p className="text-xs text-muted-foreground w-14 text-right shrink-0">{feature.count} usos</p>
                   </div>
                 ))}
               </div>

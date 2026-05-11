@@ -25,10 +25,10 @@ const moduleColors: Record<string, string> = {
 
 function timeAgo(date: string | Date) {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
+  if (seconds < 60) return "agora mesmo";
+  if (seconds < 3600) return `há ${Math.floor(seconds / 60)}min`;
+  if (seconds < 86400) return `há ${Math.floor(seconds / 3600)}h`;
+  return `há ${Math.floor(seconds / 86400)}d`;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -63,52 +63,52 @@ export function AdminOverview() {
 
   const statCards = [
     {
-      label: "Total Users",
+      label: "Total de Usuários",
       value: statsLoading ? null : stats?.totalUsers ?? 0,
       icon: Users,
-      sub: `+${stats?.newUsersThisMonth ?? 0} this month`,
+      sub: `+${stats?.newUsersThisMonth ?? 0} este mês`,
       color: "text-blue-400",
       bg: "bg-blue-400/10 border-blue-400/20",
     },
     {
-      label: "Total Projects",
+      label: "Total de Projetos",
       value: statsLoading ? null : stats?.totalProjects ?? 0,
       icon: FolderOpen,
-      sub: `+${stats?.newProjectsThisMonth ?? 0} this month`,
+      sub: `+${stats?.newProjectsThisMonth ?? 0} este mês`,
       color: "text-primary",
       bg: "bg-primary/10 border-primary/20",
     },
     {
-      label: "AI Actions",
+      label: "Ações da IA",
       value: statsLoading ? null : stats?.totalActions ?? 0,
       icon: Zap,
-      sub: "Total across all users",
+      sub: "Total entre todos os usuários",
       color: "text-purple-400",
       bg: "bg-purple-400/10 border-purple-400/20",
     },
     {
-      label: "Monthly Revenue",
+      label: "Receita Mensal",
       value: statsLoading ? null : `$${mrr.toLocaleString()}`,
       icon: DollarSign,
-      sub: `${(stats?.planBreakdown.pro ?? 0) + (stats?.planBreakdown.business ?? 0)} paid users`,
+      sub: `${(stats?.planBreakdown.pro ?? 0) + (stats?.planBreakdown.business ?? 0)} usuários pagos`,
       color: "text-emerald-400",
       bg: "bg-emerald-400/10 border-emerald-400/20",
     },
   ];
 
   const planBar = analytics ? [
-    { name: "Cristal", users: analytics.planRevenue.find(p => p.plan === "free")?.users ?? 0, fill: "#bae6fd" },
-    { name: "Rubi", users: analytics.planRevenue.find(p => p.plan === "pro")?.users ?? 0, fill: "#fb7185" },
-    { name: "Esmeralda", users: analytics.planRevenue.find(p => p.plan === "business")?.users ?? 0, fill: GOLD_LIGHT },
-    { name: "Diamante", users: analytics.planRevenue.find(p => p.plan === "agency")?.users ?? 0, fill: "#e2e8f0" },
+    { name: "START", users: analytics.planRevenue.find(p => p.plan === "free")?.users ?? 0, fill: "#bae6fd" },
+    { name: "COMPLETO", users: analytics.planRevenue.find(p => p.plan === "pro")?.users ?? 0, fill: "#fb7185" },
+    { name: "PREMIUM", users: analytics.planRevenue.find(p => p.plan === "business")?.users ?? 0, fill: GOLD_LIGHT },
+    { name: "PRO", users: analytics.planRevenue.find(p => p.plan === "agency")?.users ?? 0, fill: "#e2e8f0" },
   ] : [];
 
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Admin Panel</p>
-        <h2 className="text-2xl font-bold text-white mb-1">Platform Overview</h2>
-        <p className="text-muted-foreground text-sm">Real-time platform health across all users and subscriptions.</p>
+        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Painel Administrativo</p>
+        <h2 className="text-2xl font-bold text-white mb-1">Visão Geral da Plataforma</h2>
+        <p className="text-muted-foreground text-sm">Monitoramento em tempo real da plataforma, usuários e assinaturas.</p>
       </motion.div>
 
       <motion.div
@@ -147,7 +147,7 @@ export function AdminOverview() {
           <Card className="bg-[#111111] border-white/5">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-primary" /> User & Project Growth
+                <TrendingUp className="w-4 h-4 text-primary" /> Crescimento de Usuários e Projetos
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -170,8 +170,8 @@ export function AdminOverview() {
                     <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Area type="monotone" dataKey="users" stroke={GOLD} strokeWidth={2} fill="url(#gradUsers)" name="Users" dot={false} />
-                    <Area type="monotone" dataKey="projects" stroke="#a78bfa" strokeWidth={2} fill="url(#gradProjects)" name="Projects" dot={false} />
+                    <Area type="monotone" dataKey="users" stroke={GOLD} strokeWidth={2} fill="url(#gradUsers)" name="Usuários" dot={false} />
+                    <Area type="monotone" dataKey="projects" stroke="#a78bfa" strokeWidth={2} fill="url(#gradProjects)" name="Projetos" dot={false} />
                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: "#71717a" }} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -187,7 +187,7 @@ export function AdminOverview() {
           <Card className="bg-[#111111] border-white/5">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <Layers className="w-4 h-4 text-primary" /> Plan Distribution
+                <Layers className="w-4 h-4 text-primary" /> Distribuição de Planos
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -200,7 +200,7 @@ export function AdminOverview() {
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#71717a" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="users" name="Users" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="users" name="Usuários" radius={[4, 4, 0, 0]}>
                       {planBar.map((entry, i) => (
                         <Cell key={i} fill={entry.fill} />
                       ))}
@@ -217,7 +217,7 @@ export function AdminOverview() {
         <Card className="bg-[#111111] border-white/5">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <UserPlus className="w-4 h-4 text-primary" /> Recent Platform Activity
+              <UserPlus className="w-4 h-4 text-primary" /> Atividade Recente da Plataforma
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -228,7 +228,7 @@ export function AdminOverview() {
                 ))}
               </div>
             ) : !activity?.length ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No activity yet.</p>
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhuma atividade encontrada.</p>
             ) : (
               <div className="space-y-2">
                 {activity.map((item) => {
@@ -241,7 +241,7 @@ export function AdminOverview() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-white truncate">{item.action}</p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {item.userEmail ?? "Unknown user"}{item.projectName ? ` · ${item.projectName}` : ""}
+                          {item.userEmail ?? "Usuário desconhecido"}{item.projectName ? ` · ${item.projectName}` : ""}
                         </p>
                       </div>
                       <p className="text-xs text-muted-foreground shrink-0">{timeAgo(item.createdAt)}</p>

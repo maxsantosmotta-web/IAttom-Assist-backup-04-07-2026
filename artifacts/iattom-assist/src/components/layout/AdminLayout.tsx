@@ -29,13 +29,13 @@ import {
 import { Logo } from "@/components/ui/Logo";
 
 const navItems = [
-  { href: "/admin", label: "Overview", icon: BarChart3 },
-  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin", label: "Visão Geral", icon: BarChart3 },
+  { href: "/admin/users", label: "Usuários", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
-  { href: "/admin/activity", label: "Activity", icon: Activity },
-  { href: "/admin/waitlist", label: "Waitlist", icon: Clock },
+  { href: "/admin/activity", label: "Atividade", icon: Activity },
+  { href: "/admin/waitlist", label: "Lista de Espera", icon: Clock },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
-  { href: "/admin/launch-checklist", label: "Launch Checklist", icon: Rocket },
+  { href: "/admin/launch-checklist", label: "Checklist de Lançamento", icon: Rocket },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -102,14 +102,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             onClick={closeSidebar}
           >
             <ChevronLeft className="w-3.5 h-3.5" />
-            Back to Dashboard
+            Voltar ao Dashboard
           </Link>
         </div>
 
         {/* Nav */}
         <div className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
           <p className="px-3 pb-2 text-[10px] font-semibold tracking-widest text-zinc-600 uppercase">
-            Control Panel
+            Painel de Controle
           </p>
           {navItems.map((item) => {
             const isActive = location === item.href;
@@ -150,7 +150,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                   <span className="text-xs font-semibold truncate text-zinc-200">
                     {isLoaded ? displayName : "Loading..."}
                   </span>
-                  <span className="text-[10px] text-primary font-medium">Administrator</span>
+                  <span className="text-[10px] text-primary font-medium">Administrador</span>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
               </button>
@@ -162,7 +162,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 className="text-red-400 focus:text-red-400 focus:bg-red-400/10 cursor-pointer gap-2"
               >
                 <LogOut className="w-4 h-4" />
-                Sign out
+                Sair
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
