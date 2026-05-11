@@ -827,14 +827,21 @@ function SignInDrawer({ onClose, onOpenSignUp }: { onClose: () => void; onOpenSi
 
     try {
       const { error: e1 } = await signIn.password({ identifier, password });
-      if (e1) { setErr(clerkMsg(e1)); return; }
+      if (e1) {
+        setErr(isExistingAccount(e1)
+          ? "Usuário já possui cadastro. Faça login ou redefina sua senha."
+          : clerkMsg(e1));
+        return;
+      }
 
       const { error: e2 } = await signIn.finalize();
       if (e2) { setErr(clerkMsg(e2)); return; }
 
       navigate("/dashboard");
     } catch (ex) {
-      setErr(clerkMsg(ex));
+      setErr(isExistingAccount(ex)
+        ? "Usuário já possui cadastro. Faça login ou redefina sua senha."
+        : clerkMsg(ex));
     }
   }
 
