@@ -212,8 +212,10 @@ export function AdminUsers() {
                   ))
                 ) : !data?.users?.length ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-12 text-muted-foreground text-sm">
-                      Nenhum usuário encontrado.
+                    <td colSpan={8} className="py-12 text-muted-foreground text-sm">
+                      <div className="flex items-center justify-center w-full">
+                        Nenhum usuário encontrado.
+                      </div>
                     </td>
                   </tr>
                 ) : (
