@@ -54,117 +54,117 @@ const TEST_STEPS_KEY = "iattom_launch_test_steps_v1";
 const TEST_STEPS = [
   {
     id: "create_user",
-    label: "Create Test User",
+    label: "Criar Usuário de Teste",
     description:
-      "Navigate to the sign-up page and create a fresh test account using a test email address. Verify the email confirmation flow works end-to-end.",
+      "Acesse a página de cadastro e crie uma nova conta de teste usando um e-mail de teste. Verifique se o fluxo de confirmação de e-mail funciona do início ao fim.",
     link: "/sign-up",
-    linkLabel: "Open Sign Up",
+    linkLabel: "Abrir Cadastro",
   },
   {
     id: "test_login",
-    label: "Test Login Flow",
+    label: "Testar Fluxo de Login",
     description:
-      "Sign out and sign back in with the test account. Verify the dashboard loads correctly with the sidebar, credits widget, and all nav items visible.",
+      "Saia e entre novamente com a conta de teste. Verifique se o dashboard carrega corretamente com a barra lateral, widget de créditos e todos os itens de navegação visíveis.",
     link: "/sign-in",
-    linkLabel: "Open Sign In",
+    linkLabel: "Abrir Login",
   },
   {
     id: "test_ai",
-    label: "Test AI Generation",
+    label: "Testar Geração por IA",
     description:
-      'Go to Find Products, enter a product niche (e.g. "eco-friendly water bottles"), and click Generate. Confirm the AI streams results and the result card appears.',
+      "Acesse Encontrar Produtos, insira um nicho de produto (ex.: 'garrafas ecológicas') e clique em Gerar. Confirme se a IA retorna os resultados e se o card aparece corretamente.",
     link: "/dashboard/find-products",
-    linkLabel: "Find Products",
+    linkLabel: "Encontrar Produtos",
   },
   {
     id: "test_credits",
-    label: "Verify Credit Deduction",
+    label: "Verificar Desconto de Créditos",
     description:
-      "After running an AI module, check the Credits page. Confirm the balance decreased by the correct amount and a new transaction record appeared in the history table.",
+      "Após executar um módulo de IA, verifique a página de Créditos. Confirme se o saldo diminuiu corretamente e se uma nova transação apareceu no histórico.",
     link: "/dashboard/credits",
-    linkLabel: "View Credits",
+    linkLabel: "Ver Créditos",
   },
   {
     id: "test_billing",
-    label: "Test Billing Upgrade",
+    label: "Testar Upgrade de Plano",
     description:
-      "Acesse Faturamento, clique em Assinar no plano Rubi (R$89/mês). Verifique se o Checkout do Stripe abre. Cancele sem completar para evitar cobranças.",
+      "Acesse Faturamento, clique em Assinar no plano COMPLETO (R$89/mês). Verifique se o Checkout do Stripe abre. Cancele sem completar para evitar cobranças.",
     link: "/dashboard/billing",
-    linkLabel: "View Billing",
+    linkLabel: "Ver Faturamento",
   },
   {
     id: "test_admin",
-    label: "Test Admin User Management",
+    label: "Testar Gerenciamento Administrativo",
     description:
-      "Find the test user in Admin → Users. Edit their role, plan, and credit balance. Verify changes save correctly and reflect immediately in the table.",
+      "Encontre o usuário de teste em Admin → Usuários. Edite função, plano e saldo de créditos. Verifique se as alterações salvam corretamente e aparecem imediatamente na tabela.",
     link: "/admin/users",
-    linkLabel: "Admin Users",
+    linkLabel: "Usuários Administrativos",
   },
   {
     id: "test_mobile",
-    label: "Test Mobile Layout",
+    label: "Testar Layout Mobile",
     description:
-      "Resize your browser to 375px wide (or use DevTools device mode). Verify the sidebar collapses to a hamburger menu, all content is readable, and no horizontal overflow occurs.",
+      "Redimensione o navegador para 375px de largura (ou utilize o modo dispositivo do DevTools). Verifique se a barra lateral recolhe para menu hambúrguer, se todo conteúdo permanece legível e se não há rolagem horizontal.",
   },
   {
     id: "test_logout",
-    label: "Test Logout & Route Protection",
+    label: "Testar Logout e Proteção de Rotas",
     description:
-      "Sign out from the user dropdown in the sidebar. Verify you land on the landing page. Then try navigating to /dashboard — confirm you are redirected back to sign-in.",
+      "Saia pelo menu do usuário na barra lateral. Verifique se você retorna para a página inicial. Depois tente acessar /dashboard — confirme se o sistema redireciona novamente para o login.",
     link: "/dashboard",
-    linkLabel: "Try /dashboard (should redirect)",
+    linkLabel: "Testar /dashboard (deve redirecionar)",
   },
 ];
 
 const MANUAL_CONFIG = [
   {
     id: "stripe",
-    label: "Stripe Products",
+    label: "Produtos Stripe",
     color: "text-emerald-400",
     bg: "bg-emerald-400/5 border-emerald-400/15",
     steps: [
-      "Connect the Stripe integration in the Replit Integrations panel",
-      "Run: pnpm --filter @workspace/scripts run seed-products",
-      "Verifique se os produtos Rubi (R$89), Esmeralda (R$197) e Diamante (R$497) aparecem no painel do Stripe",
-      "Confirm webhook is registered — the server auto-registers it on startup",
+      "Conecte a integração Stripe no painel de Integrações do Replit",
+      "Execute: pnpm --filter @workspace/scripts run seed-products",
+      "Verifique se os planos COMPLETO (R$89), PREMIUM (R$197) e PRO (R$497) aparecem no painel do Stripe",
+      "Confirme que o webhook está registrado — o servidor o registra automaticamente ao iniciar",
     ],
   },
   {
     id: "clerk",
-    label: "Clerk OAuth & Email",
+    label: "Clerk OAuth e E-mail",
     color: "text-blue-400",
     bg: "bg-blue-400/5 border-blue-400/15",
     steps: [
-      "Log in to your Clerk dashboard at clerk.com",
-      "Enable Google OAuth and/or GitHub under Social Connections",
-      "Add your OAuth app credentials from Google Cloud Console or GitHub Settings",
-      "Configure allowed redirect URLs to match your production domain",
+      "Entre no painel do Clerk em clerk.com",
+      "Ative o Google OAuth e/ou GitHub em Social Connections",
+      "Adicione as credenciais do seu app OAuth do Google Cloud Console ou GitHub Settings",
+      "Configure as URLs de redirecionamento permitidas para corresponder ao seu domínio de produção",
     ],
   },
   {
     id: "env",
-    label: "Environment Variables",
+    label: "Variáveis de Ambiente",
     color: "text-amber-400",
     bg: "bg-amber-400/5 border-amber-400/15",
     steps: [
-      "CLERK_SECRET_KEY — from your Clerk dashboard API Keys page",
-      "VITE_CLERK_PUBLISHABLE_KEY — public key from Clerk dashboard",
-      "AI_INTEGRATIONS_OPENAI_BASE_URL + API_KEY — from Replit AI Integrations",
-      "SESSION_SECRET — generate a random 64-character string",
-      "DATABASE_URL — automatically set when using Replit PostgreSQL",
+      "CLERK_SECRET_KEY — na página de API Keys do painel do Clerk",
+      "VITE_CLERK_PUBLISHABLE_KEY — chave pública do painel do Clerk",
+      "AI_INTEGRATIONS_OPENAI_BASE_URL + API_KEY — das Integrações de IA do Replit",
+      "SESSION_SECRET — gere uma string aleatória de 64 caracteres",
+      "DATABASE_URL — definido automaticamente ao usar o PostgreSQL do Replit",
     ],
   },
   {
     id: "deploy",
-    label: "Production Deployment",
+    label: "Deploy em Produção",
     color: "text-purple-400",
     bg: "bg-purple-400/5 border-purple-400/15",
     steps: [
-      "Click Deploy in Replit to create a production environment",
-      "Set all environment variables in the production deployment settings",
-      "Optionally configure a custom domain in Replit Deployments",
-      "Run seed-products script against production DB if not already done",
-      "Test the Stripe webhook URL using your production domain",
+      "Clique em Deploy no Replit para criar um ambiente de produção",
+      "Defina todas as variáveis de ambiente nas configurações do deploy de produção",
+      "Opcionalmente, configure um domínio personalizado no Replit Deployments",
+      "Execute o script seed-products no banco de produção, se ainda não tiver feito",
+      "Teste a URL do webhook do Stripe usando seu domínio de produção",
     ],
   },
 ];
@@ -174,7 +174,7 @@ function StatusBadge({ status }: { status: CheckStatus }) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-500 font-medium">
         <Loader2 className="w-2.5 h-2.5 animate-spin" />
-        Checking
+        Verificando
       </span>
     );
   }
@@ -182,7 +182,7 @@ function StatusBadge({ status }: { status: CheckStatus }) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold">
         <CheckCircle2 className="w-2.5 h-2.5" />
-        Ready
+        Pronto
       </span>
     );
   }
@@ -190,14 +190,14 @@ function StatusBadge({ status }: { status: CheckStatus }) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-semibold">
         <AlertTriangle className="w-2.5 h-2.5" />
-        Needs Attention
+        Atenção Necessária
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-semibold">
       <XCircle className="w-2.5 h-2.5" />
-      Not Configured
+      Não Configurado
     </span>
   );
 }
@@ -219,8 +219,8 @@ function buildCheckItems(data: LaunchStatusData | null, apiOk: boolean | null): 
   return [
     {
       id: "api_health",
-      label: "API Health",
-      description: "Express API server is reachable and responding",
+      label: "Saúde da API",
+      description: "Servidor da API Express está acessível e respondendo",
       icon: Server,
       status: loading
         ? "loading"
@@ -229,35 +229,35 @@ function buildCheckItems(data: LaunchStatusData | null, apiOk: boolean | null): 
         : apiOk
         ? "ready"
         : "error",
-      detail: loading || apiOk === null ? "Checking..." : apiOk ? "API server responding normally" : "API server unreachable",
-      fix: "Ensure the API server workflow is running",
+      detail: loading || apiOk === null ? "Verificando..." : apiOk ? "Servidor da API respondendo normalmente" : "Servidor da API inacessível",
+      fix: "Verifique se o workflow do servidor de API está em execução",
     },
     {
       id: "database",
-      label: "Database Health",
-      description: "PostgreSQL connection established and schema migrated",
+      label: "Saúde do Banco de Dados",
+      description: "Conexão PostgreSQL estabelecida e schema migrado",
       icon: Database,
       status: loading ? "loading" : data!.database.status === "ready" ? "ready" : "error",
-      detail: loading ? "Checking..." : data!.database.message,
-      fix: "Check DATABASE_URL env var and ensure PostgreSQL is running",
+      detail: loading ? "Verificando..." : data!.database.message,
+      fix: "Verifique a variável DATABASE_URL e certifique-se de que o PostgreSQL está em execução",
     },
     {
       id: "env_vars",
-      label: "Environment Variables",
-      description: "All required secrets and configuration keys are set",
+      label: "Variáveis de Ambiente",
+      description: "Todos os secrets e chaves de configuração obrigatórios estão definidos",
       icon: Key,
       status: loading ? "loading" : data!.allEnvVarsConfigured ? "ready" : "needs_attention",
       detail: loading
-        ? "Checking..."
+        ? "Verificando..."
         : data!.allEnvVarsConfigured
-        ? "All 6 required environment variables are configured"
-        : `Missing: ${Object.entries(data!.envVars).filter(([, v]) => !v).map(([k]) => k).join(", ")}`,
-      fix: "Set all missing environment variables in Replit Secrets",
+        ? "As 6 variáveis de ambiente obrigatórias estão configuradas"
+        : `Ausentes: ${Object.entries(data!.envVars).filter(([, v]) => !v).map(([k]) => k).join(", ")}`,
+      fix: "Defina as variáveis de ambiente ausentes nos Secrets do Replit",
     },
     {
       id: "auth",
-      label: "Authentication",
-      description: "Clerk authentication is wired up for sign-in and sign-up",
+      label: "Autenticação",
+      description: "Autenticação Clerk configurada para login e cadastro",
       icon: Shield,
       status: loading
         ? "loading"
@@ -265,65 +265,65 @@ function buildCheckItems(data: LaunchStatusData | null, apiOk: boolean | null): 
         ? "ready"
         : "not_configured",
       detail: loading
-        ? "Checking..."
+        ? "Verificando..."
         : data!.envVars["CLERK_SECRET_KEY"]
-        ? "Clerk keys configured — sign-in and sign-up active"
-        : "CLERK_SECRET_KEY or CLERK_PUBLISHABLE_KEY missing",
-      fix: "Add Clerk API keys from your Clerk dashboard",
+        ? "Chaves Clerk configuradas — login e cadastro ativos"
+        : "CLERK_SECRET_KEY ou CLERK_PUBLISHABLE_KEY ausente",
+      fix: "Adicione as chaves da API Clerk no painel do Clerk",
     },
     {
       id: "admin",
-      label: "Admin Permissions",
-      description: "At least one admin user has been configured",
+      label: "Permissões Administrativas",
+      description: "Pelo menos um usuário administrador foi configurado",
       icon: Shield,
       status: loading ? "loading" : data!.adminUsers.status,
       detail: loading
-        ? "Checking..."
+        ? "Verificando..."
         : data!.adminUsers.count > 0
-        ? `${data!.adminUsers.count} admin${data!.adminUsers.count !== 1 ? "s" : ""} configured`
-        : "No admin users found — visit /admin to run first-admin bootstrap",
-      fix: "Navigate to /admin and click Claim Admin Access",
+        ? `${data!.adminUsers.count} administrador${data!.adminUsers.count !== 1 ? "es" : ""} configurado${data!.adminUsers.count !== 1 ? "s" : ""}`
+        : "Nenhum administrador encontrado — acesse /admin para realizar a configuração inicial",
+      fix: "Acesse /admin e clique em Reivindicar Acesso Administrativo",
     },
     {
       id: "ai",
-      label: "AI Modules",
-      description: "OpenAI integration is configured for all 6 AI features",
+      label: "Módulos de IA",
+      description: "Integração OpenAI configurada para todos os 6 recursos de IA",
       icon: Brain,
       status: loading ? "loading" : data!.aiConfig.status,
       detail: loading
-        ? "Checking..."
+        ? "Verificando..."
         : data!.aiConfig.status === "ready"
-        ? "OpenAI integration active — all 6 modules ready"
-        : "AI_INTEGRATIONS_OPENAI_BASE_URL or API_KEY not set",
-      fix: "Enable the AI Integrations add-on in Replit and set env vars",
+        ? "Integração OpenAI ativa — todos os 6 módulos prontos"
+        : "AI_INTEGRATIONS_OPENAI_BASE_URL ou API_KEY não configurado",
+      fix: "Ative o add-on de integrações de IA no Replit e configure as variáveis de ambiente",
     },
     {
       id: "credits",
-      label: "Credits System",
-      description: "Per-user credit balances, deduction, and transaction history",
+      label: "Sistema de Créditos",
+      description: "Saldos, deduções e histórico de transações por usuário",
       icon: Zap,
       status: loading ? "loading" : "ready",
       detail: loading
-        ? "Checking..."
-        : `Credits engine active — ${data!.creditsSystem.transactionCount} transaction${data!.creditsSystem.transactionCount !== 1 ? "s" : ""} recorded`,
+        ? "Verificando..."
+        : `Sistema de créditos ativo — ${data!.creditsSystem.transactionCount} transação${data!.creditsSystem.transactionCount !== 1 ? "ões" : ""} registrada${data!.creditsSystem.transactionCount !== 1 ? "s" : ""}`,
     },
     {
       id: "stripe",
-      label: "Stripe Billing",
-      description: "Stripe products seeded and checkout flow configured",
+      label: "Faturamento Stripe",
+      description: "Produtos Stripe configurados e fluxo de checkout ativo",
       icon: CreditCard,
       status: loading ? "loading" : data!.stripeProducts.status,
       detail: loading
-        ? "Checking..."
+        ? "Verificando..."
         : data!.stripeProducts.status === "ready"
-        ? `${data!.stripeProducts.count} paid plan${data!.stripeProducts.count !== 1 ? "s" : ""} configured in Stripe`
-        : "Run seed-products script to create Stripe products",
-      fix: "Run: pnpm --filter @workspace/scripts run seed-products",
+        ? `${data!.stripeProducts.count} plano${data!.stripeProducts.count !== 1 ? "s" : ""} pago${data!.stripeProducts.count !== 1 ? "s" : ""} configurado${data!.stripeProducts.count !== 1 ? "s" : ""} no Stripe`
+        : "Execute o script seed-products para criar os produtos no Stripe",
+      fix: "Execute: pnpm --filter @workspace/scripts run seed-products",
     },
     {
       id: "users",
-      label: "User Workspaces",
-      description: "Users can register, sign in, and access private workspaces",
+      label: "Espaços de Trabalho",
+      description: "Usuários podem se registrar, entrar e acessar espaços privados",
       icon: Users,
       status: loading
         ? "loading"
@@ -331,38 +331,38 @@ function buildCheckItems(data: LaunchStatusData | null, apiOk: boolean | null): 
         ? "ready"
         : "needs_attention",
       detail: loading
-        ? "Checking..."
+        ? "Verificando..."
         : data!.database.userCount > 0
-        ? `${data!.database.userCount} user${data!.database.userCount !== 1 ? "s" : ""} have registered`
-        : "No users yet — register the first account to verify workspace isolation",
-      fix: "Create a test user account via the sign-up page",
+        ? `${data!.database.userCount} usuário${data!.database.userCount !== 1 ? "s" : ""} cadastrado${data!.database.userCount !== 1 ? "s" : ""}`
+        : "Nenhum usuário ainda — registre a primeira conta para verificar o isolamento",
+      fix: "Crie uma conta de teste pela página de cadastro",
     },
     {
       id: "landing",
-      label: "Public Landing Page",
-      description: "Marketing landing page is accessible without authentication",
+      label: "Página Pública",
+      description: "Página de marketing acessível sem autenticação",
       icon: Globe,
       status: "ready",
-      detail: "Landing page publicly accessible at the root URL",
+      detail: "Página inicial acessível publicamente na URL principal",
     },
     {
       id: "mobile",
-      label: "Mobile Responsiveness",
-      description: "Sidebar collapses on mobile, all layouts adapt to small screens",
+      label: "Responsividade Mobile",
+      description: "Barra lateral recolhe no mobile, layouts adaptam a telas pequenas",
       icon: Smartphone,
       status: "ready",
-      detail: "Responsive layouts implemented — tested at 375px and above",
+      detail: "Layouts responsivos implementados — testado em 375px ou superior",
     },
     {
       id: "production",
-      label: "Production Deployment",
-      description: "App is deployed to a production environment with a live URL",
+      label: "Deploy em Produção",
+      description: "App publicado em ambiente de produção com URL ativa",
       icon: Rocket,
       status: isProduction ? "ready" : "needs_attention",
       detail: isProduction
-        ? `Live on ${window.location.hostname}`
-        : "Running in development — click Deploy in Replit to go live",
-      fix: "Use Replit Deployments to publish to a .replit.app domain",
+        ? `Publicado em ${window.location.hostname}`
+        : "Executando em desenvolvimento — clique em Deploy no Replit para publicar",
+      fix: "Use o Replit Deployments para publicar em um domínio .replit.app",
     },
   ];
 }
@@ -445,10 +445,10 @@ export function AdminLaunchChecklist() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Pre-Launch</p>
-            <h2 className="text-2xl font-bold text-white mb-1">Launch Checklist</h2>
+            <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Pré-Lançamento</p>
+            <h2 className="text-2xl font-bold text-white mb-1">Checklist de Lançamento</h2>
             <p className="text-muted-foreground text-sm">
-              System readiness overview and guided testing flow before going live.
+              Visão geral da preparação do sistema e fluxo guiado de testes antes do lançamento.
             </p>
           </div>
           <Button
@@ -459,12 +459,12 @@ export function AdminLaunchChecklist() {
             className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 shrink-0"
           >
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
+            Atualizar
           </Button>
         </div>
         {lastChecked && (
           <p className="text-xs text-zinc-600 mt-2">
-            Last checked: {lastChecked.toLocaleTimeString()}
+            Última verificação: {lastChecked.toLocaleTimeString("pt-BR")}
           </p>
         )}
       </motion.div>
@@ -476,10 +476,10 @@ export function AdminLaunchChecklist() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm font-semibold text-white">
-                  Readiness Score
+                  Pontuação de Preparação
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {readyCount} of {checkItems.length} checks passing
+                  {readyCount} de {checkItems.length} verificações concluídas
                 </p>
               </div>
               <div className="text-right">
@@ -503,18 +503,18 @@ export function AdminLaunchChecklist() {
             <div className="flex gap-4 mt-3">
               <div className="flex items-center gap-1.5 text-xs text-emerald-400">
                 <CheckCircle2 className="w-3 h-3" />
-                {readyCount} Ready
+                {readyCount} Pronto{readyCount !== 1 ? "s" : ""}
               </div>
               {needsAttentionCount > 0 && (
                 <div className="flex items-center gap-1.5 text-xs text-amber-400">
                   <AlertTriangle className="w-3 h-3" />
-                  {needsAttentionCount} Needs Attention
+                  {needsAttentionCount} Atenção
                 </div>
               )}
               {notConfiguredCount > 0 && (
                 <div className="flex items-center gap-1.5 text-xs text-red-400">
                   <XCircle className="w-3 h-3" />
-                  {notConfiguredCount} Not Configured
+                  {notConfiguredCount} Não Configurado{notConfiguredCount !== 1 ? "s" : ""}
                 </div>
               )}
             </div>
@@ -526,9 +526,9 @@ export function AdminLaunchChecklist() {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
-            System Status
+            Status do Sistema
           </h3>
-          <span className="text-xs text-zinc-600">{checkItems.length} checks</span>
+          <span className="text-xs text-zinc-600">{checkItems.length} verificações</span>
         </div>
         <motion.div
           variants={containerVariants}
@@ -591,7 +591,7 @@ export function AdminLaunchChecklist() {
                         </p>
                         {item.fix && (item.status === "needs_attention" || item.status === "not_configured" || item.status === "error") && (
                           <p className="text-[11px] text-zinc-600 mt-1.5 leading-relaxed border-t border-white/5 pt-1.5">
-                            Fix: {item.fix}
+                            Correção: {item.fix}
                           </p>
                         )}
                       </div>
@@ -609,10 +609,10 @@ export function AdminLaunchChecklist() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
-              Guided Test Flow
+              Fluxo Guiado de Testes
             </h3>
             <p className="text-xs text-zinc-600 mt-0.5">
-              {testStepsDoneCount} of {TEST_STEPS.length} steps completed
+              {testStepsDoneCount} de {TEST_STEPS.length} etapas concluídas
             </p>
           </div>
           {testStepsDoneCount > 0 && (
@@ -620,7 +620,7 @@ export function AdminLaunchChecklist() {
               onClick={resetTestSteps}
               className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
             >
-              Reset all
+              Redefinir tudo
             </button>
           )}
         </div>
@@ -688,7 +688,7 @@ export function AdminLaunchChecklist() {
                               : "bg-primary/10 border-primary/20 text-primary hover:bg-primary/20"
                           }`}
                         >
-                          {isDone ? "Undo" : "Mark Done"}
+                          {isDone ? "Desfazer" : "Marcar como Concluído"}
                         </button>
                       </div>
                     </div>
@@ -709,8 +709,8 @@ export function AdminLaunchChecklist() {
             className="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center"
           >
             <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-emerald-400">All tests completed</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Your platform has passed the guided test flow.</p>
+            <p className="text-sm font-semibold text-emerald-400">Todos os testes concluídos</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Sua plataforma passou pelo fluxo guiado de testes.</p>
           </motion.div>
         )}
       </motion.div>
@@ -719,10 +719,10 @@ export function AdminLaunchChecklist() {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
         <div className="mb-4">
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
-            Manual Configuration Required
+            Configuração Manual Necessária
           </h3>
           <p className="text-xs text-zinc-600 mt-0.5">
-            These items must be completed outside the app before public launch.
+            Esses itens devem ser concluídos fora do aplicativo antes do lançamento público.
           </p>
         </div>
 
