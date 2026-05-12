@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { X, Check, Zap, Crown, RefreshCw, Star, Sparkles, Building2, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -62,9 +61,7 @@ interface PlanComparisonModalProps {
 
 export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: PlanComparisonModalProps) {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
-  const [billing,      setBilling]      = useState<"monthly" | "annual">("monthly");
-  const [startPending, setStartPending] = useState(false);
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
   const { data: plans = [], isLoading } = useGetStripePlans({
     query: { queryKey: getGetStripePlansQueryKey(), staleTime: 60_000 },
@@ -86,16 +83,7 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
   const sortedPlans  = [...plans].sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));
 
   const handleUpgrade = (priceId: string | null | undefined, planKey: string) => {
-    if (!priceId) {
-      setStartPending(true);
-      fetch("/api/stripe/start/checkout", { method: "POST" })
-        .then((r) => r.json() as Promise<{ url?: string; error?: string }>)
-        .then((data) => { if (data.url) window.location.href = data.url; })
-        .catch(() => toast({ title: "Erro ao iniciar checkout", variant: "destructive" }))
-        .finally(() => setStartPending(false));
-      return;
-    }
-    checkout.mutate({ data: { priceId, planKey } });
+    checkout.mutate({ data: { priceId: priceId ?? "free", planKey } });
   };
 
   const getMainPrice = (planKey: string) => {
@@ -281,9 +269,9 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                             size="sm"
                             className={`w-full text-xs ${PLAN_BTN[key]}`}
                             onClick={() => handleUpgrade(plan.priceId, key)}
-                            disabled={checkout.isPending || startPending}
+                            disabled={checkout.isPending}
                           >
-                            {(checkout.isPending || (key === "free" && startPending)) && (
+                            {checkout.isPending && (
                               <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
                             )}
                             {hasActiveSub && isUpgrade

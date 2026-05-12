@@ -268,6 +268,11 @@ router.post(
     const { priceId, planKey } = parsed.data;
 
     try {
+      /* free/START plan has no Stripe priceId — use dedicated $0 checkout */
+      if (priceId === "free" || planKey === "free") {
+        const url = await createFreeStartCheckoutSession(clerkUserId);
+        return res.json({ url });
+      }
       const url = await createCheckoutSession(clerkUserId, priceId, planKey);
       return res.json({ url });
     } catch (err: unknown) {
