@@ -115,7 +115,7 @@ export function SavedPrompts() {
         <div className="space-y-1">
           <p className="text-[10px] text-primary font-bold tracking-widest uppercase">Biblioteca</p>
           <h2 className="text-2xl font-black tracking-tight text-white">Prompts Salvos</h2>
-          <p className="text-sm text-zinc-500">Sua biblioteca pessoal de prompts em todos os módulos de IA</p>
+          <p className="text-sm text-zinc-500">Sua biblioteca pessoal de prompts em todos os módulos.</p>
         </div>
         <Button
           onClick={() => setCreating(true)}

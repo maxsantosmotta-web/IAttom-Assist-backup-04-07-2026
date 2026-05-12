@@ -112,7 +112,7 @@ export function Projects() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Espaço de Trabalho</p>
         <h2 className="text-2xl font-bold text-white mb-1">Projetos</h2>
-        <p className="text-muted-foreground text-sm">Gerencie todos os seus projetos com IA em um só lugar.</p>
+        <p className="text-muted-foreground text-sm">Gerencie todos os seus projetos em um só lugar.</p>
       </motion.div>
 
       <motion.div

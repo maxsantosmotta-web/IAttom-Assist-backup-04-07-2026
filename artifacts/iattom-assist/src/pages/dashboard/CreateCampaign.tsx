@@ -71,7 +71,7 @@ export function CreateCampaign() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Construtor de Campanha</p>
         <h2 className="text-2xl font-bold text-white mb-1">Criar Campanha</h2>
-        <p className="text-muted-foreground text-sm">Gere uma estratégia completa de campanha com copy criado por IA para cada plataforma.</p>
+        <p className="text-muted-foreground text-sm">Gere uma estratégia completa de campanha com copy criado para cada plataforma.</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
