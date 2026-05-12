@@ -115,6 +115,41 @@ export async function createCreditPurchaseCheckoutSession(
   return session.url;
 }
 
+export async function createFreeStartCheckoutSession(
+  clerkUserId: string,
+): Promise<string> {
+  const customerId = await ensureStripeCustomer(clerkUserId);
+  const stripe = await getUncachableStripeClient();
+
+  const billingUrl = `${APP_ORIGIN}${BASE_PATH}/dashboard/billing`;
+
+  const session = await stripe.checkout.sessions.create({
+    customer: customerId,
+    payment_method_collection: "if_required",
+    line_items: [
+      {
+        price_data: {
+          currency: "brl",
+          unit_amount: 0,
+          recurring: { interval: "month" },
+          product_data: { name: "IAttom Assist START" },
+        },
+        quantity: 1,
+      },
+    ],
+    mode: "subscription",
+    success_url: `${billingUrl}?payment=success`,
+    cancel_url:  `${billingUrl}?payment=canceled`,
+    client_reference_id: clerkUserId,
+    subscription_data: {
+      metadata: { clerkUserId, planKey: "free" },
+    },
+  });
+
+  if (!session.url) throw new Error("Stripe checkout session URL is null");
+  return session.url;
+}
+
 export async function createBillingPortalSession(
   clerkUserId: string,
 ): Promise<string> {

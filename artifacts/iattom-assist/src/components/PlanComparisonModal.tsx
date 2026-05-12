@@ -63,7 +63,8 @@ interface PlanComparisonModalProps {
 export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: PlanComparisonModalProps) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const [billing,      setBilling]      = useState<"monthly" | "annual">("monthly");
+  const [startPending, setStartPending] = useState(false);
 
   const { data: plans = [], isLoading } = useGetStripePlans({
     query: { queryKey: getGetStripePlansQueryKey(), staleTime: 60_000 },
@@ -86,9 +87,12 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
 
   const handleUpgrade = (priceId: string | null | undefined, planKey: string) => {
     if (!priceId) {
-      toast({ title: "Plano START selecionado!", description: "Bem-vindo à IAttom Assist. Explore todos os recursos disponíveis." });
-      onClose();
-      setLocation("/dashboard");
+      setStartPending(true);
+      fetch("/api/stripe/start/checkout", { method: "POST" })
+        .then((r) => r.json() as Promise<{ url?: string; error?: string }>)
+        .then((data) => { if (data.url) window.location.href = data.url; })
+        .catch(() => toast({ title: "Erro ao iniciar checkout", variant: "destructive" }))
+        .finally(() => setStartPending(false));
       return;
     }
     checkout.mutate({ data: { priceId, planKey } });
@@ -277,9 +281,11 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                             size="sm"
                             className={`w-full text-xs ${PLAN_BTN[key]}`}
                             onClick={() => handleUpgrade(plan.priceId, key)}
-                            disabled={checkout.isPending}
+                            disabled={checkout.isPending || startPending}
                           >
-                            {checkout.isPending && <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />}
+                            {(checkout.isPending || (key === "free" && startPending)) && (
+                              <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
+                            )}
                             {hasActiveSub && isUpgrade
                               ? `Fazer Upgrade`
                               : `Assinar ${PLAN_NAMES[key] ?? plan.name}`}

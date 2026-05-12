@@ -214,6 +214,7 @@ export function Billing() {
   const sortedPlans = [...plans].sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));
 
   const [creditsPending, setCreditsPending] = useState<string | null>(null);
+  const [startPending,   setStartPending]   = useState(false);
   const handleBuyCredits = async (packageId: string) => {
     setCreditsPending(packageId);
     try {
@@ -234,8 +235,12 @@ export function Billing() {
 
   const handleUpgrade = (priceId: string | null | undefined, planKey: string) => {
     if (!priceId) {
-      toast({ title: "Plano START selecionado!", description: "Bem-vindo à IAttom Assist. Explore todos os recursos disponíveis." });
-      setLocation("/dashboard");
+      setStartPending(true);
+      fetch("/api/stripe/start/checkout", { method: "POST" })
+        .then((r) => r.json() as Promise<{ url?: string; error?: string }>)
+        .then((data) => { if (data.url) window.location.href = data.url; })
+        .catch(() => toast({ title: "Erro ao iniciar checkout", variant: "destructive" }))
+        .finally(() => setStartPending(false));
       return;
     }
     checkout.mutate({ data: { priceId, planKey } });
@@ -507,9 +512,11 @@ export function Billing() {
                       size="sm"
                       className={`w-full text-xs font-semibold ${PLAN_BTN_STYLE[planKey] ?? ""}`}
                       onClick={() => handleUpgrade(plan.priceId, planKey)}
-                      disabled={checkout.isPending}
+                      disabled={checkout.isPending || startPending}
                     >
-                      {checkout.isPending && <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                      {(checkout.isPending || (planKey === "free" && startPending)) && (
+                        <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      )}
                       {hasActiveSub && isUpgrade
                         ? `Fazer Upgrade`
                         : `Assinar ${PLAN_NAMES[planKey] ?? plan.name}`}

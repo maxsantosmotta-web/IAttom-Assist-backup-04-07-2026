@@ -10,6 +10,7 @@ import {
   createCheckoutSession,
   createBillingPortalSession,
   createCreditPurchaseCheckoutSession,
+  createFreeStartCheckoutSession,
 } from "../lib/stripeService.js";
 import {
   getSubscriptionByCustomerId,
@@ -224,6 +225,26 @@ router.get(
       stripeCustomerId: user.stripeCustomerId,
       stripeSubscriptionId: user.stripeSubscriptionId,
     });
+  },
+);
+
+router.post(
+  "/stripe/start/checkout",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
+    try {
+      const url = await createFreeStartCheckoutSession(clerkUserId);
+      return res.json({ url });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("not configured")) {
+        req.log.warn("START checkout attempted but billing is not configured");
+        return res.status(503).json({ error: "Faturamento não disponível neste ambiente." });
+      }
+      req.log.error({ err }, "Failed to create START checkout session");
+      return res.status(500).json({ error: "Falha ao iniciar o checkout" });
+    }
   },
 );
 
