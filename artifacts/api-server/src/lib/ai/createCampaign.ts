@@ -52,7 +52,7 @@ Retorne exatamente esta estrutura:
   "cta": string (chamada para ação convincente, em PT-BR),
   "audience": string (descrição precisa do público-alvo, em PT-BR),
   "channels": string[] (3-5 canais recomendados, em PT-BR),
-  "budget": string (recomendação de orçamento com justificativa, em PT-BR),
+  "budget": string (orçamento realista para o mercado brasileiro, curto e direto. Siga esta lógica obrigatória: pequenos negócios, afiliados, creators e iniciantes → R$300 a R$3.000/mês; negócios intermediários → R$3.000 a R$10.000/mês; operações agressivas/escaláveis → acima de R$10.000 somente se o objetivo justificar claramente. NUNCA sugira budgets enterprise sem justificativa. Priorize validação antes de escala. Explicação simples, sem excesso de detalhamento financeiro.),
   "copy": {
     "facebook": string (copy para anúncio no Facebook, 2-3 frases em PT-BR),
     "instagram": string (legenda para Instagram com gancho, em PT-BR),
