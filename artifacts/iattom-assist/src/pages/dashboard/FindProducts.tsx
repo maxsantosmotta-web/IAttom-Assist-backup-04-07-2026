@@ -10,6 +10,10 @@ import { useAiStream } from "@/hooks/useAiStream";
 import type { FindProductsResult, FoundProduct } from "@/types/ai";
 
 const demandColors: Record<string, string> = {
+  "Muito Alta": "text-emerald-400",
+  "Alta": "text-primary",
+  "Média": "text-amber-400",
+  "Baixa": "text-red-400",
   "Very High": "text-emerald-400",
   "High": "text-primary",
   "Medium": "text-amber-400",
@@ -17,6 +21,10 @@ const demandColors: Record<string, string> = {
 };
 
 const competitionColors: Record<string, string> = {
+  "Muito Alta": "text-red-400",
+  "Alta": "text-amber-400",
+  "Média": "text-primary",
+  "Baixa": "text-emerald-400",
   "Very High": "text-red-400",
   "High": "text-amber-400",
   "Medium": "text-primary",

@@ -38,39 +38,41 @@ export async function streamFindProducts(
   setupSSE(res);
   sendSSE(res, { type: "start" });
 
-  const systemPrompt = `You are an elite e-commerce product researcher and market analyst with deep expertise in identifying high-margin, trending products. You analyze market data, consumer trends, and competitive landscapes to surface winning opportunities.
+  const systemPrompt = `Você é um especialista em pesquisa de produtos e análise de mercado para e-commerce, com profundo conhecimento em identificar produtos de alta margem e tendência. Analisa dados de mercado, tendências de consumo e cenários competitivos para revelar oportunidades vencedoras.
 
-Your output must be a valid JSON object — no markdown, no code blocks, just raw JSON.
+REGRA OBRIGATÓRIA DE IDIOMA: Responda SEMPRE em português brasileiro, com linguagem comercial, clara, prática e voltada para o mercado brasileiro. NUNCA responda em inglês, espanhol ou qualquer outro idioma. Independentemente da origem dos dados ou referências internacionais, a resposta final deve ser integralmente em português brasileiro.
 
-Return this exact structure:
+Sua saída deve ser um objeto JSON válido — sem markdown, sem blocos de código, apenas JSON puro.
+
+Retorne exatamente esta estrutura:
 {
   "products": [
     {
-      "name": string,
-      "category": string,
-      "score": number (0-100, overall opportunity score),
-      "demand": "Very High" | "High" | "Medium" | "Low",
-      "margin": string (e.g. "68%"),
-      "trend": string (e.g. "+34%"),
-      "whyNow": string (1-2 sentences on why this is timely),
-      "targetAudience": string,
-      "keySellingPoints": string[] (3 points),
-      "competition": "Very High" | "High" | "Medium" | "Low",
-      "estimatedMonthlyRevenue": string (e.g. "$15,000-$45,000")
+      "name": string (nome do produto em português),
+      "category": string (categoria em português, ex: "Casa e Cozinha", "Cuidados Pessoais", "Pet e Tecnologia", "Energia e Utilidades", "Óculos e Acessórios", "Casa, Jardim e Automação", "Fitness e Bem-estar", "Tecnologia e Gadgets"),
+      "score": number (0-100, pontuação geral da oportunidade),
+      "demand": "Muito Alta" | "Alta" | "Média" | "Baixa",
+      "margin": string (ex: "68%"),
+      "trend": string (ex: "+34%"),
+      "whyNow": string (1-2 frases em PT-BR explicando por que é oportuno agora),
+      "targetAudience": string (público-alvo em português),
+      "keySellingPoints": string[] (3 pontos de venda em português),
+      "competition": "Muito Alta" | "Alta" | "Média" | "Baixa",
+      "estimatedMonthlyRevenue": string (ex: "R$ 15.000–R$ 45.000")
     }
   ],
-  "marketInsight": string (2-3 sentences of expert market commentary),
-  "topPick": string (name of the single best opportunity)
+  "marketInsight": string (2-3 frases de análise especializada de mercado em PT-BR),
+  "topPick": string (nome exato do melhor produto da lista)
 }
 
-Return 5-6 products. Make every product recommendation feel premium, specific, and data-driven.`;
+Retorne 5-6 produtos. Cada recomendação deve ser premium, específica e baseada em dados reais. Todos os textos, incluindo nomes, categorias, descrições e insights, devem estar em português brasileiro.`;
 
-  const userPrompt = `Find winning e-commerce products for: "${params.query}"
-${params.niche ? `Niche focus: ${params.niche}` : ""}
-${params.priceRange ? `Price range: ${params.priceRange}` : ""}
-${params.targetMarket ? `Target market: ${params.targetMarket}` : ""}
+  const userPrompt = `Pesquise produtos vencedores para e-commerce sobre: "${params.query}"
+${params.niche ? `Nicho: ${params.niche}` : ""}
+${params.priceRange ? `Faixa de preço: ${params.priceRange}` : ""}
+${params.targetMarket ? `Mercado-alvo: ${params.targetMarket}` : ""}
 
-Return a JSON response with 5-6 specific, actionable product recommendations with real market data.`;
+Retorne um JSON com 5-6 recomendações específicas e acionáveis, com dados reais de mercado. Responda integralmente em português brasileiro.`;
 
   let fullResponse = "";
 
