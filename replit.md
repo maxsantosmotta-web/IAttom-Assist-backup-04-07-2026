@@ -125,6 +125,34 @@ O painel ADM está bloqueado em seu estado atual. Nenhuma alteração deve ser f
 
 Proibido sem autorização explícita: traduções, ajustes visuais, layout, tabelas, gráficos, responsividade, textos, refatorações, componentes, alinhamentos, sidebar, cards, analytics.
 
+## REGRA GLOBAL DE PROTEÇÃO — ESTRUTURA VISUAL OFICIAL BLOQUEADA
+
+O estado atual da plataforma é a BASE ESTÁVEL OFICIAL E APROVADA. Toda alteração futura deve ser estritamente cirúrgica.
+
+### Regras de execução obrigatórias
+
+1. NÃO alterar nada fora do escopo exato do comando solicitado.
+2. NÃO otimizar componentes sem autorização explícita.
+3. NÃO refatorar estrutura existente.
+4. NÃO alterar estilos globais.
+5. NÃO alterar textos que não forem citados explicitamente.
+6. NÃO alterar cores já aprovadas.
+7. NÃO alterar componentes compartilhados/globais sem autorização.
+8. NÃO modificar rotas.
+9. NÃO modificar lógica existente fora do alvo solicitado.
+10. NÃO substituir componentes por versões "melhores".
+11. NÃO alterar responsividade já aprovada.
+12. NÃO alterar navbar, sidebar, cards, botões ou layouts sem comando direto.
+13. NÃO alterar telas já aprovadas visualmente.
+14. NÃO executar limpeza automática de código que possa impactar a interface.
+15. NÃO alterar estados, providers ou stores globais sem autorização explícita.
+
+### Protocolo antes de cada alteração
+
+- Analisar impacto no restante da plataforma.
+- Se houver risco indireto: NÃO executar alteração ampla. Aplicar solução isolada/local.
+- Ao final: validar mobile, desktop, alinhamento e isolamento da alteração.
+
 ## User preferences
 
 - Dark premium design with gold accents (#C9A84C range)
