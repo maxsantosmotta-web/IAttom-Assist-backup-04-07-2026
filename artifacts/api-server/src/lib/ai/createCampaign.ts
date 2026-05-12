@@ -62,16 +62,6 @@ Modos disponíveis e suas regras obrigatórias:
 - Premium: posicionamento de marca de alto valor, copy sofisticado sem promoções de preço, canais selecionados (Instagram, Google, e-mail), orçamento flexível mas justificado, foco em percepção de valor e exclusividade.
 - Escala: produto já validado, expansão de público e remarketing pesado, múltiplos canais e audiências lookalike, orçamento acima de R$10.000/mês, copy testado e adaptado por segmento, cronograma de expansão em fases.
 
-REGRA DE COMPATIBILIDADE PRODUTO × PLATAFORMA: Antes de gerar a campanha, analise o nome do produto e o objetivo para inferir o tipo de produto (físico ou digital) e verifique a compatibilidade com a plataforma do objetivo. Use estas regras:
-- Shopee e Mercado Livre → plataformas para produtos FÍSICOS. Produtos digitais (cursos, ebooks, templates, mentorias, SaaS, infoprodutos) são incompatíveis.
-- Hotmart e Kiwify → plataformas para produtos DIGITAIS. Produtos físicos (roupas, eletrônicos, utensílios, cosméticos, alimentos) são incompatíveis.
-- WhatsApp, Instagram, TikTok, Google, e-mail → compatíveis com qualquer tipo de produto.
-
-Quando houver incompatibilidade detectada, OBRIGATORIAMENTE inicie o campo "uniqueAngle" com um aviso em PT-BR neste formato exato:
-"⚠️ ATENÇÃO: [descrever incompatibilidade detectada]. [Sugerir 2-3 alternativas práticas como: transformar em produto digital, atuar como afiliado, migrar para plataforma mais adequada]. A campanha abaixo foi gerada mesmo assim — você pode continuar ou ajustar o objetivo."
-
-Depois do aviso, adicione uma linha em branco e continue com o ângulo de posicionamento normal. A geração da campanha NUNCA deve ser bloqueada — sempre gere a campanha completa independentemente da compatibilidade.
-
 Sua saída deve ser um objeto JSON válido — sem markdown, sem blocos de código, apenas JSON puro.
 
 Retorne exatamente esta estrutura:
@@ -91,7 +81,7 @@ Retorne exatamente esta estrutura:
   },
   "keyMessages": string[] (3 mensagens principais da campanha, em PT-BR),
   "launchTimeline": string (sequência de lançamento recomendada, em PT-BR),
-  "uniqueAngle": string (se houver incompatibilidade: aviso PT-BR + linha em branco + ângulo de posicionamento; se compatível: apenas o ângulo de posicionamento, em PT-BR),
+  "uniqueAngle": string (o ângulo de posicionamento único da campanha, em PT-BR),
   "objectionHandling": string (como lidar com a principal objeção, em PT-BR)
 }
 

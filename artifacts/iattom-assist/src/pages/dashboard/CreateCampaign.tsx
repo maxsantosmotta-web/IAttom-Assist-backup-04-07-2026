@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap } from "lucide-react";
+import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,72 @@ import type { CampaignResult } from "@/types/ai";
 const platformIcons: Record<string, string> = {
   facebook: "fb", instagram: "ig", google: "g", email: "em", tiktok: "tk",
 };
+
+const DIGITAL_GOALS = ["Vender na Hotmart", "Vender na Kiwify"];
+const PHYSICAL_GOALS = ["Vender na Shopee", "Vender no Mercado Livre"];
+
+const DIGITAL_KEYWORDS = [
+  "curso", "ebook", "e-book", "planilha", "template", "mentoria", "consultoria",
+  "coaching", "treinamento", "workshop", "masterclass", "aula", "infoproduto",
+  "formação", "certificação", "programa", "método", "sistema", "software", "saas",
+  "pdf", "videoaula", "módulo", "digital", "online", "assinatura", "acesso",
+];
+const PHYSICAL_KEYWORDS = [
+  "roupa", "camiseta", "tênis", "sapato", "calçado", "bolsa", "mochila",
+  "eletrônico", "celular", "tablet", "garrafa", "utensílio", "cosmético",
+  "perfume", "kit", "aparelho", "dispositivo", "equipamento", "alimento",
+  "suplemento", "vitamina", "remédio", "skincare", "caderno", "agenda",
+  "óculos", "relógio", "acessório", "brinquedo", "produto físico", "tênis",
+];
+
+interface CompatAlert {
+  title: string;
+  message: string;
+  suggestions: string[];
+}
+
+function detectProductType(name: string): "digital" | "physical" | "unknown" {
+  const lower = name.toLowerCase();
+  const isDigital = DIGITAL_KEYWORDS.some((k) => lower.includes(k));
+  const isPhysical = PHYSICAL_KEYWORDS.some((k) => lower.includes(k));
+  if (isDigital && !isPhysical) return "digital";
+  if (isPhysical && !isDigital) return "physical";
+  return "unknown";
+}
+
+function getCompatAlert(product: string, goal: string): CompatAlert | null {
+  if (!goal || !product.trim()) return null;
+  const type = detectProductType(product);
+  if (type === "unknown") return null;
+
+  if (DIGITAL_GOALS.includes(goal) && type === "physical") {
+    const platform = goal.replace("Vender na ", "").replace("Vender no ", "");
+    return {
+      title: `Produto físico detectado`,
+      message: `${platform} é uma plataforma voltada para produtos digitais (cursos, ebooks, mentorias, infoprodutos). Gerar uma campanha nessa combinação pode desperdiçar seus créditos.`,
+      suggestions: [
+        `Transformar em produto digital (ex: curso ou ebook sobre o tema)`,
+        `Migrar o objetivo para Shopee ou Mercado Livre`,
+        `Atuar como afiliado de um infoproduto relacionado na ${platform}`,
+      ],
+    };
+  }
+
+  if (PHYSICAL_GOALS.includes(goal) && type === "digital") {
+    const platform = goal.replace("Vender na ", "").replace("Vender no ", "");
+    return {
+      title: `Produto digital detectado`,
+      message: `${platform} é uma plataforma voltada para produtos físicos. Gerar uma campanha nessa combinação pode desperdiçar seus créditos.`,
+      suggestions: [
+        `Migrar o objetivo para Hotmart ou Kiwify`,
+        `Adaptar para entrega física (apostila ou livro impresso)`,
+        `Explorar venda pelo Instagram ou WhatsApp`,
+      ],
+    };
+  }
+
+  return null;
+}
 
 function CopyBlock({ label, content }: { label: string; content: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -49,12 +115,18 @@ export function CreateCampaign() {
   const [audience, setAudience] = useState("");
   const [goal, setGoal] = useState("");
   const [mode, setMode] = useState("");
+  const [bypassCompat, setBypassCompat] = useState(false);
   const { status, result, error, generate, reset } = useAiStream<CampaignResult>();
   const { toast } = useToast();
 
   const isGenerating = status === "generating";
   const isDone = status === "done";
   const isError = status === "error";
+
+  const compatAlert = bypassCompat ? null : getCompatAlert(product, goal);
+  const isBlocked = compatAlert !== null;
+
+  useEffect(() => { setBypassCompat(false); }, [product, goal]);
 
   const runGenerate = (charge: () => void) => {
     generate("/api/ai/create-campaign", { product, audience: audience || undefined, goal: goal || undefined, mode: mode || undefined }).then((res) => {
@@ -138,9 +210,34 @@ export function CreateCampaign() {
               <Label className="text-sm text-muted-foreground">Público-alvo (opcional)</Label>
               <Input placeholder="ex: Atletas 25-40, entusiastas de atividades ao ar livre" className="bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50" value={audience} onChange={(e) => setAudience(e.target.value)} />
             </div>
-            <CreditsGate feature="campaign" onSuccess={runGenerate} disabled={!product.trim() || isGenerating}>
+            {isBlocked && compatAlert && (
+              <div className="rounded-lg border border-amber-500/25 bg-amber-950/20 p-4 space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1 flex-1">
+                    <p className="text-sm font-semibold text-amber-400">{compatAlert.title}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{compatAlert.message}</p>
+                  </div>
+                </div>
+                <div className="space-y-1 pl-6">
+                  <p className="text-xs text-muted-foreground font-medium">Alternativas sugeridas:</p>
+                  {compatAlert.suggestions.map((s, i) => (
+                    <p key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                      <span className="text-amber-500/60 shrink-0">•</span>{s}
+                    </p>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setBypassCompat(true)}
+                  className="pl-6 text-xs text-muted-foreground hover:text-white transition-colors underline underline-offset-2"
+                >
+                  Gerar mesmo assim
+                </button>
+              </div>
+            )}
+            <CreditsGate feature="campaign" onSuccess={runGenerate} disabled={!product.trim() || isGenerating || isBlocked}>
               {({ trigger, isLoading }) => (
-                <Button onClick={trigger} disabled={isLoading || isGenerating || !product.trim()} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full">
+                <Button onClick={trigger} disabled={isLoading || isGenerating || !product.trim() || isBlocked} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full">
                   {isLoading || isGenerating ? (
                     <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Construindo sua campanha...</>
                   ) : "Gerar Campanha"}
