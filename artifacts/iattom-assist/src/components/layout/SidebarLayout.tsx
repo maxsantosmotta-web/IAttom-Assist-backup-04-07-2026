@@ -121,7 +121,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       <div className="flex items-center justify-between h-16 px-5 border-b border-white/[0.06] shrink-0">
         <div className="flex items-center gap-2.5">
           <Link href="/dashboard">
-            <Logo size={30} showWordmark />
+            <Logo size={30} />
           </Link>
         </div>
         <Button
@@ -141,7 +141,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.10] transition-all duration-150 group"
         >
           <Search className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
-          <span className="flex-1 text-left text-xs text-zinc-600 group-hover:text-zinc-400 transition-colors">Search or jump to...</span>
+          <span className="flex-1 text-left text-xs text-zinc-600 group-hover:text-zinc-400 transition-colors">Pesquisar ou acessar...</span>
           <div className="flex items-center gap-0.5 text-zinc-700">
             <Command className="w-3 h-3" />
             <span className="text-[10px] font-mono">K</span>
