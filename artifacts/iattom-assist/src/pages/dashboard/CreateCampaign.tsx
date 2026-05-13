@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -110,19 +110,6 @@ function CopyBlock({ label, content }: { label: string; content: string }) {
   );
 }
 
-function isCampaignComplete(r: CampaignResult | null): r is CampaignResult {
-  if (!r) return false;
-  if (!r.headline?.trim()) return false;
-  if (!r.audience?.trim()) return false;
-  if (!Array.isArray(r.channels) || r.channels.length === 0) return false;
-  if (!r.budget?.trim()) return false;
-  if (!r.copy || typeof r.copy !== "object") return false;
-  const copyValues = Object.values(r.copy as Record<string, string>);
-  if (copyValues.every((v) => !v?.trim())) return false;
-  if (!Array.isArray(r.keyMessages) || r.keyMessages.length === 0) return false;
-  return true;
-}
-
 export function CreateCampaign() {
   const [product, setProduct] = useState("");
   const [audience, setAudience] = useState("");
@@ -131,7 +118,6 @@ export function CreateCampaign() {
   const [bypassCompat, setBypassCompat] = useState(false);
   const { status, result, error, generate, reset } = useAiStream<CampaignResult>();
   const { toast } = useToast();
-  const mountedRef = useRef(true);
 
   const isGenerating = status === "generating";
   const isDone = status === "done";
@@ -140,22 +126,10 @@ export function CreateCampaign() {
   const compatAlert = bypassCompat ? null : getCompatAlert(product, goal);
   const isBlocked = compatAlert !== null;
 
-  // Abort any in-progress generation when the user leaves the page
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      reset();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   useEffect(() => { setBypassCompat(false); }, [product, goal]);
 
   const runGenerate = (charge: () => void) => {
-    if (isGenerating) return;
     generate("/api/ai/create-campaign", { product, audience: audience || undefined, goal: goal || undefined, mode: mode || undefined }).then((res) => {
-      if (!mountedRef.current) return;
       if (res !== null) charge();
     });
   };
@@ -297,7 +271,7 @@ export function CreateCampaign() {
           </motion.div>
         )}
 
-        {isDone && isCampaignComplete(result) && (
+        {isDone && result && (
           <motion.div key="result" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="space-y-4">
             <Card className="bg-[#111111] border-primary/20">
               <CardHeader className="pb-3">
