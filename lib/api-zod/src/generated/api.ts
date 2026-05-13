@@ -305,8 +305,23 @@ export const AiCreateCampaignBody = zod.object({
   product: zod.string(),
   audience: zod.string().optional(),
   goal: zod.string().optional(),
+  mode: zod.string().optional(),
   platforms: zod.array(zod.string()).optional(),
   budget: zod.string().optional(),
+});
+
+/**
+ * @summary Refine a specific block of an existing campaign via AI
+ */
+export const AiRefineCampaignBlockBody = zod.object({
+  blockId: zod.string(),
+  currentContent: zod.string(),
+  instruction: zod.string(),
+  campaignContext: zod.string(),
+});
+
+export const AiRefineCampaignBlockResponse = zod.object({
+  refinedContent: zod.string(),
 });
 
 /**

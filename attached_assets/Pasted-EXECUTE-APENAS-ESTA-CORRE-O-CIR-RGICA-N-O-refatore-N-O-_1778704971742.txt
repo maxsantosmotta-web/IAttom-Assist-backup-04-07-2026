@@ -1,0 +1,148 @@
+EXECUTE APENAS ESTA CORREÇÃO CIRÚRGICA.
+
+NÃO refatore.
+NÃO altere layout.
+NÃO altere design.
+NÃO altere autenticação.
+NÃO altere branding.
+NÃO recrie o módulo.
+NÃO mude nomes de campos usados pelo frontend.
+NÃO implemente novo sistema de geração.
+
+Objetivo:
+Corrigir a instabilidade do módulo “Criar Campanha”, restaurar o funcionamento confiável dos refinamentos dos blocos e garantir cobrança correta de créditos.
+
+Com base no diagnóstico, corrija SOMENTE estes pontos:
+
+1. Erro de geração/parsing
+   O módulo está falhando porque a resposta da IA pode vir com texto incompleto, markdown, JSON parcial ou estrutura fora do esperado.
+
+Correção:
+
+- Centralize o parsing da resposta da IA em uma única função segura.
+- Antes do JSON.parse:
+  - confirme que existe texto;
+  - remova "json, " e qualquer markdown;
+  - extraia apenas o JSON entre o primeiro “{” e o último “}”;
+  - se não houver JSON completo, retorne erro controlado;
+  - nunca tente parsear string vazia ou resposta parcial.
+- Não faça múltiplos JSON.parse espalhados no fluxo.
+- Não retorne sucesso se o JSON estiver inválido.
+
+2. Campanha incompleta
+   O sistema não pode renderizar sucesso com blocos vazios.
+
+Correção:
+
+- Após o parse, validar se os campos principais existem.
+- Se faltar campo essencial, retornar erro controlado.
+- Não renderizar campanha parcial como sucesso.
+- Manter exatamente os nomes de campos que o frontend já espera.
+
+Campos mínimos que devem existir, respeitando os nomes atuais do projeto:
+
+- manchete/headline
+- publico/audience
+- canais/channels
+- orcamento/budget
+- copies/platform copy
+- mensagens-chave/key messages
+- cronograma/timeline
+
+Não invente novos nomes. Use os nomes já existentes no código.
+
+3. Refinamento dos blocos
+   O comando de refinamento não está sendo aplicado corretamente porque o fluxo pode estar perdendo:
+
+- bloco selecionado;
+- conteúdo atual do bloco;
+- instrução do usuário;
+- ou aplicando a resposta no campo errado.
+
+Correção:
+
+- Verifique a função/rota de refinamento dos blocos.
+- Garanta que a requisição envie:
+  - tipo/id do bloco selecionado;
+  - conteúdo atual daquele bloco;
+  - comando de refinamento escrito pelo usuário;
+  - contexto da campanha atual.
+- Garanta que a resposta da IA seja aplicada somente no bloco correto.
+- Não sobrescreva a campanha inteira ao refinar um único bloco.
+- Não ignore o comando do usuário.
+- Não retornar resposta genérica se o usuário pediu alteração específica.
+
+4. Sistema de créditos
+   IMPORTANTE:
+   O sistema NÃO pode descontar crédito quando:
+
+- a geração falhar;
+- o JSON vier inválido;
+- a campanha vier incompleta;
+- ocorrer erro interno;
+- o refinamento falhar;
+- a IA não entregar resultado utilizável.
+
+Correção:
+
+- O crédito só pode ser consumido após sucesso real e resposta válida.
+- Se houver erro/parsing inválido/resposta incompleta:
+  - restaurar crédito automaticamente;
+  - ou não consumir crédito antes da validação final.
+- Verifique geração e refinamento.
+- Garantir que tentativa falha não cobre o usuário.
+
+5. Estado do frontend
+   Corrigir apenas o necessário para evitar estado quebrado.
+
+Correção:
+
+- impedir clique duplo durante geração/refinamento;
+- manter loading correto;
+- limpar erro anterior antes de nova tentativa;
+- não mostrar resultado incompleto como sucesso.
+
+6. Prompt da IA
+   Ajustar somente o prompt técnico, sem mexer no visual.
+
+Para geração:
+
+- exigir JSON puro;
+- sem markdown;
+- sem texto antes ou depois;
+- todos os campos obrigatórios preenchidos.
+
+Para refinamento:
+
+- exigir que a IA altere somente o bloco solicitado;
+- respeite exatamente o comando do usuário;
+- retorne apenas o conteúdo refinado do bloco, ou JSON mínimo compatível com o frontend atual.
+
+7. Limite da correção
+   Não adicionar timeout agressivo.
+   Não adicionar AbortController se não for necessário.
+   Não criar retry complexo agora.
+   Não mudar estrutura visual.
+   Não mexer nos módulos aprovados.
+
+8. Resultado esperado
+   Após a correção:
+
+- gerar campanha deve retornar campanha completa ou erro amigável;
+- nunca deve aparecer campanha parcial como sucesso;
+- refinamento de bloco deve obedecer o comando do usuário;
+- refinamento deve atualizar apenas o bloco selecionado;
+- não deve quebrar o estado da tela;
+- créditos só devem ser descontados em sucesso real.
+
+Ao finalizar, mostre obrigatoriamente:
+
+- arquivos alterados;
+- trecho antigo problemático;
+- trecho novo corrigido;
+- onde fica o parsing seguro;
+- onde fica a validação de campos;
+- onde o refinamento envia bloco + comando do usuário;
+- onde a resposta refinada é aplicada ao bloco certo;
+- onde o crédito é validado antes do desconto;
+- como testar em 3 passos.

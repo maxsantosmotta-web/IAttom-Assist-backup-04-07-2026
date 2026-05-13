@@ -392,8 +392,20 @@ export interface AiCreateCampaignBody {
   product: string;
   audience?: string;
   goal?: string;
+  mode?: string;
   platforms?: string[];
   budget?: string;
+}
+
+export interface AiRefineCampaignBlockBody {
+  blockId: string;
+  currentContent: string;
+  instruction: string;
+  campaignContext: string;
+}
+
+export interface AiRefineCampaignBlockResult {
+  refinedContent: string;
 }
 
 export interface AiCreateContentBody {

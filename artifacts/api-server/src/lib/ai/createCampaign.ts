@@ -242,6 +242,34 @@ PLATAFORMAS ESPECÍFICAS — quando mencionadas no objetivo:
 - Instagram: Reels como motor, Stories para bastidores e urgência.
 - TikTok: hooks de 2s, desafios, UGC, creators.`;
 
+function safeParseJson(raw: string): { success: true; data: unknown } | { success: false; error: string } {
+  if (!raw?.trim()) return { success: false, error: "A IA retornou uma resposta vazia." };
+  const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "");
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    return { success: false, error: "A resposta da IA não contém JSON válido." };
+  }
+  try {
+    return { success: true, data: JSON.parse(cleaned.slice(start, end + 1)) };
+  } catch {
+    return { success: false, error: "Erro ao interpretar a resposta da IA." };
+  }
+}
+
+function validateCampaignResult(r: CampaignResult): string | null {
+  if (!r.headline?.trim()) return "Campo 'manchete' não foi gerado.";
+  if (!r.audience?.trim()) return "Campo 'público' não foi gerado.";
+  if (!Array.isArray(r.channels) || r.channels.length === 0) return "Campo 'canais' não foi gerado.";
+  if (!r.budget?.trim()) return "Campo 'orçamento' não foi gerado.";
+  if (!r.copy || typeof r.copy !== "object") return "Campo 'copies' não foi gerado.";
+  const copyValues = Object.values(r.copy as Record<string, string>);
+  if (copyValues.every((v) => !v?.trim())) return "Os copies de plataforma não foram gerados.";
+  if (!Array.isArray(r.keyMessages) || r.keyMessages.length === 0) return "Campo 'mensagens-chave' não foi gerado.";
+  if (!r.launchTimeline?.trim()) return "Campo 'cronograma' não foi gerado.";
+  return null;
+}
+
 export async function streamCreateCampaign(
   params: CreateCampaignInput,
   res: Response,
@@ -258,7 +286,6 @@ export async function streamCreateCampaign(
       res,
       "Produto físico detectado. Hotmart/Kiwify são plataformas voltadas principalmente para produtos digitais. Altere a plataforma ou transforme a oferta em produto digital antes de gerar a campanha.",
     );
-    sendSSEDone(res);
     return;
   }
 
@@ -307,7 +334,19 @@ Adapte toda a estrutura da campanha ao modo informado. Crie copy específico par
       }
     }
 
-    const raw: CampaignResult = JSON.parse(fullResponse);
+    const parsed = safeParseJson(fullResponse);
+    if (!parsed.success) {
+      sendSSEError(res, parsed.error);
+      return;
+    }
+
+    const raw = parsed.data as CampaignResult;
+    const validationError = validateCampaignResult(raw);
+    if (validationError) {
+      sendSSEError(res, `Campanha gerada incompleta: ${validationError} Tente novamente.`);
+      return;
+    }
+
     const result = campaignMode === "organic" ? hardLockOrganicResult(raw) : raw;
     sendSSE(res, { type: "result", data: result });
     await logAiUsage({ clerkUserId, action: `Campaign created: ${params.product} [${campaignMode}]`, module: "campaign" });
@@ -318,4 +357,42 @@ Adapte toda a estrutura da campanha ao modo informado. Crie copy específico par
   }
 
   sendSSEDone(res);
+}
+
+export async function refineCampaignBlock(
+  blockId: string,
+  currentContent: string,
+  instruction: string,
+  campaignContext: string,
+  clerkUserId: string,
+): Promise<{ refinedContent: string } | { error: string }> {
+  const systemPrompt = `Você é um especialista em marketing digital brasileiro. Refine APENAS o bloco especificado de uma campanha existente, seguindo exatamente a instrução do usuário. Responda APENAS com o conteúdo refinado — sem explicações, sem markdown, sem JSON, sem prefixo, sem sufixo. Respeite os limites de caracteres do bloco original.`;
+
+  const userPrompt = `Bloco a refinar: ${blockId}
+Conteúdo atual: ${currentContent}
+Instrução do usuário: ${instruction}
+Contexto da campanha: ${campaignContext}
+
+Retorne APENAS o conteúdo refinado para este bloco. Sem explicações, sem texto extra, sem aspas envolvendo a resposta.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5-mini",
+      max_completion_tokens: 600,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      stream: false,
+    });
+
+    const raw = response.choices[0]?.message?.content ?? "";
+    if (!raw.trim()) return { error: "A IA não retornou conteúdo refinado." };
+
+    await logAiUsage({ clerkUserId, action: `Campaign block refined: ${blockId}`, module: "campaign" });
+    return { refinedContent: raw.trim() };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Erro no refinamento";
+    return { error: msg };
+  }
 }

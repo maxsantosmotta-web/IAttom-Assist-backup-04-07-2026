@@ -27,6 +27,8 @@ import type {
   AiCreateContentBody,
   AiCreativeIdeasBody,
   AiFindProductsBody,
+  AiRefineCampaignBlockBody,
+  AiRefineCampaignBlockResult,
   AiValidateProductBody,
   AiVideoScriptBody,
   BillingPortalResult,
@@ -1395,6 +1397,96 @@ export const useAiCreateCampaign = <
   TContext
 > => {
   return useMutation(getAiCreateCampaignMutationOptions(options));
+};
+
+/**
+ * @summary Refine a specific block of an existing campaign via AI
+ */
+export const getAiRefineCampaignBlockUrl = () => {
+  return `/api/ai/refine-campaign-block`;
+};
+
+export const aiRefineCampaignBlock = async (
+  aiRefineCampaignBlockBody: AiRefineCampaignBlockBody,
+  options?: RequestInit,
+): Promise<AiRefineCampaignBlockResult> => {
+  return customFetch<AiRefineCampaignBlockResult>(
+    getAiRefineCampaignBlockUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(aiRefineCampaignBlockBody),
+    },
+  );
+};
+
+export const getAiRefineCampaignBlockMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiRefineCampaignBlock>>,
+    TError,
+    { data: BodyType<AiRefineCampaignBlockBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof aiRefineCampaignBlock>>,
+  TError,
+  { data: BodyType<AiRefineCampaignBlockBody> },
+  TContext
+> => {
+  const mutationKey = ["aiRefineCampaignBlock"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof aiRefineCampaignBlock>>,
+    { data: BodyType<AiRefineCampaignBlockBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return aiRefineCampaignBlock(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AiRefineCampaignBlockMutationResult = NonNullable<
+  Awaited<ReturnType<typeof aiRefineCampaignBlock>>
+>;
+export type AiRefineCampaignBlockMutationBody =
+  BodyType<AiRefineCampaignBlockBody>;
+export type AiRefineCampaignBlockMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Refine a specific block of an existing campaign via AI
+ */
+export const useAiRefineCampaignBlock = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiRefineCampaignBlock>>,
+    TError,
+    { data: BodyType<AiRefineCampaignBlockBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof aiRefineCampaignBlock>>,
+  TError,
+  { data: BodyType<AiRefineCampaignBlockBody> },
+  TContext
+> => {
+  return useMutation(getAiRefineCampaignBlockMutationOptions(options));
 };
 
 /**

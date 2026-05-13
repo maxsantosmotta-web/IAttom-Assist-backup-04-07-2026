@@ -80,6 +80,84 @@ function getCompatAlert(product: string, goal: string): CompatAlert | null {
   return null;
 }
 
+function isCampaignComplete(r: CampaignResult | null): r is CampaignResult {
+  if (!r) return false;
+  if (!r.headline?.trim()) return false;
+  if (!r.audience?.trim()) return false;
+  if (!Array.isArray(r.channels) || r.channels.length === 0) return false;
+  if (!r.budget?.trim()) return false;
+  if (!r.copy || typeof r.copy !== "object") return false;
+  const copyValues = Object.values(r.copy as Record<string, string>);
+  if (copyValues.every((v) => !v?.trim())) return false;
+  if (!Array.isArray(r.keyMessages) || r.keyMessages.length === 0) return false;
+  return true;
+}
+
+function getBlockContent(data: CampaignResult, blockId: string): string {
+  if (blockId.startsWith("copy.")) {
+    const platform = blockId.replace("copy.", "");
+    return (data.copy as Record<string, string>)[platform] ?? "";
+  }
+  switch (blockId) {
+    case "headline": return data.headline;
+    case "audience": return data.audience;
+    case "budget": return data.budget;
+    case "uniqueAngle": return data.uniqueAngle ?? "";
+    case "launchTimeline": return data.launchTimeline;
+    case "keyMessages": return data.keyMessages.join("\n");
+    default: return "";
+  }
+}
+
+function applyRefinedContent(prev: CampaignResult | null, blockId: string, content: string): CampaignResult | null {
+  if (!prev) return prev;
+  if (blockId.startsWith("copy.")) {
+    const platform = blockId.replace("copy.", "");
+    return { ...prev, copy: { ...prev.copy, [platform]: content } };
+  }
+  switch (blockId) {
+    case "headline": return { ...prev, headline: content };
+    case "audience": return { ...prev, audience: content };
+    case "budget": return { ...prev, budget: content };
+    case "uniqueAngle": return { ...prev, uniqueAngle: content };
+    case "launchTimeline": return { ...prev, launchTimeline: content };
+    case "keyMessages": return { ...prev, keyMessages: content.split("\n").map((s) => s.trim()).filter(Boolean) };
+    default: return prev;
+  }
+}
+
+interface RefineBarProps {
+  blockId: string;
+  value: string;
+  onChange: (v: string) => void;
+  onRefine: () => void;
+  isRefining: boolean;
+  disabled: boolean;
+}
+
+function RefineBar({ blockId, value, onChange, onRefine, isRefining, disabled }: RefineBarProps) {
+  return (
+    <div className="mt-2 flex gap-2 items-center">
+      <input
+        className="flex-1 text-xs bg-[#0a0a0a] border border-white/10 rounded px-2.5 py-1.5 text-white placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/40 disabled:opacity-50"
+        placeholder="Instrução de refinamento para este bloco..."
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && !isRefining && !disabled && value.trim()) onRefine(); }}
+        disabled={isRefining || disabled}
+      />
+      <button
+        onClick={onRefine}
+        disabled={isRefining || disabled || !value.trim()}
+        className="text-xs px-2.5 py-1.5 rounded bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shrink-0 transition-colors"
+      >
+        {isRefining ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+        Refinar
+      </button>
+    </div>
+  );
+}
+
 function CopyBlock({ label, content }: { label: string; content: string }) {
   const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
@@ -119,6 +197,10 @@ export function CreateCampaign() {
   const { status, result, error, generate, reset } = useAiStream<CampaignResult>();
   const { toast } = useToast();
 
+  const [campaignData, setCampaignData] = useState<CampaignResult | null>(null);
+  const [refineInputs, setRefineInputs] = useState<Record<string, string>>({});
+  const [refiningBlock, setRefiningBlock] = useState<string | null>(null);
+
   const isGenerating = status === "generating";
   const isDone = status === "done";
   const isError = status === "error";
@@ -128,16 +210,72 @@ export function CreateCampaign() {
 
   useEffect(() => { setBypassCompat(false); }, [product, goal]);
 
+  const handleReset = () => {
+    reset();
+    setCampaignData(null);
+    setRefineInputs({});
+    setRefiningBlock(null);
+  };
+
   const runGenerate = (charge: () => void) => {
-    generate("/api/ai/create-campaign", { product, audience: audience || undefined, goal: goal || undefined, mode: mode || undefined }).then((res) => {
-      if (res !== null) charge();
+    if (isGenerating) return;
+    generate("/api/ai/create-campaign", {
+      product,
+      audience: audience || undefined,
+      goal: goal || undefined,
+      mode: mode || undefined,
+    }).then((res) => {
+      if (res !== null) {
+        charge();
+        setCampaignData(res);
+      }
     });
+  };
+
+  const setRefineInput = (blockId: string, value: string) => {
+    setRefineInputs((prev) => ({ ...prev, [blockId]: value }));
+  };
+
+  const refineBlock = async (blockId: string) => {
+    const instruction = refineInputs[blockId] ?? "";
+    if (!instruction.trim() || !campaignData || refiningBlock) return;
+
+    setRefiningBlock(blockId);
+    const currentContent = getBlockContent(campaignData, blockId);
+    const campaignContext = [product, goal, mode].filter(Boolean).join(" / ");
+
+    try {
+      const res = await fetch("/api/ai/refine-campaign-block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blockId, currentContent, instruction, campaignContext }),
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error ?? `HTTP ${res.status}`);
+      }
+
+      const data = await res.json() as { refinedContent: string };
+      setCampaignData((prev) => applyRefinedContent(prev, blockId, data.refinedContent));
+      setRefineInputs((prev) => ({ ...prev, [blockId]: "" }));
+    } catch (err) {
+      toast({
+        description: err instanceof Error ? err.message : "Erro ao refinar bloco",
+        variant: "destructive",
+      });
+    } finally {
+      setRefiningBlock(null);
+    }
   };
 
   const copyAll = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ description: "Copiado para a área de transferência" });
   };
+
+  const showResult = isDone && isCampaignComplete(campaignData);
 
   return (
     <div className="space-y-8">
@@ -265,85 +403,156 @@ export function CreateCampaign() {
               <CardContent className="p-5 flex items-center gap-4">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
                 <div className="flex-1"><p className="text-sm font-semibold text-red-400">Falha na geração</p><p className="text-xs text-muted-foreground mt-0.5">{error}</p></div>
-                <Button size="sm" variant="outline" onClick={() => { reset(); generate("/api/ai/create-campaign", { product, audience: audience || undefined, goal: goal || undefined }); }} className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente</Button>
+                <Button size="sm" variant="outline" onClick={() => { handleReset(); }} className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente</Button>
               </CardContent>
             </Card>
           </motion.div>
         )}
 
-        {isDone && result && (
+        {showResult && campaignData && (
           <motion.div key="result" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="space-y-4">
             <Card className="bg-[#111111] border-primary/20">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <Megaphone className="w-4 h-4 text-primary" />
                   <CardTitle className="text-base text-white">Estratégia de Campanha</CardTitle>
-                  <button onClick={reset} className="ml-auto text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1">
+                  <button onClick={handleReset} className="ml-auto text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Nova campanha
                   </button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-5">
+
+                {/* Manchete */}
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/15">
                   <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Manchete</p>
-                  <p className="text-white font-bold text-lg leading-snug">{result.headline}</p>
-                  <p className="text-muted-foreground text-sm mt-1">{result.subheadline}</p>
-                  {result.cta && <p className="text-primary text-sm font-semibold mt-2">CTA: {result.cta}</p>}
+                  <p className="text-white font-bold text-lg leading-snug">{campaignData.headline}</p>
+                  <p className="text-muted-foreground text-sm mt-1">{campaignData.subheadline}</p>
+                  {campaignData.cta && <p className="text-primary text-sm font-semibold mt-2">CTA: {campaignData.cta}</p>}
+                  <RefineBar
+                    blockId="headline"
+                    value={refineInputs["headline"] ?? ""}
+                    onChange={(v) => setRefineInput("headline", v)}
+                    onRefine={() => refineBlock("headline")}
+                    isRefining={refiningBlock === "headline"}
+                    disabled={!!refiningBlock && refiningBlock !== "headline"}
+                  />
                 </div>
 
+                {/* Público / Canais / Orçamento */}
                 <div className="grid md:grid-cols-3 gap-4">
-                  <div>
+                  <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1"><Target className="w-3 h-3" /> Público</p>
-                    <p className="text-sm text-white">{result.audience}</p>
+                    <p className="text-sm text-white">{campaignData.audience}</p>
+                    <RefineBar
+                      blockId="audience"
+                      value={refineInputs["audience"] ?? ""}
+                      onChange={(v) => setRefineInput("audience", v)}
+                      onRefine={() => refineBlock("audience")}
+                      isRefining={refiningBlock === "audience"}
+                      disabled={!!refiningBlock && refiningBlock !== "audience"}
+                    />
                   </div>
-                  <div>
+                  <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1"><Globe className="w-3 h-3" /> Canais</p>
                     <div className="flex flex-wrap gap-1">
-                      {result.channels?.map((c) => (<span key={c} className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{c}</span>))}
+                      {campaignData.channels?.map((c) => (<span key={c} className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{c}</span>))}
                     </div>
                   </div>
-                  <div>
+                  <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5">Orçamento</p>
-                    <p className="text-sm text-white">{result.budget}</p>
+                    <p className="text-sm text-white">{campaignData.budget}</p>
+                    <RefineBar
+                      blockId="budget"
+                      value={refineInputs["budget"] ?? ""}
+                      onChange={(v) => setRefineInput("budget", v)}
+                      onRefine={() => refineBlock("budget")}
+                      isRefining={refiningBlock === "budget"}
+                      disabled={!!refiningBlock && refiningBlock !== "budget"}
+                    />
                   </div>
                 </div>
 
-                {result.uniqueAngle && (
+                {/* Ângulo Único */}
+                {campaignData.uniqueAngle && (
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
                     <Zap className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                    <div><p className="text-xs text-primary font-medium mb-0.5">Ângulo Único</p><p className="text-xs text-muted-foreground">{result.uniqueAngle}</p></div>
+                    <div className="flex-1">
+                      <p className="text-xs text-primary font-medium mb-0.5">Ângulo Único</p>
+                      <p className="text-xs text-muted-foreground">{campaignData.uniqueAngle}</p>
+                      <RefineBar
+                        blockId="uniqueAngle"
+                        value={refineInputs["uniqueAngle"] ?? ""}
+                        onChange={(v) => setRefineInput("uniqueAngle", v)}
+                        onRefine={() => refineBlock("uniqueAngle")}
+                        isRefining={refiningBlock === "uniqueAngle"}
+                        disabled={!!refiningBlock && refiningBlock !== "uniqueAngle"}
+                      />
+                    </div>
                   </div>
                 )}
 
-                {result.copy && (
+                {/* Copy por Plataforma */}
+                {campaignData.copy && (
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 font-medium">Copy por Plataforma</p>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {Object.entries(result.copy).map(([platform, copy]) => (
-                        <CopyBlock key={platform} label={platform} content={copy} />
-                      ))}
+                      {Object.entries(campaignData.copy).map(([platform, copy]) => {
+                        const blockId = `copy.${platform}`;
+                        return (
+                          <div key={platform} className="bg-[#0a0a0a] border border-white/5 rounded-lg p-4">
+                            <CopyBlock label={platform} content={copy} />
+                            <RefineBar
+                              blockId={blockId}
+                              value={refineInputs[blockId] ?? ""}
+                              onChange={(v) => setRefineInput(blockId, v)}
+                              onRefine={() => refineBlock(blockId)}
+                              isRefining={refiningBlock === blockId}
+                              disabled={!!refiningBlock && refiningBlock !== blockId}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
-                {result.keyMessages?.length > 0 && (
+                {/* Mensagens-chave */}
+                {campaignData.keyMessages?.length > 0 && (
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-medium">Mensagens-chave</p>
                     <div className="space-y-1.5">
-                      {result.keyMessages.map((msg, i) => (
+                      {campaignData.keyMessages.map((msg, i) => (
                         <div key={i} className="flex items-start gap-2 text-sm">
                           <span className="text-primary font-bold shrink-0 text-xs mt-0.5">{i + 1}</span>
                           <p className="text-muted-foreground text-xs">{msg}</p>
                         </div>
                       ))}
                     </div>
+                    <RefineBar
+                      blockId="keyMessages"
+                      value={refineInputs["keyMessages"] ?? ""}
+                      onChange={(v) => setRefineInput("keyMessages", v)}
+                      onRefine={() => refineBlock("keyMessages")}
+                      isRefining={refiningBlock === "keyMessages"}
+                      disabled={!!refiningBlock && refiningBlock !== "keyMessages"}
+                    />
                   </div>
                 )}
 
-                {result.launchTimeline && (
+                {/* Cronograma */}
+                {campaignData.launchTimeline && (
                   <div className="border-t border-white/5 pt-4">
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 font-medium">Cronograma de Lançamento</p>
-                    <p className="text-sm text-muted-foreground">{result.launchTimeline}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{campaignData.launchTimeline}</p>
+                    <RefineBar
+                      blockId="launchTimeline"
+                      value={refineInputs["launchTimeline"] ?? ""}
+                      onChange={(v) => setRefineInput("launchTimeline", v)}
+                      onRefine={() => refineBlock("launchTimeline")}
+                      isRefining={refiningBlock === "launchTimeline"}
+                      disabled={!!refiningBlock && refiningBlock !== "launchTimeline"}
+                    />
                   </div>
                 )}
               </CardContent>

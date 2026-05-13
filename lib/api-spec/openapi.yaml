@@ -311,6 +311,25 @@ paths:
           content:
             text/event-stream: {}
 
+  /ai/refine-campaign-block:
+    post:
+      operationId: aiRefineCampaignBlock
+      tags: [ai]
+      summary: Refine a specific block of an existing campaign via AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiRefineCampaignBlockBody"
+      responses:
+        "200":
+          description: Refined block content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRefineCampaignBlockResult"
+
   /ai/create-content:
     post:
       operationId: aiCreateContent
@@ -1154,6 +1173,8 @@ components:
           type: string
         goal:
           type: string
+        mode:
+          type: string
         platforms:
           type: array
           items:
@@ -1162,6 +1183,31 @@ components:
           type: string
       required:
         - product
+
+    AiRefineCampaignBlockBody:
+      type: object
+      properties:
+        blockId:
+          type: string
+        currentContent:
+          type: string
+        instruction:
+          type: string
+        campaignContext:
+          type: string
+      required:
+        - blockId
+        - currentContent
+        - instruction
+        - campaignContext
+
+    AiRefineCampaignBlockResult:
+      type: object
+      properties:
+        refinedContent:
+          type: string
+      required:
+        - refinedContent
 
     AiCreateContentBody:
       type: object
