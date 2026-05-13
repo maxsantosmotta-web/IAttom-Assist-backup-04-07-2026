@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { User, Bell, Shield, CreditCard, Zap, ExternalLink, Copy, Check } from "lucide-react";
+import { User, Bell, Shield, CreditCard, Zap, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,15 +30,6 @@ export function Settings() {
   const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey() } });
 
   const [, navigate] = useLocation();
-  const [copied, setCopied] = useState(false);
-
-  const copyClerkId = () => {
-    const id = user?.id ?? "";
-    void navigator.clipboard.writeText(id).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
 
   const firstName = user?.firstName ?? "";
   const lastName = user?.lastName ?? "";
@@ -243,34 +233,6 @@ export function Settings() {
             </CardContent>
           </Card>
         </motion.div>
-        {/* TEMPORÁRIO — debug admin: remover após capturar Clerk ID */}
-        {isLoaded && !!user?.id && (
-          <motion.div variants={itemVariants}>
-            <Card className="bg-[#0d0d0d] border-yellow-500/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xs font-semibold text-yellow-500/80 flex items-center gap-2">
-                  <Shield className="w-3.5 h-3.5" /> Debug Admin — Clerk ID da sessão
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-zinc-500 mb-3">Identificador da sessão autenticada atual. Remover após uso.</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-[#0a0a0a] border border-white/10 rounded-md px-3 py-2 font-mono text-xs text-zinc-300 break-all select-all">
-                    {user?.id ?? "carregando..."}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={copyClerkId}
-                    className="shrink-0 border-yellow-500/30 text-yellow-500/80 hover:bg-yellow-500/10 hover:text-yellow-400"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
       </motion.div>
     </div>
   );
