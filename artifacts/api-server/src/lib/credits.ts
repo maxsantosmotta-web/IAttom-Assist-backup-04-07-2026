@@ -31,29 +31,6 @@ export async function deductCredits(clerkId: string, feature: FeatureKey) {
 
   if (!user) return { success: false as const, error: "user_not_found" as const };
 
-  if (user.role === "admin") {
-    const [tx] = await db
-      .insert(creditsTransactions)
-      .values({
-        clerkUserId: clerkId,
-        amount: 0,
-        type: "debit" as const,
-        feature,
-        description: `[ADMIN] ${feature.replace(/_/g, " ")} — sem cobrança`,
-        balanceBefore: user.credits,
-        balanceAfter: user.credits,
-      })
-      .returning();
-
-    return {
-      success: true as const,
-      creditsUsed: 0,
-      newBalance: user.credits,
-      transactionId: tx.id,
-      user,
-    };
-  }
-
   if (user.credits < cost) {
     return {
       success: false as const,
