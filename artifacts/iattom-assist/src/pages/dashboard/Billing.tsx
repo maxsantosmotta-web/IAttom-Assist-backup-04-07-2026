@@ -107,7 +107,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Qual plano é recomendado para quem está começando?",
-    a: "O plano RUBI oferece o melhor custo-benefício — 500 créditos/mês, acesso completo a todos os módulos e suporte prioritário. É a escolha de 8 em cada 10 usuários ativos.",
+    a: "O plano PRO oferece o melhor custo-benefício — 500 créditos/mês, acesso completo a todos os módulos e suporte prioritário. É a escolha de 8 em cada 10 usuários ativos.",
   },
 ];
 
