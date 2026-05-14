@@ -503,12 +503,28 @@ router.post("/ml/create-test-item", requireAdmin, async (req, res): Promise<void
   try {
     const item = await createMLItem(config.accessToken, {
       title:              "Teste IAttom Assist",
-      category_id:        "MLB3530",   // Outros — categoria genérica, sem atributos obrigatórios
-      price:              10,
+      category_id:        "MLB3530",
+      price:              99,
       currency_id:        "BRL",
       available_quantity: 1,
-      listing_type_id:    "free",
+      listing_type_id:    "bronze",
       condition:          "new",
+      // ── imagem pública de teste (ML exige ao menos 1 imagem) ───────
+      pictures: [
+        { source: "https://http2.mlstatic.com/frontend-assets/ui-navigation/5.19.1/mercadolivre/logo__large_plus.png" },
+      ],
+      // ── atributos obrigatórios para MLB3530 ────────────────────────
+      attributes: [
+        { id: "BRAND", value_name: "IAttom Assist" },
+        { id: "MODEL", value_name: "Teste"         },
+      ],
+      // ── modo de envio: retirada local, sem frete grátis ───────────
+      // Evita o erro "User has not mode me1" (ME1/ME2 não ativado)
+      shipping: {
+        mode:          "not_specified",
+        local_pick_up: true,
+        free_shipping: false,
+      },
     });
 
     // Persist to local DB
@@ -516,19 +532,19 @@ router.post("/ml/create-test-item", requireAdmin, async (req, res): Promise<void
       await db.insert(mlProducts)
         .values({
           mlItemId:          item.id,
-          title:             item.title             ?? "Teste IAttom Assist",
-          price:             "10",
+          title:             item.title ?? "Teste IAttom Assist",
+          price:             "99",
           availableQuantity: 1,
-          status:            item.status            ?? "active",
+          status:            item.status ?? "active",
           categoryId:        "MLB3530",
-          permalink:         item.permalink         ?? "",
+          permalink:         item.permalink ?? "",
           syncedAt:          new Date(),
         })
         .onConflictDoUpdate({
           target: mlProducts.mlItemId,
           set: {
-            title:     item.title   ?? "Teste IAttom Assist",
-            status:    item.status  ?? "active",
+            title:     item.title     ?? "Teste IAttom Assist",
+            status:    item.status    ?? "active",
             permalink: item.permalink ?? "",
             syncedAt:  sql`now()`,
           },
@@ -547,6 +563,28 @@ router.post("/ml/create-test-item", requireAdmin, async (req, res): Promise<void
       res.status(401).json({ error: "Token expirado. Renove o token ou reconecte a conta." });
     } else if (err instanceof MLApiError && err.isForbidden) {
       res.status(403).json({ error: "Sem permissão. Verifique os escopos do app no painel ML." });
+    } else if (err instanceof MLApiError) {
+      // Parse ML validation errors into clean Portuguese
+      let body: { cause?: Array<{ code: number; message: string }> } = {};
+      try { body = JSON.parse(err.body) as typeof body; } catch { /* ignore */ }
+
+      const PT: Record<number, string> = {
+        110060: "Imagem inválida ou inacessível pela API do ML.",
+        110049: "Conta sem Mercado Envios ativado. Acesse sua conta ML e ative as configurações de envio.",
+        110001: "Atributo obrigatório ausente (verifique BRAND / MODEL).",
+        110500: "Categoria inválida para este tipo de anúncio.",
+         19030: "Categoria não encontrada.",
+      };
+
+      const causes = (body.cause ?? [])
+        .map((c) => PT[c.code] ?? c.message)
+        .filter(Boolean);
+
+      const friendly = causes.length
+        ? causes.join(" | ")
+        : msg.replace(/^validation_error — /, "");
+
+      res.status(422).json({ error: friendly });
     } else {
       res.status(500).json({ error: msg });
     }

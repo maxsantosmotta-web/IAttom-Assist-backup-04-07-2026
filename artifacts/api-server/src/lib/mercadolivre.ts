@@ -228,6 +228,13 @@ export interface MLCreateItemRequest {
   available_quantity: number;
   listing_type_id: string;
   condition: "new" | "used";
+  pictures?: Array<{ source: string }>;
+  attributes?: Array<{ id: string; value_name: string }>;
+  shipping?: {
+    mode: string;
+    local_pick_up?: boolean;
+    free_shipping?: boolean;
+  };
 }
 
 export interface MLCreateItemResponse {

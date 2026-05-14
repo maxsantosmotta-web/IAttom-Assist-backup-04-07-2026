@@ -621,20 +621,20 @@ export function AdminMercadoLivre() {
       {/* ─── ANÚNCIOS ───────────────────────────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <Package className="w-4 h-4 text-primary/70" />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2 flex-wrap">
+              <Package className="w-4 h-4 text-primary/70 shrink-0" />
               Anúncios
               <Badge className="bg-white/5 text-zinc-400 border-white/10 text-[10px] font-normal">{products.length}</Badge>
               {syncResult.products !== undefined && (
                 <span className="text-[10px] text-emerald-400">{syncResult.products} sincronizados</span>
               )}
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
               <Button size="sm" variant="ghost"
                 onClick={() => void handleCreateTestItem()}
                 disabled={creatingTestItem || !config?.isActive || config?.tokenExpired}
-                className="h-7 px-2.5 text-zinc-500 hover:text-amber-400 gap-1.5 text-xs border border-white/6">
+                className="h-7 px-2.5 text-zinc-500 hover:text-amber-400 gap-1.5 text-xs border border-white/6 whitespace-nowrap">
                 {creatingTestItem
                   ? <><Loader2 className="w-3 h-3 animate-spin" />Criando...</>
                   : <><Zap className="w-3 h-3" />Criar anúncio teste</>
@@ -642,7 +642,7 @@ export function AdminMercadoLivre() {
               </Button>
               <Button size="sm" variant="ghost" onClick={() => void handleSyncProducts()}
                 disabled={syncingProducts || !config?.isActive || config?.tokenExpired}
-                className="h-7 px-2.5 text-zinc-500 hover:text-white gap-1.5 text-xs">
+                className="h-7 px-2.5 text-zinc-500 hover:text-white gap-1.5 text-xs whitespace-nowrap">
                 <RefreshCw className={`w-3 h-3 ${syncingProducts ? "animate-spin" : ""}`} />
                 {syncingProducts ? "Sincronizando..." : "Sincronizar"}
               </Button>
