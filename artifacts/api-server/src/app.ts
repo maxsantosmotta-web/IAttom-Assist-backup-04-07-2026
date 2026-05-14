@@ -11,6 +11,7 @@ import {
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { WebhookHandlers } from "./lib/webhookHandlers.js";
+import { IntegrationManager, TokenManager } from "./lib/integrations/index.js";
 
 const app: Express = express();
 
@@ -83,5 +84,10 @@ app.use(
 );
 
 app.use("/api", router);
+
+// ─── Start global integration monitors ───────────────────────────────────────
+IntegrationManager.startHealthMonitor();
+TokenManager.startExpiryMonitor();
+logger.info("Integration monitors started");
 
 export default app;
