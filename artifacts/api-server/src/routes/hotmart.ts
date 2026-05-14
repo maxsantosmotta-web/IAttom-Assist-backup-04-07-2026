@@ -8,7 +8,11 @@ import {
   hotmartEvents,
 } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
-import { verifyHotmartWebhook } from "../lib/hotmart.js";
+import {
+  verifyHotmartWebhook,
+  getHotmartAccessToken,
+  getHotmartProducts,
+} from "../lib/hotmart.js";
 
 const router: IRouter = Router();
 
@@ -128,6 +132,39 @@ router.post("/hotmart/config", requireAdmin, async (req, res): Promise<void> => 
   res.json({ ok: true });
 });
 
+// ─── ADMIN: Test connection ───────────────────────────────────────────────────
+router.post("/hotmart/test", requireAdmin, async (req, res): Promise<void> => {
+  const [config] = await db.select().from(hotmartConfig).limit(1);
+  if (!config?.isActive) {
+    res.status(503).json({ error: "Hotmart não configurado. Salve as credenciais primeiro." });
+    return;
+  }
+
+  try {
+    const token = await getHotmartAccessToken(
+      config.clientId,
+      config.clientSecret,
+      config.basicToken,
+      config.environment,
+    );
+
+    if (token.error || !token.access_token) {
+      req.log.warn({ error: token.error }, "hotmart: test connection failed");
+      res.status(401).json({
+        error: `Autenticação falhou: ${token.error ?? "sem access_token na resposta"}`,
+      });
+      return;
+    }
+
+    req.log.info({ environment: config.environment }, "hotmart: test connection ok");
+    res.json({ ok: true, message: "Conexão com a API Hotmart estabelecida com sucesso." });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    req.log.error({ err }, "hotmart: test connection error");
+    res.status(500).json({ error: msg });
+  }
+});
+
 // ─── ADMIN: Sync products ─────────────────────────────────────────────────────
 router.post("/hotmart/sync-products", requireAdmin, async (req, res): Promise<void> => {
   const [config] = await db.select().from(hotmartConfig).limit(1);
@@ -135,9 +172,55 @@ router.post("/hotmart/sync-products", requireAdmin, async (req, res): Promise<vo
     res.status(503).json({ error: "Hotmart não configurado" });
     return;
   }
-  // TODO: call getHotmartAccessToken() then getHotmartProducts() and upsert
-  req.log.info("hotmart: sync-products triggered (placeholder)");
-  res.json({ ok: true, synced: 0, message: "Sincronização de produtos não implementada ainda." });
+
+  try {
+    const token = await getHotmartAccessToken(
+      config.clientId,
+      config.clientSecret,
+      config.basicToken,
+      config.environment,
+    );
+
+    if (!token.access_token) {
+      res.status(401).json({ error: "Falha ao obter token Hotmart. Verifique as credenciais." });
+      return;
+    }
+
+    const items = await getHotmartProducts(token.access_token, config.environment);
+
+    let synced = 0;
+    for (const item of items) {
+      await db
+        .insert(hotmartProducts)
+        .values({
+          productId: String(item.product.id),
+          name:      item.product.name    ?? "",
+          format:    item.product.format  ?? "",
+          status:    item.product.status  ?? "ACTIVE",
+          price:     String(item.price?.value ?? 0),
+          currency:  item.price?.currency_code ?? "BRL",
+          syncedAt:  new Date(),
+        })
+        .onConflictDoUpdate({
+          target: hotmartProducts.productId,
+          set: {
+            name:     item.product.name   ?? "",
+            format:   item.product.format ?? "",
+            status:   item.product.status ?? "ACTIVE",
+            price:    String(item.price?.value ?? 0),
+            syncedAt: new Date(),
+          },
+        });
+      synced++;
+    }
+
+    req.log.info({ synced }, "hotmart: sync-products complete");
+    res.json({ ok: true, synced });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    req.log.error({ err }, "hotmart: sync-products error");
+    res.status(500).json({ error: msg });
+  }
 });
 
 // ─── ADMIN: List products ─────────────────────────────────────────────────────

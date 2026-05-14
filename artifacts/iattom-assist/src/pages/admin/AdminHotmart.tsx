@@ -117,7 +117,10 @@ export function AdminHotmart() {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "ok" | "error">("idle");
   const [syncingProducts, setSyncingProducts] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ synced?: number; error?: string } | null>(null);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const [form, setForm] = useState({
     clientId: "",
@@ -181,10 +184,32 @@ export function AdminHotmart() {
     } catch { setSaveStatus("error"); } finally { setSaving(false); }
   };
 
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    setTestResult(null);
+    try {
+      const data = await apiFetch<{ ok: boolean; message: string }>("/api/hotmart/test", { method: "POST" });
+      setTestResult({ ok: true, message: data.message });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao testar conexão.";
+      setTestResult({ ok: false, message: msg });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   const handleSyncProducts = async () => {
     setSyncingProducts(true);
-    try { await apiFetch("/api/hotmart/sync-products", { method: "POST" }); await loadAll(); }
-    catch { } finally { setSyncingProducts(false); }
+    setSyncResult(null);
+    try {
+      const data = await apiFetch<{ ok: boolean; synced: number }>("/api/hotmart/sync-products", { method: "POST" });
+      setSyncResult({ synced: data.synced });
+      await loadAll();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao sincronizar.";
+      setSyncResult({ error: msg });
+    } finally {
+      setSyncingProducts(false); }
   };
 
   const eventColor = (type: string | null | undefined) =>
@@ -322,17 +347,40 @@ export function AdminHotmart() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <div>
-                  {saveStatus === "ok" && <span className="flex items-center gap-1.5 text-xs text-emerald-400"><CheckCircle2 className="w-3.5 h-3.5" />Salvo com sucesso.</span>}
+              {testResult && (
+                <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
+                  testResult.ok
+                    ? "bg-emerald-500/8 border-emerald-500/20 text-emerald-300"
+                    : "bg-red-500/8 border-red-500/20 text-red-300"
+                }`}>
+                  {testResult.ok
+                    ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    : <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
+                  <span>{testResult.message}</span>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2">
+                <div className="flex items-center gap-2">
+                  {saveStatus === "ok" && <span className="flex items-center gap-1.5 text-xs text-emerald-400"><CheckCircle2 className="w-3.5 h-3.5" />Salvo.</span>}
                   {saveStatus === "error" && <span className="flex items-center gap-1.5 text-xs text-red-400"><AlertTriangle className="w-3.5 h-3.5" />Erro ao salvar.</span>}
                 </div>
-                <Button size="sm" onClick={() => void handleSave()}
-                  disabled={saving || !form.clientId || (!form.clientSecret && !config?.configured) || (!form.basicToken && !config?.configured) || !form.webhookToken}
-                  className="bg-primary text-black hover:bg-primary/90 gap-2">
-                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  {saving ? "Salvando..." : "Salvar credenciais"}
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button size="sm" variant="ghost"
+                    onClick={() => void handleTestConnection()}
+                    disabled={testingConnection || !config?.isActive}
+                    className="h-8 px-3 text-zinc-500 hover:text-amber-400 gap-1.5 text-xs border border-white/6 whitespace-nowrap">
+                    {testingConnection
+                      ? <><Loader2 className="w-3 h-3 animate-spin" />Testando...</>
+                      : <><CheckCircle2 className="w-3 h-3" />Testar conexão</>}
+                  </Button>
+                  <Button size="sm" onClick={() => void handleSave()}
+                    disabled={saving || !form.clientId || (!form.clientSecret && !config?.configured) || (!form.basicToken && !config?.configured) || !form.webhookToken}
+                    className="bg-primary text-black hover:bg-primary/90 gap-2 whitespace-nowrap">
+                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    {saving ? "Salvando..." : "Salvar credenciais"}
+                  </Button>
+                </div>
               </div>
             </>
           )}
@@ -389,19 +437,27 @@ export function AdminHotmart() {
       {/* ─── PRODUTOS ──────────────────────────────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <Package className="w-4 h-4 text-primary/70" />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2 flex-wrap">
+              <Package className="w-4 h-4 text-primary/70 shrink-0" />
               Produtos Digitais
               <Badge className="bg-white/5 text-zinc-400 border-white/10 text-[10px] font-normal">{products.length}</Badge>
+              {syncResult?.synced !== undefined && (
+                <span className="text-[10px] text-emerald-400">{syncResult.synced} sincronizados</span>
+              )}
             </CardTitle>
             <Button size="sm" variant="ghost" onClick={() => void handleSyncProducts()}
               disabled={syncingProducts || !config?.isActive}
-              className="h-7 px-2.5 text-zinc-500 hover:text-white gap-1.5 text-xs">
+              className="h-7 px-2.5 text-zinc-500 hover:text-white gap-1.5 text-xs whitespace-nowrap shrink-0">
               <RefreshCw className={`w-3 h-3 ${syncingProducts ? "animate-spin" : ""}`} />
               {syncingProducts ? "Sincronizando..." : "Sincronizar Produtos"}
             </Button>
           </div>
+          {syncResult?.error && (
+            <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1.5">
+              <AlertTriangle className="w-3 h-3 shrink-0" />{syncResult.error}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           {products.length === 0 ? (
@@ -430,6 +486,116 @@ export function AdminHotmart() {
           )}
         </CardContent>
       </Card>
+
+      {/* ─── VENDAS ────────────────────────────────────────────────────── */}
+      {(() => {
+        const sales = events.filter((e) =>
+          e.eventType?.startsWith("PURCHASE_") && e.eventType !== "PURCHASE_ABANDONED"
+        );
+        const totalValue = sales.reduce((acc, e) => acc + (parseFloat(e.value ?? "0") || 0), 0);
+        return (
+          <Card className="bg-white/3 border-white/8">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 text-primary/70" />
+                Vendas
+                <Badge className="bg-white/5 text-zinc-400 border-white/10 text-[10px] font-normal">{sales.length}</Badge>
+                {sales.length > 0 && (
+                  <span className="text-[10px] text-emerald-400 ml-1">
+                    R$ {totalValue.toFixed(2)} total
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sales.length === 0 ? (
+                <div className="text-center py-6 text-zinc-600 text-sm">
+                  <ShoppingBag className="w-7 h-7 mx-auto mb-2 opacity-30" />
+                  Nenhuma venda recebida via webhook ainda.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sales.slice(0, 20).map((ev) => (
+                    <div key={ev.id} className="flex items-center gap-3 bg-white/3 border border-white/5 rounded-lg px-3 py-2.5">
+                      <Badge className={`flex items-center gap-1 text-[10px] shrink-0 ${eventColor(ev.eventType)}`}>
+                        {EVENT_ICONS[ev.eventType ?? ""] ?? null}
+                        {eventLabel(ev.eventType)}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-zinc-300 truncate">{ev.buyerName || ev.buyerEmail || "—"}</p>
+                        {ev.transactionId && (
+                          <p className="text-[10px] text-zinc-600 font-mono truncate">{ev.transactionId}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {ev.value && <span className="text-xs font-medium text-zinc-300">R$ {ev.value}</span>}
+                        <span className="text-[10px] text-zinc-600">{formatDate(ev.receivedAt)}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {sales.length > 20 && (
+                    <p className="text-center text-[11px] text-zinc-600 pt-1">
+                      + {sales.length - 20} eventos adicionais no Log de Eventos
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* ─── ASSINATURAS/COMPRAS ────────────────────────────────────────── */}
+      {(() => {
+        const subs = events.filter((e) => e.eventType?.startsWith("SUBSCRIPTION_"));
+        const active = subs.filter((e) => e.eventType === "SUBSCRIPTION_ACTIVE").length;
+        const canceled = subs.filter((e) => e.eventType === "SUBSCRIPTION_CANCELED").length;
+        return (
+          <Card className="bg-white/3 border-white/8">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-primary/70" />
+                  Assinaturas / Compras
+                  <Badge className="bg-white/5 text-zinc-400 border-white/10 text-[10px] font-normal">{subs.length}</Badge>
+                </CardTitle>
+                {subs.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-emerald-400">{active} ativas</span>
+                    {canceled > 0 && <span className="text-[10px] text-red-400">{canceled} canceladas</span>}
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {subs.length === 0 ? (
+                <div className="text-center py-6 text-zinc-600 text-sm">
+                  <UserCheck className="w-7 h-7 mx-auto mb-2 opacity-30" />
+                  Nenhum evento de assinatura recebido. Configure os eventos "Assinatura" no webhook.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {subs.slice(0, 15).map((ev) => (
+                    <div key={ev.id} className="flex items-center gap-3 bg-white/3 border border-white/5 rounded-lg px-3 py-2.5">
+                      <Badge className={`flex items-center gap-1 text-[10px] shrink-0 ${eventColor(ev.eventType)}`}>
+                        {EVENT_ICONS[ev.eventType ?? ""] ?? null}
+                        {eventLabel(ev.eventType)}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-zinc-300 truncate">{ev.buyerName || ev.buyerEmail || "—"}</p>
+                        {ev.productId && (
+                          <p className="text-[10px] text-zinc-600 font-mono truncate">Produto: {ev.productId}</p>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-zinc-600 shrink-0">{formatDate(ev.receivedAt)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* ─── LOG DE EVENTOS ────────────────────────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
