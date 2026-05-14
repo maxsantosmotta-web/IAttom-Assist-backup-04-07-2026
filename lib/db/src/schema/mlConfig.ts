@@ -8,6 +8,7 @@ export const mlConfig = pgTable("ml_config", {
   refreshToken: text("refresh_token").default(""),
   tokenExpiry: timestamp("token_expiry"),
   userId: text("user_id").default(""),
+  nickname: text("nickname").default(""),
   siteId: text("site_id").default("MLB"),
   redirectUri: text("redirect_uri").default(""),
   isActive: boolean("is_active").default(false),

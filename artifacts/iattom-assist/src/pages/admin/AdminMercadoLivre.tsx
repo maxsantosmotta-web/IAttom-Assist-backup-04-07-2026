@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ShoppingCart,
@@ -17,11 +17,17 @@ import {
   MessageSquare,
   Link2,
   User,
+  LogOut,
+  ShieldCheck,
+  ShieldX,
+  RotateCcw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IntegrationFutureAutomations } from "@/components/integrations/IntegrationFutureAutomations";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface MLConfigData {
   configured: boolean;
@@ -29,9 +35,11 @@ interface MLConfigData {
   clientSecret?: string;
   accessToken?: string;
   userId?: string;
+  nickname?: string;
   siteId?: string;
   redirectUri?: string;
   isActive?: boolean;
+  tokenExpired?: boolean;
   tokenExpiry?: string | null;
   updatedAt?: string;
 }
@@ -53,6 +61,7 @@ interface MLOrderItem {
   status?: string | null;
   totalAmount?: string | null;
   buyerNickname?: string | null;
+  dateCreated?: string | null;
   syncedAt?: string | null;
 }
 
@@ -64,6 +73,8 @@ interface MLEventItem {
   receivedAt?: string | null;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -72,7 +83,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     credentials: "include",
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? `HTTP ${res.status}`);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -87,38 +101,62 @@ const SITE_IDS = [
   { value: "MCO", label: "Colômbia (MCO)" },
 ];
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function AdminMercadoLivre() {
-  const [config, setConfig] = useState<MLConfigData | null>(null);
-  const [products, setProducts] = useState<MLProductItem[]>([]);
-  const [orders, setOrders] = useState<MLOrderItem[]>([]);
-  const [events, setEvents] = useState<MLEventItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [config, setConfig]               = useState<MLConfigData | null>(null);
+  const [products, setProducts]           = useState<MLProductItem[]>([]);
+  const [orders, setOrders]               = useState<MLOrderItem[]>([]);
+  const [events, setEvents]               = useState<MLEventItem[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [saving, setSaving]               = useState(false);
+  const [saveStatus, setSaveStatus]       = useState<"idle" | "ok" | "error">("idle");
   const [syncingProducts, setSyncingProducts] = useState(false);
-  const [syncingOrders, setSyncingOrders] = useState(false);
+  const [syncingOrders, setSyncingOrders]     = useState(false);
   const [eventsLoading, setEventsLoading] = useState(false);
-  const [oauthUrl, setOauthUrl] = useState<string | null>(null);
-  const [oauthLoading, setOauthLoading] = useState(false);
+  const [oauthUrl, setOauthUrl]           = useState<string | null>(null);
+  const [oauthLoading, setOauthLoading]   = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [refreshingToken, setRefreshingToken] = useState(false);
+  const [syncResult, setSyncResult]       = useState<{ products?: number; orders?: number }>({});
+  const [errorMsg, setErrorMsg]           = useState<string | null>(null);
+  const [banner, setBanner]               = useState<"connected" | "error" | null>(null);
 
   const [form, setForm] = useState({
-    appId: "",
-    clientSecret: "",
-    redirectUri: "",
-    siteId: "MLB",
+    appId: "", clientSecret: "", redirectUri: "", siteId: "MLB",
   });
   const [showSecret, setShowSecret] = useState(false);
 
   const copyToClipboard = (text: string) => void navigator.clipboard.writeText(text);
-  const formatDate = (d: string | null | undefined) =>
+
+  const fmt = (d: string | null | undefined) =>
     d ? new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 
-  const isTokenExpired = () => {
-    if (!config?.tokenExpiry) return false;
-    return new Date(config.tokenExpiry) < new Date();
+  const fmtTokenExpiry = (d: string | null | undefined) => {
+    if (!d) return null;
+    const dt = new Date(d);
+    const diff = dt.getTime() - Date.now();
+    if (diff <= 0) return "Expirado";
+    const h = Math.floor(diff / 3_600_000);
+    const m = Math.floor((diff % 3_600_000) / 60_000);
+    if (h > 0) return `${h}h ${m}min restantes`;
+    return `${m}min restantes`;
   };
 
-  const loadAll = async () => {
+  // ─── Check URL params after OAuth redirect ────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("ml_connected") === "1") {
+      setBanner("connected");
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("ml_error")) {
+      setBanner("error");
+      setErrorMsg(decodeURIComponent(params.get("ml_error") ?? "Erro desconhecido"));
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  const loadAll = useCallback(async () => {
     setLoading(true);
     try {
       const [cfg, prods, ords] = await Promise.all([
@@ -130,25 +168,24 @@ export function AdminMercadoLivre() {
       setProducts(prods);
       setOrders(ords);
       if (cfg.configured) {
-        setForm({
-          appId: cfg.appId ?? "",
-          clientSecret: "",
+        setForm((f) => ({
+          ...f,
+          appId:       cfg.appId       ?? "",
           redirectUri: cfg.redirectUri ?? "",
-          siteId: cfg.siteId ?? "MLB",
-        });
+          siteId:      cfg.siteId      ?? "MLB",
+        }));
       }
     } catch {
       setConfig({ configured: false });
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const loadEvents = async () => {
     setEventsLoading(true);
     try {
-      const data = await apiFetch<MLEventItem[]>("/api/ml/events");
-      setEvents(data);
+      setEvents(await apiFetch<MLEventItem[]>("/api/ml/events"));
     } catch {
       setEvents([]);
     } finally {
@@ -156,44 +193,89 @@ export function AdminMercadoLivre() {
     }
   };
 
-  useEffect(() => { void loadAll(); void loadEvents(); }, []);
+  useEffect(() => { void loadAll(); void loadEvents(); }, [loadAll]);
 
+  // ─── Save credentials ─────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true); setSaveStatus("idle");
     try {
       await apiFetch("/api/ml/config", { method: "POST", body: JSON.stringify(form) });
       setSaveStatus("ok");
       await loadAll();
-    } catch { setSaveStatus("error"); } finally { setSaving(false); }
+    } catch { setSaveStatus("error"); }
+    finally { setSaving(false); }
   };
 
+  // ─── Generate OAuth URL ───────────────────────────────────────────────────
   const handleGetOAuthUrl = async () => {
     setOauthLoading(true);
     try {
       const data = await apiFetch<{ url: string }>("/api/ml/oauth-url");
       setOauthUrl(data.url);
-    } catch { setOauthUrl(null); } finally { setOauthLoading(false); }
+    } catch { setOauthUrl(null); }
+    finally { setOauthLoading(false); }
   };
 
+  // ─── Disconnect ───────────────────────────────────────────────────────────
+  const handleDisconnect = async () => {
+    if (!confirm("Desconectar a conta do Mercado Livre? Os tokens serão removidos.")) return;
+    setDisconnecting(true);
+    try {
+      await apiFetch("/api/ml/disconnect", { method: "POST" });
+      setOauthUrl(null);
+      await loadAll();
+    } catch { /* silent */ }
+    finally { setDisconnecting(false); }
+  };
+
+  // ─── Refresh token ────────────────────────────────────────────────────────
+  const handleRefreshToken = async () => {
+    setRefreshingToken(true);
+    try {
+      await apiFetch("/api/ml/refresh-token", { method: "POST" });
+      await loadAll();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro ao renovar token.");
+    } finally {
+      setRefreshingToken(false);
+    }
+  };
+
+  // ─── Sync products ────────────────────────────────────────────────────────
   const handleSyncProducts = async () => {
     setSyncingProducts(true);
-    try { await apiFetch("/api/ml/sync-products", { method: "POST" }); await loadAll(); }
-    catch { } finally { setSyncingProducts(false); }
+    try {
+      const r = await apiFetch<{ ok: boolean; synced: number }>("/api/ml/sync-products", { method: "POST" });
+      setSyncResult((prev) => ({ ...prev, products: r.synced }));
+      await loadAll();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro ao sincronizar anúncios.");
+    } finally { setSyncingProducts(false); }
   };
 
+  // ─── Sync orders ──────────────────────────────────────────────────────────
   const handleSyncOrders = async () => {
     setSyncingOrders(true);
-    try { await apiFetch("/api/ml/sync-orders", { method: "POST" }); await loadAll(); }
-    catch { } finally { setSyncingOrders(false); }
+    try {
+      const r = await apiFetch<{ ok: boolean; synced: number }>("/api/ml/sync-orders", { method: "POST" });
+      setSyncResult((prev) => ({ ...prev, orders: r.synced }));
+      await loadAll();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro ao sincronizar pedidos.");
+    } finally { setSyncingOrders(false); }
   };
 
   const statusColor = (s: string | null | undefined) => {
     if (!s) return "bg-zinc-700/40 text-zinc-500 border-zinc-600/30";
-    const up = s.toLowerCase();
-    if (up === "active" || up === "paid" || up === "delivered") return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
-    if (up === "cancelled" || up === "closed") return "bg-red-500/15 text-red-400 border-red-500/30";
+    const u = s.toLowerCase();
+    if (["active", "paid", "delivered"].includes(u)) return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+    if (["cancelled", "closed"].includes(u))         return "bg-red-500/15 text-red-400 border-red-500/30";
     return "bg-amber-500/15 text-amber-400 border-amber-500/30";
   };
+
+  const isConnected  = config?.isActive && !config.tokenExpired;
+  const tokenExpired = config?.isActive && config.tokenExpired;
+  const timeLeft     = fmtTokenExpiry(config?.tokenExpiry);
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
@@ -201,17 +283,102 @@ export function AdminMercadoLivre() {
         <div className="flex items-center gap-3 mb-1">
           <ShoppingCart className="w-5 h-5 text-primary" />
           <h1 className="text-xl font-bold text-white">Mercado Livre</h1>
-          {config?.isActive
-            ? <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">Ativo</Badge>
-            : <Badge className="bg-zinc-700/40 text-zinc-500 border-zinc-600/30 text-[10px]">Não configurado</Badge>}
-          {config?.isActive && isTokenExpired() && (
-            <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[10px]">Token expirado</Badge>
-          )}
+          {isConnected
+            ? <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">Conectado</Badge>
+            : tokenExpired
+              ? <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[10px]">Token expirado</Badge>
+              : <Badge className="bg-zinc-700/40 text-zinc-500 border-zinc-600/30 text-[10px]">Não conectado</Badge>
+          }
         </div>
-        <p className="text-sm text-zinc-500 ml-8">Configure a integração com a API do Mercado Livre via OAuth2.</p>
+        <p className="text-sm text-zinc-500 ml-8">Integração OAuth2 com a API oficial do Mercado Livre.</p>
       </motion.div>
 
-      {/* ─── CREDENCIAIS ───────────────────────────────────────────────── */}
+      {/* ─── BANNER após OAuth redirect ─────────────────────────────── */}
+      {banner === "connected" && (
+        <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-4 py-3">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <p className="text-sm text-emerald-300">Conta conectada com sucesso. Clique em "Sincronizar" para importar seus dados.</p>
+          <button onClick={() => setBanner(null)} className="ml-auto text-zinc-500 hover:text-white text-xs">Fechar</button>
+        </div>
+      )}
+      {banner === "error" && (
+        <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-3">
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+          <p className="text-sm text-red-300">Erro na autorização: <span className="font-mono">{errorMsg}</span></p>
+          <button onClick={() => setBanner(null)} className="ml-auto text-zinc-500 hover:text-white text-xs">Fechar</button>
+        </div>
+      )}
+
+      {/* ─── CONTA CONECTADA — status card ─────────────────────────── */}
+      {config?.isActive && (
+        <Card className="bg-white/3 border-white/8">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-4">
+              {/* avatar placeholder */}
+              <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-base font-semibold text-white truncate">
+                    {config.nickname || "Conta Mercado Livre"}
+                  </p>
+                  {isConnected
+                    ? <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    : <ShieldX    className="w-4 h-4 text-red-400" />
+                  }
+                </div>
+                <div className="flex items-center gap-3 flex-wrap mt-0.5">
+                  <span className="text-[11px] text-zinc-500 font-mono">User ID: {config.userId}</span>
+                  {timeLeft && (
+                    <span className={`text-[11px] font-medium ${tokenExpired ? "text-red-400" : "text-zinc-400"}`}>
+                      Token: {timeLeft}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-zinc-600">Site: {config.siteId}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {tokenExpired && (
+                  <Button size="sm" variant="ghost" onClick={() => void handleRefreshToken()}
+                    disabled={refreshingToken}
+                    className="h-7 px-2.5 text-amber-400 hover:text-amber-300 border border-amber-500/20 gap-1.5 text-xs">
+                    {refreshingToken
+                      ? <Loader2 className="w-3 h-3 animate-spin" />
+                      : <RotateCcw className="w-3 h-3" />}
+                    Renovar token
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={() => void handleDisconnect()}
+                  disabled={disconnecting}
+                  className="h-7 px-2.5 text-red-400 hover:text-red-300 border border-red-500/20 gap-1.5 text-xs">
+                  {disconnecting
+                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                    : <LogOut className="w-3 h-3" />}
+                  Desconectar
+                </Button>
+              </div>
+            </div>
+
+            {/* stats row */}
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              {[
+                { label: "Anúncios sincronizados", value: products.length, icon: Package },
+                { label: "Pedidos sincronizados",  value: orders.length,   icon: ClipboardList },
+                { label: "Notificações recebidas", value: events.length,   icon: MessageSquare },
+              ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="bg-white/3 border border-white/6 rounded-lg px-3 py-2.5 text-center">
+                  <Icon className="w-4 h-4 text-primary/60 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-white">{value}</p>
+                  <p className="text-[10px] text-zinc-500">{label}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ─── CREDENCIAIS ────────────────────────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
@@ -244,15 +411,17 @@ export function AdminMercadoLivre() {
                       {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
-                  {config?.configured && <p className="text-[10px] text-zinc-600">Secret atual: {config.clientSecret} — deixe em branco para manter.</p>}
+                  {config?.configured && (
+                    <p className="text-[10px] text-zinc-600">Secret atual: {config.clientSecret} — deixe em branco para manter.</p>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-zinc-400">URI de Redirecionamento</label>
-                  <input className={inputClass} placeholder="https://seudominio.com/api/ml/oauth-callback"
+                  <input className={inputClass} placeholder="https://seudominio.replit.app/api/ml/oauth-callback"
                     value={form.redirectUri} onChange={(e) => setForm((f) => ({ ...f, redirectUri: e.target.value }))} />
-                  <p className="text-[10px] text-zinc-600">Deve ser idêntica à cadastrada no painel do ML.</p>
+                  <p className="text-[10px] text-zinc-600">Deve ser idêntica à URI cadastrada no painel do ML.</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-zinc-400">Site</label>
@@ -262,21 +431,9 @@ export function AdminMercadoLivre() {
                   </select>
                 </div>
               </div>
-              {config?.isActive && config.userId && (
-                <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg px-3 py-2">
-                  <User className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-xs text-zinc-400">Conta conectada — User ID:</span>
-                  <code className="text-xs text-emerald-400 font-mono">{config.userId}</code>
-                  {config.tokenExpiry && (
-                    <span className="ml-auto text-[10px] text-zinc-600">
-                      Token expira: {formatDate(config.tokenExpiry)}
-                    </span>
-                  )}
-                </div>
-              )}
               <div className="flex items-center justify-between pt-2">
                 <div>
-                  {saveStatus === "ok" && <span className="flex items-center gap-1.5 text-xs text-emerald-400"><CheckCircle2 className="w-3.5 h-3.5" />Salvo com sucesso.</span>}
+                  {saveStatus === "ok"    && <span className="flex items-center gap-1.5 text-xs text-emerald-400"><CheckCircle2 className="w-3.5 h-3.5" />Salvo.</span>}
                   {saveStatus === "error" && <span className="flex items-center gap-1.5 text-xs text-red-400"><AlertTriangle className="w-3.5 h-3.5" />Erro ao salvar.</span>}
                 </div>
                 <Button size="sm" onClick={() => void handleSave()}
@@ -291,7 +448,7 @@ export function AdminMercadoLivre() {
         </CardContent>
       </Card>
 
-      {/* ─── OAUTH ─────────────────────────────────────────────────────── */}
+      {/* ─── OAUTH ──────────────────────────────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
@@ -303,17 +460,19 @@ export function AdminMercadoLivre() {
           <div className="bg-primary/5 border border-primary/15 rounded-lg p-3">
             <p className="text-xs font-medium text-primary mb-1.5">Como autenticar a conta Mercado Livre</p>
             <ol className="text-[11px] text-zinc-400 space-y-1 list-decimal list-inside">
-              <li>Salve as credenciais do App acima.</li>
-              <li>Clique em "Gerar Link de Autorização".</li>
-              <li>Abra o link e autorize com sua conta Mercado Livre.</li>
-              <li>O sistema receberá o token automaticamente via callback <code className="text-primary/80">/api/ml/oauth-callback</code>.</li>
-              <li>Após autorizar, o User ID e tokens serão salvos automaticamente.</li>
+              <li>Crie um app em <span className="text-primary/80">developers.mercadolivre.com.br</span> e obtenha o App ID e Client Secret.</li>
+              <li>Cadastre a URI de callback: <code className="text-primary/80 font-mono">https://SEU_DOMINIO/api/ml/oauth-callback</code></li>
+              <li>Salve as credenciais acima e clique em "Gerar Link de Autorização".</li>
+              <li>Abra o link, faça login com sua conta ML e autorize o app.</li>
+              <li>O sistema salvará os tokens automaticamente e você será redirecionado de volta.</li>
             </ol>
           </div>
+
           {oauthUrl && (
             <div className="flex items-center gap-2">
               <code className="flex-1 bg-black/30 border border-white/8 rounded-lg px-3 py-2 text-xs text-zinc-300 font-mono break-all">{oauthUrl}</code>
-              <Button size="icon" variant="ghost" className="shrink-0 h-8 w-8 text-zinc-500 hover:text-white" onClick={() => copyToClipboard(oauthUrl)}>
+              <Button size="icon" variant="ghost" className="shrink-0 h-8 w-8 text-zinc-500 hover:text-white"
+                onClick={() => copyToClipboard(oauthUrl)}>
                 <Copy className="w-3.5 h-3.5" />
               </Button>
               <a href={oauthUrl} target="_blank" rel="noopener noreferrer">
@@ -323,6 +482,7 @@ export function AdminMercadoLivre() {
               </a>
             </div>
           )}
+
           <Button size="sm" variant="ghost" onClick={() => void handleGetOAuthUrl()}
             disabled={oauthLoading || !config?.configured}
             className="border border-white/10 text-zinc-400 hover:text-white gap-2">
@@ -332,20 +492,23 @@ export function AdminMercadoLivre() {
         </CardContent>
       </Card>
 
-      {/* ─── PRODUTOS ──────────────────────────────────────────────────── */}
+      {/* ─── ANÚNCIOS ───────────────────────────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
               <Package className="w-4 h-4 text-primary/70" />
-              Produtos (Anúncios)
+              Anúncios
               <Badge className="bg-white/5 text-zinc-400 border-white/10 text-[10px] font-normal">{products.length}</Badge>
+              {syncResult.products !== undefined && (
+                <span className="text-[10px] text-emerald-400">{syncResult.products} sincronizados</span>
+              )}
             </CardTitle>
             <Button size="sm" variant="ghost" onClick={() => void handleSyncProducts()}
-              disabled={syncingProducts || !config?.isActive}
+              disabled={syncingProducts || !config?.isActive || config.tokenExpired}
               className="h-7 px-2.5 text-zinc-500 hover:text-white gap-1.5 text-xs">
               <RefreshCw className={`w-3 h-3 ${syncingProducts ? "animate-spin" : ""}`} />
-              {syncingProducts ? "Sincronizando..." : "Sincronizar Produtos"}
+              {syncingProducts ? "Sincronizando..." : "Sincronizar"}
             </Button>
           </div>
         </CardHeader>
@@ -353,7 +516,9 @@ export function AdminMercadoLivre() {
           {products.length === 0 ? (
             <div className="text-center py-8 text-zinc-600 text-sm">
               <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              Nenhum produto sincronizado. Autorize a conta e clique em "Sincronizar Produtos".
+              {config?.isActive
+                ? "Nenhum anúncio sincronizado. Clique em Sincronizar."
+                : "Conecte a conta para importar seus anúncios."}
             </div>
           ) : (
             <div className="space-y-2">
@@ -380,7 +545,7 @@ export function AdminMercadoLivre() {
         </CardContent>
       </Card>
 
-      {/* ─── PEDIDOS ───────────────────────────────────────────────────── */}
+      {/* ─── PEDIDOS ────────────────────────────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -388,12 +553,15 @@ export function AdminMercadoLivre() {
               <ClipboardList className="w-4 h-4 text-primary/70" />
               Pedidos
               <Badge className="bg-white/5 text-zinc-400 border-white/10 text-[10px] font-normal">{orders.length}</Badge>
+              {syncResult.orders !== undefined && (
+                <span className="text-[10px] text-emerald-400">{syncResult.orders} sincronizados</span>
+              )}
             </CardTitle>
             <Button size="sm" variant="ghost" onClick={() => void handleSyncOrders()}
-              disabled={syncingOrders || !config?.isActive}
+              disabled={syncingOrders || !config?.isActive || config.tokenExpired}
               className="h-7 px-2.5 text-zinc-500 hover:text-white gap-1.5 text-xs">
               <RefreshCw className={`w-3 h-3 ${syncingOrders ? "animate-spin" : ""}`} />
-              {syncingOrders ? "Sincronizando..." : "Sincronizar Pedidos"}
+              {syncingOrders ? "Sincronizando..." : "Sincronizar"}
             </Button>
           </div>
         </CardHeader>
@@ -401,7 +569,9 @@ export function AdminMercadoLivre() {
           {orders.length === 0 ? (
             <div className="text-center py-8 text-zinc-600 text-sm">
               <ClipboardList className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              Nenhum pedido sincronizado ainda.
+              {config?.isActive
+                ? "Nenhum pedido sincronizado. Clique em Sincronizar."
+                : "Conecte a conta para importar seus pedidos."}
             </div>
           ) : (
             <div className="space-y-2">
@@ -409,12 +579,12 @@ export function AdminMercadoLivre() {
                 <div key={o.id} className="flex items-center gap-3 bg-white/3 border border-white/5 rounded-lg px-3 py-2.5">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white font-mono">{o.mlOrderId}</p>
-                    <p className="text-[10px] text-zinc-500">{o.buyerNickname}</p>
+                    <p className="text-[10px] text-zinc-500">{o.buyerNickname || "—"}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-zinc-400">R$ {o.totalAmount}</span>
                     <Badge className={`text-[10px] ${statusColor(o.status)}`}>{o.status ?? "—"}</Badge>
-                    <span className="text-[10px] text-zinc-600">{formatDate(o.syncedAt)}</span>
+                    <span className="text-[10px] text-zinc-600">{fmt(o.dateCreated)}</span>
                   </div>
                 </div>
               ))}
@@ -423,7 +593,7 @@ export function AdminMercadoLivre() {
         </CardContent>
       </Card>
 
-      {/* ─── EVENTOS ───────────────────────────────────────────────────── */}
+      {/* ─── NOTIFICAÇÕES ───────────────────────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -451,7 +621,7 @@ export function AdminMercadoLivre() {
                 <div key={ev.id} className="flex items-center gap-3 bg-white/3 border border-white/5 rounded-lg px-3 py-2">
                   <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] shrink-0">{ev.topic ?? "—"}</Badge>
                   <span className="text-xs text-zinc-400 font-mono truncate flex-1">{ev.resource ?? "—"}</span>
-                  <span className="text-[10px] text-zinc-600 shrink-0">{formatDate(ev.receivedAt)}</span>
+                  <span className="text-[10px] text-zinc-600 shrink-0">{fmt(ev.receivedAt)}</span>
                 </div>
               ))}
             </div>
@@ -466,7 +636,7 @@ export function AdminMercadoLivre() {
           "Relatório de vendas com IA",
           "Gestão de reputação",
           "Análise de concorrência por categoria",
-          "Geração de descrição com IA",
+          "Geração de descrição de anúncio com IA",
         ]}
       />
     </div>
