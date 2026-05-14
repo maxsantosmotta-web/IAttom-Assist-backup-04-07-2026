@@ -52,6 +52,7 @@ const AdminShopee = lazy(() => import("@/pages/admin/AdminShopee").then((m) => (
 const AdminMercadoLivre = lazy(() => import("@/pages/admin/AdminMercadoLivre").then((m) => ({ default: m.AdminMercadoLivre })));
 const AdminHotmart = lazy(() => import("@/pages/admin/AdminHotmart").then((m) => ({ default: m.AdminHotmart })));
 const AdminKiwify = lazy(() => import("@/pages/admin/AdminKiwify").then((m) => ({ default: m.AdminKiwify })));
+const AdminIntegrations = lazy(() => import("@/pages/admin/AdminIntegrations").then((m) => ({ default: m.AdminIntegrations })));
 
 function PageLoader() {
   return (
@@ -265,6 +266,7 @@ function ProtectedAdmin() {
                 <Route path="/admin/waitlist" component={AdminWaitlist} />
                 <Route path="/admin/feedback" component={AdminFeedback} />
                 <Route path="/admin/launch-checklist" component={AdminLaunchChecklist} />
+                <Route path="/admin/integrations" component={AdminIntegrations} />
                 <Route path="/admin/whatsapp" component={AdminWhatsApp} />
                 <Route path="/admin/meta" component={AdminMeta} />
                 <Route path="/admin/shopee" component={AdminShopee} />

@@ -15,12 +15,12 @@ import {
   ClipboardList,
   Clock,
   MessageSquare,
-  Layers,
   Link2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IntegrationFutureAutomations } from "@/components/integrations/IntegrationFutureAutomations";
 
 interface ShopeeConfigData {
   configured: boolean;
@@ -424,26 +424,16 @@ export function AdminShopee() {
         </CardContent>
       </Card>
 
-      {/* ─── AUTOMAÇÕES FUTURAS ───────────────────────────────────────── */}
-      <Card className="bg-white/3 border-white/8">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-zinc-500 flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Automações — Em breve
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {["Resposta automática a avaliações", "Alerta de estoque baixo", "Relatório de vendas com IA", "Atualização automática de preços", "Gestão de promoções", "Análise de concorrência"].map((item) => (
-              <div key={item} className="flex items-center gap-2 bg-white/2 border border-white/5 rounded-lg px-3 py-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary/30 shrink-0" />
-                <span className="text-xs text-zinc-600">{item}</span>
-                <Badge className="ml-auto bg-zinc-800 text-zinc-600 border-zinc-700 text-[9px]">Futuro</Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <IntegrationFutureAutomations
+        items={[
+          "Resposta automática a avaliações",
+          "Alerta de estoque baixo",
+          "Relatório de vendas com IA",
+          "Atualização automática de preços",
+          "Gestão de promoções",
+          "Análise de concorrência",
+        ]}
+      />
     </div>
   );
 }

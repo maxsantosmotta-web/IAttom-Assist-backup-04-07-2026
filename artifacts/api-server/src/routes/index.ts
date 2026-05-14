@@ -21,6 +21,7 @@ import shopeeRouter from "./shopee.js";
 import mlRouter from "./ml.js";
 import hotmartRouter from "./hotmart.js";
 import kiwifyRouter from "./kiwify.js";
+import integrationsRouter from "./integrations.js";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(shopeeRouter);
 router.use(mlRouter);
 router.use(hotmartRouter);
 router.use(kiwifyRouter);
+router.use(integrationsRouter);
 
 export default router;
