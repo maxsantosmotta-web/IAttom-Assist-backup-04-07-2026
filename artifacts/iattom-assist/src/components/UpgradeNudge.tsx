@@ -33,6 +33,7 @@ export function UpgradeNudge({ totalActions = 0 }: UpgradeNudgeProps) {
   const creditsLeft = balance?.balance ?? planLimit;
 
   if (dismissed) return null;
+  if (me?.role === "admin") return null;
   if (pct > 35 && !isPowerUser) return null;
   if (isPaid && pct > 15) return null;
 

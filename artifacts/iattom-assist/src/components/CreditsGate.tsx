@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Zap, AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { useUseCredits, useGetCreditsBalance, getGetCreditsBalanceQueryKey } from "@workspace/api-client-react";
+import { useUseCredits, useGetCreditsBalance, getGetCreditsBalanceQueryKey, useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FeatureKey } from "@/lib/credits";
 import { FEATURE_COSTS, PLAN_CREDITS } from "@/lib/credits";
@@ -26,8 +26,9 @@ export function CreditsGate({ feature, onSuccess, disabled, children }: CreditsG
   const qc = useQueryClient();
   const cost = FEATURE_COSTS[feature];
 
+  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), staleTime: 0 } });
   const { data: balanceData } = useGetCreditsBalance({
-    query: { queryKey: getGetCreditsBalanceQueryKey(), retry: false, staleTime: 30_000 },
+    query: { queryKey: getGetCreditsBalanceQueryKey(), retry: false, staleTime: 0 },
   });
 
   const mutation = useUseCredits({
@@ -50,6 +51,10 @@ export function CreditsGate({ feature, onSuccess, disabled, children }: CreditsG
 
   const trigger = () => {
     if (disabled) return;
+    if (me?.role === "admin") {
+      onSuccess(() => {});
+      return;
+    }
     if (balanceData && balanceData.balance < cost) {
       setInsufficient({ balance: balanceData.balance, required: cost });
       return;
