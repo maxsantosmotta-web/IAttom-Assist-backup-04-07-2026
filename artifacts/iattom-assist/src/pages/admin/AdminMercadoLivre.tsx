@@ -21,7 +21,9 @@ import {
   ShieldCheck,
   ShieldX,
   RotateCcw,
+  Zap,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -121,6 +123,9 @@ export function AdminMercadoLivre() {
   const [syncResult, setSyncResult]       = useState<{ products?: number; orders?: number }>({});
   const [errorMsg, setErrorMsg]           = useState<string | null>(null);
   const [banner, setBanner]               = useState<"connected" | "error" | null>(null);
+  const [connecting, setConnecting]       = useState(false);
+
+  const { toast } = useToast();
 
   const [form, setForm] = useState({
     appId: "", clientSecret: "", redirectUri: "", siteId: "MLB",
