@@ -45,7 +45,6 @@ export function Settings() {
   return (
     <div className="space-y-8 max-w-2xl">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Configuração</p>
         <h2 className="text-2xl font-bold text-white mb-1">Configurações</h2>
         <p className="text-muted-foreground text-sm">Gerencie sua conta, notificações e preferências do workspace.</p>
       </motion.div>
