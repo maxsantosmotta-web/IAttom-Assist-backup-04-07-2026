@@ -1,7 +1,5 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Search, CheckCircle, Megaphone, FileText, Sparkles, Video,
   ArrowRight, TrendingUp, Layers, Zap, Clock, FolderOpen,
@@ -11,12 +9,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  useGetDashboardSummary, useListProjects, useGetCreditsBalance,
-  getGetCreditsBalanceQueryKey, useGetMe, getGetMeQueryKey,
+  useGetDashboardSummary, useListProjects,
   useListHistory, getListHistoryQueryKey,
 } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { UpgradeNudge } from "@/components/UpgradeNudge";
+import { useUserAccess } from "@/hooks/useUserAccess";
 
 const quickActions = [
   { href: "/dashboard/find-products", label: "Buscar Produtos", icon: Search, desc: "Descubra produtos vencedores", color: "text-primary", bg: "bg-primary/10 border-primary/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(201,168,76,0.2)]", module: "product_discovery" },
@@ -96,31 +94,15 @@ const ACHIEVEMENTS = [
 export function DashboardHome() {
   const { data: summary, isLoading: summaryLoading } = useGetDashboardSummary();
   const { data: projects, isLoading: projectsLoading } = useListProjects();
-  const { data: creditsData } = useGetCreditsBalance({
-    query: { queryKey: getGetCreditsBalanceQueryKey(), retry: false, staleTime: 0 },
-  });
   const { data: historyData } = useListHistory(
     { limit: 10 },
     { query: { queryKey: getListHistoryQueryKey({ limit: 10 }), retry: false, staleTime: 60_000 } },
   );
   const { user, isLoaded } = useUser();
-  const { data: me } = useGetMe({
-    query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 0 },
-  });
-
-  const queryClient = useQueryClient();
-  useEffect(() => {
-    void queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-    void queryClient.invalidateQueries({ queryKey: getGetCreditsBalanceQueryKey() });
-  }, [queryClient]);
-
-  // eslint-disable-next-line no-console
-  console.log("PLANO ATUAL:", me?.plan, "| creditsData.plan:", (creditsData as Record<string, unknown> | undefined)?.plan);
+  const { planName, credits, balance } = useUserAccess();
 
   const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "você";
-  const rawPlan = creditsData ? (creditsData as { plan?: string }).plan as string | undefined : undefined;
-  const PLAN_DISPLAY_NAMES: Record<string, string> = { free: "START", pro: "COMPLETO", business: "PREMIUM", agency: "PRO" };
-  const planLabel = rawPlan ? (PLAN_DISPLAY_NAMES[rawPlan] ?? rawPlan.toUpperCase()) : null;
+  const planLabel = planName;
 
   // Recently used tools — derive unique modules from history
   const recentModules = historyData
@@ -406,7 +388,7 @@ export function DashboardHome() {
         </div>
         <Link href="/dashboard/credits" className="inline-flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
           <Zap className="w-3.5 h-3.5" />
-          {creditsData ? `${creditsData.balance.toLocaleString()} créditos restantes` : "Ver créditos"}
+          {balance ? `${credits.toLocaleString()} créditos restantes` : "Ver créditos"}
         </Link>
       </div>
 
