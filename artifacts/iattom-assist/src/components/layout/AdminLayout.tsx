@@ -11,6 +11,8 @@ import {
   Instagram,
   ShoppingBag,
   ShoppingCart,
+  Flame,
+  Zap,
   Menu,
   X,
   LogOut,
@@ -44,6 +46,8 @@ const navItems = [
   { href: "/admin/meta", label: "Meta (IG + FB)", icon: Instagram },
   { href: "/admin/shopee", label: "Shopee", icon: ShoppingBag },
   { href: "/admin/mercado-livre", label: "Mercado Livre", icon: ShoppingCart },
+  { href: "/admin/hotmart", label: "Hotmart", icon: Flame },
+  { href: "/admin/kiwify", label: "Kiwify", icon: Zap },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");

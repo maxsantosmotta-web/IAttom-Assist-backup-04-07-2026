@@ -19,6 +19,8 @@ import whatsappRouter from "./whatsapp.js";
 import metaRouter from "./meta.js";
 import shopeeRouter from "./shopee.js";
 import mlRouter from "./ml.js";
+import hotmartRouter from "./hotmart.js";
+import kiwifyRouter from "./kiwify.js";
 
 const router: IRouter = Router();
 
@@ -42,5 +44,7 @@ router.use(whatsappRouter);
 router.use(metaRouter);
 router.use(shopeeRouter);
 router.use(mlRouter);
+router.use(hotmartRouter);
+router.use(kiwifyRouter);
 
 export default router;

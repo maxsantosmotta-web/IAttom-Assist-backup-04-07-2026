@@ -50,6 +50,8 @@ const AdminWhatsApp = lazy(() => import("@/pages/admin/AdminWhatsApp").then((m) 
 const AdminMeta = lazy(() => import("@/pages/admin/AdminMeta").then((m) => ({ default: m.AdminMeta })));
 const AdminShopee = lazy(() => import("@/pages/admin/AdminShopee").then((m) => ({ default: m.AdminShopee })));
 const AdminMercadoLivre = lazy(() => import("@/pages/admin/AdminMercadoLivre").then((m) => ({ default: m.AdminMercadoLivre })));
+const AdminHotmart = lazy(() => import("@/pages/admin/AdminHotmart").then((m) => ({ default: m.AdminHotmart })));
+const AdminKiwify = lazy(() => import("@/pages/admin/AdminKiwify").then((m) => ({ default: m.AdminKiwify })));
 
 function PageLoader() {
   return (
@@ -267,6 +269,8 @@ function ProtectedAdmin() {
                 <Route path="/admin/meta" component={AdminMeta} />
                 <Route path="/admin/shopee" component={AdminShopee} />
                 <Route path="/admin/mercado-livre" component={AdminMercadoLivre} />
+                <Route path="/admin/hotmart" component={AdminHotmart} />
+                <Route path="/admin/kiwify" component={AdminKiwify} />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>
