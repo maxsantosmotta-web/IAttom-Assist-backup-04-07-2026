@@ -25,6 +25,13 @@ import {
   FileText,
   Link,
   Image,
+  Info,
+  X,
+  Tag,
+  DollarSign,
+  CalendarDays,
+  Boxes,
+  Receipt,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -152,6 +159,7 @@ export function AdminHotmart() {
   });
   const [savingManual, setSavingManual] = useState(false);
   const [manualResult, setManualResult] = useState<{ ok?: boolean; error?: string } | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<HotmartProductItem | null>(null);
   const [showOfferForm, setShowOfferForm] = useState(false);
   const [offerForm, setOfferForm] = useState({
     title: "",
@@ -718,17 +726,28 @@ export function AdminHotmart() {
                 </div>
               )}
               {products.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 bg-white/3 border border-white/5 rounded-lg px-3 py-2.5">
+                <div
+                  key={p.id}
+                  onClick={() => setSelectedProduct(p)}
+                  className="group flex items-center gap-3 bg-white/3 hover:bg-white/6 border border-white/5 hover:border-primary/25 rounded-lg px-3 py-2.5 cursor-pointer transition-colors"
+                >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{p.name || "—"}</p>
+                    <p className="text-sm font-medium text-white truncate group-hover:text-primary/90 transition-colors">
+                      {p.name || "—"}
+                    </p>
                     <p className="text-[10px] text-zinc-600 font-mono">{p.productId}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {p.format && <Badge className="bg-zinc-700/40 text-zinc-400 border-zinc-600/30 text-[10px]">{p.format}</Badge>}
+                    {p.format && (
+                      <Badge className="bg-zinc-700/40 text-zinc-400 border-zinc-600/30 text-[10px] hidden sm:flex">
+                        {p.format}
+                      </Badge>
+                    )}
                     <span className="text-xs text-zinc-400">R$ {p.price}</span>
                     <Badge className={`text-[10px] ${p.status === "ACTIVE" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-zinc-700/40 text-zinc-500 border-zinc-600/30"}`}>
                       {p.status ?? "—"}
                     </Badge>
+                    <Info className="w-3.5 h-3.5 text-zinc-600 group-hover:text-primary/60 transition-colors shrink-0" />
                   </div>
                 </div>
               ))}
@@ -908,6 +927,120 @@ export function AdminHotmart() {
           "Análise de conversão por produto",
         ]}
       />
+
+      {/* ─── MODAL DETALHES DA OFERTA ──────────────────────────────────── */}
+      {selectedProduct && (() => {
+        const p = selectedProduct;
+        const relatedSales = events.filter(
+          (e) => e.productId === p.productId && e.eventType?.startsWith("PURCHASE_") && e.eventType !== "PURCHASE_ABANDONED"
+        );
+        const fmt = (d: string | null | undefined) =>
+          d ? new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Não informado";
+        const val = (v: string | null | undefined) => (v && v.trim() !== "" ? v : "Não informado");
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedProduct(null)}
+          >
+            {/* backdrop */}
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
+            {/* panel */}
+            <div
+              className="relative z-10 w-full max-w-md bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* header */}
+              <div className="flex items-start gap-3 px-5 pt-5 pb-4 border-b border-white/8">
+                <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                  <Rocket className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white leading-snug">{val(p.name)}</p>
+                  <p className="text-[10px] text-zinc-500 font-mono mt-0.5">ID: {p.productId}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedProduct(null)}
+                  className="text-zinc-600 hover:text-white transition-colors mt-0.5 shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* body */}
+              <div className="px-5 py-4 space-y-3">
+                {/* grid de campos */}
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { icon: Tag,         label: "Tipo",     value: val(p.format) },
+                    { icon: DollarSign,  label: "Preço",    value: p.price && p.price !== "0" ? `${p.currency ?? "BRL"} ${p.price}` : "Não informado" },
+                    { icon: Boxes,       label: "Status",   value: null, badge: p.status },
+                    { icon: Receipt,     label: "Origem",   value: "Não informado" },
+                    { icon: Link,        label: "Checkout", value: "Não informado", span: 2 },
+                    { icon: CalendarDays, label: "Sincronizado em", value: fmt(p.syncedAt), span: 2 },
+                  ].map(({ icon: Icon, label, value, badge, span }) => (
+                    <div
+                      key={label}
+                      className={`bg-white/3 border border-white/6 rounded-lg px-3 py-2.5 ${span === 2 ? "col-span-2" : ""}`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Icon className="w-3 h-3 text-primary/50 shrink-0" />
+                        <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</p>
+                      </div>
+                      {badge !== undefined ? (
+                        <Badge className={`text-[10px] ${badge === "ACTIVE" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-zinc-700/40 text-zinc-500 border-zinc-600/30"}`}>
+                          {badge ?? "Não informado"}
+                        </Badge>
+                      ) : (
+                        <p className={`text-xs font-medium leading-snug ${value === "Não informado" ? "text-zinc-600" : "text-white"}`}>
+                          {value}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* vendas relacionadas */}
+                <div className="bg-white/3 border border-white/6 rounded-lg px-3 py-2.5">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <ShoppingBag className="w-3 h-3 text-primary/50 shrink-0" />
+                    <p className="text-[9px] text-zinc-500 uppercase tracking-wide">Vendas relacionadas</p>
+                    <span className="ml-auto text-[10px] text-zinc-500">{relatedSales.length}</span>
+                  </div>
+                  {relatedSales.length === 0 ? (
+                    <p className="text-xs text-zinc-600">Nenhuma venda registrada para este produto.</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                      {relatedSales.slice(0, 10).map((ev) => (
+                        <div key={ev.id} className="flex items-center gap-2 text-[11px]">
+                          <Badge className={`text-[9px] shrink-0 ${EVENT_COLORS[ev.eventType ?? ""] ?? "bg-zinc-700/40 text-zinc-500 border-zinc-600/30"}`}>
+                            {EVENT_LABELS[ev.eventType ?? ""] ?? ev.eventType ?? "—"}
+                          </Badge>
+                          <span className="text-zinc-400 truncate flex-1">{ev.buyerName || ev.buyerEmail || "—"}</span>
+                          {ev.value && <span className="text-zinc-500 shrink-0">R$ {ev.value}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* footer */}
+              <div className="px-5 pb-4 flex justify-end">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedProduct(null)}
+                  className="h-7 px-4 text-zinc-500 hover:text-white border border-white/8 text-xs"
+                >
+                  Fechar
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
