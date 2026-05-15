@@ -124,7 +124,16 @@ export function AdminHotmart() {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "ok" | "error">("idle");
   const [syncingProducts, setSyncingProducts] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ synced?: number; error?: string; message?: string } | null>(null);
+  interface EndpointDiag {
+    label: string;
+    url: string;
+    status: number;
+    bodyEmpty: boolean;
+    count: number;
+    result: "ok" | "empty" | "error" | "network_error";
+    errorDetail?: string;
+  }
+  const [syncResult, setSyncResult] = useState<{ synced?: number; error?: string; message?: string; diagnostics?: EndpointDiag[] } | null>(null);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -209,8 +218,11 @@ export function AdminHotmart() {
     setSyncingProducts(true);
     setSyncResult(null);
     try {
-      const data = await apiFetch<{ ok: boolean; synced: number; message?: string }>("/api/hotmart/sync-products", { method: "POST" });
-      setSyncResult({ synced: data.synced, message: data.message });
+      const data = await apiFetch<{ ok: boolean; synced: number; message?: string; diagnostics?: EndpointDiag[] }>(
+        "/api/hotmart/sync-products",
+        { method: "POST" },
+      );
+      setSyncResult({ synced: data.synced, message: data.message, diagnostics: data.diagnostics });
       await loadAll();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao sincronizar.";
@@ -468,6 +480,34 @@ export function AdminHotmart() {
             <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1.5">
               <AlertTriangle className="w-3 h-3 shrink-0" />{syncResult.error}
             </p>
+          )}
+          {syncResult?.message && syncResult.synced === 0 && (
+            <p className="text-[11px] text-amber-400/80 mt-1 flex items-start gap-1.5">
+              <AlertTriangle className="w-3 h-3 shrink-0 mt-px" />{syncResult.message}
+            </p>
+          )}
+          {syncResult?.diagnostics && syncResult.diagnostics.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {syncResult.diagnostics.map((d) => {
+                const isOk = d.result === "ok";
+                const isEmpty = d.result === "empty";
+                const isError = d.result === "error" || d.result === "network_error";
+                return (
+                  <div key={d.label} className="flex items-center gap-2 text-[10px]">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isOk ? "bg-emerald-400" : isEmpty ? "bg-zinc-500" : "bg-red-400"}`} />
+                    <span className={`font-medium ${isOk ? "text-emerald-400" : isEmpty ? "text-zinc-500" : "text-red-400"}`}>
+                      {d.label}:
+                    </span>
+                    <span className={`${isOk ? "text-emerald-400" : isEmpty ? "text-zinc-500" : "text-red-400"}`}>
+                      {isOk ? `${d.count} encontrado${d.count !== 1 ? "s" : ""}` : isEmpty ? "vazio (sem produtos ou sem permissão)" : `erro HTTP ${d.status}${d.errorDetail ? ` — ${d.errorDetail.slice(0, 60)}` : ""}`}
+                    </span>
+                    {isError && (
+                      <span className="text-zinc-600">({d.url.split("/").slice(-3).join("/")})</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </CardHeader>
         <CardContent>

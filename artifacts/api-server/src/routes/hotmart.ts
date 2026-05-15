@@ -186,12 +186,18 @@ router.post("/hotmart/sync-products", requireAdmin, async (req, res): Promise<vo
       return;
     }
 
-    // getHotmartProducts never throws — returns [] on any API error
-    const items = await getHotmartProducts(token.access_token, config.environment);
+    // getHotmartProducts never throws — returns items + diagnostics per endpoint
+    const { items, diagnostics } = await getHotmartProducts(token.access_token, config.environment);
 
     if (items.length === 0) {
-      req.log.info("hotmart: sync-products — zero items returned (empty account or no permission)");
-      res.json({ ok: true, synced: 0, message: "Nenhum produto encontrado na conta Hotmart." });
+      req.log.info({ diagnostics }, "hotmart: sync-products — zero products across all endpoints");
+      res.json({
+        ok: true,
+        synced: 0,
+        diagnostics,
+        message:
+          "Nenhum produto encontrado nesta credencial. Verifique se esta conta possui produtos próprios ou afiliações com permissão API.",
+      });
       return;
     }
 
@@ -221,12 +227,11 @@ router.post("/hotmart/sync-products", requireAdmin, async (req, res): Promise<vo
       synced++;
     }
 
-    req.log.info({ synced }, "hotmart: sync-products complete");
-    res.json({ ok: true, synced });
+    req.log.info({ synced, diagnostics }, "hotmart: sync-products complete");
+    res.json({ ok: true, synced, diagnostics });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     req.log.error({ err }, "hotmart: sync-products unexpected error");
-    // Return 422 (not 500) so the frontend can show the message
     res.status(422).json({ error: `Falha na sincronização: ${msg}` });
   }
 });

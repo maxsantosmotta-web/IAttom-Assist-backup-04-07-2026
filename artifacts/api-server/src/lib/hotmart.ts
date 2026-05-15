@@ -78,66 +78,119 @@ interface HotmartProductsResponse {
   items?: HotmartProductSummary[];
 }
 
+// Per-endpoint diagnostic result returned to caller and front-end
+export interface HotmartEndpointDiag {
+  label: string;    // human-readable name
+  url: string;
+  status: number;   // HTTP status, 0 = network error
+  bodyEmpty: boolean;
+  count: number;
+  result: "ok" | "empty" | "error" | "network_error";
+  errorDetail?: string;
+}
+
+export interface HotmartProductsResult {
+  items: HotmartProductSummary[];
+  diagnostics: HotmartEndpointDiag[];
+}
+
 export async function getHotmartProducts(
   accessToken: string,
   environment: string,
-): Promise<HotmartProductSummary[]> {
+): Promise<HotmartProductsResult> {
   const base = getHotmartApiBase(environment);
   const headers = {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
   };
 
-  // Helper: read text, try parse as JSON, log body for debugging, never throw
-  async function safeFetch(url: string): Promise<HotmartProductSummary[]> {
+  // Helper: fetch one endpoint, return items + diag, NEVER throw
+  async function fetchEndpoint(
+    label: string,
+    url: string,
+  ): Promise<{ items: HotmartProductSummary[]; diag: HotmartEndpointDiag }> {
     let res: Response;
     try {
       res = await fetch(url, { headers });
     } catch (networkErr) {
-      logger.warn({ url, err: networkErr }, "hotmart: network error fetching products");
-      return [];
+      const errorDetail = networkErr instanceof Error ? networkErr.message : String(networkErr);
+      logger.warn({ label, url, errorDetail }, "hotmart: [ERRO REDE] falha de conexão");
+      return {
+        items: [],
+        diag: { label, url, status: 0, bodyEmpty: true, count: 0, result: "network_error", errorDetail },
+      };
     }
 
     const raw = await res.text().catch(() => "");
-    logger.info(
-      { url, status: res.status, bodyPreview: raw.slice(0, 300) },
-      "hotmart: products raw response",
-    );
+    const bodyEmpty = !raw.trim();
 
     if (!res.ok) {
-      logger.warn({ url, status: res.status }, "hotmart: products endpoint non-2xx");
-      return [];
+      logger.warn(
+        { label, url, status: res.status, body: raw.slice(0, 300) },
+        `hotmart: [ERRO ${res.status}] endpoint retornou erro`,
+      );
+      return {
+        items: [],
+        diag: { label, url, status: res.status, bodyEmpty, count: 0, result: "error", errorDetail: raw.slice(0, 200) },
+      };
     }
 
-    if (!raw.trim()) {
-      logger.warn({ url }, "hotmart: products response body is empty — no products or no permission");
-      return [];
+    if (bodyEmpty) {
+      logger.warn(
+        { label, url, status: res.status },
+        "hotmart: [VAZIO] endpoint retornou 200 com corpo vazio — sem produtos ou sem permissão de escopo",
+      );
+      return {
+        items: [],
+        diag: { label, url, status: res.status, bodyEmpty: true, count: 0, result: "empty" },
+      };
     }
 
     let parsed: HotmartProductsResponse;
     try {
       parsed = JSON.parse(raw) as HotmartProductsResponse;
     } catch {
-      logger.warn({ url, raw: raw.slice(0, 300) }, "hotmart: products response is not valid JSON");
-      return [];
+      logger.warn({ label, url, raw: raw.slice(0, 300) }, "hotmart: [ERRO JSON] resposta não é JSON válido");
+      return {
+        items: [],
+        diag: { label, url, status: res.status, bodyEmpty: false, count: 0, result: "error", errorDetail: "JSON inválido" },
+      };
     }
 
     const items = parsed.items ?? [];
-    logger.info({ url, count: items.length }, "hotmart: products fetched ok");
-    return items;
+    logger.info({ label, url, status: res.status, count: items.length }, "hotmart: [OK] produtos retornados");
+    return {
+      items,
+      diag: { label, url, status: res.status, bodyEmpty: false, count: items.length, result: items.length > 0 ? "ok" : "empty" },
+    };
   }
 
-  // ── Fetch own products ────────────────────────────────────────────────────
+  // ── 1. Produtos próprios (produtor) ───────────────────────────────────────
   const ownUrl = `${base}/products/api/v2/products`;
-  logger.info({ environment, url: ownUrl }, "hotmart: fetching own products");
-  const ownItems = await safeFetch(ownUrl);
+  logger.info({ environment, url: ownUrl }, "hotmart: [1/3] testando produtos próprios (produtor)");
+  const { items: ownItems, diag: diagOwn } = await fetchEndpoint("Produtos próprios (produtor)", ownUrl);
 
-  // ── Fetch affiliate products ──────────────────────────────────────────────
+  // ── 2. Produtos como afiliado ─────────────────────────────────────────────
   const affUrl = `${base}/products/api/v2/products/affiliates`;
-  logger.info({ environment, url: affUrl }, "hotmart: fetching affiliate products");
-  const affiliateItems = await safeFetch(affUrl);
+  logger.info({ environment, url: affUrl }, "hotmart: [2/3] testando produtos como afiliado");
+  const { items: affiliateItems, diag: diagAff } = await fetchEndpoint("Produtos afiliados", affUrl);
 
-  // Merge, de-duplicate by product.id
+  // ── 3. Verificação via assinaturas (indicador de produtos na conta) ────────
+  const subUrl = `${base}/payments/api/v1/subscriptions?max_results=10`;
+  logger.info({ environment, url: subUrl }, "hotmart: [3/3] verificando assinaturas/afiliações ativas");
+  const { diag: diagSub } = await fetchEndpoint("Assinaturas ativas (diagnóstico)", subUrl);
+
+  const diagnostics: HotmartEndpointDiag[] = [diagOwn, diagAff, diagSub];
+
+  // Log summary table
+  for (const d of diagnostics) {
+    logger.info(
+      { label: d.label, url: d.url, status: d.status, result: d.result, count: d.count },
+      `hotmart: diagnóstico — ${d.label}: ${d.result.toUpperCase()} (${d.count} itens, HTTP ${d.status})`,
+    );
+  }
+
+  // Merge own + affiliate, de-duplicate by product.id
   const seen = new Set<number>();
   const merged: HotmartProductSummary[] = [];
   for (const item of [...ownItems, ...affiliateItems]) {
@@ -147,8 +200,11 @@ export async function getHotmartProducts(
     }
   }
 
-  logger.info({ total: merged.length }, "hotmart: products merged (own + affiliates)");
-  return merged;
+  logger.info(
+    { total: merged.length, ownCount: ownItems.length, affiliateCount: affiliateItems.length },
+    "hotmart: sincronização concluída — total de produtos mesclados",
+  );
+  return { items: merged, diagnostics };
 }
 
 // ─── Sales ────────────────────────────────────────────────────────────────────
