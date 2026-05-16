@@ -38,6 +38,9 @@ const Analytics = lazy(() => import("@/pages/dashboard/Analytics").then((m) => (
 const SavedPrompts = lazy(() => import("@/pages/dashboard/SavedPrompts").then((m) => ({ default: m.SavedPrompts })));
 const Referral = lazy(() => import("@/pages/dashboard/Referral").then((m) => ({ default: m.Referral })));
 const Trash = lazy(() => import("@/pages/dashboard/Trash").then((m) => ({ default: m.Trash })));
+const MercadoLivre = lazy(() => import("@/pages/dashboard/MercadoLivre").then((m) => ({ default: m.MercadoLivre })));
+const Shopee = lazy(() => import("@/pages/dashboard/Shopee").then((m) => ({ default: m.Shopee })));
+const TikTok = lazy(() => import("@/pages/dashboard/TikTok").then((m) => ({ default: m.TikTok })));
 
 // Lazy load admin pages
 const AdminOverview = lazy(() => import("@/pages/admin/AdminOverview").then((m) => ({ default: m.AdminOverview })));
@@ -55,6 +58,7 @@ const AdminHotmart = lazy(() => import("@/pages/admin/AdminHotmart").then((m) =>
 const AdminKiwify = lazy(() => import("@/pages/admin/AdminKiwify").then((m) => ({ default: m.AdminKiwify })));
 const AdminIntegrations = lazy(() => import("@/pages/admin/AdminIntegrations").then((m) => ({ default: m.AdminIntegrations })));
 const AdminTrash = lazy(() => import("@/pages/admin/AdminTrash").then((m) => ({ default: m.AdminTrash })));
+const AdminTikTok = lazy(() => import("@/pages/admin/AdminTikTok").then((m) => ({ default: m.AdminTikTok })));
 
 function PageLoader() {
   return (
@@ -240,6 +244,9 @@ function ProtectedDashboard() {
                   <Route path="/dashboard/prompts" component={SavedPrompts} />
                   <Route path="/dashboard/referral" component={Referral} />
                   <Route path="/dashboard/trash" component={Trash} />
+                  <Route path="/dashboard/mercado-livre" component={MercadoLivre} />
+                  <Route path="/dashboard/shopee" component={Shopee} />
+                  <Route path="/dashboard/tiktok" component={TikTok} />
                   <Route component={NotFound} />
                 </Switch>
               </Suspense>
@@ -277,6 +284,7 @@ function ProtectedAdmin() {
                 <Route path="/admin/hotmart" component={AdminHotmart} />
                 <Route path="/admin/kiwify" component={AdminKiwify} />
                 <Route path="/admin/trash" component={AdminTrash} />
+                <Route path="/admin/tiktok" component={AdminTikTok} />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>

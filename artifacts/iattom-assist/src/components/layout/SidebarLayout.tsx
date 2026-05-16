@@ -4,6 +4,7 @@ import {
   Sparkles, Video, FolderOpen, Clock, Settings, Menu, X,
   LogOut, ChevronDown, ShieldCheck, Zap, CreditCard,
   Command, BarChart2, BookMarked, Gift, Trash2,
+  ShoppingCart, ShoppingBag, Music2,
 } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { useState, useEffect, useCallback } from "react";
@@ -35,6 +36,9 @@ const navItems = [
   { href: "/dashboard/create-content", label: "Criar Conteúdo", icon: FileText },
   { href: "/dashboard/creative-generator", label: "Gerador Criativo", icon: Sparkles },
   { href: "/dashboard/video-scripts", label: "Scripts de Vídeo", icon: Video },
+  { href: "/dashboard/mercado-livre", label: "Mercado Livre", icon: ShoppingCart },
+  { href: "/dashboard/shopee", label: "Shopee", icon: ShoppingBag },
+  { href: "/dashboard/tiktok", label: "TikTok", icon: Music2 },
   { href: "/dashboard/projects", label: "Projetos", icon: FolderOpen },
   { href: "/dashboard/history", label: "Atividades", icon: Clock },
   { href: "/dashboard/analytics", label: "Análises", icon: BarChart2 },

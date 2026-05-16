@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ShieldCheck,
   Trash2,
+  Music2,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ const navItems = [
   { href: "/admin/whatsapp", label: "WhatsApp", icon: Phone },
   { href: "/admin/meta", label: "Meta (IG + FB)", icon: Instagram },
   { href: "/admin/shopee", label: "Shopee", icon: ShoppingBag },
+  { href: "/admin/tiktok", label: "TikTok", icon: Music2 },
   { href: "/admin/mercado-livre", label: "Mercado Livre", icon: ShoppingCart },
   { href: "/admin/hotmart", label: "Hotmart", icon: Flame },
   { href: "/admin/kiwify", label: "Kiwify", icon: Zap },
