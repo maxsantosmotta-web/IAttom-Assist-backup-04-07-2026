@@ -22,6 +22,7 @@ import mlRouter from "./ml.js";
 import hotmartRouter from "./hotmart.js";
 import kiwifyRouter from "./kiwify.js";
 import integrationsRouter from "./integrations.js";
+import trashRouter from "./trash.js";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(mlRouter);
 router.use(hotmartRouter);
 router.use(kiwifyRouter);
 router.use(integrationsRouter);
+router.use(trashRouter);
 
 export default router;

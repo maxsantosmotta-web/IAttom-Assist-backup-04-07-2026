@@ -28,3 +28,4 @@ export * from "./hotmartEvents";
 export * from "./kiwifyConfig";
 export * from "./kiwifyProducts";
 export * from "./kiwifyEvents";
+export * from "./trashItems";

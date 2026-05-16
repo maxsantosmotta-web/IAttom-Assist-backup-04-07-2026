@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronDown,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ const navItems = [
   { href: "/admin/mercado-livre", label: "Mercado Livre", icon: ShoppingCart },
   { href: "/admin/hotmart", label: "Hotmart", icon: Flame },
   { href: "/admin/kiwify", label: "Kiwify", icon: Zap },
+  { href: "/admin/trash", label: "Lixeira", icon: Trash2 },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");

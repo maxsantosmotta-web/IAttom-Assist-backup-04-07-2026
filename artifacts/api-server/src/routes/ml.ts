@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, sql, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, sql, isNull, isNotNull, and } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db,
@@ -7,6 +7,7 @@ import {
   mlProducts,
   mlOrders,
   mlEvents,
+  trashItems,
 } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 import { maskSecret } from "../lib/integrationUtils.js";
@@ -618,6 +619,7 @@ router.post("/ml/products/:id/restore", requireAdmin, async (req, res): Promise<
   const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
   await db.update(mlProducts).set({ deletedAt: null }).where(eq(mlProducts.id, id));
+  await db.delete(trashItems).where(and(eq(trashItems.originalId, id), eq(trashItems.platform, "mercado_livre")));
   req.log.info({ id }, "ml: product restored from trash");
   res.json({ ok: true });
 });
@@ -627,6 +629,7 @@ router.delete("/ml/products/:id/permanent", requireAdmin, async (req, res): Prom
   const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
   await db.delete(mlProducts).where(eq(mlProducts.id, id));
+  await db.delete(trashItems).where(and(eq(trashItems.originalId, id), eq(trashItems.platform, "mercado_livre")));
   req.log.info({ id }, "ml: product permanently deleted");
   res.json({ ok: true });
 });
@@ -635,7 +638,17 @@ router.delete("/ml/products/:id/permanent", requireAdmin, async (req, res): Prom
 router.delete("/ml/products/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  const [product] = await db.select().from(mlProducts).where(eq(mlProducts.id, id)).limit(1);
+  if (!product) { res.status(404).json({ error: "Produto não encontrado" }); return; }
   await db.update(mlProducts).set({ deletedAt: new Date() }).where(eq(mlProducts.id, id));
+  await db.insert(trashItems).values({
+    originalId: id,
+    platform: "mercado_livre",
+    itemType: "listing",
+    name: product.title ?? product.mlItemId,
+    previousStatus: product.status ?? "",
+    snapshot: JSON.stringify(product),
+  });
   req.log.info({ id }, "ml: product moved to trash");
   res.json({ ok: true });
 });

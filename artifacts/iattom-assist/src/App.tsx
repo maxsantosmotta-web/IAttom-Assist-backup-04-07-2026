@@ -53,6 +53,7 @@ const AdminMercadoLivre = lazy(() => import("@/pages/admin/AdminMercadoLivre").t
 const AdminHotmart = lazy(() => import("@/pages/admin/AdminHotmart").then((m) => ({ default: m.AdminHotmart })));
 const AdminKiwify = lazy(() => import("@/pages/admin/AdminKiwify").then((m) => ({ default: m.AdminKiwify })));
 const AdminIntegrations = lazy(() => import("@/pages/admin/AdminIntegrations").then((m) => ({ default: m.AdminIntegrations })));
+const AdminTrash = lazy(() => import("@/pages/admin/AdminTrash").then((m) => ({ default: m.AdminTrash })));
 
 function PageLoader() {
   return (
@@ -273,6 +274,7 @@ function ProtectedAdmin() {
                 <Route path="/admin/mercado-livre" component={AdminMercadoLivre} />
                 <Route path="/admin/hotmart" component={AdminHotmart} />
                 <Route path="/admin/kiwify" component={AdminKiwify} />
+                <Route path="/admin/trash" component={AdminTrash} />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>

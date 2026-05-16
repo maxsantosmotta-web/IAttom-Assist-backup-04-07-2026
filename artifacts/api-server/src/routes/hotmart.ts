@@ -1,11 +1,12 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, isNull, isNotNull, and } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db,
   hotmartConfig,
   hotmartProducts,
   hotmartEvents,
+  trashItems,
 } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 import {
@@ -319,6 +320,7 @@ router.post("/hotmart/products/:id/restore", requireAdmin, async (req, res): Pro
   const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
   await db.update(hotmartProducts).set({ deletedAt: null }).where(eq(hotmartProducts.id, id));
+  await db.delete(trashItems).where(and(eq(trashItems.originalId, id), eq(trashItems.platform, "hotmart")));
   req.log.info({ id }, "hotmart: product restored from trash");
   res.json({ ok: true });
 });
@@ -328,6 +330,7 @@ router.delete("/hotmart/products/:id/permanent", requireAdmin, async (req, res):
   const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
   await db.delete(hotmartProducts).where(eq(hotmartProducts.id, id));
+  await db.delete(trashItems).where(and(eq(trashItems.originalId, id), eq(trashItems.platform, "hotmart")));
   req.log.info({ id }, "hotmart: product permanently deleted");
   res.json({ ok: true });
 });
@@ -336,7 +339,17 @@ router.delete("/hotmart/products/:id/permanent", requireAdmin, async (req, res):
 router.delete("/hotmart/products/:id", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  const [product] = await db.select().from(hotmartProducts).where(eq(hotmartProducts.id, id)).limit(1);
+  if (!product) { res.status(404).json({ error: "Produto não encontrado" }); return; }
   await db.update(hotmartProducts).set({ deletedAt: new Date() }).where(eq(hotmartProducts.id, id));
+  await db.insert(trashItems).values({
+    originalId: id,
+    platform: "hotmart",
+    itemType: "product",
+    name: product.name ?? product.productId,
+    previousStatus: product.status ?? "",
+    snapshot: JSON.stringify(product),
+  });
   req.log.info({ id }, "hotmart: product moved to trash");
   res.json({ ok: true });
 });

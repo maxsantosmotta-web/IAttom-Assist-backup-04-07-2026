@@ -1101,8 +1101,8 @@ export function AdminMercadoLivre() {
       {confirmDeleteProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="text-base font-semibold text-white mb-2">Excluir anúncio</h3>
-            <p className="text-sm text-zinc-400 mb-1">Deseja excluir este anúncio?</p>
+            <h3 className="text-base font-semibold text-white mb-2">Mover para Lixeira</h3>
+            <p className="text-sm text-zinc-400 mb-1">O anúncio será movido para a Lixeira Global. Restaure a qualquer momento.</p>
             <p className="text-sm font-medium text-zinc-300 truncate mb-5">
               {confirmDeleteProduct.title ?? confirmDeleteProduct.mlItemId}
             </p>
