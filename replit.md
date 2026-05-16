@@ -201,6 +201,79 @@ Se qualquer um desses três pontos não puder ser determinado com certeza, NÃO 
 - Painel administrativo (congelado conforme seção anterior)
 - Sidebar, navbar, CommandPalette, UpgradeNudge, PlanComparisonModal
 
+## BLINDAGEM ESTRUTURAL — ARQUITETURA VALIDADA (checkpoint 7be9308)
+
+### Princípios de arquitetura
+
+1. **USER opera.** O painel do usuário é operacional: status, botões funcionais, métricas, produtos/vendas/eventos, campanha com contexto de plataforma.
+2. **ADMIN monitora.** O painel ADM é somente leitura: status global, contas conectadas, KPIs, logs, webhooks. Sem operação manual na conta do usuário.
+3. **Plataformas são hubs de integração** — não duplicam módulos centrais.
+4. **Módulos centrais executam a inteligência:** Criar Campanha, Criar Imagem, Scripts de Vídeo, Criar Conteúdo. Botões de plataforma devem navegar para esses módulos com contexto da plataforma via `sessionStorage`.
+5. **Nunca misturar dados ADMIN com dados USER.** Dados de plataforma no USER devem ser isolados por usuário (não puxar conta, token, produto ou log do ADMIN).
+
+### Modelo de referência ADMIN
+
+O `TikTok ADMIN` é o modelo canônico para todos os painéis administrativos: somente monitoramento, KPIs e logs — sem formulários de operação.
+
+### Módulos USER validados e congelados
+
+| Módulo | Rota | Status |
+|---|---|---|
+| Shopee USER | `/dashboard/shopee` | Validado |
+| TikTok USER | `/dashboard/tiktok` | Validado |
+| Hotmart USER | `/dashboard/hotmart` | Validado |
+| Kiwify USER | `/dashboard/kiwify` | Validado |
+| Meta USER | `/dashboard/meta` | Validado |
+| WhatsApp USER | `/dashboard/whatsapp` | Validado |
+| Criar Campanha | `/dashboard/create-campaign` | Validado |
+| Criar Conteúdo | `/dashboard/create-content` | Validado |
+| Criar Imagem (Gerador Criativo) | `/dashboard/creative-generator` | Validado |
+| Scripts de Vídeo | `/dashboard/video-scripts` | Validado |
+| Dashboard principal | `/dashboard` | Validado |
+| Sidebar/Navegação | `SidebarLayout.tsx` | Validado |
+
+### Padrão obrigatório USER
+
+- Status da integração
+- Botões funcionais (onClick definido — nenhum botão morto)
+- Cards de métricas
+- Produtos/vendas/eventos/logs quando aplicável
+- Estados vazios profissionais
+- Botão "Criar Campanha" com prefill via `sessionStorage`
+- Webhook/endpoint quando aplicável
+- Se API ainda não existir: modal ou toast informativo ("Função preparada para próxima etapa.")
+- Toda ação assíncrona com estado de loading
+
+### Padrão obrigatório ADMIN
+
+- Status global + badges de configuração
+- Contas/produtos/eventos sincronizados (somente leitura)
+- KPIs e logs
+- Webhooks (exibição + copy)
+- Sem formulários de operação na conta do usuário
+
+### Regras de execução críticas
+
+1. Todo botão novo deve ter onClick funcional.
+2. Nenhum botão pode ficar morto (catch vazio sem toast = botão morto).
+3. Toda operação assíncrona deve ter loading + feedback visual.
+4. Não misturar dados ADMIN com dados USER.
+5. Não criar módulos duplicados para funções que já existem nos módulos centrais.
+6. Não alterar módulos já aprovados sem necessidade direta e autorização explícita.
+7. Antes de alterar arquivo compartilhado, verificar impacto nas telas validadas.
+
+### Pendências registradas (ajuste futuro — NÃO executar sem autorização)
+
+- Mercado Livre USER: isolar dados por usuário (atualmente puxa dados de nível admin)
+- Kiwify ADMIN: validação final dos botões de credenciais
+- Login: reduzir solicitações de confirmação de código (MFA flow)
+- Padronizar todos os ADMINs no modelo TikTok (somente monitoramento)
+- Renomear "Gerador Criativo" para "Criar Imagem" na UI
+- Criar biblioteca/pasta para salvar campanhas, imagens, scripts e conteúdos
+- Criar botão/fluxo "Criar Anúncio"
+- Implementar OAuth real: Facebook, Instagram, WhatsApp, Hotmart, Kiwify, Shopee, Mercado Livre, TikTok
+- Melhorar geração visual para nível premium máximo
+
 ## User preferences
 
 - Dark premium design with gold accents (#C9A84C range)
