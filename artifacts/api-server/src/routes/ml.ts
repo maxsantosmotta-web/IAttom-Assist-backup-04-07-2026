@@ -601,6 +601,15 @@ router.get("/ml/products", requireAdmin, async (_req, res): Promise<void> => {
   res.json(products);
 });
 
+// ─── ADMIN: Delete product ────────────────────────────────────────────────────
+router.delete("/ml/products/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params["id"] as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  await db.delete(mlProducts).where(eq(mlProducts.id, id));
+  req.log.info({ id }, "ml: product deleted");
+  res.json({ ok: true });
+});
+
 // ─── ADMIN: List orders ───────────────────────────────────────────────────────
 router.get("/ml/orders", requireAdmin, async (_req, res): Promise<void> => {
   const orders = await db

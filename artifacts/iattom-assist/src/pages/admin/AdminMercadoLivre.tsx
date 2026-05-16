@@ -29,6 +29,7 @@ import {
   CalendarDays,
   Boxes,
   Layers,
+  Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -136,6 +137,8 @@ export function AdminMercadoLivre() {
   const [connecting, setConnecting]       = useState(false);
   const [selectedProduct, setSelectedProduct]   = useState<MLProductItem | null>(null);
   const [creatingTestItem, setCreatingTestItem] = useState(false);
+  const [confirmDeleteProduct, setConfirmDeleteProduct] = useState<MLProductItem | null>(null);
+  const [deletingProduct, setDeletingProduct]           = useState(false);
   const [testItemResult, setTestItemResult]     = useState<{
     ok: boolean; id?: string; permalink?: string; status?: string; error?: string;
   } | null>(null);
@@ -398,6 +401,23 @@ export function AdminMercadoLivre() {
       setTestItemResult({ ok: false, error: msg });
       toast({ title: "Falha ao criar anúncio teste", description: msg, variant: "destructive" });
     } finally { setCreatingTestItem(false); }
+  };
+
+  // ─── Delete product ───────────────────────────────────────────────────────
+  const handleDeleteProduct = async (product: MLProductItem) => {
+    setDeletingProduct(true);
+    try {
+      await apiFetch(`/api/ml/products/${product.id}`, { method: "DELETE" });
+      setProducts((prev) => prev.filter((p) => p.id !== product.id));
+      setConfirmDeleteProduct(null);
+      toast({ title: "Anúncio excluído", description: `"${product.title ?? product.mlItemId}" removido da listagem.` });
+    } catch (e) {
+      toast({
+        title: "Erro ao excluir",
+        description: e instanceof Error ? e.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally { setDeletingProduct(false); }
   };
 
   // ─── Sync orders ──────────────────────────────────────────────────────────
@@ -820,6 +840,13 @@ export function AdminMercadoLivre() {
                       </a>
                     )}
                     <Info className="w-3.5 h-3.5 text-zinc-600 group-hover:text-primary/60 transition-colors shrink-0" />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteProduct(p); }}
+                      className="p-1 rounded text-zinc-700 hover:text-red-400 transition-colors shrink-0"
+                      title="Excluir anúncio"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1032,6 +1059,36 @@ export function AdminMercadoLivre() {
           </div>
         );
       })()}
+
+      {/* ─── CONFIRM DELETE DIALOG ──────────────────────────────────── */}
+      {confirmDeleteProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-base font-semibold text-white mb-2">Excluir anúncio</h3>
+            <p className="text-sm text-zinc-400 mb-1">Deseja excluir este anúncio?</p>
+            <p className="text-sm font-medium text-zinc-300 truncate mb-5">
+              {confirmDeleteProduct.title ?? confirmDeleteProduct.mlItemId}
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmDeleteProduct(null)}
+                disabled={deletingProduct}
+                className="px-4 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/8 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => void handleDeleteProduct(confirmDeleteProduct)}
+                disabled={deletingProduct}
+                className="px-4 py-2 text-sm rounded-lg bg-red-500/15 border border-red-500/25 text-red-400 hover:bg-red-500/25 hover:text-red-300 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {deletingProduct && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
