@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap, AlertTriangle } from "lucide-react";
+import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap, AlertTriangle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { CreditsGate } from "@/components/CreditsGate";
 import { useAiStream } from "@/hooks/useAiStream";
+import { useLocation } from "wouter";
 import type { CampaignResult } from "@/types/ai";
 
 const platformIcons: Record<string, string> = {
@@ -196,6 +197,7 @@ export function CreateCampaign() {
   const [bypassCompat, setBypassCompat] = useState(false);
   const { status, result, error, generate, reset } = useAiStream<CampaignResult>();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const [campaignData, setCampaignData] = useState<CampaignResult | null>(null);
   const [refineInputs, setRefineInputs] = useState<Record<string, string>>({});
@@ -273,6 +275,20 @@ export function CreateCampaign() {
   const copyAll = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ description: "Copiado para a área de transferência" });
+  };
+
+  const generateCreative = (data: CampaignResult) => {
+    const briefing = [
+      product,
+      goal ? `Objetivo: ${goal}` : "",
+      data.headline ? `Manchete: ${data.headline}` : "",
+      data.uniqueAngle ? `Ângulo: ${data.uniqueAngle}` : "",
+    ].filter(Boolean).join(" — ").slice(0, 220);
+    sessionStorage.setItem(
+      "iattom_creative_prefill",
+      JSON.stringify({ prompt: briefing, targetAudience: audience || data.audience || "" }),
+    );
+    navigate("/dashboard/creative");
   };
 
   const showResult = isDone && isCampaignComplete(campaignData);
@@ -557,6 +573,22 @@ export function CreateCampaign() {
                 )}
               </CardContent>
             </Card>
+
+            {/* CTA — Gerador Criativo */}
+            <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5 border border-primary/15">
+              <div>
+                <p className="text-sm font-semibold text-white">Criar os criativos desta campanha</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Gere conceitos visuais, copy e prompts de imagem com os dados da campanha já preenchidos.</p>
+              </div>
+              <Button
+                onClick={() => generateCreative(campaignData)}
+                className="bg-primary text-black hover:bg-primary/90 font-semibold shrink-0 ml-4"
+                size="sm"
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-2" />
+                Gerar Criativo
+              </Button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

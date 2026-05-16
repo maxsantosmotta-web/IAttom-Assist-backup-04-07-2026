@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Loader2, Copy, RefreshCw, AlertCircle, Monitor, Smartphone, Image, Palette, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -103,6 +103,19 @@ export function CreativeGenerator() {
   const [style, setStyle] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const { status, result, error, generate, reset } = useAiStream<CreativeIdeasResult>();
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem("iattom_creative_prefill");
+    if (saved) {
+      try {
+        const d = JSON.parse(saved) as { prompt?: string; targetAudience?: string; style?: string };
+        if (d.prompt) setPrompt(d.prompt);
+        if (d.targetAudience) setTargetAudience(d.targetAudience);
+        if (d.style) setStyle(d.style);
+      } catch { /* ignore */ }
+      sessionStorage.removeItem("iattom_creative_prefill");
+    }
+  }, []);
 
   const isGenerating = status === "generating";
   const isDone = status === "done";

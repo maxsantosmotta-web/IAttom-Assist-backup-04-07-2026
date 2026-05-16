@@ -244,17 +244,29 @@ PLATAFORMAS ESPECÍFICAS — quando mencionadas no objetivo:
 
 function safeParseJson(raw: string): { success: true; data: unknown } | { success: false; error: string } {
   if (!raw?.trim()) return { success: false, error: "A IA retornou uma resposta vazia." };
-  const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "");
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) {
-    return { success: false, error: "A resposta da IA não contém JSON válido." };
+
+  // Strategy 1: direct parse (clean JSON response)
+  try { return { success: true, data: JSON.parse(raw.trim()) }; } catch { /* continue */ }
+
+  // Strategy 2: strip markdown code fences then parse
+  const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  try { return { success: true, data: JSON.parse(cleaned) }; } catch { /* continue */ }
+
+  // Strategy 3: extract outermost { } from cleaned text
+  const cs = cleaned.indexOf("{");
+  const ce = cleaned.lastIndexOf("}");
+  if (cs !== -1 && ce !== -1 && ce > cs) {
+    try { return { success: true, data: JSON.parse(cleaned.slice(cs, ce + 1)) }; } catch { /* continue */ }
   }
-  try {
-    return { success: true, data: JSON.parse(cleaned.slice(start, end + 1)) };
-  } catch {
-    return { success: false, error: "Erro ao interpretar a resposta da IA." };
+
+  // Strategy 4: extract outermost { } from raw text
+  const rs = raw.indexOf("{");
+  const re = raw.lastIndexOf("}");
+  if (rs !== -1 && re !== -1 && re > rs) {
+    try { return { success: true, data: JSON.parse(raw.slice(rs, re + 1)) }; } catch { /* continue */ }
   }
+
+  return { success: false, error: "Erro ao interpretar a resposta da IA. Tente novamente." };
 }
 
 function validateCampaignResult(r: CampaignResult): string | null {
