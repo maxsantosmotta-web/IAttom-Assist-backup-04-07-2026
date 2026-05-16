@@ -8,7 +8,7 @@ import {
   hotmartEvents,
   trashItems,
 } from "@workspace/db";
-import { requireAdmin } from "../middlewares/requireAdmin.js";
+import { requireAdmin, type AdminRequest } from "../middlewares/requireAdmin.js";
 import {
   verifyHotmartWebhook,
   getHotmartAccessToken,
@@ -349,6 +349,7 @@ router.delete("/hotmart/products/:id", requireAdmin, async (req, res): Promise<v
     name: product.name ?? product.productId,
     previousStatus: product.status ?? "",
     snapshot: JSON.stringify(product),
+    clerkUserId: (req as AdminRequest).clerkUserId,
   });
   req.log.info({ id }, "hotmart: product moved to trash");
   res.json({ ok: true });

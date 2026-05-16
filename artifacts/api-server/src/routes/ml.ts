@@ -9,7 +9,7 @@ import {
   mlEvents,
   trashItems,
 } from "@workspace/db";
-import { requireAdmin } from "../middlewares/requireAdmin.js";
+import { requireAdmin, type AdminRequest } from "../middlewares/requireAdmin.js";
 import { maskSecret } from "../lib/integrationUtils.js";
 import {
   generateMLOAuthUrl,
@@ -648,6 +648,7 @@ router.delete("/ml/products/:id", requireAdmin, async (req, res): Promise<void> 
     name: product.title ?? product.mlItemId,
     previousStatus: product.status ?? "",
     snapshot: JSON.stringify(product),
+    clerkUserId: (req as AdminRequest).clerkUserId,
   });
   req.log.info({ id }, "ml: product moved to trash");
   res.json({ ok: true });

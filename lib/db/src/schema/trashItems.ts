@@ -8,6 +8,7 @@ export const trashItems = pgTable("trash_items", {
   name: text("name").default(""),
   previousStatus: text("previous_status").default(""),
   snapshot: text("snapshot").default("{}"),
+  clerkUserId: text("clerk_user_id").default(""),
   deletedAt: timestamp("deleted_at").defaultNow(),
 });
 
