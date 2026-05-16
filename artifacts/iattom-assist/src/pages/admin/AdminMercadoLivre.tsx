@@ -30,6 +30,7 @@ import {
   Boxes,
   Layers,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +64,7 @@ interface MLProductItem {
   status?: string | null;
   permalink?: string | null;
   syncedAt?: string | null;
+  deletedAt?: string | null;
 }
 
 interface MLOrderItem {
@@ -139,6 +141,12 @@ export function AdminMercadoLivre() {
   const [creatingTestItem, setCreatingTestItem] = useState(false);
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState<MLProductItem | null>(null);
   const [deletingProduct, setDeletingProduct]           = useState(false);
+  const [trashProducts, setTrashProducts]       = useState<MLProductItem[]>([]);
+  const [loadingTrash, setLoadingTrash]         = useState(false);
+  const [showTrash, setShowTrash]               = useState(false);
+  const [restoringProduct, setRestoringProduct] = useState<number | null>(null);
+  const [permDeletingProduct, setPermDeletingProduct] = useState<number | null>(null);
+  const [confirmPermDelete, setConfirmPermDelete]     = useState<MLProductItem | null>(null);
   const [testItemResult, setTestItemResult]     = useState<{
     ok: boolean; id?: string; permalink?: string; status?: string; error?: string;
   } | null>(null);
@@ -404,20 +412,49 @@ export function AdminMercadoLivre() {
   };
 
   // ─── Delete product ───────────────────────────────────────────────────────
+  const loadTrash = async () => {
+    setLoadingTrash(true);
+    try {
+      const data = await apiFetch<MLProductItem[]>("/api/ml/products/trash");
+      setTrashProducts(data);
+    } catch { setTrashProducts([]); } finally { setLoadingTrash(false); }
+  };
+
   const handleDeleteProduct = async (product: MLProductItem) => {
     setDeletingProduct(true);
     try {
       await apiFetch(`/api/ml/products/${product.id}`, { method: "DELETE" });
       setProducts((prev) => prev.filter((p) => p.id !== product.id));
       setConfirmDeleteProduct(null);
-      toast({ title: "Anúncio excluído", description: `"${product.title ?? product.mlItemId}" removido da listagem.` });
+      toast({ title: "Item movido para a lixeira.", description: `"${product.title ?? product.mlItemId}" arquivado localmente. Arquivado no IAttom. Para remover da plataforma, acesse o Mercado Livre.` });
+      if (showTrash) void loadTrash();
     } catch (e) {
-      toast({
-        title: "Erro ao excluir",
-        description: e instanceof Error ? e.message : "Tente novamente.",
-        variant: "destructive",
-      });
+      toast({ title: "Não foi possível concluir a ação.", description: e instanceof Error ? e.message : "Tente novamente.", variant: "destructive" });
     } finally { setDeletingProduct(false); }
+  };
+
+  const handleRestoreProduct = async (product: MLProductItem) => {
+    setRestoringProduct(product.id);
+    try {
+      await apiFetch(`/api/ml/products/${product.id}/restore`, { method: "POST" });
+      setTrashProducts((prev) => prev.filter((p) => p.id !== product.id));
+      await loadAll();
+      toast({ title: "Item restaurado com sucesso.", description: `"${product.title ?? product.mlItemId}" voltou para a lista.` });
+    } catch (e) {
+      toast({ title: "Não foi possível concluir a ação.", description: e instanceof Error ? e.message : "Tente novamente.", variant: "destructive" });
+    } finally { setRestoringProduct(null); }
+  };
+
+  const handlePermDeleteProduct = async (product: MLProductItem) => {
+    setPermDeletingProduct(product.id);
+    try {
+      await apiFetch(`/api/ml/products/${product.id}/permanent`, { method: "DELETE" });
+      setTrashProducts((prev) => prev.filter((p) => p.id !== product.id));
+      setConfirmPermDelete(null);
+      toast({ title: "Item excluído definitivamente.", description: `"${product.title ?? product.mlItemId}" removido permanentemente.` });
+    } catch (e) {
+      toast({ title: "Não foi possível concluir a ação.", description: e instanceof Error ? e.message : "Tente novamente.", variant: "destructive" });
+    } finally { setPermDeletingProduct(null); }
   };
 
   // ─── Sync orders ──────────────────────────────────────────────────────────

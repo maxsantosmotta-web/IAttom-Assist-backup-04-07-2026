@@ -10,6 +10,7 @@ export const mlProducts = pgTable("ml_products", {
   categoryId: text("category_id").default(""),
   permalink: text("permalink").default(""),
   syncedAt: timestamp("synced_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type MLProduct = typeof mlProducts.$inferSelect;

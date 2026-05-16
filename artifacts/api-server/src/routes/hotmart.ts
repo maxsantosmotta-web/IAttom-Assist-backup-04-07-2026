@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, isNull, isNotNull } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db,
@@ -257,6 +257,7 @@ router.get("/hotmart/products", requireAdmin, async (req, res): Promise<void> =>
   const products = await db
     .select()
     .from(hotmartProducts)
+    .where(isNull(hotmartProducts.deletedAt))
     .orderBy(desc(hotmartProducts.syncedAt))
     .limit(100);
 
@@ -302,12 +303,41 @@ router.post("/hotmart/products/manual", requireAdmin, async (req, res): Promise<
   res.json({ ok: true, product });
 });
 
-// ─── ADMIN: Delete product ────────────────────────────────────────────────────
-router.delete("/hotmart/products/:id", requireAdmin, async (req, res): Promise<void> => {
+// ─── ADMIN: List product trash ────────────────────────────────────────────────
+router.get("/hotmart/products/trash", requireAdmin, async (_req, res): Promise<void> => {
+  const trashed = await db
+    .select()
+    .from(hotmartProducts)
+    .where(isNotNull(hotmartProducts.deletedAt))
+    .orderBy(desc(hotmartProducts.deletedAt))
+    .limit(100);
+  res.json(trashed);
+});
+
+// ─── ADMIN: Restore product from trash ───────────────────────────────────────
+router.post("/hotmart/products/:id/restore", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params["id"] as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  await db.update(hotmartProducts).set({ deletedAt: null }).where(eq(hotmartProducts.id, id));
+  req.log.info({ id }, "hotmart: product restored from trash");
+  res.json({ ok: true });
+});
+
+// ─── ADMIN: Permanently delete product ───────────────────────────────────────
+router.delete("/hotmart/products/:id/permanent", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
   await db.delete(hotmartProducts).where(eq(hotmartProducts.id, id));
-  req.log.info({ id }, "hotmart: product deleted");
+  req.log.info({ id }, "hotmart: product permanently deleted");
+  res.json({ ok: true });
+});
+
+// ─── ADMIN: Soft delete product (move to trash) ───────────────────────────────
+router.delete("/hotmart/products/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params["id"] as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  await db.update(hotmartProducts).set({ deletedAt: new Date() }).where(eq(hotmartProducts.id, id));
+  req.log.info({ id }, "hotmart: product moved to trash");
   res.json({ ok: true });
 });
 

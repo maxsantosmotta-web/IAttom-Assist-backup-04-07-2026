@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import {
   Flame,
@@ -33,6 +34,7 @@ import {
   Boxes,
   Receipt,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +61,7 @@ interface HotmartProductItem {
   price?: string | null;
   currency?: string | null;
   syncedAt?: string | null;
+  deletedAt?: string | null;
 }
 
 interface HotmartEventItem {
@@ -146,6 +149,7 @@ const EVENT_COLORS: Record<string, string> = {
 };
 
 export function AdminHotmart() {
+  const { toast } = useToast();
   const [config, setConfig] = useState<HotmartConfigData | null>(null);
   const [products, setProducts] = useState<HotmartProductItem[]>([]);
   const [events, setEvents] = useState<HotmartEventItem[]>([]);
@@ -178,6 +182,12 @@ export function AdminHotmart() {
   const [selectedProduct, setSelectedProduct] = useState<HotmartProductItem | null>(null);
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState<HotmartProductItem | null>(null);
   const [deletingProduct, setDeletingProduct] = useState(false);
+  const [trashProducts, setTrashProducts]     = useState<HotmartProductItem[]>([]);
+  const [loadingTrash, setLoadingTrash]       = useState(false);
+  const [showTrash, setShowTrash]             = useState(false);
+  const [restoringProduct, setRestoringProduct] = useState<number | null>(null);
+  const [permDeletingProduct, setPermDeletingProduct] = useState<number | null>(null);
+  const [confirmPermDelete, setConfirmPermDelete]     = useState<HotmartProductItem | null>(null);
   const [showOfferForm, setShowOfferForm] = useState(false);
   const [offerForm, setOfferForm] = useState({
     title: "",
@@ -282,15 +292,49 @@ export function AdminHotmart() {
     }
   };
 
+  const loadTrash = async () => {
+    setLoadingTrash(true);
+    try {
+      const data = await apiFetch<HotmartProductItem[]>("/api/hotmart/products/trash");
+      setTrashProducts(data);
+    } catch { setTrashProducts([]); } finally { setLoadingTrash(false); }
+  };
+
   const handleDeleteProduct = async (product: HotmartProductItem) => {
     setDeletingProduct(true);
     try {
       await apiFetch(`/api/hotmart/products/${product.id}`, { method: "DELETE" });
       setProducts((prev) => prev.filter((p) => p.id !== product.id));
       setConfirmDeleteProduct(null);
-    } catch (err) {
-      console.error("hotmart delete error", err);
+      toast({ title: "Item movido para a lixeira.", description: `"${product.name ?? product.productId}" arquivado localmente.` });
+      if (showTrash) void loadTrash();
+    } catch (e) {
+      toast({ title: "Não foi possível concluir a ação.", description: e instanceof Error ? e.message : "Tente novamente.", variant: "destructive" });
     } finally { setDeletingProduct(false); }
+  };
+
+  const handleRestoreProduct = async (product: HotmartProductItem) => {
+    setRestoringProduct(product.id);
+    try {
+      await apiFetch(`/api/hotmart/products/${product.id}/restore`, { method: "POST" });
+      setTrashProducts((prev) => prev.filter((p) => p.id !== product.id));
+      await loadAll();
+      toast({ title: "Item restaurado com sucesso.", description: `"${product.name ?? product.productId}" voltou para a lista.` });
+    } catch (e) {
+      toast({ title: "Não foi possível concluir a ação.", description: e instanceof Error ? e.message : "Tente novamente.", variant: "destructive" });
+    } finally { setRestoringProduct(null); }
+  };
+
+  const handlePermDeleteProduct = async (product: HotmartProductItem) => {
+    setPermDeletingProduct(product.id);
+    try {
+      await apiFetch(`/api/hotmart/products/${product.id}/permanent`, { method: "DELETE" });
+      setTrashProducts((prev) => prev.filter((p) => p.id !== product.id));
+      setConfirmPermDelete(null);
+      toast({ title: "Item excluído definitivamente.", description: `"${product.name ?? product.productId}" removido permanentemente.` });
+    } catch (e) {
+      toast({ title: "Não foi possível concluir a ação.", description: e instanceof Error ? e.message : "Tente novamente.", variant: "destructive" });
+    } finally { setPermDeletingProduct(null); }
   };
 
   const handleAddManual = async () => {

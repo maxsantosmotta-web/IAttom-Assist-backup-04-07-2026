@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, isNull, isNotNull } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db,
@@ -591,22 +591,52 @@ router.post("/ml/create-test-item", requireAdmin, async (req, res): Promise<void
   }
 });
 
-// ─── ADMIN: List products ─────────────────────────────────────────────────────
+// ─── ADMIN: List products (active only) ──────────────────────────────────────
 router.get("/ml/products", requireAdmin, async (_req, res): Promise<void> => {
   const products = await db
     .select()
     .from(mlProducts)
+    .where(isNull(mlProducts.deletedAt))
     .orderBy(desc(mlProducts.syncedAt))
     .limit(100);
   res.json(products);
 });
 
-// ─── ADMIN: Delete product ────────────────────────────────────────────────────
-router.delete("/ml/products/:id", requireAdmin, async (req, res): Promise<void> => {
+// ─── ADMIN: List product trash ────────────────────────────────────────────────
+router.get("/ml/products/trash", requireAdmin, async (_req, res): Promise<void> => {
+  const trashed = await db
+    .select()
+    .from(mlProducts)
+    .where(isNotNull(mlProducts.deletedAt))
+    .orderBy(desc(mlProducts.deletedAt))
+    .limit(100);
+  res.json(trashed);
+});
+
+// ─── ADMIN: Restore product from trash ───────────────────────────────────────
+router.post("/ml/products/:id/restore", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params["id"] as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  await db.update(mlProducts).set({ deletedAt: null }).where(eq(mlProducts.id, id));
+  req.log.info({ id }, "ml: product restored from trash");
+  res.json({ ok: true });
+});
+
+// ─── ADMIN: Permanently delete product ───────────────────────────────────────
+router.delete("/ml/products/:id/permanent", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
   await db.delete(mlProducts).where(eq(mlProducts.id, id));
-  req.log.info({ id }, "ml: product deleted");
+  req.log.info({ id }, "ml: product permanently deleted");
+  res.json({ ok: true });
+});
+
+// ─── ADMIN: Soft delete product (move to trash) ───────────────────────────────
+router.delete("/ml/products/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params["id"] as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
+  await db.update(mlProducts).set({ deletedAt: new Date() }).where(eq(mlProducts.id, id));
+  req.log.info({ id }, "ml: product moved to trash");
   res.json({ ok: true });
 });
 
