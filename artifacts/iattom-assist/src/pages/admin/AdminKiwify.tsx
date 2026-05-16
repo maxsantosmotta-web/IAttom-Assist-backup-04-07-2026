@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import {
   Zap,
@@ -130,8 +131,12 @@ export function AdminKiwify() {
   const [showSecret, setShowSecret] = useState(false);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
 
+  const { toast } = useToast();
   const webhookEndpoint = `${window.location.origin}${BASE}/api/kiwify/webhook`;
-  const copyToClipboard = (text: string) => void navigator.clipboard.writeText(text);
+  const copyToClipboard = (text: string) => {
+    void navigator.clipboard.writeText(text);
+    toast({ description: "URL copiada." });
+  };
   const formatDate = (d: string | null | undefined) =>
     d ? new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 
@@ -177,14 +182,23 @@ export function AdminKiwify() {
     try {
       await apiFetch("/api/kiwify/config", { method: "POST", body: JSON.stringify(form) });
       setSaveStatus("ok");
+      toast({ description: "Credenciais salvas com sucesso." });
       await loadAll();
-    } catch { setSaveStatus("error"); } finally { setSaving(false); }
+    } catch {
+      setSaveStatus("error");
+      toast({ variant: "destructive", description: "Erro ao salvar credenciais. Verifique os dados e tente novamente." });
+    } finally { setSaving(false); }
   };
 
   const handleSyncProducts = async () => {
     setSyncingProducts(true);
-    try { await apiFetch("/api/kiwify/sync-products", { method: "POST" }); await loadAll(); }
-    catch { } finally { setSyncingProducts(false); }
+    try {
+      await apiFetch("/api/kiwify/sync-products", { method: "POST" });
+      toast({ description: "Sincronização de produtos concluída." });
+      await loadAll();
+    } catch {
+      toast({ variant: "destructive", description: "Erro ao sincronizar produtos. Verifique as credenciais." });
+    } finally { setSyncingProducts(false); }
   };
 
   const eventColor = (type: string | null | undefined) =>

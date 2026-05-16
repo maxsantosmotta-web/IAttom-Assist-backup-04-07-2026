@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import {
   Phone,
@@ -70,6 +71,7 @@ export function AdminWhatsApp() {
   const [testMessage, setTestMessage] = useState("Olá! Esta é uma mensagem de teste do IAttom Assist.");
   const [testStatus, setTestStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
 
+  const { toast } = useToast();
   const webhookEndpoint = `${window.location.origin}${BASE}/api/whatsapp/webhook`;
 
   const loadConfig = async () => {
@@ -119,9 +121,11 @@ export function AdminWhatsApp() {
         body: JSON.stringify(form),
       });
       setSaveStatus("ok");
+      toast({ description: "Credenciais WhatsApp salvas com sucesso." });
       await loadConfig();
     } catch {
       setSaveStatus("error");
+      toast({ variant: "destructive", description: "Erro ao salvar credenciais. Verifique os dados e tente novamente." });
     } finally {
       setSaving(false);
     }
@@ -136,13 +140,16 @@ export function AdminWhatsApp() {
         body: JSON.stringify({ to: testTo, message: testMessage }),
       });
       setTestStatus("ok");
+      toast({ description: "Mensagem de teste enviada com sucesso." });
     } catch {
       setTestStatus("error");
+      toast({ variant: "destructive", description: "Falha ao enviar mensagem de teste. Verifique as credenciais e o número." });
     }
   };
 
   const copyToClipboard = (text: string) => {
     void navigator.clipboard.writeText(text);
+    toast({ description: "URL copiada." });
   };
 
   const inputClass =

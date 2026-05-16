@@ -41,6 +41,10 @@ const Trash = lazy(() => import("@/pages/dashboard/Trash").then((m) => ({ defaul
 const MercadoLivre = lazy(() => import("@/pages/dashboard/MercadoLivre").then((m) => ({ default: m.MercadoLivre })));
 const Shopee = lazy(() => import("@/pages/dashboard/Shopee").then((m) => ({ default: m.Shopee })));
 const TikTok = lazy(() => import("@/pages/dashboard/TikTok").then((m) => ({ default: m.TikTok })));
+const Hotmart = lazy(() => import("@/pages/dashboard/Hotmart").then((m) => ({ default: m.Hotmart })));
+const Kiwify = lazy(() => import("@/pages/dashboard/Kiwify").then((m) => ({ default: m.Kiwify })));
+const Meta = lazy(() => import("@/pages/dashboard/Meta").then((m) => ({ default: m.Meta })));
+const WhatsApp = lazy(() => import("@/pages/dashboard/WhatsApp").then((m) => ({ default: m.WhatsApp })));
 
 // Lazy load admin pages
 const AdminOverview = lazy(() => import("@/pages/admin/AdminOverview").then((m) => ({ default: m.AdminOverview })));
@@ -247,6 +251,10 @@ function ProtectedDashboard() {
                   <Route path="/dashboard/mercado-livre" component={MercadoLivre} />
                   <Route path="/dashboard/shopee" component={Shopee} />
                   <Route path="/dashboard/tiktok" component={TikTok} />
+                  <Route path="/dashboard/hotmart" component={Hotmart} />
+                  <Route path="/dashboard/kiwify" component={Kiwify} />
+                  <Route path="/dashboard/meta" component={Meta} />
+                  <Route path="/dashboard/whatsapp" component={WhatsApp} />
                   <Route component={NotFound} />
                 </Switch>
               </Suspense>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import {
   Instagram,
@@ -101,6 +102,7 @@ export function AdminMeta() {
   const [showSecret, setShowSecret] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
+  const { toast } = useToast();
   const webhookEndpoint = `${window.location.origin}${BASE}/api/meta/webhook`;
 
   const loadAll = async () => {
@@ -156,9 +158,11 @@ export function AdminMeta() {
         body: JSON.stringify(form),
       });
       setSaveStatus("ok");
+      toast({ description: "Credenciais Meta salvas com sucesso." });
       await loadAll();
     } catch {
       setSaveStatus("error");
+      toast({ variant: "destructive", description: "Erro ao salvar credenciais. Verifique os dados." });
     } finally {
       setSaving(false);
     }
@@ -168,9 +172,10 @@ export function AdminMeta() {
     setSyncingPages(true);
     try {
       await apiFetch("/api/meta/sync-pages", { method: "POST" });
+      toast({ description: "Páginas Facebook sincronizadas." });
       await loadAll();
     } catch {
-      // silent — server logs detail
+      toast({ variant: "destructive", description: "Erro ao sincronizar páginas. Verifique o token de acesso." });
     } finally {
       setSyncingPages(false);
     }
@@ -180,9 +185,10 @@ export function AdminMeta() {
     setSyncingIg(true);
     try {
       await apiFetch("/api/meta/sync-instagram", { method: "POST" });
+      toast({ description: "Contas Instagram sincronizadas." });
       await loadAll();
     } catch {
-      // silent
+      toast({ variant: "destructive", description: "Erro ao sincronizar Instagram. Verifique as permissões do token." });
     } finally {
       setSyncingIg(false);
     }
@@ -192,15 +198,19 @@ export function AdminMeta() {
     setSubscribingPageId(pageId);
     try {
       await apiFetch(`/api/meta/subscribe-page/${pageId}`, { method: "POST" });
+      toast({ description: "Webhook da página ativado." });
       await loadAll();
     } catch {
-      // silent
+      toast({ variant: "destructive", description: "Erro ao ativar webhook da página." });
     } finally {
       setSubscribingPageId(null);
     }
   };
 
-  const copyToClipboard = (text: string) => void navigator.clipboard.writeText(text);
+  const copyToClipboard = (text: string) => {
+    void navigator.clipboard.writeText(text);
+    toast({ description: "URL copiada." });
+  };
 
   const formatDate = (d: string | null | undefined) =>
     d
