@@ -106,17 +106,32 @@ const EVENT_ICONS: Record<string, React.ReactNode> = {
 };
 
 const EVENT_LABELS: Record<string, string> = {
-  PURCHASE_APPROVED: "Compra Aprovada",
-  PURCHASE_BILLET_PRINTED: "Boleto/Pix Gerado",
-  PURCHASE_REFUNDED: "Reembolso",
-  PURCHASE_CHARGEBACK: "Chargeback",
-  PURCHASE_CANCELED: "Cancelado",
-  PURCHASE_ABANDONED: "Abandono",
-  PURCHASE_COMPLETE: "Concluída",
-  SUBSCRIPTION_ACTIVE: "Assinatura Ativa",
-  SUBSCRIPTION_CANCELED: "Assinatura Cancelada",
-  SUBSCRIPTION_REACTIVATED: "Assinatura Reativada",
+  PURCHASE_APPROVED:               "Compra Aprovada",
+  PURCHASE_BILLET_PRINTED:         "Boleto/Pix Gerado",
+  PURCHASE_REFUNDED:               "Reembolso",
+  PURCHASE_CHARGEBACK:             "Chargeback",
+  PURCHASE_CANCELED:               "Cancelado",
+  PURCHASE_ABANDONED:              "Abandono",
+  PURCHASE_COMPLETE:               "Concluída",
+  PURCHASE_OUT_OF_SHOPPING_CART:   "Compra fora do carrinho",
+  SUBSCRIPTION_ACTIVE:             "Assinatura Ativa",
+  SUBSCRIPTION_CANCELED:           "Assinatura Cancelada",
+  SUBSCRIPTION_CANCELLATION:       "Assinatura Cancelada",
+  SUBSCRIPTION_REACTIVATED:        "Assinatura Reativada",
+  SWITCH_PLAN:                     "Troca de plano",
+  CLUB_FIRST_ACCESS:               "Primeiro acesso ao clube",
 };
+
+function translateHotmartStatus(status: string | null | undefined): string {
+  if (!status) return "Não informado";
+  const map: Record<string, string> = {
+    ACTIVE:  "Ativo",
+    INACTIVE: "Inativo",
+    paused:  "Pausado",
+    active:  "Ativo",
+  };
+  return map[status] ?? status;
+}
 
 const EVENT_COLORS: Record<string, string> = {
   PURCHASE_APPROVED: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
@@ -526,7 +541,7 @@ export function AdminHotmart() {
                 className="h-7 px-2 text-zinc-600 hover:text-zinc-400 gap-1 text-[10px] whitespace-nowrap"
               >
                 <RefreshCw className={`w-3 h-3 ${syncingProducts ? "animate-spin" : ""}`} />
-                {syncingProducts ? "Importando..." : "Importar"}
+                {syncingProducts ? "Sincronizando..." : "Sincronizar"}
               </Button>
               <Button
                 size="sm"
@@ -745,7 +760,7 @@ export function AdminHotmart() {
                     )}
                     <span className="text-xs text-zinc-400">R$ {p.price}</span>
                     <Badge className={`text-[10px] ${p.status === "ACTIVE" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-zinc-700/40 text-zinc-500 border-zinc-600/30"}`}>
-                      {p.status ?? "—"}
+                      {translateHotmartStatus(p.status)}
                     </Badge>
                     <Info className="w-3.5 h-3.5 text-zinc-600 group-hover:text-primary/60 transition-colors shrink-0" />
                   </div>
@@ -990,7 +1005,7 @@ export function AdminHotmart() {
                       </div>
                       {badge !== undefined ? (
                         <Badge className={`text-[10px] ${badge === "ACTIVE" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-zinc-700/40 text-zinc-500 border-zinc-600/30"}`}>
-                          {badge ?? "Não informado"}
+                          {translateHotmartStatus(badge)}
                         </Badge>
                       ) : (
                         <p className={`text-xs font-medium leading-snug ${value === "Não informado" ? "text-zinc-600" : "text-white"}`}>
