@@ -1,487 +1,177 @@
-import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Zap,
-  Save,
-  RefreshCw,
-  CheckCircle2,
-  AlertTriangle,
-  Loader2,
-  Copy,
-  Eye,
-  EyeOff,
-  Package,
-  Clock,
-  Webhook,
-  ShoppingBag,
-  UserCheck,
-  BadgeX,
-  RotateCcw,
-  CreditCard,
-  AlertCircle,
+  Zap, RefreshCw, Loader2, Users, Activity, Clock, BarChart2,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { IntegrationFutureAutomations } from "@/components/integrations/IntegrationFutureAutomations";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface KiwifyConfigData {
-  configured: boolean;
-  storeId?: string;
-  clientId?: string;
-  clientSecret?: string;
-  webhookSecret?: string;
-  accessToken?: string;
-  tokenExpiry?: string | null;
-  isActive?: boolean;
-  updatedAt?: string;
-}
-
-interface KiwifyProductItem {
-  id: number;
-  productId: string;
-  name?: string | null;
-  type?: string | null;
-  status?: string | null;
-  price?: string | null;
-  currency?: string | null;
-  syncedAt?: string | null;
-}
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface KiwifyEventItem {
   id: number;
   eventType?: string | null;
   orderId?: string | null;
-  productId?: string | null;
   buyerEmail?: string | null;
-  buyerName?: string | null;
   value?: string | null;
   currency?: string | null;
   receivedAt?: string | null;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: { "Content-Type": "application/json" },
     credentials: "include",
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<T>;
 }
 
-const inputClass =
-  "w-full bg-white/5 border border-white/10 rounded-xl px-4 h-12 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/50 focus:bg-white/8 transition-colors";
+const fmtDate = (d: string | null | undefined) =>
+  d ? new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 
-const EVENT_ICONS: Record<string, React.ReactNode> = {
-  "order.approved": <ShoppingBag className="w-3 h-3" />,
-  "order.waiting_payment": <CreditCard className="w-3 h-3" />,
-  "order.refunded": <RotateCcw className="w-3 h-3" />,
-  "order.chargeback": <BadgeX className="w-3 h-3" />,
-  "order.canceled": <BadgeX className="w-3 h-3" />,
-  "order.abandoned": <AlertCircle className="w-3 h-3" />,
-  "subscription.active": <UserCheck className="w-3 h-3" />,
-  "subscription.canceled": <BadgeX className="w-3 h-3" />,
-};
-
-const EVENT_LABELS: Record<string, string> = {
-  "order.approved": "Compra Aprovada",
-  "order.waiting_payment": "Aguardando Pagamento",
-  "order.refunded": "Reembolso",
-  "order.chargeback": "Chargeback",
-  "order.canceled": "Cancelado",
-  "order.abandoned": "Abandono",
-  "subscription.active": "Assinatura Ativa",
-  "subscription.canceled": "Assinatura Cancelada",
-  "subscription.overdue": "Assinatura Inadimplente",
-  "subscription.reactivated": "Assinatura Reativada",
-};
-
-const EVENT_COLORS: Record<string, string> = {
-  "order.approved": "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  "order.waiting_payment": "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  "order.refunded": "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  "order.chargeback": "bg-red-500/15 text-red-400 border-red-500/30",
-  "order.canceled": "bg-red-500/15 text-red-400 border-red-500/30",
-  "order.abandoned": "bg-zinc-700/40 text-zinc-400 border-zinc-600/30",
-  "subscription.active": "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  "subscription.canceled": "bg-red-500/15 text-red-400 border-red-500/30",
-  "subscription.overdue": "bg-orange-500/15 text-orange-400 border-orange-500/30",
-};
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function AdminKiwify() {
-  const [config, setConfig] = useState<KiwifyConfigData | null>(null);
-  const [products, setProducts] = useState<KiwifyProductItem[]>([]);
-  const [events, setEvents] = useState<KiwifyEventItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "ok" | "error">("idle");
-  const [syncingProducts, setSyncingProducts] = useState(false);
-  const [eventsLoading, setEventsLoading] = useState(false);
+  const [events, setEvents]               = useState<KiwifyEventItem[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [lastUpdated, setLastUpdated]     = useState<Date | null>(null);
+  const [refreshing, setRefreshing]       = useState(false);
 
-  const [form, setForm] = useState({
-    storeId: "",
-    clientId: "",
-    clientSecret: "",
-    webhookSecret: "",
-  });
-  const [showSecret, setShowSecret] = useState(false);
-  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  const loadEvents = useCallback(async () => {
+    setLoadingEvents(true);
+    try { setEvents(await apiFetch<KiwifyEventItem[]>("/api/kiwify/events")); }
+    catch { setEvents([]); }
+    finally { setLoadingEvents(false); }
+  }, []);
 
-  const { toast } = useToast();
-  const webhookEndpoint = `${window.location.origin}${BASE}/api/kiwify/webhook`;
-  const copyToClipboard = (text: string) => {
-    void navigator.clipboard.writeText(text);
-    toast({ description: "URL copiada." });
-  };
-  const formatDate = (d: string | null | undefined) =>
-    d ? new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+  const handleRefreshAll = useCallback(async () => {
+    setRefreshing(true);
+    await loadEvents();
+    setLastUpdated(new Date());
+    setRefreshing(false);
+  }, [loadEvents]);
 
-  const loadAll = async () => {
-    setLoading(true);
-    try {
-      const [cfg, prods] = await Promise.all([
-        apiFetch<KiwifyConfigData>("/api/kiwify/config"),
-        apiFetch<KiwifyProductItem[]>("/api/kiwify/products"),
-      ]);
-      setConfig(cfg);
-      setProducts(prods);
-      if (cfg.configured) {
-        setForm((f) => ({
-          ...f,
-          storeId: cfg.storeId ?? "",
-          clientId: cfg.clientId ?? "",
-        }));
-      }
-    } catch {
-      setConfig({ configured: false });
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => { void handleRefreshAll(); }, [handleRefreshAll]);
 
-  const loadEvents = async () => {
-    setEventsLoading(true);
-    try {
-      const data = await apiFetch<KiwifyEventItem[]>("/api/kiwify/events");
-      setEvents(data);
-    } catch {
-      setEvents([]);
-    } finally {
-      setEventsLoading(false);
-    }
-  };
-
-  useEffect(() => { void loadAll(); void loadEvents(); }, []);
-
-  const handleSave = async () => {
-    setSaving(true); setSaveStatus("idle");
-    try {
-      await apiFetch("/api/kiwify/config", { method: "POST", body: JSON.stringify(form) });
-      setSaveStatus("ok");
-      toast({ description: "Credenciais salvas com sucesso." });
-      await loadAll();
-    } catch {
-      setSaveStatus("error");
-      toast({ variant: "destructive", description: "Erro ao salvar credenciais. Verifique os dados e tente novamente." });
-    } finally { setSaving(false); }
-  };
-
-  const handleSyncProducts = async () => {
-    setSyncingProducts(true);
-    try {
-      await apiFetch("/api/kiwify/sync-products", { method: "POST" });
-      toast({ description: "Sincronização de produtos concluída." });
-      await loadAll();
-    } catch {
-      toast({ variant: "destructive", description: "Erro ao sincronizar produtos. Verifique as credenciais." });
-    } finally { setSyncingProducts(false); }
-  };
-
-  const eventColor = (type: string | null | undefined) =>
-    EVENT_COLORS[type ?? ""] ?? "bg-zinc-700/40 text-zinc-400 border-zinc-600/30";
-  const eventLabel = (type: string | null | undefined) =>
-    EVENT_LABELS[type ?? ""] ?? type ?? "—";
-
-  // stats
-  const approved = events.filter((e) => e.eventType === "order.approved").length;
-  const pending = events.filter((e) => e.eventType === "order.waiting_payment").length;
-  const refunds = events.filter((e) => e.eventType === "order.refunded" || e.eventType === "order.chargeback").length;
-  const abandoned = events.filter((e) => e.eventType === "order.abandoned").length;
+  const kpis = [
+    { label: "Usuários Conectados", value: "—", icon: Users,    color: "text-violet-400"  },
+    { label: "Conexões Ativas",     value: "—", icon: Activity, color: "text-emerald-400" },
+    { label: "Tokens Expirando",    value: "—", icon: Clock,    color: "text-amber-400"   },
+    { label: "Última Atualização",  value: lastUpdated ? lastUpdated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—", icon: BarChart2, color: "text-zinc-400" },
+  ];
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
+
+      {/* ─── Header ──────────────────────────────────────────────── */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          <Zap className="w-5 h-5 text-primary" />
-          <h1 className="text-xl font-bold text-white">Kiwify</h1>
-          {config?.isActive
-            ? <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">Ativo</Badge>
-            : <Badge className="bg-zinc-700/40 text-zinc-500 border-zinc-600/30 text-[10px]">Não configurado</Badge>}
-        </div>
-        <p className="text-sm text-zinc-500 ml-7 leading-relaxed">Integração com a API da Kiwify — produtos digitais, afiliados e assinaturas.</p>
-      </motion.div>
-
-      {/* ─── ESTATÍSTICAS DE EVENTOS ──────────────────────────────────── */}
-      {events.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Aprovadas", value: approved, color: "text-emerald-400" },
-            { label: "Pendentes", value: pending, color: "text-amber-400" },
-            { label: "Reembolsos", value: refunds, color: "text-red-400" },
-            { label: "Abandonos", value: abandoned, color: "text-zinc-400" },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-white/3 border border-white/8 rounded-lg px-3 py-3 text-center">
-              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-              <p className="text-[11px] text-zinc-500 mt-0.5">{stat.label}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+              <Zap className="w-5 h-5 text-violet-400" />
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* ─── CREDENCIAIS ───────────────────────────────────────────────── */}
-      <Card className="bg-white/3 border-white/8">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-            <Zap className="w-4 h-4 text-primary/70" />
-            Credenciais da API Kiwify
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading ? (
-            <div className="flex items-center gap-2 text-zinc-500 text-sm py-4">
-              <Loader2 className="w-4 h-4 animate-spin" />Carregando...
+            <div>
+              <h1 className="text-lg font-bold text-white">Kiwify</h1>
+              <p className="text-xs text-zinc-500">Monitoramento de conexões dos usuários com a Kiwify.</p>
             </div>
-          ) : (
-            <>
-              <div className="bg-primary/5 border border-primary/15 rounded-lg p-3">
-                <p className="text-xs font-medium text-primary mb-1.5">Onde encontrar as credenciais</p>
-                <ol className="text-[11px] text-zinc-400 space-y-1 list-decimal list-inside">
-                  <li>Acesse <strong className="text-zinc-300">app.kiwify.com.br</strong> → Configurações → Integrações → API.</li>
-                  <li>Copie o <strong className="text-zinc-300">ID da loja</strong>, <strong className="text-zinc-300">ID do cliente</strong> e <strong className="text-zinc-300">Segredo do cliente</strong>.</li>
-                  <li>Em "Webhooks", crie um novo webhook e copie o <strong className="text-zinc-300">Webhook Secret</strong> gerado.</li>
-                  <li>Cole a URL do webhook abaixo no campo de URL do painel Kiwify.</li>
-                </ol>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-400">ID da loja</label>
-                  <input className={inputClass} placeholder="Ex.: sua_loja_id"
-                    value={form.storeId} onChange={(e) => setForm((f) => ({ ...f, storeId: e.target.value }))} />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-400">ID do cliente</label>
-                  <input className={inputClass} placeholder="Ex.: client_abc123"
-                    value={form.clientId} onChange={(e) => setForm((f) => ({ ...f, clientId: e.target.value }))} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-400">Segredo do cliente</label>
-                  <div className="relative">
-                    <input className={inputClass + " pr-10"} type={showSecret ? "text" : "password"}
-                      placeholder={config?.configured ? "Novo secret para substituir" : "xxxxxxxx..."}
-                      value={form.clientSecret} onChange={(e) => setForm((f) => ({ ...f, clientSecret: e.target.value }))} />
-                    <button type="button" onClick={() => setShowSecret((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors">
-                      {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-400">Webhook Secret</label>
-                  <div className="relative">
-                    <input className={inputClass + " pr-10"} type={showWebhookSecret ? "text" : "password"}
-                      placeholder="Ex.: whsec_..."
-                      value={form.webhookSecret} onChange={(e) => setForm((f) => ({ ...f, webhookSecret: e.target.value }))} />
-                    <button type="button" onClick={() => setShowWebhookSecret((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors">
-                      {showWebhookSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-zinc-600">Usado para validar a assinatura HMAC-SHA1 dos eventos.</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <div>
-                  {saveStatus === "ok" && <span className="flex items-center gap-1.5 text-xs text-emerald-400"><CheckCircle2 className="w-3.5 h-3.5" />Salvo com sucesso.</span>}
-                  {saveStatus === "error" && <span className="flex items-center gap-1.5 text-xs text-red-400"><AlertTriangle className="w-3.5 h-3.5" />Erro ao salvar.</span>}
-                </div>
-                <Button
-                  onClick={() => void handleSave()}
-                  disabled={saving || !form.storeId || !form.clientId || (!form.clientSecret && !config?.configured) || !form.webhookSecret}
-                  className="h-11 bg-primary text-black hover:bg-primary/90 inline-flex items-center justify-center gap-2 px-5">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {saving ? "Salvando..." : "Salvar credenciais"}
-                </Button>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ─── WEBHOOK ENDPOINT ─────────────────────────────────────────────── */}
-      <Card className="bg-white/3 border-white/8">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-            <Webhook className="w-4 h-4 text-primary/70" />
-            Endpoint do Webhook
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-col gap-2">
-            <code className="w-full bg-black/30 border border-white/8 rounded-xl px-4 py-3 text-xs text-zinc-300 font-mono break-all overflow-hidden block leading-relaxed">
-              {webhookEndpoint}
-            </code>
-            <button
-              className="self-end inline-flex items-center justify-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:border-white/20 transition-colors font-medium"
-              onClick={() => copyToClipboard(webhookEndpoint)}
-            >
-              <Copy className="w-3.5 h-3.5" />
-              Copiar URL
-            </button>
           </div>
-          <div className="bg-primary/5 border border-primary/15 rounded-lg p-3">
-            <p className="text-xs font-medium text-primary mb-1.5">Como configurar no painel Kiwify</p>
-            <ol className="text-[11px] text-zinc-400 space-y-1 list-decimal list-inside">
-              <li>Acesse <strong className="text-zinc-300">app.kiwify.com.br</strong> → Configurações → Webhooks.</li>
-              <li>Clique em "Adicionar Webhook".</li>
-              <li>Cole a URL acima no campo de URL.</li>
-              <li>Selecione os eventos desejados (veja lista abaixo).</li>
-              <li>Copie o <strong className="text-zinc-300">Webhook Secret</strong> gerado e salve nas credenciais acima.</li>
-              <li>Salve e aguarde os primeiros eventos chegarem.</li>
-            </ol>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {[
-              { key: "order.approved", label: "Compra Aprovada", color: "emerald" },
-              { key: "order.waiting_payment", label: "Aguardando Pagamento", color: "amber" },
-              { key: "order.refunded", label: "Reembolso", color: "orange" },
-              { key: "order.chargeback", label: "Chargeback", color: "red" },
-              { key: "order.abandoned", label: "Abandono", color: "zinc" },
-              { key: "subscription.canceled", label: "Assinatura Cancelada", color: "red" },
-            ].map((ev) => (
-              <div key={ev.key} className="flex items-center gap-1.5 bg-white/2 border border-white/5 rounded-lg px-2.5 py-1.5">
-                <div className={`w-1.5 h-1.5 rounded-full bg-${ev.color}-400/60 shrink-0`} />
-                <span className="text-[10px] text-zinc-500">{ev.label}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ─── PRODUTOS ──────────────────────────────────────────────────── */}
-      <Card className="bg-white/3 border-white/8">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <Package className="w-4 h-4 text-primary/70" />
-              Produtos Digitais
-              <Badge className="bg-white/5 text-zinc-400 border-white/10 text-[10px] font-normal">{products.length}</Badge>
-            </CardTitle>
-            <Button size="sm" variant="ghost" onClick={() => void handleSyncProducts()}
-              disabled={syncingProducts || !config?.isActive}
-              className="h-7 px-2.5 text-zinc-500 hover:text-white gap-1.5 text-xs">
-              <RefreshCw className={`w-3 h-3 ${syncingProducts ? "animate-spin" : ""}`} />
-              {syncingProducts ? "Sincronizando..." : "Sincronizar Produtos"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {products.length === 0 ? (
-            <div className="text-center py-8 text-zinc-600 text-sm">
-              <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              Nenhum produto sincronizado. Salve as credenciais e clique em "Sincronizar Produtos".
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {products.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 bg-white/3 border border-white/5 rounded-lg px-3 py-2.5">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{p.name || "—"}</p>
-                    <p className="text-[10px] text-zinc-600 font-mono">{p.productId}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {p.type && <Badge className="bg-zinc-700/40 text-zinc-400 border-zinc-600/30 text-[10px]">{p.type}</Badge>}
-                    <span className="text-xs text-zinc-400">R$ {p.price}</span>
-                    <Badge className={`text-[10px] ${p.status === "active" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-zinc-700/40 text-zinc-500 border-zinc-600/30"}`}>
-                      {({ active: "Ativo", inactive: "Inativo", paused: "Pausado" } as Record<string, string>)[p.status ?? ""] ?? p.status ?? "—"}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ─── LOG DE EVENTOS ────────────────────────────────────────────── */}
-      <Card className="bg-white/3 border-white/8">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary/70" />
-              Log de Eventos
-              <Badge className="bg-white/5 text-zinc-400 border-white/10 text-[10px] font-normal">{events.length}</Badge>
-            </CardTitle>
-            <Button size="sm" variant="ghost" onClick={() => void loadEvents()} disabled={eventsLoading}
-              className="h-7 px-2 text-zinc-500 hover:text-white gap-1.5 text-xs">
-              <RefreshCw className={`w-3 h-3 ${eventsLoading ? "animate-spin" : ""}`} />
+          <div className="flex items-center gap-2">
+            <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">Monitoramento ativo</Badge>
+            <Button size="sm" variant="outline"
+              onClick={() => void handleRefreshAll()}
+              disabled={refreshing}
+              className="border-white/10 text-zinc-400 hover:text-white h-8 gap-1.5 text-xs">
+              {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               Atualizar
             </Button>
           </div>
+        </div>
+      </motion.div>
+
+      {/* ─── KPIs ────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {kpis.map(({ label, value, icon: Icon, color }) => (
+          <Card key={label} className="bg-white/3 border-white/8">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] text-zinc-500 uppercase tracking-wider leading-tight">{label}</p>
+                <Icon className={`w-3.5 h-3.5 ${color} shrink-0`} />
+              </div>
+              <p className="text-2xl font-bold text-white">{value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* ─── Usuários Conectados ──────────────────────────────────── */}
+      <Card className="bg-white/3 border-white/8">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+            <Users className="w-4 h-4 text-zinc-500" />
+            Usuários Conectados
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {eventsLoading ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-white/3 border border-white/8 flex items-center justify-center mb-1">
+              <Zap className="w-4 h-4 text-zinc-700" />
+            </div>
+            <p className="text-sm text-zinc-500">Nenhum usuário conectado à Kiwify.</p>
+            <p className="text-[11px] text-zinc-700">As conexões aparecerão aqui após o usuário autenticar sua conta.</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ─── Eventos ─────────────────────────────────────────────── */}
+      <Card className="bg-white/3 border-white/8">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+              <Activity className="w-4 h-4 text-zinc-500" />
+              Eventos Recentes (Webhooks)
+            </CardTitle>
+            <Button size="sm" variant="ghost" onClick={() => void loadEvents()} disabled={loadingEvents}
+              className="h-7 px-2 text-zinc-600 hover:text-white">
+              {loadingEvents ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingEvents ? (
             <div className="flex items-center gap-2 text-zinc-500 text-sm py-4">
               <Loader2 className="w-4 h-4 animate-spin" />Carregando...
             </div>
           ) : events.length === 0 ? (
-            <div className="text-center py-8 text-zinc-600 text-sm">
-              <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              Nenhum evento recebido. Configure o webhook no painel Kiwify.
-            </div>
+            <p className="text-xs text-zinc-600 text-center py-6">
+              Nenhum evento registrado. Os webhooks da Kiwify aparecerão aqui.
+            </p>
           ) : (
-            <div className="space-y-2">
-              {events.map((ev) => (
-                <div key={ev.id} className="flex items-center gap-3 bg-white/3 border border-white/5 rounded-lg px-3 py-2.5">
-                  <Badge className={`flex items-center gap-1 text-[10px] shrink-0 ${eventColor(ev.eventType)}`}>
-                    {EVENT_ICONS[ev.eventType ?? ""] ?? null}
-                    {eventLabel(ev.eventType)}
-                  </Badge>
+            <div className="max-h-[280px] overflow-y-auto divide-y divide-white/5">
+              {events.slice(0, 50).map(ev => (
+                <div key={ev.id} className="py-2.5 flex items-start gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-zinc-300 truncate">{ev.buyerName || ev.buyerEmail || "—"}</p>
-                    {ev.orderId && <p className="text-[10px] text-zinc-600 font-mono">{ev.orderId}</p>}
+                    <p className="text-xs text-white font-medium truncate">{ev.eventType ?? "—"}</p>
+                    {ev.buyerEmail && <p className="text-[10px] text-zinc-500 truncate">{ev.buyerEmail}</p>}
+                    {ev.value && (
+                      <p className="text-[10px] text-emerald-400/70">
+                        {ev.currency ?? "BRL"} {ev.value}
+                        {ev.orderId && <span className="text-zinc-600 ml-1">· #{ev.orderId}</span>}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {ev.value && <span className="text-xs text-zinc-400">R$ {ev.value}</span>}
-                    <span className="text-[10px] text-zinc-600">{formatDate(ev.receivedAt)}</span>
-                  </div>
+                  <p className="text-[10px] text-zinc-600 shrink-0 pt-0.5">{fmtDate(ev.receivedAt)}</p>
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
-
-      <IntegrationFutureAutomations
-        items={[
-          "E-mail de boas-vindas ao comprador",
-          "Alerta de chargeback em tempo real",
-          "Follow-up de pagamento pendente",
-          "Recuperação de abandono de checkout",
-          "Relatório de vendas com IA",
-          "Gestão de assinaturas canceladas",
-          "Notificação de reembolso processado",
-          "Análise de conversão por produto",
-        ]}
-      />
     </div>
   );
 }
