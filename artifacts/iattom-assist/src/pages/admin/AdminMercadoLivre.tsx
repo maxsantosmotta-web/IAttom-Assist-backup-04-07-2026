@@ -1173,6 +1173,11 @@ export function AdminMercadoLivre() {
             <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
               <User className="w-4 h-4 text-primary/70" />
               Conexões de Usuários
+              {!loadingUserConns && (
+                <span className="text-[11px] font-normal text-zinc-500">
+                  ({userConnections.length} {userConnections.length === 1 ? "ativo" : "ativos"})
+                </span>
+              )}
             </CardTitle>
             <Button size="sm" variant="ghost"
               onClick={() => void loadUserConnections()}
@@ -1183,17 +1188,24 @@ export function AdminMercadoLivre() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loadingUserConns ? (
-            <div className="flex items-center gap-2 text-zinc-500 text-sm py-4">
-              <Loader2 className="w-4 h-4 animate-spin" />Carregando...
+            <div className="flex items-center gap-2 text-zinc-500 text-sm px-5 py-6">
+              <Loader2 className="w-4 h-4 animate-spin shrink-0" />Carregando conexões...
             </div>
           ) : userConnections.length === 0 ? (
-            <p className="text-sm text-zinc-600 py-4 text-center">Nenhuma conexão de usuário ativa.</p>
+            <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
+              <div className="w-10 h-10 rounded-full bg-white/3 border border-white/8 flex items-center justify-center mb-1">
+                <User className="w-4 h-4 text-zinc-700" />
+              </div>
+              <p className="text-sm text-zinc-500">Nenhum usuário conectado ao Mercado Livre.</p>
+              <p className="text-[11px] text-zinc-700">As conexões aparecerão aqui após o usuário autenticar sua conta.</p>
+            </div>
           ) : (
-            <div className="space-y-2">
+            <div className="max-h-[420px] overflow-y-auto divide-y divide-white/5">
               {userConnections.map((conn) => {
-                const label = conn.userName || conn.userEmail || conn.clerkUserId;
+                const displayName = conn.userName || conn.userEmail || conn.clerkUserId;
+                const displayEmail = conn.userName && conn.userEmail ? conn.userEmail : null;
                 const isExpired = conn.expiresAt ? new Date(conn.expiresAt) < new Date() : false;
                 const connDate = conn.createdAt
                   ? new Date(conn.createdAt).toLocaleString("pt-BR", {
@@ -1204,32 +1216,47 @@ export function AdminMercadoLivre() {
                 const tokenLeft = fmtTokenExpiry(conn.expiresAt);
                 const isDisc = disconnectingUser === conn.clerkUserId;
                 return (
-                  <div key={conn.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/6">
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <User className="w-3.5 h-3.5 text-primary/60" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-white truncate">{label}</p>
-                        {conn.userEmail && conn.userName && (
-                          <p className="text-[10px] text-zinc-500 truncate">{conn.userEmail}</p>
+                  <div key={conn.id} className="flex items-start gap-3 px-5 py-3.5 hover:bg-white/2 transition-colors">
+                    {/* avatar */}
+                    <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                      <User className="w-3.5 h-3.5 text-primary/60" />
+                    </div>
+
+                    {/* info block */}
+                    <div className="flex-1 min-w-0 space-y-0.5">
+                      {/* row 1: user identity */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs font-semibold text-white truncate max-w-[180px]">{displayName}</p>
+                        {displayEmail && (
+                          <span className="text-[10px] text-zinc-500 truncate">{displayEmail}</span>
                         )}
-                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                          {conn.platformUsername && (
-                            <span className="text-[10px] text-amber-400/80 font-mono">@{conn.platformUsername}</span>
+                      </div>
+
+                      {/* row 2: ML account */}
+                      {conn.platformUsername && (
+                        <p className="text-[10px] text-amber-400/80 font-mono">
+                          Conta ML: @{conn.platformUsername}
+                          {conn.platformUserId && (
+                            <span className="text-zinc-600 ml-1">· ID {conn.platformUserId}</span>
                           )}
-                          {isExpired ? (
-                            <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[9px]">Token expirado</Badge>
-                          ) : (
-                            <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[9px]">Ativo</Badge>
-                          )}
-                          {tokenLeft && !isExpired && (
-                            <span className="text-[10px] text-zinc-500">{tokenLeft}</span>
-                          )}
-                          <span className="text-[10px] text-zinc-600">Conectado: {connDate}</span>
-                        </div>
+                        </p>
+                      )}
+
+                      {/* row 3: status + token + date */}
+                      <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                        {isExpired ? (
+                          <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[9px] px-1.5 py-0">Token expirado</Badge>
+                        ) : (
+                          <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[9px] px-1.5 py-0">Ativo</Badge>
+                        )}
+                        {tokenLeft && !isExpired && (
+                          <span className="text-[10px] text-zinc-500">{tokenLeft}</span>
+                        )}
+                        <span className="text-[10px] text-zinc-600">Conectado em {connDate}</span>
                       </div>
                     </div>
+
+                    {/* disconnect button */}
                     <Button size="sm" variant="ghost"
                       onClick={() => setConfirmDisconnect({
                         type: "user",
@@ -1237,7 +1264,7 @@ export function AdminMercadoLivre() {
                         label: conn.platformUsername ?? conn.userEmail ?? conn.clerkUserId,
                       })}
                       disabled={isDisc}
-                      className="h-7 px-2.5 text-red-400/70 hover:text-red-300 border border-red-500/15 gap-1.5 text-xs whitespace-nowrap shrink-0">
+                      className="h-7 px-2.5 text-red-400/60 hover:text-red-300 hover:bg-red-500/8 border border-red-500/15 gap-1.5 text-xs whitespace-nowrap shrink-0 mt-0.5">
                       {isDisc ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />}
                       Desconectar
                     </Button>
