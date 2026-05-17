@@ -30,6 +30,13 @@ const planColors: Record<string, string> = {
   agency: "text-purple-400 bg-purple-400/10 border-purple-400/20",
 };
 
+const planLabels: Record<string, string> = {
+  free: "Start",
+  pro: "Completo",
+  business: "Premium",
+  agency: "Pro",
+};
+
 const roleColors: Record<string, string> = {
   user: "text-muted-foreground bg-white/5 border-white/10",
   admin: "text-red-400 bg-red-400/10 border-red-400/20",
@@ -158,10 +165,10 @@ export function AdminUsers() {
           </SelectTrigger>
           <SelectContent className="bg-[#111111] border-white/10">
             <SelectItem value="all">Todos os Planos</SelectItem>
-            <SelectItem value="free">Gratuito</SelectItem>
-            <SelectItem value="pro">Pro</SelectItem>
-            <SelectItem value="business">Empresarial</SelectItem>
-            <SelectItem value="agency">Agency</SelectItem>
+            <SelectItem value="free">Start</SelectItem>
+            <SelectItem value="pro">Completo</SelectItem>
+            <SelectItem value="business">Premium</SelectItem>
+            <SelectItem value="agency">Pro</SelectItem>
           </SelectContent>
         </Select>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -239,8 +246,8 @@ export function AdminUsers() {
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant="outline" className={`text-xs capitalize ${planColors[user.plan] ?? planColors.free}`}>
-                            {user.plan}
+                          <Badge variant="outline" className={`text-xs ${planColors[user.plan] ?? planColors.free}`}>
+                            {planLabels[user.plan] ?? user.plan}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-right text-white font-mono text-sm">{user.credits}</td>
@@ -311,10 +318,10 @@ export function AdminUsers() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-[#111111] border-white/10">
-                  <SelectItem value="free">Cristal — R$19,90/mês — 50 créditos</SelectItem>
-                  <SelectItem value="pro">Rubi — R$89/mês — 500 créditos</SelectItem>
-                  <SelectItem value="business">Esmeralda — R$197/mês — 2.000 créditos</SelectItem>
-                  <SelectItem value="agency">Diamante — R$497/mês — 10.000 créditos</SelectItem>
+                  <SelectItem value="free">Start</SelectItem>
+                  <SelectItem value="pro">Completo</SelectItem>
+                  <SelectItem value="business">Premium</SelectItem>
+                  <SelectItem value="agency">Pro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
