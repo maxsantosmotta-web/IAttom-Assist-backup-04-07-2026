@@ -2,9 +2,8 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Flame, Loader2, X, Info, Package, ClipboardList,
-  RefreshCw, ShoppingBag, BarChart2, DollarSign, Link2,
-  Tag, ChevronDown, ChevronUp, AlertCircle, TrendingUp,
-  CheckCircle2, ExternalLink, WifiOff,
+  RefreshCw, ShoppingBag, DollarSign,
+  Tag, CheckCircle2, WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,25 +98,6 @@ interface HotmartEvent {
   receivedAt?: string | null;
 }
 
-const EVENT_LABELS: Record<string, string> = {
-  PURCHASE_APPROVED: "Compra Aprovada",
-  PURCHASE_BILLET_PRINTED: "Boleto Gerado",
-  PURCHASE_REFUNDED: "Reembolso",
-  PURCHASE_CHARGEBACK: "Chargeback",
-  PURCHASE_CANCELED: "Cancelado",
-  PURCHASE_ABANDONED: "Abandono",
-  SUBSCRIPTION_ACTIVE: "Assinatura Ativa",
-  SUBSCRIPTION_CANCELED: "Assinatura Cancelada",
-};
-
-const EVENT_COLORS: Record<string, string> = {
-  PURCHASE_APPROVED: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  PURCHASE_REFUNDED: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  PURCHASE_CHARGEBACK: "bg-red-500/15 text-red-400 border-red-500/30",
-  PURCHASE_CANCELED: "bg-red-500/15 text-red-400 border-red-500/30",
-  PURCHASE_ABANDONED: "bg-zinc-700/40 text-zinc-400 border-zinc-600/30",
-  SUBSCRIPTION_ACTIVE: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-};
 
 function thirtyDaysAgo() {
   const d = new Date();
@@ -143,7 +123,6 @@ export function Hotmart() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [showLogs, setShowLogs] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [modal, setModal] = useState<{ title: string; description: string; action?: { label: string; onClick: () => void } } | null>(null);
 
@@ -302,15 +281,15 @@ export function Hotmart() {
 
         {/* KPIs */}
         {(() => {
-          const approvedIn30d = events.filter(e => e.eventType === "PURCHASE_APPROVED" && e.receivedAt && new Date(e.receivedAt) >= thirtyDaysAgo()).length;
+          const cutoff = thirtyDaysAgo();
+          const approvedIn30d = events.filter(e => e.eventType === "PURCHASE_APPROVED" && e.receivedAt && new Date(e.receivedAt) >= cutoff).length;
           const kpis = [
-            { icon: Package,    label: "Produtos",     value: String(products.length),  color: "text-orange-400",  loading: loadingProducts },
-            { icon: ShoppingBag, label: "Vendas (30d)", value: String(approvedIn30d),    color: "text-emerald-400", loading: loadingEvents  },
-            { icon: DollarSign, label: "Receita (30d)", value: revenueIn30d(events),     color: "text-primary",     loading: loadingEvents  },
-            { icon: BarChart2,  label: "Eventos",      value: String(events.length),    color: "text-blue-400",    loading: loadingEvents  },
+            { icon: Package,     label: "Produtos",     value: String(products.length), color: "text-orange-400", loading: loadingProducts },
+            { icon: ShoppingBag, label: "Vendas (30d)",  value: String(approvedIn30d),   color: "text-emerald-400", loading: loadingEvents },
+            { icon: DollarSign,  label: "Receita (30d)", value: revenueIn30d(events),    color: "text-primary",    loading: loadingEvents },
           ];
           return (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
               {kpis.map(({ icon: Icon, label, value, color, loading }) => (
                 <Card key={label} className="bg-[#111111] border-white/[0.06]">
                   <CardContent className="p-4">
@@ -411,115 +390,76 @@ export function Hotmart() {
           </CardContent>
         </Card>
 
-        {/* Vendas */}
-        <Card className="bg-[#111111] border-white/[0.06] mb-4">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-muted-foreground" />
-                Vendas Recentes
-                {events.length > 0 && (
-                  <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-xs">
-                    {events.filter(e => e.eventType === "PURCHASE_APPROVED" && e.receivedAt && new Date(e.receivedAt) >= thirtyDaysAgo()).length} aprovadas (30d)
-                  </Badge>
-                )}
-              </CardTitle>
-              <Button size="sm" variant="ghost"
-                onClick={() => void handleLoadEvents()}
-                disabled={loadingEvents}
-                className="text-muted-foreground hover:text-white h-7 px-2">
-                {loadingEvents ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loadingEvents ? (
-              <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Carregando...</span>
-              </div>
-            ) : events.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <ShoppingBag className="w-8 h-8 text-white/10 mb-2" />
-                <p className="text-sm font-semibold text-muted-foreground">Nenhuma venda registrada</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">
-                  As vendas chegam via webhook Hotmart. Configure o webhook apontando para a URL da plataforma.
-                </p>
-                <Button size="sm" onClick={() => void handleLoadEvents()}
-                  variant="outline"
-                  disabled={loadingEvents}
-                  className="mt-3 border-white/10 text-muted-foreground hover:text-white text-xs h-7 gap-1.5">
-                  {loadingEvents ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                  Verificar vendas
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {events.slice(0, 20).map((ev) => {
-                  const fmt = ev.receivedAt
-                    ? new Date(ev.receivedAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-                    : null;
-                  return (
-                  <div key={ev.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-[#0d0d0d] border border-white/5">
-                    <Badge className={`text-xs border shrink-0 ${EVENT_COLORS[ev.eventType ?? ""] ?? "bg-zinc-700/40 text-zinc-400 border-zinc-600/30"}`}>
-                      {EVENT_LABELS[ev.eventType ?? ""] ?? ev.eventType ?? "—"}
-                    </Badge>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-white truncate">
-                        {ev.buyerName ?? ev.buyerEmail ?? "—"}
-                      </p>
-                      {ev.transactionId && (
-                        <p className="text-[10px] text-muted-foreground font-mono">{ev.transactionId}</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-0.5 shrink-0">
-                      {ev.value && parseFloat(ev.value) > 0 && (
-                        <span className="text-xs font-semibold text-primary">R$ {ev.value}</span>
-                      )}
-                      {fmt && <span className="text-[10px] text-muted-foreground tabular-nums">{fmt}</span>}
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Logs collapsible */}
-        <div>
-          <button
-            onClick={() => setShowLogs((v) => !v)}
-            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-white transition-colors"
-          >
-            <ClipboardList className="w-3.5 h-3.5" />
-            Ações e Automações Futuras
-            {showLogs ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-          {showLogs && (
-            <Card className="bg-[#111111] border-white/[0.06] mt-3">
-              <CardContent className="p-4">
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {[
-                    { icon: ShoppingBag, label: "E-mail de boas-vindas ao comprador", status: "Em breve" },
-                    { icon: AlertCircle, label: "Alerta de chargeback em tempo real", status: "Em breve" },
-                    { icon: RefreshCw, label: "Follow-up de pagamento pendente", status: "Em breve" },
-                    { icon: TrendingUp, label: "Relatório de vendas com IA", status: "Em breve" },
-                    { icon: ExternalLink, label: "Recuperação de abandono de checkout", status: "Em breve" },
-                    { icon: Link2, label: "Análise de conversão por produto", status: "Em breve" },
-                  ].map(({ icon: Icon, label, status }) => (
-                    <div key={label} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
-                      <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <p className="text-xs text-muted-foreground flex-1">{label}</p>
-                      <Badge className="bg-yellow-500/15 text-yellow-400 border-yellow-500/30 text-[10px] shrink-0">{status}</Badge>
-                    </div>
-                  ))}
+        {/* Vendas Recentes */}
+        {(() => {
+          const approvedSales = events.filter(e => e.eventType === "PURCHASE_APPROVED");
+          return (
+            <Card className="bg-[#111111] border-white/[0.06]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+                    <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                    Vendas Recentes
+                    {approvedSales.length > 0 && (
+                      <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-xs">
+                        {approvedSales.filter(e => e.receivedAt && new Date(e.receivedAt) >= thirtyDaysAgo()).length} nos últimos 30d
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <Button size="sm" variant="ghost"
+                    onClick={() => void handleLoadEvents()}
+                    disabled={loadingEvents}
+                    className="text-muted-foreground hover:text-white h-7 px-2">
+                    {loadingEvents ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  </Button>
                 </div>
+              </CardHeader>
+              <CardContent>
+                {loadingEvents ? (
+                  <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Carregando...</span>
+                  </div>
+                ) : approvedSales.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <ShoppingBag className="w-9 h-9 text-white/8 mb-3" />
+                    <p className="text-sm font-semibold text-muted-foreground">Aguardando eventos reais da Hotmart</p>
+                    <p className="text-xs text-muted-foreground/50 mt-1.5 max-w-xs leading-relaxed">
+                      As vendas aprovadas aparecerão aqui assim que o webhook Hotmart estiver ativo e recebendo dados reais.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {approvedSales.slice(0, 20).map((ev) => {
+                      const date = ev.receivedAt
+                        ? new Date(ev.receivedAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })
+                        : null;
+                      const buyer = ev.buyerName ?? ev.buyerEmail ?? "—";
+                      const amount = ev.value && parseFloat(ev.value) > 0
+                        ? parseFloat(ev.value).toLocaleString("pt-BR", { style: "currency", currency: ev.currency ?? "BRL" })
+                        : null;
+                      return (
+                        <div key={ev.id}
+                          className="flex items-center gap-3 p-3 rounded-lg bg-[#0d0d0d] border border-white/5 hover:border-white/10 transition-colors">
+                          <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-xs border shrink-0">
+                            Aprovada
+                          </Badge>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-white truncate">{buyer}</p>
+                            {date && <p className="text-[10px] text-muted-foreground tabular-nums mt-0.5">{date}</p>}
+                          </div>
+                          {amount && (
+                            <span className="text-sm font-semibold text-primary shrink-0">{amount}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
-          )}
-        </div>
+          );
+        })()}
       </motion.div>
     </div>
   );
