@@ -113,7 +113,7 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
         <div className="p-3 rounded-lg bg-blue-950/20 border border-blue-500/20 flex gap-3">
           <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
           <p className="text-xs text-blue-300/80 leading-relaxed">
-            A integração ML é gerenciada pelo administrador da plataforma. O botão abaixo iniciará o fluxo OAuth — após autorizar, a conexão ficará disponível para todos os usuários da plataforma.
+            Conecte sua conta Mercado Livre para gerenciar seus anúncios. O botão abaixo iniciará a autorização OAuth — sua conta ficará conectada após autorizar.
           </p>
         </div>
 
@@ -328,6 +328,7 @@ export function MercadoLivre() {
   const [selectedListing, setSelectedListing] = useState<MLListing | null>(null);
   const [showLogs, setShowLogs] = useState(false);
   const [trashingId, setTrashingId] = useState<number | null>(null);
+  const [showDisconnect, setShowDisconnect] = useState(false);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -419,7 +420,46 @@ export function MercadoLivre() {
 
   return (
     <div className="space-y-6">
-      {showConnect && <ConnectModal onClose={() => setShowConnect(false)} />}
+        {showConnect && <ConnectModal onClose={() => setShowConnect(false)} />}
+      {showDisconnect && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#111111] border border-white/10 rounded-xl w-full max-w-sm p-6 space-y-5"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">Desconectar conta</p>
+                  <p className="text-xs text-muted-foreground">Mercado Livre</p>
+                </div>
+              </div>
+              <button onClick={() => setShowDisconnect(false)} className="text-muted-foreground hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground">Deseja desconectar esta conta?</p>
+            <div className="space-y-2">
+              <Button
+                onClick={() => {
+                  setShowDisconnect(false);
+                  toast({ description: "Desconexão preparada para próxima etapa." });
+                }}
+                className="w-full bg-red-600 hover:bg-red-500 text-white font-semibold"
+              >
+                Confirmar desconexão
+              </Button>
+              <Button variant="outline" onClick={() => setShowDisconnect(false)} className="w-full border-white/10 text-muted-foreground hover:text-white">
+                Cancelar
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
       {showCreate && (
         <CreateListingModal
           onClose={() => setShowCreate(false)}
@@ -500,12 +540,20 @@ export function MercadoLivre() {
                 {status.tokenExpired && (
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />
-                    <span className="text-xs text-yellow-400">Token expirado — o admin deve renovar</span>
+                    <span className="text-xs text-yellow-400">Token expirado — reconecte sua conta</span>
                   </div>
                 )}
                 {status.siteId && (
                   <span className="text-xs text-muted-foreground">Site: {status.siteId}</span>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowDisconnect(true)}
+                  className="border-red-500/30 text-red-400 hover:bg-red-500/10 ml-auto h-7 text-xs"
+                >
+                  Desconectar
+                </Button>
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-4">
@@ -516,7 +564,7 @@ export function MercadoLivre() {
                 <p className="text-xs text-muted-foreground/60">
                   {status?.appConfigured
                     ? "App configurado — clique em Conectar para autorizar."
-                    : "O administrador deve configurar o app Mercado Livre primeiro."}
+                    : "O app ainda não está disponível. Aguarde a liberação da plataforma."}
                 </p>
                 <Button
                   size="sm"

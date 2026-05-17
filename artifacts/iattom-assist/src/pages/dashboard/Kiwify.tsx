@@ -138,6 +138,7 @@ export function Kiwify() {
   const [syncing, setSyncing] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [modal, setModal] = useState<{ title: string; description: string } | null>(null);
+  const [confirmClearCreds, setConfirmClearCreds] = useState(false);
 
   const showInfo = (title: string, description: string) => setModal({ title, description });
   const webhookEndpoint = `${window.location.origin}${BASE}/api/kiwify/webhook`;
@@ -307,18 +308,42 @@ export function Kiwify() {
               </p>
             </div>
             {savedCreds && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <div>
-                  <p className="text-xs font-semibold text-emerald-400">Credenciais configuradas</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Store: {savedCreds.storeId} · Client: {savedCreds.clientId}</p>
+              <>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-400">Credenciais configuradas</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Store: {savedCreds.storeId} · Client: {savedCreds.clientId}</p>
+                  </div>
+                  <Button size="sm" variant="ghost"
+                    onClick={() => setConfirmClearCreds(true)}
+                    className="ml-auto text-red-400/60 hover:text-red-400 text-xs h-7 px-2">
+                    Desconectar
+                  </Button>
                 </div>
-                <Button size="sm" variant="ghost"
-                  onClick={() => { localStorage.removeItem(USER_CREDS_KEY); setSavedCreds(null); toast({ description: "Credenciais removidas." }); }}
-                  className="ml-auto text-muted-foreground hover:text-red-400 text-xs h-7 px-2">
-                  Remover
-                </Button>
-              </div>
+                {confirmClearCreds && (
+                  <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground">Deseja desconectar esta conta?</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="ghost"
+                        onClick={() => setConfirmClearCreds(false)}
+                        className="text-muted-foreground h-7 text-xs px-3">
+                        Cancelar
+                      </Button>
+                      <Button size="sm"
+                        onClick={() => {
+                          localStorage.removeItem(USER_CREDS_KEY);
+                          setSavedCreds(null);
+                          setConfirmClearCreds(false);
+                          toast({ description: "Conta Kiwify desconectada." });
+                        }}
+                        className="bg-red-600 hover:bg-red-500 text-white h-7 text-xs px-3 font-semibold">
+                        Confirmar desconexão
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
