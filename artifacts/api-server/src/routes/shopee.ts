@@ -35,6 +35,20 @@ router.post("/shopee/webhook", (req, res): void => {
     });
 });
 
+// ─── USER: Platform connection status (no secrets) ───────────────────────────
+router.get("/shopee/status", async (_req, res): Promise<void> => {
+  const [config] = await db.select().from(shopeeConfig).limit(1);
+  if (!config?.isActive) {
+    res.json({ configured: false });
+    return;
+  }
+  res.json({
+    configured: true,
+    shopId: config.shopId || null,
+    updatedAt: config.updatedAt,
+  });
+});
+
 // ─── ADMIN: Get config ───────────────────────────────────────────────────────
 router.get("/shopee/config", requireAdmin, async (_req, res): Promise<void> => {
   const [config] = await db.select().from(shopeeConfig).limit(1);

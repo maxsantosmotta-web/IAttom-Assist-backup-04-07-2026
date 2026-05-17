@@ -1,10 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingBag, Plus, Copy, Trash2, ExternalLink, Loader2,
-  Link2, Tag, DollarSign, X, Info, AlertCircle, CheckCircle2,
+  Link2, Tag, X, Info, AlertCircle, CheckCircle2,
   RefreshCw, Package, ClipboardList, Store, Search, Image,
-  Video, Megaphone, Zap, ShoppingCart, BarChart2,
+  Video, Megaphone, Zap, BarChart2, WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,8 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
 /* ─── storage keys ──────────────────────────────────────────── */
-const STORAGE_KEY    = "iattom_shopee_affiliates_v1";
-const CONNECTED_KEY  = "iattom_shopee_connected_v1";
+const STORAGE_KEY = "iattom_shopee_affiliates_v1";
 
 /* ─── types ─────────────────────────────────────────────────── */
 interface AffiliateProduct {
@@ -55,12 +54,6 @@ function loadAffiliates(): AffiliateProduct[] {
 }
 function saveAffiliates(items: AffiliateProduct[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-function loadConnected(): boolean {
-  return localStorage.getItem(CONNECTED_KEY) === "true";
-}
-function persistConnected(v: boolean) {
-  localStorage.setItem(CONNECTED_KEY, String(v));
 }
 
 /* ─── InformativeModal ──────────────────────────────────────── */
@@ -446,27 +439,25 @@ function AbaMinhaContaLoja() {
   );
 }
 
+/* ─── types ─────────────────────────────────────────────────── */
+interface ShopeeStatus {
+  configured: boolean;
+  shopId?: string | null;
+  updatedAt?: string | null;
+}
+
 /* ─── Shopee (root) ─────────────────────────────────────────── */
 export function Shopee() {
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"afiliado" | "conta">("afiliado");
-  const [connected, setConnected] = useState<boolean>(loadConnected);
-  const [connecting, setConnecting] = useState(false);
+  const [status, setStatus] = useState<ShopeeStatus | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
 
-  const handleConnect = async () => {
-    setConnecting(true);
-    await new Promise(r => setTimeout(r, 900));
-    setConnecting(false);
-    persistConnected(true);
-    setConnected(true);
-    toast({ description: "Conta Shopee conectada com sucesso." });
-  };
-
-  const handleDisconnect = () => {
-    persistConnected(false);
-    setConnected(false);
-    toast({ description: "Conta Shopee desconectada." });
-  };
+  useEffect(() => {
+    fetch("/api/shopee/status")
+      .then(r => r.json() as Promise<ShopeeStatus>)
+      .then(data => { setStatus(data); setLoadingStatus(false); })
+      .catch(() => { setStatus({ configured: false }); setLoadingStatus(false); });
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -481,39 +472,52 @@ export function Shopee() {
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight">Shopee</h1>
               <p className="text-xs text-muted-foreground mt-0.5 max-w-sm leading-relaxed">
-                Conecte sua conta Shopee, importe produtos, crie campanhas e organize suas vendas com Inteligência.
+                Importe produtos, crie campanhas e organize suas vendas com Inteligência.
               </p>
             </div>
           </div>
 
-          {/* Status + ação de conexão */}
+          {/* Status real da plataforma */}
           <div className="flex items-center gap-2 shrink-0">
             <AnimatePresence mode="wait">
-              {connected ? (
-                <motion.div key="connected" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2">
-                  <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 gap-1.5">
-                    <CheckCircle2 className="w-3 h-3" /> Conectado
+              {loadingStatus ? (
+                <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <Badge className="bg-white/5 text-muted-foreground border-white/10 gap-1.5">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Verificando...
                   </Badge>
-                  <Button size="sm" variant="outline" onClick={handleDisconnect}
-                    className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/50 h-8 text-xs">
-                    Desconectar
-                  </Button>
+                </motion.div>
+              ) : status?.configured ? (
+                <motion.div key="connected" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-end gap-0.5">
+                  <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 gap-1.5">
+                    <CheckCircle2 className="w-3 h-3" /> Conectado pela plataforma
+                  </Badge>
+                  {status.shopId && (
+                    <span className="text-[10px] text-muted-foreground/60">Shop ID: {status.shopId}</span>
+                  )}
                 </motion.div>
               ) : (
-                <motion.div key="disconnected" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2">
-                  <Badge className="bg-white/5 text-muted-foreground border-white/10 gap-1.5">
-                    <AlertCircle className="w-3 h-3" /> Não conectado
+                <motion.div key="unconfigured" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2">
+                  <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 gap-1.5">
+                    <WifiOff className="w-3 h-3" /> Aguardando configuração
                   </Badge>
-                  <Button size="sm" onClick={() => void handleConnect()} disabled={connecting}
-                    className="bg-orange-500 hover:bg-orange-400 text-white font-semibold h-8 text-xs gap-1.5">
-                    {connecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-                    Conectar Shopee
-                  </Button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </div>
+
+        {/* Banner informativo quando não configurado */}
+        {!loadingStatus && !status?.configured && (
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 mb-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-300">Conexão Shopee aguardando configuração das credenciais oficiais.</p>
+              <p className="text-xs text-amber-400/70 mt-0.5">
+                As funcionalidades de Minha Conta estarão disponíveis após a ativação. A aba Afiliado funciona normalmente sem conexão.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ─── Tabs ───────────────────────────────────────────── */}
         <div className="flex gap-1 p-1 bg-[#111111] border border-white/[0.06] rounded-lg w-fit mb-5">
