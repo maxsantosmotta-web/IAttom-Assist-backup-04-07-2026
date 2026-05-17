@@ -107,13 +107,14 @@ As áreas abaixo foram validadas e aprovadas. Nenhuma modificação deve ser fei
 - Se uma tarefa exigir alterar um arquivo protegido como efeito colateral, parar e informar antes de prosseguir.
 - Correções de bugs dentro de `LandingPage.tsx` restritas à lógica solicitada — layout, animações e fluxo Clerk não devem ser tocados.
 
-### PAINEL ADMINISTRATIVO — CONGELADO E VALIDADO
+### PAINEL ADMINISTRATIVO — CONGELADO E VALIDADO (TODOS OS MÓDULOS)
 
-O painel ADM está bloqueado em seu estado atual. Nenhuma alteração deve ser feita nos arquivos abaixo sem comando explícito e direto autorizando mudanças no painel administrativo:
+O painel ADM está bloqueado em seu estado atual — ESTRUTURA COMPLETA CONGELADA E VALIDADA. Nenhuma alteração deve ser feita nos arquivos abaixo sem comando explícito e direto autorizando mudanças no painel administrativo.
 
-| Arquivo | Motivo |
+| Arquivo | Módulo |
 |---|---|
-| `src/components/layout/AdminLayout.tsx` | Layout e nav do painel ADM |
+| `src/components/layout/AdminLayout.tsx` | Layout, sidebar e nav do painel ADM |
+| `src/pages/admin/AdminGuard.tsx` | Guarda de acesso admin |
 | `src/pages/admin/AdminOverview.tsx` | Visão Geral |
 | `src/pages/admin/AdminAnalytics.tsx` | Análises |
 | `src/pages/admin/AdminUsers.tsx` | Usuários |
@@ -121,9 +122,20 @@ O painel ADM está bloqueado em seu estado atual. Nenhuma alteração deve ser f
 | `src/pages/admin/AdminWaitlist.tsx` | Lista de Espera |
 | `src/pages/admin/AdminFeedback.tsx` | Feedback |
 | `src/pages/admin/AdminLaunchChecklist.tsx` | Checklist de Lançamento |
-| `src/pages/admin/AdminGuard.tsx` | Guarda de acesso admin |
+| `src/pages/admin/AdminIntegrations.tsx` | Integrações |
+| `src/pages/admin/AdminWhatsApp.tsx` | WhatsApp |
+| `src/pages/admin/AdminInstagram.tsx` | Instagram |
+| `src/pages/admin/AdminFacebook.tsx` | Facebook |
+| `src/pages/admin/AdminShopee.tsx` | Shopee |
+| `src/pages/admin/AdminTikTok.tsx` | TikTok |
+| `src/pages/admin/AdminMercadoLivre.tsx` | Mercado Livre |
+| `src/pages/admin/AdminHotmart.tsx` | Hotmart |
+| `src/pages/admin/AdminKiwify.tsx` | Kiwify |
+| `src/pages/admin/AdminTrash.tsx` | Lixeira |
 
-Proibido sem autorização explícita: traduções, ajustes visuais, layout, tabelas, gráficos, responsividade, textos, refatorações, componentes, alinhamentos, sidebar, cards, analytics.
+Proibido sem autorização explícita: layout, grid, cards, sidebar, navegação, estilos, responsividade, textos, cores, traduções, refatorações, componentes, alinhamentos, analytics, unificação com USER.
+
+Regra de isolamento: qualquer nova implementação deve ocorrer somente no USER, ou em novos componentes separados, sem reutilizar ou modificar componentes críticos do ADMIN.
 
 ## REGRA GLOBAL DE PROTEÇÃO — ESTRUTURA VISUAL OFICIAL BLOQUEADA
 
