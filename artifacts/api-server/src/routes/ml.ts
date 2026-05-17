@@ -9,6 +9,7 @@ import {
   mlEvents,
   trashItems,
   userMlConnections,
+  users,
 } from "@workspace/db";
 import { requireAdmin, type AdminRequest } from "../middlewares/requireAdmin.js";
 import { maskSecret } from "../lib/integrationUtils.js";
@@ -351,6 +352,47 @@ router.post("/ml/disconnect", requireAdmin, async (req, res): Promise<void> => {
   NotificationManager.info("Mercado Livre desconectado", "Tokens removidos.", "ml");
   LoggerManager.info("Account disconnected — tokens cleared", "ml");
   req.log.info("ml: account disconnected");
+  res.json({ ok: true });
+});
+
+// ─── ADMIN: List active user ML connections ────────────────────────────────────
+router.get("/ml/user-connections", requireAdmin, async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      id:               userMlConnections.id,
+      clerkUserId:      userMlConnections.clerkUserId,
+      platformUserId:   userMlConnections.platformUserId,
+      platformUsername: userMlConnections.platformUsername,
+      expiresAt:        userMlConnections.expiresAt,
+      isActive:         userMlConnections.isActive,
+      createdAt:        userMlConnections.createdAt,
+      updatedAt:        userMlConnections.updatedAt,
+      userEmail:        users.email,
+      userName:         users.name,
+    })
+    .from(userMlConnections)
+    .leftJoin(users, eq(userMlConnections.clerkUserId, users.clerkId))
+    .where(eq(userMlConnections.isActive, true))
+    .orderBy(desc(userMlConnections.createdAt));
+  res.json(rows);
+});
+
+// ─── ADMIN: Disconnect a specific user's ML connection ────────────────────────
+router.post("/ml/user-connections/:clerkUserId/disconnect", requireAdmin, async (req, res): Promise<void> => {
+  const targetClerkUserId = req.params["clerkUserId"] as string;
+  if (!targetClerkUserId) {
+    res.status(400).json({ error: "clerkUserId obrigatório." });
+    return;
+  }
+
+  await db
+    .update(userMlConnections)
+    .set({ isActive: false, updatedAt: new Date() })
+    .where(eq(userMlConnections.clerkUserId, targetClerkUserId));
+
+  const adminId = (req as AdminRequest).clerkUserId;
+  LoggerManager.info(`Admin disconnected user ML connection: ${targetClerkUserId}`, "ml");
+  req.log.info({ targetClerkUserId, adminId }, "ml: admin disconnected user ML connection");
   res.json({ ok: true });
 });
 

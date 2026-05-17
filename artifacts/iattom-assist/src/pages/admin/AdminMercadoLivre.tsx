@@ -85,6 +85,19 @@ interface MLEventItem {
   receivedAt?: string | null;
 }
 
+interface UserMlConnectionItem {
+  id: number;
+  clerkUserId: string;
+  platformUserId?: string | null;
+  platformUsername?: string | null;
+  expiresAt?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  userEmail?: string | null;
+  userName?: string | null;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -147,6 +160,14 @@ export function AdminMercadoLivre() {
   const [restoringProduct, setRestoringProduct] = useState<number | null>(null);
   const [permDeletingProduct, setPermDeletingProduct] = useState<number | null>(null);
   const [confirmPermDelete, setConfirmPermDelete]     = useState<MLProductItem | null>(null);
+  const [userConnections, setUserConnections]         = useState<UserMlConnectionItem[]>([]);
+  const [loadingUserConns, setLoadingUserConns]       = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect]     = useState<{
+    type: "admin" | "user";
+    clerkUserId?: string;
+    label: string;
+  } | null>(null);
+  const [disconnectingUser, setDisconnectingUser]     = useState<string | null>(null);
   const [testItemResult, setTestItemResult]     = useState<{
     ok: boolean; id?: string; permalink?: string; status?: string; error?: string;
   } | null>(null);
@@ -258,7 +279,18 @@ export function AdminMercadoLivre() {
     }
   };
 
-  useEffect(() => { void loadAll(); void loadEvents(); }, [loadAll]);
+  const loadUserConnections = async () => {
+    setLoadingUserConns(true);
+    try {
+      setUserConnections(await apiFetch<UserMlConnectionItem[]>("/api/ml/user-connections"));
+    } catch {
+      setUserConnections([]);
+    } finally {
+      setLoadingUserConns(false);
+    }
+  };
+
+  useEffect(() => { void loadAll(); void loadEvents(); void loadUserConnections(); }, [loadAll]);
 
   // ─── Save credentials ─────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -326,21 +358,45 @@ export function AdminMercadoLivre() {
     }
   };
 
-  // ─── Disconnect ───────────────────────────────────────────────────────────
-  const handleDisconnect = async () => {
-    setDisconnecting(true);
-    try {
-      await apiFetch("/api/ml/disconnect", { method: "POST" });
-      setOauthUrl(null);
-      toast({ title: "Conta desconectada", description: "Tokens do Mercado Livre removidos com sucesso." });
-      await loadAll();
-    } catch (e) {
-      toast({
-        title: "Erro ao desconectar",
-        description: e instanceof Error ? e.message : "Tente novamente.",
-        variant: "destructive",
-      });
-    } finally { setDisconnecting(false); }
+  // ─── Disconnect — opens confirm modal ────────────────────────────────────
+  const handleDisconnect = () => {
+    setConfirmDisconnect({ type: "admin", label: config?.nickname ?? "Conta Admin" });
+  };
+
+  const handleDisconnectConfirmed = async () => {
+    if (!confirmDisconnect) return;
+    if (confirmDisconnect.type === "admin") {
+      setDisconnecting(true);
+      setConfirmDisconnect(null);
+      try {
+        await apiFetch("/api/ml/disconnect", { method: "POST" });
+        setOauthUrl(null);
+        toast({ title: "Conta desconectada", description: "Tokens do Mercado Livre removidos com sucesso." });
+        await loadAll();
+      } catch (e) {
+        toast({
+          title: "Erro ao desconectar",
+          description: e instanceof Error ? e.message : "Tente novamente.",
+          variant: "destructive",
+        });
+      } finally { setDisconnecting(false); }
+    } else {
+      const uid = confirmDisconnect.clerkUserId!;
+      const label = confirmDisconnect.label;
+      setDisconnectingUser(uid);
+      setConfirmDisconnect(null);
+      try {
+        await apiFetch(`/api/ml/user-connections/${uid}/disconnect`, { method: "POST" });
+        toast({ title: "Usuário desconectado", description: `Conexão de ${label} removida.` });
+        void loadUserConnections();
+      } catch (e) {
+        toast({
+          title: "Erro ao desconectar usuário",
+          description: e instanceof Error ? e.message : "Tente novamente.",
+          variant: "destructive",
+        });
+      } finally { setDisconnectingUser(null); }
+    }
   };
 
   // ─── Refresh token ────────────────────────────────────────────────────────
@@ -518,6 +574,19 @@ export function AdminMercadoLivre() {
           <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
           <p className="text-sm text-red-300">Erro na autorização: <span className="font-mono">{errorMsg}</span></p>
           <button onClick={() => setBanner(null)} className="ml-auto text-zinc-500 hover:text-white text-xs">Fechar</button>
+        </div>
+      )}
+
+      {/* ─── SEÇÃO: Conexão Administrativa ──────────────────────────── */}
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="w-4 h-4 text-primary/70" />
+        <p className="text-sm font-semibold text-white">Conexão Administrativa</p>
+      </div>
+
+      {!config?.isActive && !loading && (
+        <div className="flex items-center gap-2.5 bg-white/3 border border-white/8 rounded-xl px-4 py-3">
+          <ShieldX className="w-4 h-4 text-zinc-600 shrink-0" />
+          <p className="text-sm text-zinc-500">Nenhuma conta administrativa conectada.</p>
         </div>
       )}
 
@@ -1096,6 +1165,132 @@ export function AdminMercadoLivre() {
           </div>
         );
       })()}
+
+      {/* ─── SEÇÃO: Conexões de Usuários ────────────────────────────── */}
+      <Card className="bg-white/3 border-white/8">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+              <User className="w-4 h-4 text-primary/70" />
+              Conexões de Usuários
+            </CardTitle>
+            <Button size="sm" variant="ghost"
+              onClick={() => void loadUserConnections()}
+              disabled={loadingUserConns}
+              className="h-7 px-2.5 text-zinc-500 hover:text-white border border-white/8 text-xs gap-1.5">
+              {loadingUserConns ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              Atualizar
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingUserConns ? (
+            <div className="flex items-center gap-2 text-zinc-500 text-sm py-4">
+              <Loader2 className="w-4 h-4 animate-spin" />Carregando...
+            </div>
+          ) : userConnections.length === 0 ? (
+            <p className="text-sm text-zinc-600 py-4 text-center">Nenhuma conexão de usuário ativa.</p>
+          ) : (
+            <div className="space-y-2">
+              {userConnections.map((conn) => {
+                const label = conn.userName || conn.userEmail || conn.clerkUserId;
+                const isExpired = conn.expiresAt ? new Date(conn.expiresAt) < new Date() : false;
+                const connDate = conn.createdAt
+                  ? new Date(conn.createdAt).toLocaleString("pt-BR", {
+                      day: "2-digit", month: "2-digit", year: "2-digit",
+                      hour: "2-digit", minute: "2-digit",
+                    })
+                  : "—";
+                const tokenLeft = fmtTokenExpiry(conn.expiresAt);
+                const isDisc = disconnectingUser === conn.clerkUserId;
+                return (
+                  <div key={conn.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/6">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <User className="w-3.5 h-3.5 text-primary/60" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-white truncate">{label}</p>
+                        {conn.userEmail && conn.userName && (
+                          <p className="text-[10px] text-zinc-500 truncate">{conn.userEmail}</p>
+                        )}
+                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                          {conn.platformUsername && (
+                            <span className="text-[10px] text-amber-400/80 font-mono">@{conn.platformUsername}</span>
+                          )}
+                          {isExpired ? (
+                            <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[9px]">Token expirado</Badge>
+                          ) : (
+                            <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[9px]">Ativo</Badge>
+                          )}
+                          {tokenLeft && !isExpired && (
+                            <span className="text-[10px] text-zinc-500">{tokenLeft}</span>
+                          )}
+                          <span className="text-[10px] text-zinc-600">Conectado: {connDate}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="ghost"
+                      onClick={() => setConfirmDisconnect({
+                        type: "user",
+                        clerkUserId: conn.clerkUserId,
+                        label: conn.platformUsername ?? conn.userEmail ?? conn.clerkUserId,
+                      })}
+                      disabled={isDisc}
+                      className="h-7 px-2.5 text-red-400/70 hover:text-red-300 border border-red-500/15 gap-1.5 text-xs whitespace-nowrap shrink-0">
+                      {isDisc ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />}
+                      Desconectar
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ─── MODAL: Confirmar desconexão ─────────────────────────────── */}
+      {confirmDisconnect && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-zinc-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                <LogOut className="w-4 h-4 text-red-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-white">Desconectar Mercado Livre</h3>
+                <p className="text-xs text-zinc-500 mt-0.5 truncate">{confirmDisconnect.label}</p>
+              </div>
+            </div>
+            <p className="text-sm text-zinc-400">Tem certeza que deseja desconectar esta conexão?</p>
+            <div className="flex items-start gap-2 bg-amber-500/8 border border-amber-500/20 rounded-lg px-3 py-2.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-300/80 leading-relaxed">Essa ação pode interromper a sincronização desta conta.</p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmDisconnect(null)}
+                disabled={disconnecting || !!disconnectingUser}
+                className="px-4 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => void handleDisconnectConfirmed()}
+                disabled={disconnecting || !!disconnectingUser}
+                className="px-4 py-2 text-sm rounded-lg bg-red-500/15 border border-red-500/25 text-red-400 hover:bg-red-500/25 hover:text-red-300 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {(disconnecting || !!disconnectingUser) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Confirmar desconexão
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* ─── CONFIRM DELETE DIALOG ──────────────────────────────────── */}
       {confirmDeleteProduct && (
