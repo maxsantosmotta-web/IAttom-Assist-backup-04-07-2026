@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Settings2, ArrowLeft, Save, Trash2, CheckCircle2, XCircle,
+  Settings2, Save, Trash2, CheckCircle2,
   Loader2, Eye, EyeOff, ShoppingBag, ShoppingCart, Flame,
   Zap, Phone, Instagram, Video, Copy, ExternalLink, Info,
-  Shield,
+  Shield, RefreshCw, TrendingUp, Clock, Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { useIntegrationStatus, type IntegrationId, type IntegrationEvent } from "@/hooks/useIntegrationStatus";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -134,9 +134,10 @@ function EnvSelect({ label, value, onChange, options }: {
 }
 
 /* ─── FormActions ────────────────────────────────────────────── */
-function FormActions({ onSave, onTest, onClear, saving, testing }: {
+function FormActions({ onSave, onTest, onClear, saving, testing, externalLink }: {
   onSave: () => void; onTest: () => void; onClear: () => void;
   saving: boolean; testing: boolean;
+  externalLink?: { href: string; label: string };
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-white/5">
@@ -151,30 +152,116 @@ function FormActions({ onSave, onTest, onClear, saving, testing }: {
         Testar configuração
       </Button>
       <Button onClick={onClear} disabled={saving || testing} variant="ghost"
-        className="text-red-400/70 hover:text-red-400 gap-1.5 h-8 text-xs ml-auto">
+        className="text-red-400/70 hover:text-red-400 gap-1.5 h-8 text-xs">
         <Trash2 className="w-3.5 h-3.5" /> Limpar
       </Button>
+      {externalLink && (
+        <Button type="button" variant="ghost"
+          onClick={() => window.open(externalLink.href, "_blank", "noopener,noreferrer")}
+          className="text-muted-foreground hover:text-white gap-1.5 h-8 text-xs ml-auto">
+          <ExternalLink className="w-3.5 h-3.5" />
+          {externalLink.label}
+        </Button>
+      )}
     </div>
   );
 }
 
 /* ─── Tab meta ───────────────────────────────────────────────── */
 const TABS: { id: IntegrationKey; label: string; icon: typeof ShoppingBag; color: string }[] = [
-  { id: "shopee",   label: "Shopee",          icon: ShoppingBag,  color: "text-orange-400" },
-  { id: "ml",       label: "Mercado Livre",   icon: ShoppingCart, color: "text-amber-400"  },
-  { id: "hotmart",  label: "Hotmart",         icon: Flame,        color: "text-red-400"    },
-  { id: "kiwify",   label: "Kiwify",          icon: Zap,          color: "text-violet-400" },
-  { id: "whatsapp", label: "WhatsApp",        icon: Phone,        color: "text-emerald-400"},
-  { id: "meta",     label: "Meta (IG + FB)",  icon: Instagram,    color: "text-pink-400"   },
-  { id: "tiktok",   label: "TikTok",          icon: Video,        color: "text-cyan-400"   },
+  { id: "shopee",   label: "Shopee",         icon: ShoppingBag,  color: "text-orange-400"  },
+  { id: "ml",       label: "Mercado Livre",  icon: ShoppingCart, color: "text-amber-400"   },
+  { id: "hotmart",  label: "Hotmart",        icon: Flame,        color: "text-red-400"     },
+  { id: "kiwify",   label: "Kiwify",         icon: Zap,          color: "text-violet-400"  },
+  { id: "whatsapp", label: "WhatsApp",       icon: Phone,        color: "text-emerald-400" },
+  { id: "meta",     label: "Meta (IG + FB)", icon: Instagram,    color: "text-pink-400"    },
+  { id: "tiktok",   label: "TikTok",         icon: Video,        color: "text-cyan-400"    },
 ];
+
+/* ─── Checklist ──────────────────────────────────────────────── */
+const CHECKLIST_ITEMS: { id: IntegrationId; icon: typeof ShoppingBag; iconColor: string; label: string }[] = [
+  { id: "whatsapp", icon: Phone,        iconColor: "text-emerald-400", label: "WhatsApp Cloud API — mensagens e automações"       },
+  { id: "meta",     icon: Instagram,    iconColor: "text-pink-400",    label: "Instagram Business + Facebook Pages"               },
+  { id: "shopee",   icon: ShoppingBag,  iconColor: "text-orange-400",  label: "Shopee Open Platform — produtos e pedidos"         },
+  { id: "ml",       icon: ShoppingCart, iconColor: "text-amber-400",   label: "Mercado Livre API — anúncios e pedidos"            },
+  { id: "hotmart",  icon: Flame,        iconColor: "text-red-400",     label: "Hotmart — produtos digitais e assinaturas"         },
+  { id: "kiwify",   icon: Zap,          iconColor: "text-violet-400",  label: "Kiwify — produtos digitais e checkout"             },
+];
+
+/* ─── Event feed helpers ─────────────────────────────────────── */
+const PLATFORM_COLORS: Record<string, string> = {
+  whatsapp: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  meta:     "bg-pink-500/15 text-pink-400 border-pink-500/30",
+  shopee:   "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  ml:       "bg-yellow-500/15 text-yellow-500 border-yellow-500/30",
+  hotmart:  "bg-red-500/15 text-red-400 border-red-500/30",
+  kiwify:   "bg-violet-500/15 text-violet-400 border-violet-500/30",
+};
+
+const EVENT_LABELS: Record<string, string> = {
+  PURCHASE_APPROVED:       "Compra Aprovada",
+  "order.approved":        "Compra Aprovada",
+  PURCHASE_BILLET_PRINTED: "Boleto/Pix",
+  "order.waiting_payment": "Aguardando",
+  PURCHASE_REFUNDED:       "Reembolso",
+  "order.refunded":        "Reembolso",
+  PURCHASE_CHARGEBACK:     "Chargeback",
+  "order.chargeback":      "Chargeback",
+  PURCHASE_CANCELED:       "Cancelado",
+  "order.canceled":        "Cancelado",
+  PURCHASE_ABANDONED:      "Abandono",
+  "order.abandoned":       "Abandono",
+  SUBSCRIPTION_ACTIVE:     "Assinatura",
+  "subscription.active":   "Assinatura",
+  SUBSCRIPTION_CANCELED:   "Assin. cancelada",
+  "subscription.canceled": "Assin. cancelada",
+  message:                 "Mensagem",
+  messages:                "Mensagem",
+  notification:            "Notificação",
+};
+
+const EVENT_COLORS: Record<string, string> = {
+  PURCHASE_APPROVED:    "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  "order.approved":     "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  PURCHASE_BILLET_PRINTED: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  PURCHASE_REFUNDED:    "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  PURCHASE_CHARGEBACK:  "bg-red-500/15 text-red-400 border-red-500/30",
+  PURCHASE_ABANDONED:   "bg-zinc-700/40 text-zinc-400 border-zinc-600/30",
+  SUBSCRIPTION_ACTIVE:  "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+};
+
+function GlobalEventRow({ ev }: { ev: IntegrationEvent }) {
+  const date = ev.receivedAt
+    ? new Date(ev.receivedAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+    : "—";
+  return (
+    <div className="flex flex-col gap-1 bg-white/2 border border-white/5 rounded-lg px-3 py-2 hover:bg-white/3 transition-colors">
+      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+        <Badge className={`text-[9px] font-medium ${PLATFORM_COLORS[ev.platform] ?? "bg-zinc-700/40 text-zinc-400 border-zinc-600/30"}`}>
+          {ev.platformLabel}
+        </Badge>
+        <Badge className={`text-[9px] ${EVENT_COLORS[ev.eventType] ?? "bg-zinc-700/40 text-zinc-400 border-zinc-600/30"}`}>
+          {EVENT_LABELS[ev.eventType] ?? ev.eventType}
+        </Badge>
+        <span className="text-xs text-zinc-400 truncate min-w-0 flex-1">
+          {ev.primaryText || ev.secondaryText || "—"}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 min-w-0">
+        {ev.value && <span className="text-xs text-zinc-500">R$ {ev.value}</span>}
+        <span className="text-[10px] text-zinc-700 tabular-nums ml-auto">{date}</span>
+      </div>
+    </div>
+  );
+}
 
 /* ─── AdminApiConfig ─────────────────────────────────────────── */
 export function AdminApiConfig() {
   const { toast } = useToast();
-  const [, navigate] = useLocation();
 
   const origin = window.location.origin;
+
+  const { statuses, events: intEvents, eventsLoading, refetchEvents } = useIntegrationStatus();
 
   const [activeTab, setActiveTab] = useState<IntegrationKey>("shopee");
   const [configs, setConfigs] = useState<AllConfigs | null>(null);
@@ -257,39 +344,43 @@ export function AdminApiConfig() {
     }
   };
 
-  const configStatus = (id: IntegrationKey) => configs?.[id];
+  const tabDot = (id: IntegrationKey): string => {
+    const cfg = configs?.[id];
+    if (!cfg?.configured) return "bg-zinc-600";
+    if (id === "tiktok") return "bg-amber-400";
+    const st = statuses.find(s => s.id === (id as IntegrationId));
+    if (st?.tokenExpired) return "bg-red-400";
+    if (st?.isActive) return "bg-emerald-400";
+    return "bg-amber-400";
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
 
         {/* ── Header ────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
-          <div className="flex items-start gap-3">
-            <button onClick={() => navigate("/admin/integrations")}
-              className="mt-0.5 text-muted-foreground hover:text-white transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div>
-              <div className="flex items-center gap-2 mb-0.5">
-                <Settings2 className="w-5 h-5 text-primary" />
-                <h1 className="text-xl font-bold text-white">Configuração de APIs</h1>
-                <Badge className="bg-red-500/15 text-red-400 border-red-500/20 text-[10px]">ADMIN</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground ml-7">
-                Cadastre as credenciais oficiais das plataformas para ativar conexões reais no IAttom Assist.
-              </p>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <Wifi className="w-5 h-5 text-primary" />
+              <h1 className="text-xl font-bold text-white">Integrações</h1>
+              <Badge className="bg-red-500/15 text-red-400 border-red-500/20 text-[10px]">ADMIN</Badge>
             </div>
+            <p className="text-sm text-muted-foreground ml-7">
+              Configuração de APIs e monitoramento de eventos
+            </p>
           </div>
-          <Button size="sm" variant="ghost" onClick={() => void loadConfigs()} disabled={loading}
+          <Button size="sm" variant="ghost"
+            onClick={() => { void loadConfigs(); refetchEvents(); }}
+            disabled={loading}
             className="h-7 px-2.5 text-muted-foreground hover:text-white gap-1.5 text-xs shrink-0">
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Settings2 className="w-3 h-3" />}
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
             Recarregar
           </Button>
         </div>
 
         {/* Security note */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-white/3 border border-white/6 ml-7">
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-white/3 border border-white/6 mb-4">
           <Shield className="w-3.5 h-3.5 text-primary/60 shrink-0 mt-0.5" />
           <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
             Credenciais salvas no banco de dados com mascaramento. Secrets nunca são expostos no painel do usuário.
@@ -298,27 +389,30 @@ export function AdminApiConfig() {
         </div>
 
         {/* ── Tab bar ───────────────────────────────────────────── */}
-        <div className="flex flex-wrap gap-1.5 p-1.5 bg-[#111111] border border-white/[0.06] rounded-xl ml-7">
-          {TABS.map(({ id, label, icon: Icon, color }) => {
-            const cfg = configStatus(id);
-            return (
-              <button key={id} onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  activeTab === id ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white"
-                }`}
-              >
-                <Icon className={`w-3 h-3 ${color}`} />
-                {label}
-                {cfg && (
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.configured ? "bg-emerald-400" : "bg-zinc-600"}`} />
-                )}
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap gap-1.5 p-1.5 bg-[#111111] border border-white/[0.06] rounded-xl mb-2">
+          {TABS.map(({ id, label, icon: Icon, color }) => (
+            <button key={id} onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                activeTab === id ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white"
+              }`}
+            >
+              <Icon className={`w-3 h-3 ${color}`} />
+              {label}
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tabDot(id)}`} />
+            </button>
+          ))}
+        </div>
+
+        {/* Status legend */}
+        <div className="flex flex-wrap items-center gap-4 text-[10px] text-zinc-600 mb-4 px-0.5">
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />Conectado e ativo</div>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-amber-400" />Configurado / inativo</div>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-400" />Token expirado</div>
+          <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />Não configurado</div>
         </div>
 
         {/* ── Tab content ──────────────────────────────────────── */}
-        <div className="ml-7">
+        <div>
           {loading ? (
             <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Carregando configurações...</span>
@@ -339,7 +433,7 @@ export function AdminApiConfig() {
                     <CallbackBox url={shopeeForm.redirectUrl || `${origin}${BASE}/api/shopee/oauth/callback`} label="Callback URL — cadastre em Shopee Open Platform" />
                     <div className="grid sm:grid-cols-2 gap-4">
                       <PlainInput label="Partner ID" name="partnerId" value={shopeeForm.partnerId}
-                        onChange={v => setShopeeForm(f => ({ ...f, partnerId: v }))} placeholder="Ex: 1234567" />
+                        onChange={v => setShopeeForm(f => ({ ...f, partnerId: v }))} placeholder="Ex: 20012345" />
                       <SecretInput label="Partner Key" name="partnerKey" value={shopeeForm.partnerKey}
                         onChange={v => setShopeeForm(f => ({ ...f, partnerKey: v }))} placeholder="Chave secreta do parceiro" />
                     </div>
@@ -353,6 +447,7 @@ export function AdminApiConfig() {
                       onTest={() => void test("shopee")}
                       onClear={() => void clear("shopee")}
                       saving={saving} testing={testing}
+                      externalLink={{ href: "https://open.shopee.com", label: "Abrir Shopee Open Platform" }}
                     />
                   </CardContent>
                 </Card>
@@ -369,7 +464,7 @@ export function AdminApiConfig() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <CallbackBox url={mlForm.redirectUri || `${origin}${BASE}/api/ml/oauth-callback`} label="Callback URL — cadastre no Mercado Livre Developers" />
+                    <CallbackBox url={mlForm.redirectUri || `${origin}${BASE}/api/ml/oauth-callback`} label="Redirect URI / Callback — cadastre no Mercado Livre Developers" />
                     <div className="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15">
                       <Info className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                       <p className="text-[11px] text-emerald-300/80">Mercado Livre já aparece conectado. Altere credenciais apenas se necessário — isso não reinicia tokens existentes.</p>
@@ -391,6 +486,7 @@ export function AdminApiConfig() {
                       onTest={() => void test("ml")}
                       onClear={() => void clear("ml")}
                       saving={saving} testing={testing}
+                      externalLink={{ href: "https://developers.mercadolivre.com.br", label: "Abrir Mercado Livre Developers" }}
                     />
                   </CardContent>
                 </Card>
@@ -410,7 +506,7 @@ export function AdminApiConfig() {
                     <CallbackBox url={`${origin}${BASE}/api/hotmart/webhook`} label="Webhook URL — cadastre no Hotmart Club" />
                     <div className="grid sm:grid-cols-2 gap-4">
                       <PlainInput label="Client ID" name="clientId" value={hotmartForm.clientId}
-                        onChange={v => setHotmartForm(f => ({ ...f, clientId: v }))} />
+                        onChange={v => setHotmartForm(f => ({ ...f, clientId: v }))} placeholder="Ex: a1b2c3d4-e5f6-..." />
                       <SecretInput label="Client Secret" name="clientSecret" value={hotmartForm.clientSecret}
                         onChange={v => setHotmartForm(f => ({ ...f, clientSecret: v }))} />
                     </div>
@@ -428,6 +524,7 @@ export function AdminApiConfig() {
                       onTest={() => void test("hotmart")}
                       onClear={() => void clear("hotmart")}
                       saving={saving} testing={testing}
+                      externalLink={{ href: "https://developers.hotmart.com", label: "Abrir Hotmart Developers" }}
                     />
                   </CardContent>
                 </Card>
@@ -447,12 +544,12 @@ export function AdminApiConfig() {
                     <CallbackBox url={`${origin}${BASE}/api/kiwify/webhook`} label="Webhook URL — cadastre no painel Kiwify" />
                     <div className="grid sm:grid-cols-2 gap-4">
                       <PlainInput label="Store ID" name="storeId" value={kiwifyForm.storeId}
-                        onChange={v => setKiwifyForm(f => ({ ...f, storeId: v }))} />
-                      <PlainInput label="Client ID" name="clientId" value={kiwifyForm.clientId}
-                        onChange={v => setKiwifyForm(f => ({ ...f, clientId: v }))} />
+                        onChange={v => setKiwifyForm(f => ({ ...f, storeId: v }))} placeholder="Ex: store_abc123" />
+                      <PlainInput label="Client ID / API Key" name="clientId" value={kiwifyForm.clientId}
+                        onChange={v => setKiwifyForm(f => ({ ...f, clientId: v }))} placeholder="Ex: kw_..." />
                     </div>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <SecretInput label="Client Secret" name="clientSecret" value={kiwifyForm.clientSecret}
+                      <SecretInput label="Client Secret / Token" name="clientSecret" value={kiwifyForm.clientSecret}
                         onChange={v => setKiwifyForm(f => ({ ...f, clientSecret: v }))} />
                       <SecretInput label="Webhook Secret" name="webhookSecret" value={kiwifyForm.webhookSecret}
                         onChange={v => setKiwifyForm(f => ({ ...f, webhookSecret: v }))} />
@@ -462,6 +559,7 @@ export function AdminApiConfig() {
                       onTest={() => void test("kiwify")}
                       onClear={() => void clear("kiwify")}
                       saving={saving} testing={testing}
+                      externalLink={{ href: "https://dashboard.kiwify.com.br", label: "Abrir Kiwify" }}
                     />
                   </CardContent>
                 </Card>
@@ -480,17 +578,10 @@ export function AdminApiConfig() {
                   <CardContent className="space-y-4">
                     <CallbackBox url={whatsappForm.webhookUrl} label="Webhook URL — configure no Meta Developers" />
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <PlainInput label="Meta App ID" name="metaAppId" value={metaForm.appId}
-                        onChange={v => setMetaForm(f => ({ ...f, appId: v }))}
-                        hint="Compartilhado com Instagram e Facebook" />
-                      <SecretInput label="Meta App Secret" name="metaAppSecret" value={metaForm.appSecret}
-                        onChange={v => setMetaForm(f => ({ ...f, appSecret: v }))} />
-                    </div>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <PlainInput label="WhatsApp Business Account ID" name="businessAccountId" value={whatsappForm.businessAccountId}
-                        onChange={v => setWhatsappForm(f => ({ ...f, businessAccountId: v }))} />
                       <PlainInput label="Phone Number ID" name="phoneNumberId" value={whatsappForm.phoneNumberId}
-                        onChange={v => setWhatsappForm(f => ({ ...f, phoneNumberId: v }))} />
+                        onChange={v => setWhatsappForm(f => ({ ...f, phoneNumberId: v }))} placeholder="Ex: 112345678901234" />
+                      <PlainInput label="WhatsApp Business Account ID" name="businessAccountId" value={whatsappForm.businessAccountId}
+                        onChange={v => setWhatsappForm(f => ({ ...f, businessAccountId: v }))} placeholder="Ex: 987654321098765" />
                     </div>
                     <div className="grid sm:grid-cols-2 gap-4">
                       <SecretInput label="Access Token (permanente)" name="accessToken" value={whatsappForm.accessToken}
@@ -498,6 +589,13 @@ export function AdminApiConfig() {
                       <SecretInput label="Verify Token (webhook)" name="verifyToken" value={whatsappForm.verifyToken}
                         onChange={v => setWhatsappForm(f => ({ ...f, verifyToken: v }))}
                         hint="Token criado por você para validação do webhook" />
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <PlainInput label="Meta App ID" name="metaAppId" value={metaForm.appId}
+                        onChange={v => setMetaForm(f => ({ ...f, appId: v }))}
+                        hint="Compartilhado com Instagram e Facebook" />
+                      <SecretInput label="App Secret (Meta)" name="metaAppSecret" value={metaForm.appSecret}
+                        onChange={v => setMetaForm(f => ({ ...f, appSecret: v }))} />
                     </div>
                     <FormActions
                       onSave={async () => {
@@ -509,6 +607,7 @@ export function AdminApiConfig() {
                       onTest={() => void test("whatsapp")}
                       onClear={() => void clear("whatsapp")}
                       saving={saving} testing={testing}
+                      externalLink={{ href: "https://developers.facebook.com", label: "Abrir Meta Developers" }}
                     />
                   </CardContent>
                 </Card>
@@ -529,8 +628,8 @@ export function AdminApiConfig() {
                     <CallbackBox url={metaForm.webhookUrl} label="Webhook URL — configure no Meta Developers" />
                     <div className="grid sm:grid-cols-2 gap-4">
                       <PlainInput label="Meta App ID" name="appId" value={metaForm.appId}
-                        onChange={v => setMetaForm(f => ({ ...f, appId: v }))} />
-                      <SecretInput label="Meta App Secret" name="appSecret" value={metaForm.appSecret}
+                        onChange={v => setMetaForm(f => ({ ...f, appId: v }))} placeholder="Ex: 1234567890123456" />
+                      <SecretInput label="App Secret" name="appSecret" value={metaForm.appSecret}
                         onChange={v => setMetaForm(f => ({ ...f, appSecret: v }))} />
                     </div>
                     <div className="grid sm:grid-cols-2 gap-4">
@@ -550,6 +649,7 @@ export function AdminApiConfig() {
                       onTest={() => void test("meta")}
                       onClear={() => void clear("meta")}
                       saving={saving} testing={testing}
+                      externalLink={{ href: "https://developers.facebook.com", label: "Abrir Meta Developers" }}
                     />
                   </CardContent>
                 </Card>
@@ -569,7 +669,7 @@ export function AdminApiConfig() {
                     <CallbackBox url={tiktokForm.redirectUri || `${origin}${BASE}/api/tiktok/oauth/callback`} label="Callback URL — cadastre no TikTok for Developers" />
                     <div className="grid sm:grid-cols-2 gap-4">
                       <PlainInput label="Client Key" name="clientKey" value={tiktokForm.clientKey}
-                        onChange={v => setTiktokForm(f => ({ ...f, clientKey: v }))} />
+                        onChange={v => setTiktokForm(f => ({ ...f, clientKey: v }))} placeholder="Ex: awexxxxxxxxxxx" />
                       <SecretInput label="Client Secret" name="clientSecret" value={tiktokForm.clientSecret}
                         onChange={v => setTiktokForm(f => ({ ...f, clientSecret: v }))} />
                     </div>
@@ -582,6 +682,7 @@ export function AdminApiConfig() {
                       onTest={() => void test("tiktok")}
                       onClear={() => void clear("tiktok")}
                       saving={saving} testing={testing}
+                      externalLink={{ href: "https://developers.tiktok.com", label: "Abrir TikTok Developers" }}
                     />
                   </CardContent>
                 </Card>
@@ -589,6 +690,93 @@ export function AdminApiConfig() {
             </>
           )}
         </div>
+
+        {/* ── Feed Global de Eventos ───────────────────────────── */}
+        <Card className="bg-white/3 border-white/8">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary/70" />
+                Feed Global de Eventos
+                <Badge className="bg-white/5 text-zinc-400 border-white/10 text-[10px] font-normal">
+                  {intEvents.length}
+                </Badge>
+              </CardTitle>
+              <Button size="sm" variant="ghost"
+                onClick={refetchEvents}
+                disabled={eventsLoading}
+                className="h-7 px-2 text-zinc-500 hover:text-white gap-1.5 text-xs">
+                <RefreshCw className={`w-3 h-3 ${eventsLoading ? "animate-spin" : ""}`} />
+                Atualizar
+              </Button>
+            </div>
+            <p className="text-[11px] text-zinc-600">
+              Últimos 50 eventos de todas as integrações, unificados e ordenados por data.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {eventsLoading ? (
+              <div className="flex items-center gap-2 text-zinc-500 text-sm py-8 justify-center">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Carregando eventos...
+              </div>
+            ) : intEvents.length === 0 ? (
+              <div className="text-center py-12 text-zinc-600">
+                <Clock className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">Nenhum evento recebido ainda.</p>
+                <p className="text-xs text-zinc-700 mt-1">
+                  Configure os webhooks em cada integração para ver os eventos aqui.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {intEvents.map((ev, idx) => (
+                  <GlobalEventRow key={`${ev.platform}-${ev.eventType}-${idx}`} ev={ev} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ── Checklist de Webhooks ────────────────────────────── */}
+        <Card className="bg-white/3 border-white/8">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-primary/70" />
+              Checklist de Webhooks
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {CHECKLIST_ITEMS.map((item) => {
+                const s = statuses.find(st => st.id === item.id);
+                const Icon = item.icon;
+                const isActive  = s?.isActive && !s?.tokenExpired;
+                const isExpired = s?.tokenExpired;
+                const isConfigured = s?.configured;
+                return (
+                  <div key={item.id}
+                    className="flex items-center gap-3 bg-white/2 border border-white/5 rounded-lg px-3 py-2.5">
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${item.iconColor}`} />
+                    <span className="text-xs text-zinc-300 flex-1">{item.label}</span>
+                    <Badge className={`text-[9px] shrink-0 ${
+                      isActive
+                        ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                        : isExpired
+                          ? "bg-red-500/15 text-red-400 border-red-500/30"
+                          : isConfigured
+                            ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                            : "bg-zinc-700/40 text-zinc-600 border-zinc-700"
+                    }`}>
+                      {isActive ? "Webhook ativo" : isExpired ? "Erro" : isConfigured ? "Configurado" : "Pendente"}
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
       </motion.div>
     </div>
   );
