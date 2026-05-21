@@ -16,6 +16,8 @@ import { SidebarLayout } from "@/components/layout/SidebarLayout";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { AdminGuard } from "@/pages/admin/AdminGuard";
 import { LandingPage } from "@/pages/LandingPage";
+import { TermsPage } from "@/pages/TermsPage";
+import { PrivacyPage } from "@/pages/PrivacyPage";
 import { BetaGate } from "@/components/BetaGate";
 import { PlanGate } from "@/components/PlanGate";
 
@@ -354,6 +356,8 @@ function ClerkProviderWithRoutes() {
               <Route path="/onboarding/*?" component={ProtectedOnboarding} />
               <Route path="/dashboard/*?" component={ProtectedDashboard} />
               <Route path="/admin/*?" component={ProtectedAdmin} />
+              <Route path="/terms" component={TermsPage} />
+              <Route path="/privacy" component={PrivacyPage} />
               <Route component={NotFound} />
             </Switch>
           </ErrorBoundary>
