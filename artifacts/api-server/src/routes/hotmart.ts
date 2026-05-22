@@ -19,6 +19,10 @@ import {
 
 const router: IRouter = Router();
 
+// Set to true once real Hotmart OAuth/API credentials are validated and ready.
+// While false: connect/disconnect are blocked, user status always returns "not configured",
+// and the admin user-connections list returns empty.
+const HOTMART_INTEGRATION_READY = false;
 
 // ─── PUBLIC: Receive Hotmart webhook events ───────────────────────────────────
 router.post("/hotmart/webhook", (req, res): void => {
@@ -348,19 +352,6 @@ router.delete("/hotmart/products/:id", requireAdmin, async (req, res): Promise<v
   res.json({ ok: true });
 });
 
-// ─── One-time mock data purge (remove this route after use) ───────────────────
-router.post("/hotmart/purge-mock-data", async (_req, res): Promise<void> => {
-  const deletedEvents = await db
-    .delete(hotmartEvents)
-    .where(eq(hotmartEvents.buyerName, "Teste Comprador"))
-    .returning({ id: hotmartEvents.id });
-  const deletedProducts = await db
-    .delete(hotmartProducts)
-    .where(eq(hotmartProducts.productId, "6095971"))
-    .returning({ id: hotmartProducts.id });
-  res.json({ ok: true, deletedEvents: deletedEvents.length, deletedProducts: deletedProducts.length });
-});
-
 // ─── ADMIN: List events ───────────────────────────────────────────────────────
 router.get("/hotmart/events", requireAdmin, async (_req, res): Promise<void> => {
   const events = await db
@@ -373,6 +364,7 @@ router.get("/hotmart/events", requireAdmin, async (_req, res): Promise<void> => 
 
 // ─── ADMIN: List per-user connections (monitoring only) ───────────────────────
 router.get("/hotmart/user-connections", requireAdmin, async (_req, res): Promise<void> => {
+  if (!HOTMART_INTEGRATION_READY) { res.json([]); return; }
   const connections = await db
     .select({
       id: userHotmartConnections.id,
@@ -390,8 +382,12 @@ router.get("/hotmart/user-connections", requireAdmin, async (_req, res): Promise
   res.json(connections);
 });
 
-// ─── USER: Connect — activate using ADM central credentials ──────────────────
+// ─── USER: Connect — blocked until real OAuth is ready ───────────────────────
 router.post("/hotmart/user/connect", requireAuth, async (req, res): Promise<void> => {
+  if (!HOTMART_INTEGRATION_READY) {
+    res.status(503).json({ error: "Integração Hotmart em preparação. Aguarde a configuração da central." });
+    return;
+  }
   const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
 
   const [config] = await db.select().from(hotmartConfig).limit(1);
@@ -430,6 +426,10 @@ router.post("/hotmart/user/connect", requireAuth, async (req, res): Promise<void
 
 // ─── USER: Integration status (per-user) ─────────────────────────────────────
 router.get("/hotmart/user/integration-status", requireAuth, async (req, res): Promise<void> => {
+  if (!HOTMART_INTEGRATION_READY) {
+    res.json({ configured: false, isActive: false, platformUsername: null, connectedAt: null, tokenExpired: false });
+    return;
+  }
   const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
 
   // Also check if platform is configured at all
