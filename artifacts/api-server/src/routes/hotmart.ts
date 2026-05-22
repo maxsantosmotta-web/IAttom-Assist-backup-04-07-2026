@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, isNull, isNotNull, and } from "drizzle-orm";
+import { eq, desc, isNull, isNotNull, and, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db,
@@ -484,34 +484,30 @@ router.post("/hotmart/user/disconnect", requireAuth, async (req, res): Promise<v
 });
 
 
-// ─── USER: List products (requires active per-user connection) ────────────────
+// ─── USER: List products (filtered by user's claimed product_ids) ─────────────
 router.get("/hotmart/user/products", requireAuth, async (req, res): Promise<void> => {
   const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
 
-  const [conn] = await db
-    .select()
-    .from(userHotmartConnections)
-    .where(
-      and(
-        eq(userHotmartConnections.clerkUserId, clerkUserId),
-        eq(userHotmartConnections.isActive, true),
-      ),
-    )
-    .limit(1);
+  const claims = await db
+    .select({ productId: userHotmartProductClaims.productId })
+    .from(userHotmartProductClaims)
+    .where(eq(userHotmartProductClaims.clerkUserId, clerkUserId));
 
-  if (!conn) {
+  if (claims.length === 0) {
     res.json([]);
     return;
   }
 
+  const claimedIds = claims.map((c) => c.productId);
+
   const products = await db
     .select()
     .from(hotmartProducts)
-    .where(isNull(hotmartProducts.deletedAt))
+    .where(and(isNull(hotmartProducts.deletedAt), inArray(hotmartProducts.productId, claimedIds)))
     .orderBy(desc(hotmartProducts.syncedAt))
     .limit(100);
 
-  req.log.info({ count: products.length, clerkUserId }, "hotmart user: products listed");
+  req.log.info({ count: products.length, clerkUserId }, "hotmart user: products listed by claims");
   res.json(products);
 });
 
