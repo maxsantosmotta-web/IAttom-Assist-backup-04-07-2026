@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Flame, RefreshCw, Loader2, Activity, Clock, BarChart2,
   Settings, WifiOff, CheckCircle2, ExternalLink, Package,
-  Zap, ShoppingBag, XCircle, Globe, Webhook,
+  Zap, ShoppingBag, XCircle, Globe, Webhook, Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,6 @@ interface HotmartPlatformConfig {
   configured: boolean;
   isActive: boolean;
   environment?: string;
-  clientId?: string;
   webhookToken?: string;
   updatedAt?: string;
 }
@@ -118,7 +117,7 @@ export function AdminHotmart() {
     setTestResult(null);
     try {
       const data = await apiFetch<{ ok: boolean; message?: string }>("/api/hotmart/test", { method: "POST" });
-      setTestResult({ ok: true, message: data.message ?? "Conexão com a API Hotmart estabelecida com sucesso." });
+      setTestResult({ ok: true, message: data.message ?? "Comunicação com a API Hotmart estabelecida com sucesso." });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Falha ao testar conexão.";
       setTestResult({ ok: false, message: msg });
@@ -132,7 +131,7 @@ export function AdminHotmart() {
     try {
       const data = await apiFetch<{ ok: boolean; synced: number }>("/api/hotmart/sync-products", { method: "POST" });
       await loadProducts();
-      setTestResult({ ok: true, message: `Sincronização concluída: ${data.synced} produto(s) atualizado(s).` });
+      setTestResult({ ok: true, message: `Sincronização técnica concluída: ${data.synced} produto(s) detectado(s) pela integração.` });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Falha na sincronização.";
       setTestResult({ ok: false, message: msg });
@@ -145,20 +144,21 @@ export function AdminHotmart() {
   const isPlatformConfigured = platformConfig?.configured ?? false;
   const isPlatformActive     = platformConfig?.isActive ?? false;
   const hasWebhook           = !!(platformConfig?.webhookToken);
-  const environmentLabel     = platformConfig?.environment === "production" ? "Produção" : platformConfig?.environment === "sandbox" ? "Sandbox" : "Não configurado";
+  const environmentLabel     = platformConfig?.environment === "production"
+    ? "Produção" : platformConfig?.environment === "sandbox" ? "Sandbox" : "Não configurado";
 
   const kpis = [
-    {
-      label: "Total de Produtos",
-      value: String(products.length),
-      icon: Package,
-      color: "text-red-400",
-    },
     {
       label: "Eventos Recebidos",
       value: String(events.length),
       icon: Activity,
       color: "text-emerald-400",
+    },
+    {
+      label: "Saúde da API",
+      value: isPlatformActive ? "Online" : isPlatformConfigured ? "Inativo" : "Pendente",
+      icon: Zap,
+      color: isPlatformActive ? "text-emerald-400" : "text-amber-400",
     },
     {
       label: "Ambiente",
@@ -167,7 +167,7 @@ export function AdminHotmart() {
       color: "text-amber-400",
     },
     {
-      label: "Última Atualização",
+      label: "Última Verificação",
       value: lastUpdated
         ? lastUpdated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
         : "Nunca",
@@ -187,14 +187,14 @@ export function AdminHotmart() {
               <Flame className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">Hotmart</h1>
-              <p className="text-xs text-zinc-500">Central da plataforma Hotmart — produtos, eventos e configuração.</p>
+              <h1 className="text-lg font-bold text-white">Hotmart — Central da Plataforma</h1>
+              <p className="text-xs text-zinc-500">Monitoramento da integração, webhooks, eventos e saúde da API.</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {isPlatformConfigured && isPlatformActive ? (
               <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">
-                <CheckCircle2 className="w-2.5 h-2.5 mr-1" />Plataforma Configurada
+                <CheckCircle2 className="w-2.5 h-2.5 mr-1" />Integração Ativa
               </Badge>
             ) : isPlatformConfigured ? (
               <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
@@ -223,15 +223,25 @@ export function AdminHotmart() {
         </div>
       </motion.div>
 
-      {/* ─── Platform status note ─────────────────────────────────── */}
+      {/* ─── Nota operacional da plataforma ──────────────────────── */}
+      <div className="rounded-lg bg-zinc-900/60 border border-white/8 px-4 py-3 flex items-start gap-3">
+        <Info className="w-3.5 h-3.5 text-zinc-500 shrink-0 mt-0.5" />
+        <p className="text-[11px] text-zinc-500 leading-relaxed">
+          A Hotmart é operada como <span className="text-zinc-300 font-medium">central da plataforma IAttom</span>.
+          Usuários não conectam contas pessoais nesta fase. A central serve para campanhas, automações,
+          monitoramento de eventos e integração com o ecossistema de vendas da plataforma.
+        </p>
+      </div>
+
+      {/* ─── Aviso de configuração pendente ──────────────────────── */}
       {!isPlatformConfigured && (
         <div className="rounded-lg bg-amber-500/8 border border-amber-500/20 px-4 py-3 text-xs text-amber-400/80 leading-relaxed">
-          As credenciais da plataforma Hotmart ainda não foram configuradas.
-          Configure em <span className="font-semibold">Integrações</span> para ativar a sincronização de produtos e o recebimento de eventos.
+          As credenciais da integração Hotmart ainda não foram configuradas.
+          Configure em <span className="font-semibold">Integrações</span> para ativar o recebimento de eventos e a comunicação com a API.
         </div>
       )}
 
-      {/* ─── KPIs ────────────────────────────────────────────────── */}
+      {/* ─── KPIs de operação ────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpis.map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="bg-white/3 border-white/8">
@@ -246,13 +256,13 @@ export function AdminHotmart() {
         ))}
       </div>
 
-      {/* ─── Status da Central ───────────────────────────────────── */}
+      {/* ─── Status Operacional ───────────────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
               <Globe className="w-4 h-4 text-zinc-500" />
-              Status da Central
+              Status Operacional
             </CardTitle>
             <Button size="sm" variant="outline"
               onClick={() => void handleTestConnection()}
@@ -265,18 +275,17 @@ export function AdminHotmart() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Grid de status */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="space-y-1">
               <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Ambiente</p>
               <p className="text-xs font-medium text-white">{environmentLabel}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Credenciais</p>
+              <p className="text-[10px] text-zinc-600 uppercase tracking-wider">API</p>
               {isPlatformActive ? (
-                <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[9px] px-1.5">Ativas</Badge>
+                <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[9px] px-1.5">Credenciais ativas</Badge>
               ) : isPlatformConfigured ? (
-                <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[9px] px-1.5">Inativas</Badge>
+                <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[9px] px-1.5">Credenciais inativas</Badge>
               ) : (
                 <Badge className="bg-zinc-500/15 text-zinc-500 border-zinc-500/30 text-[9px] px-1.5">Pendente</Badge>
               )}
@@ -292,7 +301,7 @@ export function AdminHotmart() {
               )}
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Atualizado em</p>
+              <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Última atualização</p>
               <p className="text-xs font-medium text-white">
                 {platformConfig?.updatedAt
                   ? new Date(platformConfig.updatedAt).toLocaleString("pt-BR", {
@@ -304,7 +313,6 @@ export function AdminHotmart() {
             </div>
           </div>
 
-          {/* Resultado do teste */}
           {testResult && (
             <div className={`flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs leading-relaxed ${
               testResult.ok
@@ -320,94 +328,12 @@ export function AdminHotmart() {
         </CardContent>
       </Card>
 
-      {/* ─── Produtos Sincronizados ───────────────────────────────── */}
-      <Card className="bg-white/3 border-white/8">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <Package className="w-4 h-4 text-zinc-500" />
-              Produtos Sincronizados
-              {products.length > 0 && (
-                <span className="text-[11px] font-normal text-zinc-500">({products.length})</span>
-              )}
-            </CardTitle>
-            <Button size="sm" variant="outline"
-              onClick={() => void handleSyncProducts()}
-              disabled={syncingProducts || !isPlatformConfigured}
-              className="border-white/10 text-zinc-400 hover:text-white h-7 gap-1.5 text-xs">
-              {syncingProducts
-                ? <><Loader2 className="w-3 h-3 animate-spin" />Sincronizando...</>
-                : <><RefreshCw className="w-3 h-3" />Sincronizar Produtos</>}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center gap-2 px-5">
-              <div className="w-10 h-10 rounded-full bg-white/3 border border-white/8 flex items-center justify-center mb-1">
-                <Package className="w-4 h-4 text-zinc-700" />
-              </div>
-              <p className="text-sm text-zinc-500">Nenhum produto sincronizado.</p>
-              <p className="text-[11px] text-zinc-700 max-w-xs">
-                Configure as credenciais Hotmart e clique em "Sincronizar Produtos".
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-white/5">
-                    <th className="text-left text-[10px] text-zinc-600 uppercase tracking-wider px-5 py-2.5 font-medium">Nome</th>
-                    <th className="text-left text-[10px] text-zinc-600 uppercase tracking-wider px-3 py-2.5 font-medium">ID</th>
-                    <th className="text-left text-[10px] text-zinc-600 uppercase tracking-wider px-3 py-2.5 font-medium hidden sm:table-cell">Formato</th>
-                    <th className="text-left text-[10px] text-zinc-600 uppercase tracking-wider px-3 py-2.5 font-medium">Status</th>
-                    <th className="text-right text-[10px] text-zinc-600 uppercase tracking-wider px-5 py-2.5 font-medium hidden md:table-cell">Preço</th>
-                    <th className="text-right text-[10px] text-zinc-600 uppercase tracking-wider px-5 py-2.5 font-medium hidden lg:table-cell">Sincronizado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {products.map((product) => (
-                    <tr key={product.id} className="hover:bg-white/2 transition-colors">
-                      <td className="px-5 py-3 text-white font-medium truncate max-w-[160px]">
-                        {product.name ?? "—"}
-                      </td>
-                      <td className="px-3 py-3 text-zinc-500 font-mono">{product.productId}</td>
-                      <td className="px-3 py-3 text-zinc-500 hidden sm:table-cell">{product.format ?? "—"}</td>
-                      <td className="px-3 py-3">
-                        {product.status === "ACTIVE" ? (
-                          <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[9px] px-1.5">Ativo</Badge>
-                        ) : (
-                          <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/30 text-[9px] px-1.5">{product.status ?? "—"}</Badge>
-                        )}
-                      </td>
-                      <td className="px-5 py-3 text-right text-zinc-400 hidden md:table-cell">
-                        {product.price && product.price !== "0"
-                          ? `${product.currency ?? "BRL"} ${product.price}`
-                          : "—"}
-                      </td>
-                      <td className="px-5 py-3 text-right text-zinc-600 hidden lg:table-cell">
-                        {product.syncedAt
-                          ? new Date(product.syncedAt).toLocaleString("pt-BR", {
-                              day: "2-digit", month: "2-digit", year: "2-digit",
-                              hour: "2-digit", minute: "2-digit",
-                            })
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ─── Últimos Eventos / Vendas ─────────────────────────────── */}
+      {/* ─── Eventos / Webhooks Recebidos ─────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
             <ShoppingBag className="w-4 h-4 text-zinc-500" />
-            Últimos Eventos / Vendas
+            Eventos Recebidos via Webhook
             {events.length > 0 && (
               <span className="text-[11px] font-normal text-zinc-500">({events.length})</span>
             )}
@@ -421,7 +347,7 @@ export function AdminHotmart() {
               </div>
               <p className="text-sm text-zinc-500">Nenhum evento recebido ainda.</p>
               <p className="text-[11px] text-zinc-700 max-w-xs">
-                Configure o webhook Hotmart para que compras e cancelamentos apareçam aqui em tempo real.
+                Configure o webhook Hotmart para que compras, cancelamentos e outros eventos da plataforma apareçam aqui em tempo real.
               </p>
             </div>
           ) : (
@@ -461,6 +387,80 @@ export function AdminHotmart() {
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ─── Dados técnicos da integração (secundário) ────────────── */}
+      <Card className="bg-white/3 border-white/8">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+                <Package className="w-4 h-4 text-zinc-500" />
+                Dados Técnicos da Integração
+                {products.length > 0 && (
+                  <span className="text-[11px] font-normal text-zinc-500">({products.length})</span>
+                )}
+              </CardTitle>
+              <p className="text-[10px] text-zinc-600">
+                Produtos detectados pela integração quando disponíveis — não é um catálogo editável.
+              </p>
+            </div>
+            <Button size="sm" variant="ghost"
+              onClick={() => void handleSyncProducts()}
+              disabled={syncingProducts || !isPlatformConfigured}
+              className="text-zinc-600 hover:text-zinc-300 h-7 gap-1.5 text-xs shrink-0">
+              {syncingProducts
+                ? <><Loader2 className="w-3 h-3 animate-spin" />Sincronizando...</>
+                : <><RefreshCw className="w-3 h-3" />Sincronizar via API</>}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {products.length === 0 ? (
+            <div className="flex items-center gap-3 px-5 py-5 text-zinc-700 text-xs">
+              <Package className="w-4 h-4 shrink-0" />
+              Nenhum produto detectado pela integração. Execute a sincronização via API para verificar.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="text-left text-[10px] text-zinc-600 uppercase tracking-wider px-5 py-2 font-medium">Nome</th>
+                    <th className="text-left text-[10px] text-zinc-600 uppercase tracking-wider px-3 py-2 font-medium">ID</th>
+                    <th className="text-left text-[10px] text-zinc-600 uppercase tracking-wider px-3 py-2 font-medium hidden sm:table-cell">Status</th>
+                    <th className="text-right text-[10px] text-zinc-600 uppercase tracking-wider px-5 py-2 font-medium hidden md:table-cell">Sincronizado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {products.map((product) => (
+                    <tr key={product.id} className="hover:bg-white/2 transition-colors">
+                      <td className="px-5 py-3 text-zinc-300 truncate max-w-[160px]">
+                        {product.name ?? "—"}
+                      </td>
+                      <td className="px-3 py-3 text-zinc-600 font-mono">{product.productId}</td>
+                      <td className="px-3 py-3 hidden sm:table-cell">
+                        {product.status === "ACTIVE" ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[9px] px-1.5">Ativo</Badge>
+                        ) : (
+                          <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/30 text-[9px] px-1.5">{product.status ?? "—"}</Badge>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-right text-zinc-600 hidden md:table-cell">
+                        {product.syncedAt
+                          ? new Date(product.syncedAt).toLocaleString("pt-BR", {
+                              day: "2-digit", month: "2-digit", year: "2-digit",
+                              hour: "2-digit", minute: "2-digit",
+                            })
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
