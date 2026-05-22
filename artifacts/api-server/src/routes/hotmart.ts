@@ -248,18 +248,6 @@ router.post("/hotmart/sync-products", requireAdmin, async (req, res): Promise<vo
 
 // ─── ADMIN: List products ─────────────────────────────────────────────────────
 router.get("/hotmart/products", requireAdmin, async (req, res): Promise<void> => {
-  const DEFAULT_PRODUCT = {
-    productId: "6095971",
-    name: "Desbloqueando Sua Energia",
-    format: "Produto próprio",
-    status: "ACTIVE",
-    price: "0",
-    currency: "BRL",
-    syncedAt: new Date(),
-  } as const;
-
-  await db.insert(hotmartProducts).values(DEFAULT_PRODUCT).onConflictDoNothing();
-
   const products = await db
     .select()
     .from(hotmartProducts)
