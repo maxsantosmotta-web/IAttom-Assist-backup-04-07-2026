@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Flame, Loader2, X, Info, Package, ClipboardList,
   RefreshCw, ShoppingBag, DollarSign,
-  Tag, CheckCircle2, WifiOff, ExternalLink,
+  Tag, CheckCircle2, WifiOff, Plus, Minus,
+  Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,6 +77,8 @@ function InformativeModal({
   );
 }
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface HotmartProduct {
   id: number;
   productId: string;
@@ -98,13 +101,14 @@ interface HotmartEvent {
   receivedAt?: string | null;
 }
 
-interface IntegrationStatus {
-  configured: boolean;
-  isActive: boolean;
-  platformUsername?: string | null;
-  connectedAt?: string | null;
-  tokenExpired?: boolean;
+interface HotmartClaim {
+  id: number;
+  clerkUserId: string;
+  productId: string;
+  createdAt: string;
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function thirtyDaysAgo() {
   const d = new Date();
@@ -121,22 +125,38 @@ function revenueIn30d(events: HotmartEvent[]): string {
   return total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export function Hotmart() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
-  const [products, setProducts] = useState<HotmartProduct[]>([]);
-  const [events, setEvents] = useState<HotmartEvent[]>([]);
+  // products & events (filtered by claims via backend)
+  const [products, setProducts]             = useState<HotmartProduct[]>([]);
+  const [events, setEvents]                 = useState<HotmartEvent[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
-  const [loadingEvents, setLoadingEvents] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [modal, setModal] = useState<{ title: string; description: string; action?: { label: string; onClick: () => void } } | null>(null);
-  const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatus | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(true);
-  const [connecting, setConnecting] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
+  const [loadingEvents, setLoadingEvents]   = useState(false);
+  const [syncing, setSyncing]               = useState(false);
+  const [syncError, setSyncError]           = useState<string | null>(null);
+
+  // claims
+  const [claimedProducts, setClaimedProducts] = useState<HotmartClaim[]>([]);
+  const [loadingClaims, setLoadingClaims]     = useState(true);
+
+  // claim panel
+  const [showClaimPanel, setShowClaimPanel]       = useState(false);
+  const [availableProducts, setAvailableProducts] = useState<HotmartProduct[]>([]);
+  const [loadingAvailable, setLoadingAvailable]   = useState(false);
+  const [claimingId, setClaimingId]               = useState<string | null>(null);
+
+  // UI
+  const [modal, setModal]                   = useState<{ title: string; description: string; action?: { label: string; onClick: () => void } } | null>(null);
+  const [disconnecting, setDisconnecting]   = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+
+  // derived
+  const isConnected = claimedProducts.length > 0;
+  const claimedIds  = new Set(claimedProducts.map(c => c.productId));
 
   const showInfo = (
     title: string,
@@ -144,19 +164,21 @@ export function Hotmart() {
     action?: { label: string; onClick: () => void },
   ) => setModal({ title, description, action });
 
-  const handleLoadStatus = async () => {
-    setLoadingStatus(true);
-    try {
-      const data = await apiFetch<IntegrationStatus>("/api/hotmart/user/integration-status");
-      setIntegrationStatus(data);
-    } catch {
-      setIntegrationStatus(null);
-    } finally {
-      setLoadingStatus(false);
-    }
-  };
+  // ── Loaders ────────────────────────────────────────────────────────────────
 
-  const handleLoadProducts = async () => {
+  const handleLoadClaims = useCallback(async () => {
+    setLoadingClaims(true);
+    try {
+      const data = await apiFetch<HotmartClaim[]>("/api/hotmart/user/claimed-products");
+      setClaimedProducts(data);
+    } catch {
+      setClaimedProducts([]);
+    } finally {
+      setLoadingClaims(false);
+    }
+  }, []);
+
+  const handleLoadProducts = useCallback(async () => {
     setLoadingProducts(true);
     try {
       const data = await apiFetch<HotmartProduct[]>("/api/hotmart/user/products");
@@ -167,9 +189,9 @@ export function Hotmart() {
     } finally {
       setLoadingProducts(false);
     }
-  };
+  }, [toast]);
 
-  const handleLoadEvents = async () => {
+  const handleLoadEvents = useCallback(async () => {
     setLoadingEvents(true);
     try {
       const data = await apiFetch<HotmartEvent[]>("/api/hotmart/user/sales");
@@ -180,48 +202,88 @@ export function Hotmart() {
     } finally {
       setLoadingEvents(false);
     }
-  };
+  }, [toast]);
+
+  const handleLoadAvailable = useCallback(async () => {
+    setLoadingAvailable(true);
+    try {
+      const data = await apiFetch<HotmartProduct[]>("/api/hotmart/user/available-products");
+      setAvailableProducts(data);
+    } catch {
+      setAvailableProducts([]);
+    } finally {
+      setLoadingAvailable(false);
+    }
+  }, []);
 
   useEffect(() => {
-    void handleLoadStatus();
+    void handleLoadClaims();
     void handleLoadProducts();
     void handleLoadEvents();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCreateCampaign = (product?: HotmartProduct) => {
-    sessionStorage.setItem(
-      "iattom_campaign_prefill",
-      JSON.stringify({ product: product?.name ?? "", channel: "hotmart" }),
-    );
-    navigate("/dashboard/create-campaign");
-    toast({ description: "Dados carregados na criação de campanha." });
+  // ── Claim panel open ───────────────────────────────────────────────────────
+
+  const handleOpenClaimPanel = () => {
+    setShowClaimPanel(true);
+    void handleLoadAvailable();
   };
 
-  const handleConnect = async () => {
-    setConnecting(true);
+  // ── Claim / unclaim ────────────────────────────────────────────────────────
+
+  const handleClaim = async (productId: string) => {
+    setClaimingId(productId);
     try {
-      await apiFetch("/api/hotmart/user/connect", { method: "POST" });
-      setIntegrationStatus(s => s ? { ...s, isActive: true } : s);
-      toast({ description: "Hotmart conectada com sucesso." });
-      void handleLoadProducts();
-      void handleLoadEvents();
+      await apiFetch("/api/hotmart/user/claim-product", {
+        method: "POST",
+        body: JSON.stringify({ productId }),
+      });
+      await handleLoadClaims();
+      await handleLoadProducts();
+      await handleLoadEvents();
+      toast({ description: "Produto vinculado com sucesso." });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Configure a Hotmart no painel ADM.";
+      const msg = err instanceof Error ? err.message : "Erro ao vincular produto.";
       toast({ variant: "destructive", description: msg });
     } finally {
-      setConnecting(false);
+      setClaimingId(null);
     }
   };
+
+  const handleUnclaim = async (productId: string) => {
+    setClaimingId(productId);
+    try {
+      await apiFetch(`/api/hotmart/user/claim-product/${encodeURIComponent(productId)}`, {
+        method: "DELETE",
+      });
+      await handleLoadClaims();
+      await handleLoadProducts();
+      await handleLoadEvents();
+      toast({ description: "Vínculo removido." });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao remover vínculo.";
+      toast({ variant: "destructive", description: msg });
+    } finally {
+      setClaimingId(null);
+    }
+  };
+
+  // ── Disconnect — removes ALL claims ───────────────────────────────────────
 
   const handleDisconnect = async () => {
     setDisconnecting(true);
     setConfirmDisconnect(false);
     try {
-      await apiFetch("/api/hotmart/user/disconnect", { method: "POST" });
-      setIntegrationStatus(s => s ? { ...s, isActive: false } : s);
+      for (const claim of claimedProducts) {
+        await apiFetch(`/api/hotmart/user/claim-product/${encodeURIComponent(claim.productId)}`, {
+          method: "DELETE",
+        });
+      }
+      setClaimedProducts([]);
       setProducts([]);
       setEvents([]);
+      setShowClaimPanel(false);
       toast({ description: "Hotmart desconectada. Dados históricos preservados." });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Falha ao desconectar.";
@@ -231,9 +293,11 @@ export function Hotmart() {
     }
   };
 
+  // ── Sync ───────────────────────────────────────────────────────────────────
+
   const handleSync = async () => {
-    if (!integrationStatus?.isActive) {
-      toast({ variant: "destructive", description: "Conecte sua conta Hotmart primeiro para sincronizar." });
+    if (!isConnected) {
+      toast({ variant: "destructive", description: "Vincule ao menos um produto Hotmart primeiro para sincronizar." });
       return;
     }
     setSyncing(true);
@@ -255,6 +319,19 @@ export function Hotmart() {
     }
   };
 
+  // ── Campaign prefill ───────────────────────────────────────────────────────
+
+  const handleCreateCampaign = (product?: HotmartProduct) => {
+    sessionStorage.setItem(
+      "iattom_campaign_prefill",
+      JSON.stringify({ product: product?.name ?? "", channel: "hotmart" }),
+    );
+    navigate("/dashboard/create-campaign");
+    toast({ description: "Dados carregados na criação de campanha." });
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
       {modal && (
@@ -266,6 +343,7 @@ export function Hotmart() {
         />
       )}
 
+      {/* Confirm disconnect modal */}
       {confirmDisconnect && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <motion.div
@@ -280,7 +358,7 @@ export function Hotmart() {
               <p className="text-sm font-semibold text-white">Desconectar Hotmart?</p>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              A integração Hotmart será desativada para sua conta. Produtos e vendas ja sincronizados permanecem salvos.
+              Todos os vínculos de produto serão removidos para sua conta. Produtos e vendas já sincronizados permanecem salvos.
               Você pode reconectar a qualquer momento.
             </p>
             <div className="flex gap-2">
@@ -321,7 +399,7 @@ export function Hotmart() {
               size="sm"
               variant="outline"
               onClick={() => void handleSync()}
-              disabled={syncing || !integrationStatus?.isActive}
+              disabled={syncing || !isConnected}
               className="border-white/10 text-muted-foreground hover:text-white"
             >
               {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <RefreshCw className="w-3.5 h-3.5 mr-2" />}
@@ -355,59 +433,27 @@ export function Hotmart() {
         {/* Status Card */}
         <Card className="bg-[#111111] border-white/[0.06] mb-5">
           <CardContent className="p-4">
-            {loadingStatus ? (
+            {loadingClaims ? (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-sm">Verificando status...</span>
               </div>
-            ) : !integrationStatus?.configured ? (
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <WifiOff className="w-4 h-4 text-amber-400" />
-                  <span className="text-sm font-semibold text-white">Aguardando configuração</span>
-                </div>
-                <p className="text-xs text-muted-foreground/70 flex-1">
-                  A integração Hotmart ainda não foi configurada. Solicite ao administrador que configure as credenciais.
-                </p>
-              </div>
-            ) : integrationStatus?.tokenExpired ? (
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <WifiOff className="w-4 h-4 text-amber-400" />
-                  <span className="text-sm font-semibold text-white">Token expirado</span>
-                </div>
-                <p className="text-xs text-muted-foreground/70 flex-1">
-                  Sua autorização com a Hotmart expirou. Reconecte para continuar sincronizando.
-                </p>
-                <Button
-                  size="sm"
-                  onClick={() => void handleConnect()}
-                  disabled={connecting}
-                  className="bg-orange-500 hover:bg-orange-400 text-white font-semibold text-xs h-7 ml-auto"
-                >
-                  {connecting ? <Loader2 className="w-3 h-3 animate-spin mr-1.5" /> : <ExternalLink className="w-3 h-3 mr-1.5" />}
-                  Reconectar Hotmart
-                </Button>
-              </div>
-            ) : !integrationStatus?.isActive ? (
+            ) : !isConnected ? (
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
                   <WifiOff className="w-4 h-4 text-zinc-400" />
                   <span className="text-sm font-semibold text-white">Hotmart desconectada</span>
                 </div>
                 <p className="text-xs text-muted-foreground/70 flex-1">
-                  Autorize sua conta Hotmart para carregar produtos e vendas reais.
+                  Vincule ao menos um produto Hotmart para carregar dados reais desta conta.
                 </p>
                 <Button
                   size="sm"
-                  onClick={() => void handleConnect()}
-                  disabled={connecting}
+                  onClick={handleOpenClaimPanel}
                   className="bg-orange-500 hover:bg-orange-400 text-white font-semibold text-xs h-7 ml-auto"
                 >
-                  {connecting
-                    ? <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
-                    : <ExternalLink className="w-3 h-3 mr-1.5" />}
-                  {connecting ? "Conectando..." : "Conectar Hotmart"}
+                  <Link2 className="w-3 h-3 mr-1.5" />
+                  Conectar Hotmart
                 </Button>
               </div>
             ) : (
@@ -415,20 +461,32 @@ export function Hotmart() {
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   <span className="text-sm font-semibold text-white">Conta conectada</span>
-                  {integrationStatus.platformUsername && (
-                    <span className="text-xs text-muted-foreground">— {integrationStatus.platformUsername}</span>
-                  )}
+                  <span className="text-xs text-muted-foreground">
+                    — {claimedProducts.length} produto{claimedProducts.length !== 1 ? "s" : ""} vinculado{claimedProducts.length !== 1 ? "s" : ""}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground/70 flex-1">
-                  Autorizada via Hotmart. Produtos e vendas sincronizados com sua conta real.
+                  Dados filtrados pelos produtos vinculados à sua conta.
                 </p>
                 <div className="flex items-center gap-2 ml-auto">
                   <Button
                     size="sm"
                     variant="outline"
+                    onClick={() => {
+                      if (!showClaimPanel) void handleLoadAvailable();
+                      setShowClaimPanel(v => !v);
+                    }}
+                    className="border-white/10 text-muted-foreground hover:text-white text-xs h-7"
+                  >
+                    <Package className="w-3 h-3 mr-1.5" />
+                    Gerenciar vínculos
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => showInfo(
                       "Como funciona a integração Hotmart",
-                      "Sua conta está conectada via credenciais centrais da plataforma. Clique em Sincronizar para buscar seus produtos reais. As vendas chegam automaticamente via webhook Hotmart.",
+                      "Sua conta está vinculada aos produtos que você selecionou da central Hotmart. As vendas chegam automaticamente via webhook e são filtradas pelos seus produtos vinculados. Clique em Sincronizar para atualizar o catálogo.",
                     )}
                     className="border-white/10 text-muted-foreground hover:text-white text-xs h-7"
                   >
@@ -450,6 +508,122 @@ export function Hotmart() {
             )}
           </CardContent>
         </Card>
+
+        {/* Claim Panel */}
+        <AnimatePresence>
+          {showClaimPanel && (
+            <motion.div
+              key="claim-panel"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22 }}
+              className="overflow-hidden mb-5"
+            >
+              <Card className="bg-[#111111] border-white/[0.06] border-orange-500/20">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+                      <Link2 className="w-4 h-4 text-orange-400" />
+                      Vincular produtos Hotmart
+                    </CardTitle>
+                    <button
+                      onClick={() => setShowClaimPanel(false)}
+                      className="text-muted-foreground hover:text-white transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Selecione os produtos da central que pertencem à sua conta. Somente esses produtos e seus eventos aparecerão no seu painel.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {loadingAvailable ? (
+                    <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">Carregando catálogo...</span>
+                    </div>
+                  ) : availableProducts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center gap-1.5">
+                      <Package className="w-9 h-9 text-white/10 mb-1" />
+                      <p className="text-sm text-muted-foreground">Nenhum produto disponível na central ainda.</p>
+                      <p className="text-xs text-muted-foreground/60">
+                        Solicite ao administrador que sincronize o catálogo Hotmart.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {availableProducts.map((product) => {
+                        const isClaimed = claimedIds.has(product.productId);
+                        const isLoading = claimingId === product.productId;
+                        return (
+                          <div
+                            key={product.productId}
+                            className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                              isClaimed
+                                ? "bg-orange-500/5 border-orange-500/20"
+                                : "bg-[#0d0d0d] border-white/5 hover:border-white/10"
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-medium text-white truncate">
+                                  {product.name ?? "Produto sem nome"}
+                                </p>
+                                {product.status === "ACTIVE" && (
+                                  <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[9px] px-1.5 py-0">
+                                    Ativo
+                                  </Badge>
+                                )}
+                                {isClaimed && (
+                                  <Badge className="bg-orange-500/15 text-orange-400 border-orange-500/30 text-[9px] px-1.5 py-0">
+                                    Vinculado
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                {product.price && product.price !== "0" && (
+                                  <span className="text-xs text-primary font-semibold">R$ {product.price}</span>
+                                )}
+                                {product.format && (
+                                  <span className="text-[10px] text-muted-foreground/70">{product.format}</span>
+                                )}
+                                <span className="text-[10px] text-muted-foreground/50 font-mono">#{product.productId}</span>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={isLoading}
+                              onClick={() => isClaimed
+                                ? void handleUnclaim(product.productId)
+                                : void handleClaim(product.productId)
+                              }
+                              className={`h-7 text-xs shrink-0 ${
+                                isClaimed
+                                  ? "border-red-500/30 text-red-400 hover:text-red-300 hover:border-red-400/50"
+                                  : "border-orange-500/30 text-orange-400 hover:text-orange-300 hover:border-orange-400/50"
+                              }`}
+                            >
+                              {isLoading ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : isClaimed ? (
+                                <><Minus className="w-3 h-3 mr-1" />Remover</>
+                              ) : (
+                                <><Plus className="w-3 h-3 mr-1" />Vincular</>
+                              )}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* KPIs */}
         {(() => {
@@ -506,12 +680,12 @@ export function Hotmart() {
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-sm">Carregando...</span>
               </div>
-            ) : !integrationStatus?.isActive ? (
+            ) : !isConnected ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
                 <Package className="w-10 h-10 text-white/10 mb-3" />
                 <p className="text-sm font-semibold text-muted-foreground">Conta Hotmart não conectada</p>
                 <p className="text-xs text-muted-foreground/60 mt-1 max-w-xs">
-                  Conecte sua conta Hotmart para visualizar seus produtos reais.
+                  Vincule ao menos um produto Hotmart para visualizar seus dados reais.
                 </p>
               </div>
             ) : products.length === 0 ? (
@@ -600,12 +774,12 @@ export function Hotmart() {
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span className="text-sm">Carregando...</span>
                   </div>
-                ) : !integrationStatus?.isActive ? (
+                ) : !isConnected ? (
                   <div className="flex flex-col items-center justify-center py-10 text-center">
                     <ShoppingBag className="w-9 h-9 text-white/8 mb-3" />
                     <p className="text-sm font-semibold text-muted-foreground">Conta Hotmart não conectada</p>
                     <p className="text-xs text-muted-foreground/50 mt-1.5 max-w-xs leading-relaxed">
-                      Conecte sua conta Hotmart para visualizar suas vendas reais.
+                      Vincule ao menos um produto Hotmart para visualizar suas vendas reais.
                     </p>
                   </div>
                 ) : approvedSales.length === 0 ? (

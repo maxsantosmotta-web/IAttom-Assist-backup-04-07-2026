@@ -623,6 +623,17 @@ router.post("/hotmart/user/sync", requireAuth, async (req, res): Promise<void> =
   }
 });
 
+// ─── USER: Browse global catalog (to select products to claim) ───────────────
+router.get("/hotmart/user/available-products", requireAuth, async (_req, res): Promise<void> => {
+  const products = await db
+    .select()
+    .from(hotmartProducts)
+    .where(isNull(hotmartProducts.deletedAt))
+    .orderBy(hotmartProducts.name)
+    .limit(200);
+  res.json(products);
+});
+
 // ─── USER: List claimed products ─────────────────────────────────────────────
 router.get("/hotmart/user/claimed-products", requireAuth, async (req, res): Promise<void> => {
   const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
