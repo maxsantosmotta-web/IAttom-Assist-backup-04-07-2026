@@ -1,0 +1,136 @@
+Leia o arquivo `artifacts/iattom-assist/src/pages/dashboard/Hotmart.tsx` completo antes de alterar qualquer coisa.
+
+Faça SOMENTE as alterações abaixo.
+
+NÃO alterar:
+- backend
+- rotas
+- handlers existentes
+- lógica fora do painel Hotmart
+- estados globais
+- hooks não relacionados
+- animações
+- modais
+- funcionalidades existentes
+- ADM Hotmart
+- outras plataformas
+
+NÃO duplicar botões.
+NÃO recriar componentes desnecessários.
+NÃO alterar textos fora do solicitado.
+
+==================================================
+1. TOPO DIREITO
+==================================================
+
+Mover o botão “Sincronizar” para baixo do badge “CRÉDITOS BAIXOS”.
+
+Regras:
+- manter o badge “CRÉDITOS BAIXOS” exatamente como está;
+- manter o header/topbar exatamente como está;
+- botão Sincronizar pequeno/secundário;
+- remover o botão Sincronizar da linha horizontal atual.
+
+==================================================
+2. BOTÃO PRINCIPAL
+==================================================
+
+Manter apenas o botão “Conectar Hotmart” abaixo do título Hotmart.
+
+Regras:
+- remover o botão “Criar Campanha” da linha horizontal atual;
+- NÃO remover a funcionalidade do botão;
+- apenas mover o botão para dentro do novo bloco.
+
+==================================================
+3. NOVO BLOCO — CRIAR CAMPANHA
+==================================================
+
+Criar um novo bloco visual no MESMO padrão visual do bloco “Publicar Anúncio Hotmart”.
+
+Estrutura do bloco:
+
+Título:
+📋 Criar Campanha
+
+Texto:
+Crie e organize o material da sua campanha dentro do IAttom antes de publicar.
+
+Botão:
+Criar Campanha
+
+IMPORTANTE:
+- reutilizar o handler já existente do botão Criar Campanha;
+- não criar novo handler;
+- não duplicar lógica;
+- somente mover o botão para dentro deste bloco.
+
+==================================================
+4. BLOCO “PUBLICAR ANÚNCIO HOTMART”
+==================================================
+
+Manter EXATAMENTE como já está.
+
+Não alterar:
+- layout
+- botão
+- texto
+- espaçamento
+- comportamento
+
+==================================================
+5. BLOCO “CAMPANHAS SALVAS”
+==================================================
+
+Manter o bloco “Campanhas Salvas”, mas garantir que ele represente campanhas/anúncios salvos da plataforma Hotmart.
+
+Objetivo:
+Quando uma campanha/anúncio for salvo no fluxo de criação, ela deve aparecer futuramente neste bloco filtrada como Hotmart.
+
+Nesta etapa:
+- não criar backend novo;
+- não criar rota nova;
+- não inventar dados fake;
+- não preencher mock;
+- se já existir estrutura de projetos/histórico/campanhas salvas, apenas preparar o bloco para consumir campanhas salvas relacionadas à Hotmart;
+- se ainda não existir dado salvo, mostrar estado vazio simples:
+  “Nenhuma campanha salva ainda.”
+
+IMPORTANTE:
+Não tentar resolver agora o botão de salvar dentro do módulo Criar Anúncio.
+Apenas deixar o bloco “Campanhas Salvas” coerente e preparado para receber campanhas Hotmart salvas.
+
+==================================================
+6. RESTANTE DA PÁGINA
+==================================================
+
+Manter exatamente igual:
+- Produtos
+- Vendas
+- Receita
+- Vendas Recentes
+- lógica existente
+- estilos existentes
+- animações existentes
+
+==================================================
+RESULTADO VISUAL FINAL
+==================================================
+
+HEADER
+↓
+Conectar Hotmart
+↓
+Bloco Criar Campanha
+↓
+Bloco Publicar Anúncio Hotmart
+↓
+KPIs
+↓
+Vendas Recentes
+↓
+Campanhas Salvas
+
+Sem duplicidade.
+Sem novos textos técnicos.
+Sem alterar funcionalidades existentes fora do painel Hotmart.

@@ -162,14 +162,26 @@ export function Hotmart() {
         className="space-y-5">
 
         {/* 1. TOPO */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-            <Flame className="w-5 h-5 text-orange-400" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <Flame className="w-5 h-5 text-orange-400" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white">Hotmart</h1>
+              <p className="text-xs text-muted-foreground">Produtos digitais, afiliados e assinaturas</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-white">Hotmart</h1>
-            <p className="text-xs text-muted-foreground">Produtos digitais, afiliados e assinaturas</p>
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void handleSync()}
+            disabled={syncing}
+            className="border-white/10 text-muted-foreground hover:text-white"
+          >
+            {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <RefreshCw className="w-3.5 h-3.5 mr-2" />}
+            Sincronizar
+          </Button>
         </div>
 
         {/* 2. CONECTAR HOTMART */}
@@ -182,27 +194,32 @@ export function Hotmart() {
           </Button>
         </div>
 
-        {/* 3. SINCRONIZAR + CRIAR CAMPANHA */}
-        <div className="flex justify-center gap-3">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void handleSync()}
-            disabled={syncing}
-            className="border-white/10 text-muted-foreground hover:text-white"
-          >
-            {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <RefreshCw className="w-3.5 h-3.5 mr-2" />}
-            Sincronizar
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleCreateCampaign}
-            className="bg-orange-500 hover:bg-orange-400 text-white font-semibold"
-          >
-            <ClipboardList className="w-3.5 h-3.5 mr-2" />
-            Criar Campanha
-          </Button>
-        </div>
+        {/* 3. CRIAR CAMPANHA */}
+        <Card className="bg-[#111111] border-white/[0.06]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-orange-400" />
+              Criar Campanha
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center py-6 text-center gap-4">
+              <div className="space-y-1.5">
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
+                  Crie e organize o material da sua campanha dentro do IAttom antes de publicar.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={handleCreateCampaign}
+                className="bg-orange-500 hover:bg-orange-400 text-white font-semibold"
+              >
+                <ClipboardList className="w-3.5 h-3.5 mr-2" />
+                Criar Campanha
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 4. PUBLICAR ANÚNCIO HOTMART */}
         <Card className="bg-[#111111] border-white/[0.06]">
