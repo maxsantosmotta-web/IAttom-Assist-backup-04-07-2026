@@ -506,18 +506,46 @@ ${creativesSection}
 <div class="footer">Gerado por IAttom Assist &middot; ${new Date().toLocaleDateString("pt-BR")}</div>
 </body></html>`;
 
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
     const slug = product.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") || "campanha";
-    a.download = `campanha-${slug}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 
-    toast({ description: "Campanha salva e pacote baixado com sucesso." });
+    void (async () => {
+      toast({ description: "Baixando campanha..." });
+      await new Promise(r => setTimeout(r, 80));
+
+      const htmlBlob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const htmlUrl = URL.createObjectURL(htmlBlob);
+      const htmlA = document.createElement("a");
+      htmlA.href = htmlUrl;
+      htmlA.download = `campanha-${slug}.html`;
+      document.body.appendChild(htmlA);
+      htmlA.click();
+      document.body.removeChild(htmlA);
+      URL.revokeObjectURL(htmlUrl);
+
+      const imageConcepts = (creativeResult?.concepts ?? []).filter(c => c.imageBase64);
+      if (imageConcepts.length > 0) {
+        await new Promise(r => setTimeout(r, 300));
+        toast({ description: "Baixando criativos..." });
+        for (let i = 0; i < imageConcepts.length; i++) {
+          await new Promise(r => setTimeout(r, 200));
+          const b64 = imageConcepts[i].imageBase64!;
+          const binary = atob(b64);
+          const arr = new Uint8Array(binary.length);
+          for (let j = 0; j < binary.length; j++) arr[j] = binary.charCodeAt(j);
+          const imgBlob = new Blob([arr], { type: "image/png" });
+          const imgUrl = URL.createObjectURL(imgBlob);
+          const imgA = document.createElement("a");
+          imgA.href = imgUrl;
+          imgA.download = `criativo-${i + 1}.png`;
+          document.body.appendChild(imgA);
+          imgA.click();
+          document.body.removeChild(imgA);
+          URL.revokeObjectURL(imgUrl);
+        }
+      }
+
+      toast({ description: "Campanha salva e arquivos baixados." });
+    })();
   };
 
   const showResult = isDone && isCampaignComplete(campaignData);

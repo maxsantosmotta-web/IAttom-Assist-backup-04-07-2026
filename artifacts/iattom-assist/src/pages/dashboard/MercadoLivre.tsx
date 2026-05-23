@@ -378,7 +378,7 @@ export function MercadoLivre() {
   };
 
   const handleCreateCampaign = (listing?: MLListing) => {
-    sessionStorage.setItem("iattom_campaign_prefill", JSON.stringify({ product: listing?.title ?? "", channel: "mercado_livre" }));
+    sessionStorage.setItem("iattom_campaign_prefill", JSON.stringify({ product: listing?.title ?? "", goal: "Vender no Mercado Livre" }));
     navigate("/dashboard/create-campaign");
     toast({ description: "Dados carregados na criação de campanha." });
   };
@@ -802,6 +802,34 @@ export function MercadoLivre() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Campanhas Salvas */}
+        {(() => {
+          try {
+            const all = JSON.parse(localStorage.getItem("iattom_saved_items_v1") ?? "[]") as { id: string; title: string; platform?: string }[];
+            const campaigns = all.filter(c => c.platform === "mercado_livre");
+            if (!campaigns.length) return null;
+            return (
+              <Card className="bg-[#111111] border-white/[0.06]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Megaphone className="w-4 h-4 text-primary" />
+                    Campanhas Salvas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="max-h-[168px] overflow-y-auto space-y-1.5 pr-1">
+                    {campaigns.slice(0, 10).map(c => (
+                      <div key={c.id} className="px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-white/5">
+                        <p className="text-sm text-white truncate">{c.title}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          } catch { return null; }
+        })()}
       </motion.div>
     </div>
   );

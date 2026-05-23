@@ -66,7 +66,7 @@ Retorne exatamente esta estrutura:
       "cta": string (texto do botão de chamada para ação, em PT-BR),
       "emotionalTrigger": string (emoção central sendo ativada, em PT-BR),
       "bestPlatform": string (onde este criativo funciona melhor, em PT-BR),
-      "imagePrompt": string (prompt detalhado para geração de imagem IA, pode ser em inglês para compatibilidade com geradores de imagem)
+      "imagePrompt": string (prompt detalhado para geração de imagem IA — SEMPRE em inglês para compatibilidade com modelos de imagem. OBRIGATÓRIO: photorealistic, commercial quality, clean background, no text overlays, no logos, no watermarks, no brand names, no English words visible in the image, natural human anatomy, no extra fingers, no deformities, premium Brazilian commercial aesthetic, product-focused, high-end advertising style)
     }
   ],
   "overarchingTheme": string (tema criativo unificador de todos os conceitos, em PT-BR),

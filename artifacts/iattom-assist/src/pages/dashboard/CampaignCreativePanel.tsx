@@ -18,7 +18,7 @@ interface CampaignCreativePanelProps {
   onResult?: (result: CreativeIdeasResult) => void;
 }
 
-function InlineConceptCard({ concept }: { concept: CreativeConcept }) {
+function InlineConceptCard({ concept, compact }: { concept: CreativeConcept; compact?: boolean }) {
   const { toast } = useToast();
 
   const handleCopy = () => {
@@ -27,7 +27,6 @@ function InlineConceptCard({ concept }: { concept: CreativeConcept }) {
       `COPY: ${concept.bodyText}`,
       `CTA: ${concept.cta}`,
       `VISUAL: ${concept.visualDirection}`,
-      `PROMPT: ${concept.imagePrompt}`,
     ].join("\n\n");
     navigator.clipboard.writeText(text);
     toast({ description: "Criativo copiado" });
@@ -39,14 +38,15 @@ function InlineConceptCard({ concept }: { concept: CreativeConcept }) {
         <img
           src={`data:image/png;base64,${concept.imageBase64}`}
           alt={concept.label}
-          className="w-full h-44 object-cover"
+          className="w-full object-cover"
+          style={{ maxHeight: compact ? "220px" : "176px" }}
         />
       ) : (
         <div className="h-28 bg-gradient-to-br from-primary/15 to-amber-900/10 flex items-center justify-center">
           <Image className="w-7 h-7 text-white/15" />
         </div>
       )}
-      <div className="p-3 space-y-2.5">
+      <div className="p-3 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-xs font-semibold text-primary uppercase tracking-widest">{concept.label}</p>
@@ -55,42 +55,39 @@ function InlineConceptCard({ concept }: { concept: CreativeConcept }) {
               {concept.bestPlatform ? ` · ${concept.bestPlatform}` : ""}
             </p>
           </div>
-          <button
-            onClick={handleCopy}
-            className="text-muted-foreground hover:text-white transition-colors shrink-0 mt-0.5"
-          >
-            <Copy className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div>
-          <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Hook</p>
-          <p className="text-sm font-semibold text-white leading-snug">{concept.copyHook}</p>
-        </div>
-
-        <div>
-          <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Copy</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">{concept.bodyText}</p>
-        </div>
-
-        <div className="flex items-center justify-between pt-0.5">
-          <div>
-            <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">CTA</p>
-            <p className="text-xs text-primary font-semibold">{concept.cta}</p>
-          </div>
-          {concept.emotionalTrigger && (
-            <div className="text-right">
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Gatilho</p>
-              <p className="text-xs text-amber-400/80">{concept.emotionalTrigger}</p>
-            </div>
+          {!compact && (
+            <button
+              onClick={handleCopy}
+              className="text-muted-foreground hover:text-white transition-colors shrink-0 mt-0.5"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
 
-        {concept.imagePrompt && (
-          <div className="p-2 rounded bg-white/5 border border-white/5">
-            <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Prompt de Imagem IA</p>
-            <p className="text-xs text-muted-foreground/60 italic leading-relaxed">{concept.imagePrompt}</p>
-          </div>
+        {!compact && (
+          <>
+            <div>
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Hook</p>
+              <p className="text-sm font-semibold text-white leading-snug">{concept.copyHook}</p>
+            </div>
+            <div>
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Copy</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{concept.bodyText}</p>
+            </div>
+            <div className="flex items-center justify-between pt-0.5">
+              <div>
+                <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">CTA</p>
+                <p className="text-xs text-primary font-semibold">{concept.cta}</p>
+              </div>
+              {concept.emotionalTrigger && (
+                <div className="text-right">
+                  <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Gatilho</p>
+                  <p className="text-xs text-amber-400/80">{concept.emotionalTrigger}</p>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -162,10 +159,10 @@ export function CampaignCreativePanel({
         </div>
         {isDone && (
           <button
-            onClick={() => { reset(); setStarted(false); }}
+            onClick={() => { reset(); setStarted(false); autoStartFired.current = false; }}
             className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 shrink-0"
           >
-            <RefreshCw className="w-3 h-3" /> Novo criativo
+            <RefreshCw className="w-3 h-3" /> Regenerar Criativos
           </button>
         )}
       </div>
@@ -261,7 +258,7 @@ export function CampaignCreativePanel({
 
           <div className="grid md:grid-cols-2 gap-3">
             {result.concepts?.map((concept, i) => (
-              <InlineConceptCard key={concept.id ?? i} concept={concept} />
+              <InlineConceptCard key={concept.id ?? i} concept={concept} compact={true} />
             ))}
           </div>
 
