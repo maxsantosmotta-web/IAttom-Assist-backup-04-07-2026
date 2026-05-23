@@ -520,7 +520,7 @@ export function TikTok() {
           {/* Campanhas Salvas */}
           {(() => {
             try {
-              const all = JSON.parse(localStorage.getItem("iattom_saved_items_v1") ?? "[]") as { id: string; title: string; platform?: string }[];
+              const all = JSON.parse(localStorage.getItem("iattom_saved_items_v1") ?? "[]") as { id: string; title: string; platform?: string; data?: string }[];
               const campaigns = all.filter(c => c.platform === "tiktok");
               if (!campaigns.length) return null;
               return (
@@ -534,7 +534,11 @@ export function TikTok() {
                   <CardContent>
                     <div className="max-h-[168px] overflow-y-auto space-y-1.5 pr-1">
                       {campaigns.slice(0, 10).map(c => (
-                        <div key={c.id} className="px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-white/5">
+                        <div
+                          key={c.id}
+                          onClick={() => { if (c.data) sessionStorage.setItem("iattom_reopen_campaign_v1", c.data); navigate("/dashboard/create-campaign"); }}
+                          className="cursor-pointer px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-white/5 hover:border-white/10 hover:bg-[#131313] transition-colors"
+                        >
                           <p className="text-sm text-white truncate">{c.title}</p>
                         </div>
                       ))}

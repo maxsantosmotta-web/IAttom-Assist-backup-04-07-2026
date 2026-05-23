@@ -329,6 +329,7 @@ export function CreateCampaign() {
   const [creativeResult, setCreativeResult] = useState<CreativeIdeasResult | null>(null);
   const [refineInputs, setRefineInputs] = useState<Record<string, string>>({});
   const [refiningBlock, setRefiningBlock] = useState<string | null>(null);
+  const [isRestored, setIsRestored] = useState(false);
 
   const isGenerating = status === "generating";
   const isDone = status === "done";
@@ -350,12 +351,35 @@ export function CreateCampaign() {
     } catch {}
   }, []);
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("iattom_reopen_campaign_v1");
+      if (!raw) return;
+      sessionStorage.removeItem("iattom_reopen_campaign_v1");
+      const saved = JSON.parse(raw) as {
+        briefing?: { product?: string; goal?: string; mode?: string; audience?: string };
+        result?: CampaignResult;
+        creatives?: CreativeIdeasResult;
+      };
+      if (saved.briefing?.product) setProduct(saved.briefing.product);
+      if (saved.briefing?.goal) setGoal(saved.briefing.goal);
+      if (saved.briefing?.mode) setMode(saved.briefing.mode);
+      if (saved.briefing?.audience) setAudience(saved.briefing.audience);
+      if (saved.result) {
+        setCampaignData(saved.result);
+        setIsRestored(true);
+      }
+      if (saved.creatives) setCreativeResult(saved.creatives);
+    } catch {}
+  }, []);
+
   const handleReset = () => {
     reset();
     setCampaignData(null);
     setCreativeResult(null);
     setRefineInputs({});
     setRefiningBlock(null);
+    setIsRestored(false);
   };
 
   const runGenerate = (charge: () => void) => {
@@ -548,7 +572,7 @@ ${creativesSection}
     })();
   };
 
-  const showResult = isDone && isCampaignComplete(campaignData);
+  const showResult = (isDone || isRestored) && isCampaignComplete(campaignData);
 
   return (
     <div className="space-y-8">
