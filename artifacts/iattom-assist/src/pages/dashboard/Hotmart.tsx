@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Flame, Loader2, ClipboardList,
   RefreshCw, ShoppingBag, DollarSign,
-  Package, Megaphone, FolderOpen,
+  Package, Megaphone, FolderOpen, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +46,12 @@ interface HotmartEvent {
   receivedAt?: string | null;
 }
 
+interface SavedCampaign {
+  id: string;
+  title: string;
+  content?: string;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function thirtyDaysAgo() {
@@ -63,6 +69,29 @@ function revenueIn30d(events: HotmartEvent[]): string {
   return total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function readSavedCampaigns(): SavedCampaign[] {
+  try {
+    const raw = localStorage.getItem("iattom_hotmart_campaigns_v1");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed as SavedCampaign[];
+  } catch {
+    return [];
+  }
+}
+
+function downloadCampaign(campaign: SavedCampaign) {
+  const text = campaign.content ?? campaign.title;
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${campaign.title.replace(/[^a-z0-9]/gi, "_")}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const isConnected = false;
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -76,6 +105,12 @@ export function Hotmart() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [loadingEvents, setLoadingEvents]     = useState(false);
   const [syncing, setSyncing]                 = useState(false);
+  const [savedCampaigns, setSavedCampaigns]   = useState<SavedCampaign[]>([]);
+  const [showAdSelector, setShowAdSelector]   = useState(false);
+
+  const handleRefreshCampaigns = useCallback(() => {
+    setSavedCampaigns(readSavedCampaigns());
+  }, []);
 
   const handleLoadProducts = useCallback(async () => {
     setLoadingProducts(true);
@@ -102,6 +137,7 @@ export function Hotmart() {
   }, []);
 
   useEffect(() => {
+    handleRefreshCampaigns();
     if (isConnected) {
       void handleLoadProducts();
       void handleLoadEvents();
@@ -109,25 +145,13 @@ export function Hotmart() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSync = async () => {
-    if (!isConnected) {
-      toast({ description: "Conecte sua conta Hotmart para sincronizar." });
-      return;
-    }
+  const handleSync = () => {
     setSyncing(true);
-    try {
-      const data = await apiFetch<{ ok: boolean; synced: number }>("/api/hotmart/user/sync", { method: "POST" });
-      toast({ description: data.synced === 0
-        ? "Nenhum produto novo encontrado."
-        : `${data.synced} produto(s) atualizados.`
-      });
-      void handleLoadProducts();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Falha ao sincronizar.";
-      toast({ variant: "destructive", description: msg });
-    } finally {
+    handleRefreshCampaigns();
+    setTimeout(() => {
       setSyncing(false);
-    }
+      toast({ description: "Lista de campanhas atualizada." });
+    }, 400);
   };
 
   const handleCreateCampaign = () => {
@@ -140,12 +164,17 @@ export function Hotmart() {
   };
 
   const handleCreateAd = () => {
-    if (!isConnected) {
-      toast({ description: "Crie a campanha no IAttom e conecte sua Hotmart para publicar." });
+    if (savedCampaigns.length === 0) {
+      toast({ description: "Nenhuma campanha salva ainda. Crie uma campanha primeiro." });
       return;
     }
-    window.open("https://app.hotmart.com/market/ads", "_blank", "noopener,noreferrer");
-    toast({ description: "Material organizado. Publique o anúncio na Hotmart." });
+    setShowAdSelector(prev => !prev);
+  };
+
+  const handleSelectCampaignForAd = (campaign: SavedCampaign) => {
+    setShowAdSelector(false);
+    window.open("https://app.hotmart.com", "_blank", "noopener,noreferrer");
+    toast({ description: `Hotmart aberta. Publique "${campaign.title}" manualmente.` });
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -175,7 +204,7 @@ export function Hotmart() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => void handleSync()}
+            onClick={handleSync}
             disabled={syncing}
             className="border-white/10 text-muted-foreground hover:text-white"
           >
@@ -187,7 +216,7 @@ export function Hotmart() {
         {/* 2. CONECTAR HOTMART */}
         <div className="flex justify-center">
           <Button
-            onClick={() => toast({ description: "Em breve você poderá conectar sua conta Hotmart." })}
+            onClick={() => toast({ description: "A Hotmart será aberta quando você for publicar seu anúncio." })}
             className="bg-orange-500 hover:bg-orange-400 text-white font-semibold px-8"
           >
             Conectar Hotmart
@@ -233,8 +262,7 @@ export function Hotmart() {
             <div className="flex flex-col items-center justify-center py-6 text-center gap-4">
               <div className="space-y-1.5">
                 <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-                  Crie uma campanha para preparar seu anúncio Hotmart.
-                  O IAttom organiza o material — copy, headline, CTA — e abre a Hotmart no local certo para você publicar.
+                  Selecione uma campanha salva e publique seu anúncio diretamente na Hotmart.
                 </p>
               </div>
               <Button
@@ -246,6 +274,26 @@ export function Hotmart() {
                 <Megaphone className="w-3.5 h-3.5 mr-2" />
                 Criar Anúncio
               </Button>
+
+              {/* Seletor inline de campanhas */}
+              {showAdSelector && (
+                <div className="w-full mt-2 rounded-lg border border-white/10 bg-[#0d0d0d] overflow-hidden">
+                  <p className="text-xs text-muted-foreground px-4 pt-3 pb-2 border-b border-white/5">
+                    Escolha uma campanha para publicar:
+                  </p>
+                  <div className="divide-y divide-white/5">
+                    {savedCampaigns.map((campaign) => (
+                      <button
+                        key={campaign.id}
+                        onClick={() => handleSelectCampaignForAd(campaign)}
+                        className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors"
+                      >
+                        {campaign.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -324,7 +372,7 @@ export function Hotmart() {
                 <ShoppingBag className="w-9 h-9 text-white/8 mb-3" />
                 <p className="text-sm font-semibold text-muted-foreground">Nenhuma venda registrada ainda</p>
                 <p className="text-xs text-muted-foreground/50 mt-1.5 max-w-xs leading-relaxed">
-                  Conecte sua conta Hotmart para visualizar suas vendas.
+                  As vendas da sua conta Hotmart aparecerão aqui.
                 </p>
               </div>
             ) : (
@@ -370,13 +418,29 @@ export function Hotmart() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <FolderOpen className="w-9 h-9 text-white/8 mb-3" />
-              <p className="text-sm font-semibold text-muted-foreground">Nenhuma campanha salva ainda</p>
-              <p className="text-xs text-muted-foreground/50 mt-1.5 max-w-xs leading-relaxed">
-                Suas campanhas criadas aparecerão aqui.
-              </p>
-            </div>
+            {savedCampaigns.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <FolderOpen className="w-9 h-9 text-white/8 mb-3" />
+                <p className="text-sm font-semibold text-muted-foreground">Nenhuma campanha salva ainda</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {savedCampaigns.map((campaign) => (
+                  <div key={campaign.id}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-[#0d0d0d] border border-white/5">
+                    <p className="flex-1 text-sm text-white truncate">{campaign.title}</p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => downloadCampaign(campaign)}
+                      className="text-muted-foreground hover:text-white h-7 px-2 shrink-0"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
