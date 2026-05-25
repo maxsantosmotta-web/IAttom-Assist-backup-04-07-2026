@@ -1,0 +1,88 @@
+Faça apenas a AUDITORIA FINAL DA ETAPA 1 do Trilho Reajuste.
+
+Objetivo:
+Verificar se a arquitetura da Etapa 1 ficou consistente após os ajustes já aplicados.
+
+Não edite nenhum arquivo.
+Não remova nada.
+Não corrija nada.
+Apenas audite e relate.
+
+Verifique:
+
+1. Projetos Salvos
+- /dashboard/projects é a central única?
+- Ainda existe aba Biblioteca separada?
+- Ainda existe aba Projetos antiga via API?
+- Os itens salvos vêm de iattom_saved_items_v1?
+- Abrir item salvo funciona por tipo?
+- Existe fallback para itens antigos sem data?
+
+2. Módulos centrais de geração
+Verifique:
+- FindProducts
+- ValidateProducts
+- CreateCampaign
+- CreateContent
+- CreativeGenerator
+- VideoScripts
+
+Confirme:
+- Quais salvam em Projetos Salvos.
+- Quais salvam data estruturado.
+- Quais ainda não salvam.
+- Se algum ainda salva apenas texto bruto.
+- Se algum ainda usa storage paralelo.
+
+3. Criativos/Imagens
+- Gerador Criativo está multiformato?
+- Existem formatos reais diferentes?
+- imageBase64 está fora do localStorage?
+- Existe download individual?
+- O salvamento está estruturado?
+
+4. Plataformas
+Verifique:
+- TikTok
+- Shopee
+- MercadoLivre
+- Kiwify
+- Hotmart
+- WhatsApp
+- Facebook
+- Instagram
+
+Confirme:
+- Se cada uma virou painel de conexão/sincronização/monitoramento.
+- Se ainda existe botão de criação interna.
+- Se ainda existe Criar Campanha, Criar Anúncio, Criar Criativo, Gerar Script, Criar Conteúdo ou Usar Projeto Salvo dentro delas.
+- Se ainda existe bloco Campanhas Salvas ou Projetos Salvos dentro delas.
+- Se Conectar/Desconectar/Sincronizar foram preservados.
+- Se Meta foi removida como tela principal e separada em Facebook e Instagram.
+
+5. Rotas e sidebar
+- Rotas continuam funcionando?
+- Sidebar aponta corretamente para os módulos e plataformas?
+- Não existe rota quebrada para Meta antiga?
+- Facebook e Instagram aparecem separados?
+
+6. Isolamento
+Confirme se NÃO foram alterados indevidamente:
+- autenticação
+- créditos
+- Admin
+- banco
+- storage key iattom_saved_items_v1
+- protocolo SSE
+- módulos congelados
+
+7. Typecheck
+- Rode typecheck.
+- Informe se passou sem erros.
+
+Ao final, entregue:
+1. O que está aprovado.
+2. O que ainda ficou pendente.
+3. O que quebrou, se algo quebrou.
+4. Se a Etapa 1 pode ser considerada concluída.
+5. Se já podemos partir para teste controlado completo.
