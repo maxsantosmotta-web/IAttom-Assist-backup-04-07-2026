@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Flame, Loader2, ClipboardList,
   RefreshCw, ShoppingBag, DollarSign,
-  Package, Megaphone, FolderOpen, Download,
+  Package, Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,13 +46,6 @@ interface HotmartEvent {
   receivedAt?: string | null;
 }
 
-interface SavedCampaign {
-  id: string;
-  title: string;
-  content?: string;
-  data?: string;
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function thirtyDaysAgo() {
@@ -70,104 +63,6 @@ function revenueIn30d(events: HotmartEvent[]): string {
   return total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function readSavedCampaigns(): SavedCampaign[] {
-  const items: SavedCampaign[] = [];
-  const seen = new Set<string>();
-  try {
-    const raw = localStorage.getItem("iattom_saved_items_v1");
-    if (raw) {
-      const parsed = JSON.parse(raw) as Array<{ id: string; title: string; type: string; platform?: string; content?: string; data?: string }>;
-      if (Array.isArray(parsed)) {
-        for (const i of parsed) {
-          if (i.platform === "hotmart" && !seen.has(i.id)) {
-            items.push({ id: i.id, title: i.title, content: i.content, data: i.data });
-            seen.add(i.id);
-          }
-        }
-      }
-    }
-  } catch {}
-  try {
-    const raw = localStorage.getItem("iattom_hotmart_campaigns_v1");
-    if (raw) {
-      const parsed = JSON.parse(raw) as SavedCampaign[];
-      if (Array.isArray(parsed)) {
-        for (const i of parsed) {
-          if (!seen.has(i.id)) { items.push(i); seen.add(i.id); }
-        }
-      }
-    }
-  } catch {}
-  return items;
-}
-
-function downloadCampaign(campaign: SavedCampaign) {
-  const esc = (s?: string) =>
-    (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-  if (campaign.data) {
-    try {
-      const parsed = JSON.parse(campaign.data) as {
-        briefing?: { product?: string; goal?: string; mode?: string; audience?: string };
-        result?: {
-          headline?: string;
-          subheadline?: string;
-          cta?: string;
-          audience?: string;
-          channels?: string[];
-          budget?: string;
-          copy?: Record<string, string>;
-          keyMessages?: string[];
-          launchTimeline?: string;
-          uniqueAngle?: string;
-          objectionHandling?: string;
-        };
-      };
-      const r = parsed.result ?? {};
-      const b = parsed.briefing ?? {};
-      const html = `<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><title>${esc(campaign.title)}</title>
-<style>body{font-family:Arial,sans-serif;max-width:820px;margin:0 auto;padding:2rem;background:#fff;color:#1a1a1a}h1{font-size:1.5rem;border-bottom:3px solid #C9A84C;padding-bottom:.5rem;margin-bottom:1.5rem}h2{font-size:1rem;color:#C9A84C;margin-top:2rem;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.05em}h3{font-size:.875rem;color:#555;margin-top:1.25rem;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.05em}.field{margin-bottom:1rem}.label{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:.25rem}.value{font-size:.9rem;white-space:pre-wrap;background:#f9f9f9;padding:.75rem;border-radius:4px;border:1px solid #eee;line-height:1.6}.chip{display:inline-block;background:#f0e8d5;color:#8a6d2a;border-radius:3px;padding:2px 8px;font-size:.8rem;margin:2px}ul{padding-left:1.25rem;margin:0}li{margin-bottom:.5rem;font-size:.9rem;line-height:1.5}.footer{margin-top:3rem;font-size:.7rem;color:#aaa;border-top:1px solid #eee;padding-top:1rem;text-align:center}</style>
-</head><body>
-<h1>${esc(campaign.title)}</h1>
-${b.product ? `<p style="color:#888;font-size:.85rem;">Produto: ${esc(b.product)}${b.goal ? ` · ${esc(b.goal)}` : ""}</p>` : ""}
-<h2>Manchete</h2>
-${r.headline ? `<div class="field"><div class="label">Headline</div><div class="value">${esc(r.headline)}</div></div>` : ""}
-${r.subheadline ? `<div class="field"><div class="label">Subheadline</div><div class="value">${esc(r.subheadline)}</div></div>` : ""}
-${r.cta ? `<div class="field"><div class="label">CTA</div><div class="value">${esc(r.cta)}</div></div>` : ""}
-<h2>Estratégia</h2>
-${r.audience ? `<div class="field"><div class="label">Público-alvo</div><div class="value">${esc(r.audience)}</div></div>` : ""}
-${r.channels?.length ? `<div class="field"><div class="label">Canais</div><div class="value">${r.channels.map(c => `<span class="chip">${esc(c)}</span>`).join(" ")}</div></div>` : ""}
-${r.budget ? `<div class="field"><div class="label">Orçamento</div><div class="value">${esc(r.budget)}</div></div>` : ""}
-${r.uniqueAngle ? `<div class="field"><div class="label">Ângulo Único</div><div class="value">${esc(r.uniqueAngle)}</div></div>` : ""}
-${r.objectionHandling ? `<div class="field"><div class="label">Gestão de Objeções</div><div class="value">${esc(r.objectionHandling)}</div></div>` : ""}
-${r.keyMessages?.length ? `<h2>Mensagens-chave</h2><ul>${r.keyMessages.map(m => `<li>${esc(m)}</li>`).join("")}</ul>` : ""}
-${r.copy ? `<h2>Copy por Plataforma</h2>${Object.entries(r.copy).map(([pl, cp]) => `<div class="field"><h3>${esc(pl)}</h3><div class="value">${esc(cp)}</div></div>`).join("")}` : ""}
-${r.launchTimeline ? `<h2>Cronograma</h2><div class="field"><div class="value">${esc(r.launchTimeline)}</div></div>` : ""}
-<div class="footer">Gerado por IAttom Assist &middot; ${new Date().toLocaleDateString("pt-BR")}</div>
-</body></html>`;
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `campanha-hotmart-${campaign.id.slice(0, 8)}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      return;
-    } catch {}
-  }
-  const text = campaign.content ?? campaign.title;
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${campaign.title.replace(/[^a-z0-9]/gi, "_")}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 const isConnected = false;
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -181,12 +76,6 @@ export function Hotmart() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [loadingEvents, setLoadingEvents]     = useState(false);
   const [syncing, setSyncing]                 = useState(false);
-  const [savedCampaigns, setSavedCampaigns]   = useState<SavedCampaign[]>([]);
-  const [showAdSelector, setShowAdSelector]   = useState(false);
-
-  const handleRefreshCampaigns = useCallback(() => {
-    setSavedCampaigns(readSavedCampaigns());
-  }, []);
 
   const handleLoadProducts = useCallback(async () => {
     setLoadingProducts(true);
@@ -213,7 +102,6 @@ export function Hotmart() {
   }, []);
 
   useEffect(() => {
-    handleRefreshCampaigns();
     if (isConnected) {
       void handleLoadProducts();
       void handleLoadEvents();
@@ -223,10 +111,9 @@ export function Hotmart() {
 
   const handleSync = () => {
     setSyncing(true);
-    handleRefreshCampaigns();
     setTimeout(() => {
       setSyncing(false);
-      toast({ description: "Lista de campanhas atualizada." });
+      toast({ description: "Sincronização concluída." });
     }, 400);
   };
 
@@ -240,17 +127,8 @@ export function Hotmart() {
   };
 
   const handleCreateAd = () => {
-    if (savedCampaigns.length === 0) {
-      toast({ description: "Nenhuma campanha salva ainda. Crie uma campanha primeiro." });
-      return;
-    }
-    setShowAdSelector(prev => !prev);
-  };
-
-  const handleSelectCampaignForAd = (campaign: SavedCampaign) => {
-    setShowAdSelector(false);
-    window.open("https://editor.pages.hotmart.com", "_blank", "noopener,noreferrer");
-    toast({ description: `Editor Hotmart aberto. Publique "${campaign.title}".` });
+    navigate("/dashboard/projects");
+    toast({ description: "Acesse seus projetos salvos para criar um anúncio." });
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -351,25 +229,6 @@ export function Hotmart() {
                 Criar Anúncio
               </Button>
 
-              {/* Seletor inline de campanhas */}
-              {showAdSelector && (
-                <div className="w-full mt-2 rounded-lg border border-white/10 bg-[#0d0d0d] overflow-hidden">
-                  <p className="text-xs text-muted-foreground px-4 pt-3 pb-2 border-b border-white/5">
-                    Escolha uma campanha para publicar:
-                  </p>
-                  <div className="divide-y divide-white/5">
-                    {savedCampaigns.map((campaign) => (
-                      <button
-                        key={campaign.id}
-                        onClick={() => handleSelectCampaignForAd(campaign)}
-                        className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors"
-                      >
-                        {campaign.title}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -485,32 +344,6 @@ export function Hotmart() {
           </CardContent>
         </Card>
 
-        {/* 7. CAMPANHAS SALVAS */}
-        <Card className="bg-[#111111] border-white/[0.06]">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-muted-foreground" />
-              Campanhas Salvas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {savedCampaigns.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <FolderOpen className="w-9 h-9 text-white/8 mb-3" />
-                <p className="text-sm font-semibold text-muted-foreground">Nenhuma campanha salva ainda</p>
-              </div>
-            ) : (
-              <div className="max-h-[168px] overflow-y-auto space-y-1.5 pr-1">
-                {savedCampaigns.slice(0, 10).map((campaign) => (
-                  <div key={campaign.id}
-                    className="px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-white/5">
-                    <p className="text-sm text-white truncate">{campaign.title}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
       </motion.div>
     </div>

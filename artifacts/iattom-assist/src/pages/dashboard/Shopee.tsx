@@ -669,37 +669,6 @@ export function Shopee() {
           : <AbaMinhaContaLoja connected={status?.connected ?? false} onConnect={handleConnect} />
         }
 
-        {/* Campanhas Salvas */}
-        {(() => {
-          try {
-            const all = JSON.parse(localStorage.getItem("iattom_saved_items_v1") ?? "[]") as { id: string; title: string; platform?: string; data?: string }[];
-            const campaigns = all.filter(c => c.platform === "shopee");
-            if (!campaigns.length) return null;
-            return (
-              <Card className="bg-[#111111] border-white/[0.06] mt-4">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                    <Megaphone className="w-4 h-4 text-primary" />
-                    Campanhas Salvas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="max-h-[168px] overflow-y-auto space-y-1.5 pr-1">
-                    {campaigns.slice(0, 10).map(c => (
-                      <div
-                        key={c.id}
-                        onClick={() => { if (c.data) sessionStorage.setItem("iattom_reopen_campaign_v1", c.data); window.location.href = "/dashboard/create-campaign"; }}
-                        className="cursor-pointer px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-white/5 hover:border-white/10 hover:bg-[#131313] transition-colors"
-                      >
-                        <p className="text-sm text-white truncate">{c.title}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          } catch { return null; }
-        })()}
       </motion.div>
     </div>
   );
