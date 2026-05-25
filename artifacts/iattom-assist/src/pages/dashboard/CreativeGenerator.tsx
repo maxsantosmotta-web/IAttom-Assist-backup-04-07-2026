@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, Copy, RefreshCw, AlertCircle, Monitor, Smartphone, Image, Palette, Type, Save } from "lucide-react";
+import { Sparkles, Loader2, Copy, RefreshCw, AlertCircle, Monitor, Smartphone, Image, Palette, Type, Save, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,8 +11,11 @@ import { useAiStream } from "@/hooks/useAiStream";
 import type { CreativeIdeasResult, CreativeConcept } from "@/types/ai";
 
 const formatIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  "1080x1080 square": Monitor,
+  "1:1 quadrado": Monitor,
   "9:16 story": Smartphone,
+  "16:9 banner": Monitor,
+  "1080x1080 square": Monitor,
+  "9:16 story (legacy)": Smartphone,
   default: Image,
 };
 
@@ -22,6 +25,42 @@ const gradients = [
   "from-emerald-900/30 to-teal-900/20",
   "from-rose-900/30 to-orange-900/20",
 ];
+
+const FORMAT_PACK_OPTIONS = [
+  {
+    value: "social",
+    label: "Pacote Social",
+    description: "2 quadrados + 1 story + 1 banner",
+    formats: ["1:1", "1:1", "9:16", "16:9"],
+  },
+  {
+    value: "stories",
+    label: "Pacote Stories",
+    description: "4 stories verticais",
+    formats: ["9:16", "9:16", "9:16", "9:16"],
+  },
+  {
+    value: "ads",
+    label: "Pacote Anúncios",
+    description: "2 banners + 2 quadrados",
+    formats: ["16:9", "16:9", "1:1", "1:1"],
+  },
+] as const;
+
+function downloadImageBase64(base64: string, filename: string) {
+  const binary = atob(base64);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+  const blob = new Blob([arr], { type: "image/png" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 function ConceptCard({ concept, index }: { concept: CreativeConcept; index: number }) {
   const { toast } = useToast();
@@ -33,15 +72,32 @@ function ConceptCard({ concept, index }: { concept: CreativeConcept; index: numb
     toast({ description: "Conceito criativo copiado" });
   };
 
+  const handleDownload = () => {
+    if (!concept.imageBase64) return;
+    const slug = concept.label.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    downloadImageBase64(concept.imageBase64, `criativo-${index + 1}-${slug}.png`);
+    toast({ description: "Imagem baixada." });
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }}>
       <Card className="bg-[#111111] border-white/5 hover:border-primary/20 transition-colors overflow-hidden">
         {concept.imageBase64 ? (
-          <img
-            src={`data:image/png;base64,${concept.imageBase64}`}
-            alt={concept.label}
-            className="h-48 w-full object-cover"
-          />
+          <div className="relative group">
+            <img
+              src={`data:image/png;base64,${concept.imageBase64}`}
+              alt={concept.label}
+              className="h-48 w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+              <button
+                onClick={handleDownload}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-black/70 border border-white/20 text-white text-xs font-medium hover:bg-black/90 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" /> Baixar imagem
+              </button>
+            </div>
+          </div>
         ) : (
           <div className={`h-24 bg-gradient-to-br ${gradients[index % gradients.length]} flex items-center justify-center`}>
             <FormatIcon className="w-8 h-8 text-white/20" />
@@ -53,9 +109,16 @@ function ConceptCard({ concept, index }: { concept: CreativeConcept; index: numb
               <p className="text-xs font-semibold text-primary uppercase tracking-widest">{concept.label}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{concept.format} &middot; {concept.bestPlatform}</p>
             </div>
-            <button onClick={copyAll} className="text-muted-foreground hover:text-white transition-colors shrink-0">
-              <Copy className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {concept.imageBase64 && (
+                <button onClick={handleDownload} className="text-muted-foreground hover:text-white transition-colors">
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button onClick={copyAll} className="text-muted-foreground hover:text-white transition-colors">
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <div>
@@ -102,6 +165,7 @@ export function CreativeGenerator() {
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
+  const [formatPack, setFormatPack] = useState<"social" | "stories" | "ads">("social");
   const { status, result, error, generate, reset } = useAiStream<CreativeIdeasResult>();
   const { toast } = useToast();
 
@@ -123,13 +187,19 @@ export function CreativeGenerator() {
   const isError = status === "error";
 
   const runGenerate = (charge: () => void) => {
-    generate("/api/ai/creative-ideas", { prompt, style: style || undefined, targetAudience: targetAudience || undefined }).then((res) => {
+    generate("/api/ai/creative-ideas", {
+      prompt,
+      style: style || undefined,
+      targetAudience: targetAudience || undefined,
+      formatPack,
+    }).then((res) => {
       if (res !== null) charge();
     });
   };
 
   const handleSave = () => {
     if (!result) return;
+
     const lines: string[] = [];
     if (result.overarchingTheme) lines.push(`TEMA: ${result.overarchingTheme}`);
     if (result.colorPalette) lines.push(`PALETA: ${result.colorPalette}`);
@@ -144,11 +214,29 @@ export function CreativeGenerator() {
     });
     if (result.brandVoiceNotes) lines.push(`\nVoz da Marca: ${result.brandVoiceNotes}`);
     const content = lines.join("\n");
+
+    const resultWithoutImages: CreativeIdeasResult = {
+      ...result,
+      concepts: result.concepts?.map(({ imageBase64: _removed, ...rest }) => rest) ?? [],
+    };
+
+    const data = JSON.stringify({
+      briefing: { prompt: prompt.trim(), style, targetAudience, formatPack },
+      result: resultWithoutImages,
+    });
+
     const title = prompt.trim() || result.overarchingTheme || "Criativo gerado";
     try {
       const raw = localStorage.getItem("iattom_saved_items_v1");
       const existing = raw ? (JSON.parse(raw) as object[]) : [];
-      existing.unshift({ id: crypto.randomUUID(), title, type: "creative", content, createdAt: new Date().toISOString() });
+      existing.unshift({
+        id: crypto.randomUUID(),
+        title,
+        type: "creative",
+        content,
+        data,
+        createdAt: new Date().toISOString(),
+      });
       localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
       toast({ description: "Salvo com sucesso." });
     } catch {
@@ -161,7 +249,7 @@ export function CreativeGenerator() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Inteligência Visual</p>
         <h2 className="text-2xl font-bold text-white mb-1">Gerador Criativo</h2>
-        <p className="text-muted-foreground text-sm">Gere conceitos criativos premium — copy, hooks, direções visuais e prompts de imagem.</p>
+        <p className="text-muted-foreground text-sm">Gere conceitos criativos premium — copy, hooks, direções visuais e imagens prontas para publicação.</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
@@ -192,6 +280,41 @@ export function CreativeGenerator() {
                 <Input placeholder="ex: Entusiastas de fitness 25-35" className="bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50" value={targetAudience} onChange={(e) => setTargetAudience(e.target.value)} />
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Pacote de Formatos</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {FORMAT_PACK_OPTIONS.map((pack) => (
+                  <button
+                    key={pack.value}
+                    onClick={() => setFormatPack(pack.value)}
+                    className={[
+                      "flex flex-col items-start gap-1 p-3 rounded-lg border text-left transition-all",
+                      formatPack === pack.value
+                        ? "border-primary/60 bg-primary/10 text-white"
+                        : "border-white/8 bg-white/3 text-muted-foreground hover:border-white/20 hover:text-white",
+                    ].join(" ")}
+                  >
+                    <span className="text-xs font-semibold">{pack.label}</span>
+                    <span className="text-xs opacity-70">{pack.description}</span>
+                    <div className="flex gap-1 mt-0.5">
+                      {pack.formats.map((f, i) => (
+                        <span
+                          key={i}
+                          className={[
+                            "text-[9px] px-1 py-0.5 rounded font-mono",
+                            formatPack === pack.value ? "bg-primary/20 text-primary" : "bg-white/8 text-white/40",
+                          ].join(" ")}
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <CreditsGate feature="creative" onSuccess={runGenerate} disabled={!prompt.trim() || isGenerating}>
               {({ trigger, isLoading }) => (
                 <Button onClick={trigger} disabled={isLoading || isGenerating || !prompt.trim()} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full">
@@ -208,7 +331,7 @@ export function CreativeGenerator() {
           <motion.div key="generating" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="flex items-center gap-3 text-muted-foreground mb-5">
               <div className="flex gap-1">{[0, 1, 2].map((i) => (<span key={i} className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />))}</div>
-              <span className="text-sm">Criando conceitos inovadores...</span>
+              <span className="text-sm">Criando conceitos e gerando imagens...</span>
             </div>
             <div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => (<div key={i} className="h-64 rounded-lg bg-white/5 border border-white/5 animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />))}</div>
           </motion.div>
@@ -220,7 +343,7 @@ export function CreativeGenerator() {
               <CardContent className="p-5 flex items-center gap-4">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
                 <div className="flex-1"><p className="text-sm font-semibold text-red-400">Falha na geração</p><p className="text-xs text-muted-foreground">{error}</p></div>
-                <Button size="sm" variant="outline" onClick={() => { reset(); generate("/api/ai/creative-ideas", { prompt, style: style || undefined, targetAudience: targetAudience || undefined }); }} className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente</Button>
+                <Button size="sm" variant="outline" onClick={() => { reset(); generate("/api/ai/creative-ideas", { prompt, style: style || undefined, targetAudience: targetAudience || undefined, formatPack }); }} className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente</Button>
               </CardContent>
             </Card>
           </motion.div>

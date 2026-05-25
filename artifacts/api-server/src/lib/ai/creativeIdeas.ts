@@ -8,6 +8,7 @@ interface CreativeIdeasInput {
   style?: string;
   product?: string;
   targetAudience?: string;
+  formatPack?: string;
 }
 import { logAiUsage } from "./logger.js";
 
@@ -34,6 +35,30 @@ export interface CreativeIdeasResult {
   brandVoiceNotes: string;
 }
 
+type ImageSize = "1024x1024" | "1536x1024" | "1024x1536" | "auto";
+
+function mapFormatToSize(format: string): ImageSize {
+  const f = format.toLowerCase();
+  if (f.includes("9:16") || f.includes("story") || f.includes("reels") || f.includes("1536")) {
+    return "1024x1536";
+  }
+  if (f.includes("16:9") || f.includes("banner") || f.includes("landscape") || f.includes("1536x1024")) {
+    return "1536x1024";
+  }
+  return "1024x1024";
+}
+
+const FORMAT_PACKS: Record<string, string[]> = {
+  social:  ["1:1 quadrado", "1:1 quadrado", "9:16 story", "16:9 banner"],
+  stories: ["9:16 story",   "9:16 story",   "9:16 story", "9:16 story"],
+  ads:     ["16:9 banner",  "16:9 banner",  "1:1 quadrado", "1:1 quadrado"],
+};
+
+function getFormatPack(formatPack?: string): string[] {
+  if (formatPack && FORMAT_PACKS[formatPack]) return FORMAT_PACKS[formatPack];
+  return FORMAT_PACKS.social;
+}
+
 export async function streamCreativeIdeas(
   params: CreativeIdeasInput,
   res: Response,
@@ -41,6 +66,9 @@ export async function streamCreativeIdeas(
 ): Promise<void> {
   setupSSE(res);
   sendSSE(res, { type: "start" });
+
+  const formats = getFormatPack(params.formatPack);
+  const formatInstruction = `Os 4 conceitos devem usar exatamente estes formatos, nesta ordem: ${formats.map((f, i) => `conceito ${i + 1}: "${f}"`).join(", ")}.`;
 
   const systemPrompt = `Você é um diretor criativo de nível mundial para publicidade digital. Desenvolve conceitos criativos revolucionários que param o scroll, constroem desejo pela marca e geram conversões.
 
@@ -52,13 +80,19 @@ REGRA DE OBJETIVIDADE: Seja direto e escaneável. Comece com o ponto mais releva
 
 Sua saída deve ser um objeto JSON válido — sem markdown, sem blocos de código, apenas JSON puro.
 
+REGRA DE FORMATOS OBRIGATÓRIA: O campo "format" de cada conceito deve conter EXATAMENTE um destes valores, sem variação:
+- "1:1 quadrado"
+- "9:16 story"
+- "16:9 banner"
+Nunca use outros valores. Nunca invente formatos.
+
 Retorne exatamente esta estrutura:
 {
   "concepts": [
     {
       "id": number (1-4),
-      "label": string (nome do criativo em PT-BR, ex: "Banner Principal", "Story", "Produto em Destaque", "Prova Social"),
-      "format": string (ex: "1080x1080 quadrado", "9:16 story", "16:9 banner"),
+      "label": string (nome do criativo em PT-BR, ex: "Feed Principal", "Story Emocional", "Banner Conversão", "Destaque do Produto"),
+      "format": string (OBRIGATÓRIO: usar exatamente "1:1 quadrado", "9:16 story" ou "16:9 banner"),
       "concept": string (1-2 frases descrevendo o conceito criativo, em PT-BR),
       "visualDirection": string (descrição visual detalhada para o designer, em PT-BR),
       "copyHook": string (headline/gancho de atenção, em PT-BR),
@@ -66,7 +100,7 @@ Retorne exatamente esta estrutura:
       "cta": string (texto do botão de chamada para ação, em PT-BR),
       "emotionalTrigger": string (emoção central sendo ativada, em PT-BR),
       "bestPlatform": string (onde este criativo funciona melhor, em PT-BR),
-      "imagePrompt": string (prompt detalhado para geração de imagem IA — SEMPRE em inglês para compatibilidade com modelos de imagem. OBRIGATÓRIO: photorealistic, commercial quality, clean background, no text overlays, no logos, no watermarks, no brand names, no English words visible in the image, natural human anatomy, no extra fingers, no deformities, premium Brazilian commercial aesthetic, product-focused, high-end advertising style)
+      "imagePrompt": string (prompt detalhado para geração de imagem IA — SEMPRE em inglês. OBRIGATÓRIO para qualidade premium: photorealistic, commercial photography quality, cinematic lighting with soft shadows and highlights, clear visual hierarchy, modern and clean composition, professional depth of field with sharp subject and soft background, premium advertising aesthetic, product or subject centered and well-composed, high-end magazine quality, clean background or contextual lifestyle setting, natural human anatomy if people appear, no extra fingers, no deformities, no text overlays, no logos, no watermarks, no brand names visible, no amateur look, no blurry elements, no distortion, no cluttered composition, ready-to-publish ad quality, aspirational mood)
     }
   ],
   "overarchingTheme": string (tema criativo unificador de todos os conceitos, em PT-BR),
@@ -82,6 +116,8 @@ Briefing: "${params.prompt}"
 ${params.product ? `Produto: ${params.product}` : ""}
 ${params.style ? `Estilo visual: ${params.style}` : ""}
 ${params.targetAudience ? `Público-alvo: ${params.targetAudience}` : ""}
+
+${formatInstruction}
 
 Crie 4 conceitos criativos visualmente impactantes, alinhados à marca e focados em conversão. Responda integralmente em português brasileiro.`;
 
@@ -111,7 +147,7 @@ Crie 4 conceitos criativos visualmente impactantes, alinhados à marca e focados
 
     const imageResults = await Promise.allSettled(
       textResult.concepts.map((concept) =>
-        generateImageBuffer(concept.imagePrompt, "1024x1024"),
+        generateImageBuffer(concept.imagePrompt, mapFormatToSize(concept.format)),
       ),
     );
 
