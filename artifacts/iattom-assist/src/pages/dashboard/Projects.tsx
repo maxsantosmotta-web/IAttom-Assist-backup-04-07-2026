@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 interface SavedItem {
   id: string;
   title: string;
-  type: "campaign" | "content" | "creative" | "video_script";
+  type: "campaign" | "content" | "creative" | "video_script" | "product_discovery";
   platform?: string;
   content: string;
   data?: string;
@@ -23,14 +23,15 @@ interface SavedItem {
 }
 
 const typeConfig: Record<string, { label: string; icon: React.ElementType; color: string; badge: string }> = {
-  campaign:     { label: "Campanhas",  icon: Megaphone, color: "text-amber-400",  badge: "bg-amber-400/10 text-amber-400 border-amber-400/20" },
-  content:      { label: "Conteúdos",  icon: FileText,  color: "text-blue-400",   badge: "bg-blue-400/10 text-blue-400 border-blue-400/20" },
-  creative:     { label: "Criativos",  icon: Sparkles,  color: "text-purple-400", badge: "bg-purple-400/10 text-purple-400 border-purple-400/20" },
-  video_script: { label: "Scripts",    icon: Video,     color: "text-rose-400",   badge: "bg-rose-400/10 text-rose-400 border-rose-400/20" },
+  campaign:         { label: "Campanhas",  icon: Megaphone, color: "text-amber-400",   badge: "bg-amber-400/10 text-amber-400 border-amber-400/20" },
+  content:          { label: "Conteúdos",  icon: FileText,  color: "text-blue-400",    badge: "bg-blue-400/10 text-blue-400 border-blue-400/20" },
+  creative:         { label: "Criativos",  icon: Sparkles,  color: "text-purple-400",  badge: "bg-purple-400/10 text-purple-400 border-purple-400/20" },
+  video_script:     { label: "Scripts",    icon: Video,     color: "text-rose-400",    badge: "bg-rose-400/10 text-rose-400 border-rose-400/20" },
+  product_discovery:{ label: "Produtos",   icon: Search,    color: "text-emerald-400", badge: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" },
 };
 
 const typeLabels: Record<string, string> = {
-  campaign: "Campanhas", content: "Conteúdos", creative: "Criativos", video_script: "Scripts",
+  campaign: "Campanhas", content: "Conteúdos", creative: "Criativos", video_script: "Scripts", product_discovery: "Produtos",
 };
 
 const platformLabels: Record<string, string> = {
@@ -80,9 +81,30 @@ export function Projects() {
     if (item.type === "campaign") {
       if (item.data) sessionStorage.setItem("iattom_reopen_campaign_v1", item.data);
       navigate("/dashboard/create-campaign");
-    } else {
-      setViewingItem(item);
+      return;
     }
+    if (item.data) {
+      const keyMap: Record<string, string> = {
+        content:          "iattom_restore_content_v1",
+        video_script:     "iattom_restore_video_v1",
+        product_discovery:"iattom_restore_products_v1",
+        creative:         "iattom_restore_creative_v1",
+      };
+      const routeMap: Record<string, string> = {
+        content:          "/dashboard/create-content",
+        video_script:     "/dashboard/video-scripts",
+        product_discovery:"/dashboard/find-products",
+        creative:         "/dashboard/creative-generator",
+      };
+      const key = keyMap[item.type];
+      const route = routeMap[item.type];
+      if (key && route) {
+        sessionStorage.setItem(key, item.data);
+        navigate(route);
+        return;
+      }
+    }
+    setViewingItem(item);
   };
 
   const handleDeleteItem = (id: string) => {
@@ -216,6 +238,11 @@ export function Projects() {
           <DialogHeader>
             <DialogTitle className="text-white text-base">{viewingItem?.title}</DialogTitle>
           </DialogHeader>
+          {!viewingItem?.data && (
+            <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg bg-white/[0.04] border border-white/[0.07]">
+              <p className="text-xs text-zinc-500">Projeto antigo — dados completos indisponíveis. Exibindo texto salvo.</p>
+            </div>
+          )}
           <div className="max-h-[60vh] overflow-y-auto pr-1">
             <pre className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed font-sans">{viewingItem?.content}</pre>
           </div>

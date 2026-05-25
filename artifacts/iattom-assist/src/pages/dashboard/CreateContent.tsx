@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, Loader2, Copy, RefreshCw, AlertCircle, Hash, Mail, MessageSquare, Twitter, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,23 @@ export function CreateContent() {
   const isDone = status === "done";
   const isError = status === "error";
 
+  const [restoredResult, setRestoredResult] = useState<ContentResult | null>(null);
+  const isRestoredMode = !!restoredResult && status === "idle";
+  const activeResult = result ?? restoredResult;
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("iattom_restore_content_v1");
+      if (!raw) return;
+      sessionStorage.removeItem("iattom_restore_content_v1");
+      const saved = JSON.parse(raw) as { briefing?: { topic?: string; tone?: string; additionalContext?: string }; result?: ContentResult };
+      if (saved.briefing?.topic) setTopic(saved.briefing.topic);
+      if (saved.briefing?.tone) setTone(saved.briefing.tone);
+      if (saved.briefing?.additionalContext) setAdditionalContext(saved.briefing.additionalContext);
+      if (saved.result) setRestoredResult(saved.result);
+    } catch {}
+  }, []);
+
   const runGenerate = (charge: () => void) => {
     generate("/api/ai/create-content", { topic, tone: tone || undefined, additionalContext: additionalContext || undefined }).then((res) => {
       if (res !== null) charge();
@@ -57,17 +74,17 @@ export function CreateContent() {
   };
 
   const handleSave = () => {
-    if (!result) return;
+    if (!activeResult) return;
     const lines: string[] = [];
-    if (result.seoTitle) lines.push(`TÍTULO SEO: ${result.seoTitle}`);
-    if (result.seoDescription) lines.push(`META DESCRIÇÃO: ${result.seoDescription}`);
-    if (result.blog) lines.push(`\nBLOG:\n${result.blog}`);
-    if (result.social) lines.push(`\nSOCIAL:\n${result.social}`);
-    if (result.email) lines.push(`\nE-MAIL:\n${result.email}`);
-    if (result.tweetThread) lines.push(`\nTHREAD:\n${result.tweetThread}`);
-    if (result.smsText) lines.push(`\nSMS:\n${result.smsText}`);
+    if (activeResult.seoTitle) lines.push(`TÍTULO SEO: ${activeResult.seoTitle}`);
+    if (activeResult.seoDescription) lines.push(`META DESCRIÇÃO: ${activeResult.seoDescription}`);
+    if (activeResult.blog) lines.push(`\nBLOG:\n${activeResult.blog}`);
+    if (activeResult.social) lines.push(`\nSOCIAL:\n${activeResult.social}`);
+    if (activeResult.email) lines.push(`\nE-MAIL:\n${activeResult.email}`);
+    if (activeResult.tweetThread) lines.push(`\nTHREAD:\n${activeResult.tweetThread}`);
+    if (activeResult.smsText) lines.push(`\nSMS:\n${activeResult.smsText}`);
     const content = lines.join("\n");
-    const title = topic.trim() || result.seoTitle || "Conteúdo gerado";
+    const title = topic.trim() || activeResult.seoTitle || "Conteúdo gerado";
     try {
       const raw = localStorage.getItem("iattom_saved_items_v1");
       const existing = raw ? (JSON.parse(raw) as object[]) : [];
@@ -76,7 +93,7 @@ export function CreateContent() {
         title,
         type: "content",
         content,
-        data: JSON.stringify({ briefing: { topic, tone, additionalContext }, result }),
+        data: JSON.stringify({ briefing: { topic, tone, additionalContext }, result: activeResult }),
         createdAt: new Date().toISOString(),
       });
       localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
@@ -161,25 +178,31 @@ export function CreateContent() {
           </motion.div>
         )}
 
-        {isDone && result && (
+        {(isDone || isRestoredMode) && activeResult && (
           <motion.div key="result" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
+            {isRestoredMode && (
+              <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                <p className="text-xs text-primary">Conteúdo restaurado de Projetos Salvos</p>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">Pacote de Conteúdo Pronto</h3>
               <div className="flex items-center gap-3">
                 <button onClick={handleSave} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"><Save className="w-3 h-3" /> Salvar</button>
-                <button onClick={reset} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Novo conteúdo</button>
+                <button onClick={() => { reset(); setRestoredResult(null); }} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Novo conteúdo</button>
               </div>
             </div>
 
-            {result.seoTitle && (
+            {activeResult.seoTitle && (
               <div className="mb-4 grid md:grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                   <p className="text-xs text-primary font-medium mb-0.5">Título SEO</p>
-                  <p className="text-sm text-white">{result.seoTitle}</p>
+                  <p className="text-sm text-white">{activeResult.seoTitle}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                   <p className="text-xs text-primary font-medium mb-0.5">Meta Descrição</p>
-                  <p className="text-sm text-muted-foreground">{result.seoDescription}</p>
+                  <p className="text-sm text-muted-foreground">{activeResult.seoDescription}</p>
                 </div>
               </div>
             )}
@@ -193,7 +216,7 @@ export function CreateContent() {
                   { value: "tweet", label: "Thread", icon: Twitter },
                   { value: "sms", label: "SMS", icon: MessageSquare },
                 ].map(({ value, label, icon: Icon }) => (
-                  result[value === "tweet" ? "tweetThread" : value === "sms" ? "smsText" : value as keyof ContentResult] && (
+                  activeResult[value === "tweet" ? "tweetThread" : value === "sms" ? "smsText" : value as keyof ContentResult] && (
                     <TabsTrigger key={value} value={value} className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary text-xs">
                       <Icon className="w-3 h-3 mr-1" />{label}
                     </TabsTrigger>
@@ -201,11 +224,11 @@ export function CreateContent() {
                 ))}
               </TabsList>
 
-              {result.blog && <TabsContent value="blog"><ContentTab content={result.blog} label="Post de Blog" icon={FileText} /></TabsContent>}
-              {result.social && <TabsContent value="social"><ContentTab content={result.social} label="Legenda Social" icon={Hash} /></TabsContent>}
-              {result.email && <TabsContent value="email"><ContentTab content={result.email} label="Copy de E-mail" icon={Mail} /></TabsContent>}
-              {result.tweetThread && <TabsContent value="tweet"><ContentTab content={result.tweetThread} label="Thread de Tweets" icon={Twitter} /></TabsContent>}
-              {result.smsText && <TabsContent value="sms"><ContentTab content={result.smsText} label="Mensagem SMS" icon={MessageSquare} /></TabsContent>}
+              {activeResult.blog && <TabsContent value="blog"><ContentTab content={activeResult.blog} label="Post de Blog" icon={FileText} /></TabsContent>}
+              {activeResult.social && <TabsContent value="social"><ContentTab content={activeResult.social} label="Legenda Social" icon={Hash} /></TabsContent>}
+              {activeResult.email && <TabsContent value="email"><ContentTab content={activeResult.email} label="Copy de E-mail" icon={Mail} /></TabsContent>}
+              {activeResult.tweetThread && <TabsContent value="tweet"><ContentTab content={activeResult.tweetThread} label="Thread de Tweets" icon={Twitter} /></TabsContent>}
+              {activeResult.smsText && <TabsContent value="sms"><ContentTab content={activeResult.smsText} label="Mensagem SMS" icon={MessageSquare} /></TabsContent>}
             </Tabs>
           </motion.div>
         )}

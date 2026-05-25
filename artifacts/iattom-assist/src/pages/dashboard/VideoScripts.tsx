@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Video, Loader2, Copy, AlertCircle, RefreshCw, Clock, Music, Zap, Film, Share2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,24 @@ export function VideoScripts() {
   const isDone = status === "done";
   const isError = status === "error";
 
+  const [restoredResult, setRestoredResult] = useState<VideoScriptResult | null>(null);
+  const isRestoredMode = !!restoredResult && status === "idle";
+  const activeResult = result ?? restoredResult;
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("iattom_restore_video_v1");
+      if (!raw) return;
+      sessionStorage.removeItem("iattom_restore_video_v1");
+      const saved = JSON.parse(raw) as { briefing?: { product?: string; format?: string; duration?: string; style?: string }; result?: VideoScriptResult };
+      if (saved.briefing?.product) setProduct(saved.briefing.product);
+      if (saved.briefing?.format) setFormat(saved.briefing.format);
+      if (saved.briefing?.duration) setDuration(saved.briefing.duration);
+      if (saved.briefing?.style) setStyle(saved.briefing.style);
+      if (saved.result) setRestoredResult(saved.result);
+    } catch {}
+  }, []);
+
   const runGenerate = (charge: () => void) => {
     generate("/api/ai/video-script", { product, format: format || undefined, duration: duration || undefined, style: style || undefined }).then((res) => {
       if (res !== null) charge();
@@ -30,33 +48,33 @@ export function VideoScripts() {
   };
 
   const copyFull = () => {
-    if (!result) return;
-    const scenes = result.scenes?.map((s, i) =>
+    if (!activeResult) return;
+    const scenes = activeResult.scenes?.map((s, i) =>
       `CENA ${i + 1} (${s.time})\nVisual: ${s.visual}\nScript: ${s.script}\nEmoção: ${s.emotion}`
     ).join("\n\n");
-    const hooks = result.hooks?.join("\n");
-    const text = `${result.title}\n\nHOOKS:\n${hooks}\n\nCENAS:\n${scenes}`;
+    const hooks = activeResult.hooks?.join("\n");
+    const text = `${activeResult.title}\n\nHOOKS:\n${hooks}\n\nCENAS:\n${scenes}`;
     navigator.clipboard.writeText(text);
     toast({ description: "Script completo copiado" });
   };
 
   const handleSave = () => {
-    if (!result) return;
-    const lines: string[] = [result.title];
-    if (result.duration) lines.push(`Duração: ${result.duration}`);
-    if (result.voiceoverStyle) lines.push(`Narração: ${result.voiceoverStyle}`);
-    if (result.musicMood) lines.push(`Música: ${result.musicMood}`);
-    if (result.editingPace) lines.push(`Edição: ${result.editingPace}`);
-    if (result.hooks?.length) lines.push(`\nHOOKS:\n${result.hooks.join("\n")}`);
-    if (result.viralTrigger) lines.push(`\nGATILHO VIRAL: ${result.viralTrigger}`);
-    if (result.scenes?.length) {
-      const scenes = result.scenes.map((s: ScriptScene, i: number) =>
+    if (!activeResult) return;
+    const lines: string[] = [activeResult.title];
+    if (activeResult.duration) lines.push(`Duração: ${activeResult.duration}`);
+    if (activeResult.voiceoverStyle) lines.push(`Narração: ${activeResult.voiceoverStyle}`);
+    if (activeResult.musicMood) lines.push(`Música: ${activeResult.musicMood}`);
+    if (activeResult.editingPace) lines.push(`Edição: ${activeResult.editingPace}`);
+    if (activeResult.hooks?.length) lines.push(`\nHOOKS:\n${activeResult.hooks.join("\n")}`);
+    if (activeResult.viralTrigger) lines.push(`\nGATILHO VIRAL: ${activeResult.viralTrigger}`);
+    if (activeResult.scenes?.length) {
+      const scenes = activeResult.scenes.map((s: ScriptScene, i: number) =>
         `CENA ${i + 1} (${s.time})\nVisual: ${s.visual}\nNarração: ${s.script}${s.emotion ? `\nEmoção: ${s.emotion}` : ""}`
       ).join("\n\n");
       lines.push(`\nCENAS:\n${scenes}`);
     }
     const content = lines.join("\n");
-    const title = product.trim() || result.title || "Script gerado";
+    const title = product.trim() || activeResult.title || "Script gerado";
     try {
       const raw = localStorage.getItem("iattom_saved_items_v1");
       const existing = raw ? (JSON.parse(raw) as object[]) : [];
@@ -170,51 +188,57 @@ export function VideoScripts() {
           </motion.div>
         )}
 
-        {isDone && result && (
+        {(isDone || isRestoredMode) && activeResult && (
           <motion.div key="result" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="space-y-4">
+            {isRestoredMode && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                <p className="text-xs text-primary">Script restaurado de Projetos Salvos</p>
+              </div>
+            )}
             <Card className="bg-[#111111] border-primary/20">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base text-white flex items-center gap-2">
-                    <Video className="w-4 h-4 text-primary" />{result.title}
+                    <Video className="w-4 h-4 text-primary" />{activeResult.title}
                   </CardTitle>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="border-primary/30 text-primary flex items-center gap-1 text-xs"><Clock className="w-3 h-3" />{result.duration}</Badge>
+                    <Badge variant="outline" className="border-primary/30 text-primary flex items-center gap-1 text-xs"><Clock className="w-3 h-3" />{activeResult.duration}</Badge>
                     <button onClick={handleSave} className="text-muted-foreground hover:text-white transition-colors p-1" title="Salvar"><Save className="w-3.5 h-3.5" /></button>
                     <button onClick={copyFull} className="text-muted-foreground hover:text-white transition-colors p-1"><Copy className="w-3.5 h-3.5" /></button>
-                    <button onClick={reset} className="text-muted-foreground hover:text-white transition-colors text-xs flex items-center gap-1"><RefreshCw className="w-3 h-3" /></button>
+                    <button onClick={() => { reset(); setRestoredResult(null); }} className="text-muted-foreground hover:text-white transition-colors text-xs flex items-center gap-1"><RefreshCw className="w-3 h-3" /></button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-5">
-                {(result.voiceoverStyle || result.musicMood || result.editingPace) && (
+                {(activeResult.voiceoverStyle || activeResult.musicMood || activeResult.editingPace) && (
                   <div className="grid grid-cols-3 gap-3">
-                    {result.voiceoverStyle && (
+                    {activeResult.voiceoverStyle && (
                       <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                         <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Narração</p>
-                        <p className="text-xs text-white">{result.voiceoverStyle}</p>
+                        <p className="text-xs text-white">{activeResult.voiceoverStyle}</p>
                       </div>
                     )}
-                    {result.musicMood && (
+                    {activeResult.musicMood && (
                       <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                         <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1"><Music className="w-3 h-3" />Música</p>
-                        <p className="text-xs text-white">{result.musicMood}</p>
+                        <p className="text-xs text-white">{activeResult.musicMood}</p>
                       </div>
                     )}
-                    {result.editingPace && (
+                    {activeResult.editingPace && (
                       <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                         <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1"><Film className="w-3 h-3" />Edição</p>
-                        <p className="text-xs text-white">{result.editingPace}</p>
+                        <p className="text-xs text-white">{activeResult.editingPace}</p>
                       </div>
                     )}
                   </div>
                 )}
 
-                {result.hooks?.length > 0 && (
+                {activeResult.hooks?.length > 0 && (
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 font-medium">Variações de Hook</p>
                     <div className="space-y-2">
-                      {result.hooks.map((hook, i) => (
+                      {activeResult.hooks.map((hook, i) => (
                         <div key={i} className="flex items-start gap-3 p-3 bg-white/5 border border-white/5 rounded-lg group">
                           <span className="text-xs font-bold text-primary shrink-0 mt-0.5">H{i + 1}</span>
                           <p className="text-sm text-white flex-1 leading-snug">{hook}</p>
@@ -230,21 +254,21 @@ export function VideoScripts() {
                   </div>
                 )}
 
-                {result.viralTrigger && (
+                {activeResult.viralTrigger && (
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/15">
                     <Zap className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
                     <div>
                       <p className="text-xs text-primary font-medium mb-0.5">Gatilho Viral</p>
-                      <p className="text-xs text-muted-foreground">{result.viralTrigger}</p>
+                      <p className="text-xs text-muted-foreground">{activeResult.viralTrigger}</p>
                     </div>
                   </div>
                 )}
 
-                {result.scenes?.length > 0 && (
+                {activeResult.scenes?.length > 0 && (
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 font-medium">Detalhamento de Cenas</p>
                     <div className="space-y-3">
-                      {result.scenes.map((scene: ScriptScene, i: number) => (
+                      {activeResult.scenes.map((scene: ScriptScene, i: number) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className="border border-white/5 rounded-lg overflow-hidden">
                           <div className="flex items-center gap-3 px-4 py-2.5 bg-white/5 border-b border-white/5">
                             <span className="text-xs font-bold text-primary">Cena {i + 1}</span>
@@ -273,11 +297,11 @@ export function VideoScripts() {
                   </div>
                 )}
 
-                {result.distributionTips?.length > 0 && (
+                {activeResult.distributionTips?.length > 0 && (
                   <div className="border-t border-white/5 pt-4">
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 font-medium flex items-center gap-1.5"><Share2 className="w-3.5 h-3.5" /> Dicas de Distribuição</p>
                     <div className="space-y-1.5">
-                      {result.distributionTips.map((tip, i) => (
+                      {activeResult.distributionTips.map((tip, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <span className="text-primary font-bold text-xs shrink-0 mt-0.5">{i + 1}.</span>
                           <p className="text-xs text-muted-foreground">{tip}</p>

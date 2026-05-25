@@ -182,6 +182,24 @@ export function CreativeGenerator() {
     }
   }, []);
 
+  const [restoredResult, setRestoredResult] = useState<CreativeIdeasResult | null>(null);
+  const isRestoredMode = !!restoredResult && status === "idle";
+  const activeResult = result ?? restoredResult;
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("iattom_restore_creative_v1");
+      if (!raw) return;
+      sessionStorage.removeItem("iattom_restore_creative_v1");
+      const saved = JSON.parse(raw) as { briefing?: { prompt?: string; style?: string; targetAudience?: string; formatPack?: "social" | "stories" | "ads" }; result?: CreativeIdeasResult };
+      if (saved.briefing?.prompt) setPrompt(saved.briefing.prompt);
+      if (saved.briefing?.style) setStyle(saved.briefing.style);
+      if (saved.briefing?.targetAudience) setTargetAudience(saved.briefing.targetAudience);
+      if (saved.briefing?.formatPack) setFormatPack(saved.briefing.formatPack);
+      if (saved.result) setRestoredResult(saved.result);
+    } catch {}
+  }, []);
+
   const isGenerating = status === "generating";
   const isDone = status === "done";
   const isError = status === "error";
@@ -198,13 +216,13 @@ export function CreativeGenerator() {
   };
 
   const handleSave = () => {
-    if (!result) return;
+    if (!activeResult) return;
 
     const lines: string[] = [];
-    if (result.overarchingTheme) lines.push(`TEMA: ${result.overarchingTheme}`);
-    if (result.colorPalette) lines.push(`PALETA: ${result.colorPalette}`);
-    if (result.typographyDirection) lines.push(`TIPOGRAFIA: ${result.typographyDirection}`);
-    result.concepts?.forEach((c: CreativeConcept, i: number) => {
+    if (activeResult.overarchingTheme) lines.push(`TEMA: ${activeResult.overarchingTheme}`);
+    if (activeResult.colorPalette) lines.push(`PALETA: ${activeResult.colorPalette}`);
+    if (activeResult.typographyDirection) lines.push(`TIPOGRAFIA: ${activeResult.typographyDirection}`);
+    activeResult.concepts?.forEach((c: CreativeConcept, i: number) => {
       lines.push(`\nCONCEITO ${i + 1}: ${c.label}`);
       if (c.copyHook) lines.push(`Hook: ${c.copyHook}`);
       if (c.bodyText) lines.push(`Copy: ${c.bodyText}`);
@@ -212,12 +230,12 @@ export function CreativeGenerator() {
       if (c.visualDirection) lines.push(`Visual: ${c.visualDirection}`);
       if (c.imagePrompt) lines.push(`Prompt IA: ${c.imagePrompt}`);
     });
-    if (result.brandVoiceNotes) lines.push(`\nVoz da Marca: ${result.brandVoiceNotes}`);
+    if (activeResult.brandVoiceNotes) lines.push(`\nVoz da Marca: ${activeResult.brandVoiceNotes}`);
     const content = lines.join("\n");
 
     const resultWithoutImages: CreativeIdeasResult = {
-      ...result,
-      concepts: result.concepts?.map(({ imageBase64: _removed, ...rest }) => rest) ?? [],
+      ...activeResult,
+      concepts: activeResult.concepts?.map(({ imageBase64: _removed, ...rest }) => rest) ?? [],
     };
 
     const data = JSON.stringify({
@@ -225,7 +243,7 @@ export function CreativeGenerator() {
       result: resultWithoutImages,
     });
 
-    const title = prompt.trim() || result.overarchingTheme || "Criativo gerado";
+    const title = prompt.trim() || activeResult.overarchingTheme || "Criativo gerado";
     try {
       const raw = localStorage.getItem("iattom_saved_items_v1");
       const existing = raw ? (JSON.parse(raw) as object[]) : [];
@@ -349,23 +367,29 @@ export function CreativeGenerator() {
           </motion.div>
         )}
 
-        {isDone && result && (
+        {(isDone || isRestoredMode) && activeResult && (
           <motion.div key="result" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-            {result.overarchingTheme && (
+            {isRestoredMode && (
+              <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                <p className="text-xs text-primary">Criativo restaurado de Projetos Salvos</p>
+              </div>
+            )}
+            {activeResult.overarchingTheme && (
               <div className="mb-5 p-4 rounded-lg bg-primary/5 border border-primary/15">
                 <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Tema Criativo</p>
-                <p className="text-sm text-white">{result.overarchingTheme}</p>
+                <p className="text-sm text-white">{activeResult.overarchingTheme}</p>
                 <div className="flex flex-wrap gap-4 mt-3">
-                  {result.colorPalette && (
+                  {activeResult.colorPalette && (
                     <div className="flex items-center gap-1.5">
                       <Palette className="w-3.5 h-3.5 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground">{result.colorPalette}</p>
+                      <p className="text-xs text-muted-foreground">{activeResult.colorPalette}</p>
                     </div>
                   )}
-                  {result.typographyDirection && (
+                  {activeResult.typographyDirection && (
                     <div className="flex items-center gap-1.5">
                       <Type className="w-3.5 h-3.5 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground">{result.typographyDirection}</p>
+                      <p className="text-xs text-muted-foreground">{activeResult.typographyDirection}</p>
                     </div>
                   )}
                 </div>
@@ -376,20 +400,20 @@ export function CreativeGenerator() {
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Conceitos Criativos</h3>
               <div className="flex items-center gap-3">
                 <button onClick={handleSave} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"><Save className="w-3 h-3" /> Salvar</button>
-                <button onClick={reset} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Novos conceitos</button>
+                <button onClick={() => { reset(); setRestoredResult(null); }} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Novos conceitos</button>
               </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
-              {result.concepts?.map((concept: CreativeConcept, i: number) => (
+              {activeResult.concepts?.map((concept: CreativeConcept, i: number) => (
                 <ConceptCard key={concept.id ?? i} concept={concept} index={i} />
               ))}
             </div>
 
-            {result.brandVoiceNotes && (
+            {activeResult.brandVoiceNotes && (
               <div className="mt-4 p-4 rounded-lg bg-white/5 border border-white/5">
                 <p className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-1">Notas de Voz da Marca</p>
-                <p className="text-sm text-muted-foreground">{result.brandVoiceNotes}</p>
+                <p className="text-sm text-muted-foreground">{activeResult.brandVoiceNotes}</p>
               </div>
             )}
           </motion.div>

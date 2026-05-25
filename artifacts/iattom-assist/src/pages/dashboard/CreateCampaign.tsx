@@ -582,6 +582,24 @@ ${creativesSection}
         <p className="text-muted-foreground text-sm">Gere uma estratégia completa de campanha com copy criado para cada plataforma.</p>
       </motion.div>
 
+      {isRestored && campaignData && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+          <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-primary/5 border border-primary/20">
+            <div className="flex items-center gap-2.5">
+              <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+              <p className="text-sm text-primary font-medium">Campanha restaurada de Projetos Salvos</p>
+            </div>
+            <button
+              onClick={handleReset}
+              className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3 h-3" /> Nova Campanha
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {!(isRestored && campaignData) && (
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
         <Card className="bg-[#111111] border-white/5">
           <CardHeader className="pb-4">
@@ -682,6 +700,7 @@ ${creativesSection}
           </CardContent>
         </Card>
       </motion.div>
+      )}
 
       <AnimatePresence mode="wait">
         {isGenerating && (

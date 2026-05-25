@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, TrendingUp, Star, DollarSign, BarChart2, Loader2, AlertCircle, RefreshCw, Zap, Users, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,22 @@ export function FindProducts() {
   const isDone = status === "done";
   const isError = status === "error";
 
+  const [restoredResult, setRestoredResult] = useState<FindProductsResult | null>(null);
+  const isRestoredMode = !!restoredResult && status === "idle";
+  const activeResult = result ?? restoredResult;
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("iattom_restore_products_v1");
+      if (!raw) return;
+      sessionStorage.removeItem("iattom_restore_products_v1");
+      const saved = JSON.parse(raw) as { briefing?: { query?: string; niche?: string }; result?: FindProductsResult };
+      if (saved.briefing?.query) setQuery(saved.briefing.query);
+      if (saved.briefing?.niche) setNiche(saved.briefing.niche);
+      if (saved.result) setRestoredResult(saved.result);
+    } catch {}
+  }, []);
+
   const runSearch = (charge: () => void) => {
     generate("/api/ai/find-products", { query, niche: niche || undefined }).then((res) => {
       if (res !== null) charge();
@@ -56,10 +72,10 @@ export function FindProducts() {
   };
 
   const handleSave = () => {
-    if (!result) return;
+    if (!activeResult) return;
     const lines: string[] = [];
-    if (result.marketInsight) lines.push(`VISÃO DE MERCADO:\n${result.marketInsight}`);
-    result.products?.forEach((p: FoundProduct, i: number) => {
+    if (activeResult.marketInsight) lines.push(`VISÃO DE MERCADO:\n${activeResult.marketInsight}`);
+    activeResult.products?.forEach((p: FoundProduct, i: number) => {
       lines.push(`\n${i + 1}. ${p.name}`);
       if (p.category) lines.push(`Categoria: ${p.category}`);
       lines.push(`Demanda: ${p.demand} | Margem: ${p.margin} | Tendência: ${p.trend} | Score: ${p.score}`);
@@ -76,7 +92,7 @@ export function FindProducts() {
         title,
         type: "product_discovery",
         content,
-        data: JSON.stringify({ briefing: { query, niche }, result }),
+        data: JSON.stringify({ briefing: { query, niche }, result: activeResult }),
         createdAt: new Date().toISOString(),
       });
       localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
@@ -170,12 +186,18 @@ export function FindProducts() {
           </motion.div>
         )}
 
-        {isDone && result && (
+        {(isDone || isRestoredMode) && activeResult && (
           <motion.div key="results" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-            {result.marketInsight && (
+            {isRestoredMode && (
+              <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                <p className="text-xs text-primary">Busca restaurada de Projetos Salvos</p>
+              </div>
+            )}
+            {activeResult.marketInsight && (
               <div className="mb-5 p-4 rounded-lg bg-primary/5 border border-primary/15">
                 <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1.5">Visão de Mercado</p>
-                <p className="text-sm text-white/80 leading-relaxed">{result.marketInsight}</p>
+                <p className="text-sm text-white/80 leading-relaxed">{activeResult.marketInsight}</p>
               </div>
             )}
             <div className="flex items-center justify-between mb-4">
@@ -183,7 +205,7 @@ export function FindProducts() {
                 Resultados para "{query}"
               </h3>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground">{result.products?.length ?? 0} encontrados</span>
+                <span className="text-xs text-muted-foreground">{activeResult.products?.length ?? 0} encontrados</span>
                 <button onClick={handleSave} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1">
                   <Save className="w-3 h-3" /> Salvar
                 </button>
@@ -193,7 +215,7 @@ export function FindProducts() {
               </div>
             </div>
             <div className="space-y-3">
-              {result.products?.map((product: FoundProduct, i: number) => (
+              {activeResult.products?.map((product: FoundProduct, i: number) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                   <Card className="bg-[#111111] border-white/5 hover:border-primary/20 transition-colors">
                     <CardContent className="p-5">
@@ -202,7 +224,7 @@ export function FindProducts() {
                           <div className="flex items-center gap-3 mb-2 flex-wrap">
                             <h4 className="font-semibold text-white text-sm">{product.name}</h4>
                             <Badge variant="outline" className="text-xs border-white/10 text-muted-foreground">{product.category}</Badge>
-                            {result.topPick === product.name && (
+                            {activeResult.topPick === product.name && (
                               <Badge className="text-xs bg-primary/20 text-primary border-primary/30">Destaque</Badge>
                             )}
                           </div>
