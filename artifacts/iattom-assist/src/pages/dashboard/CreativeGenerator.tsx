@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, Copy, RefreshCw, AlertCircle, Monitor, Smartphone, Image, Palette, Type, Save, Download } from "lucide-react";
+import { Sparkles, Loader2, Copy, RefreshCw, AlertCircle, Monitor, Smartphone, Image, Palette, Type, Save, Download, ChevronDown, ChevronUp } from "lucide-react";
 import { saveProjectAssets } from "@/lib/assetStorage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,18 +34,6 @@ const FORMAT_PACK_OPTIONS = [
     description: "2 quadrados + 1 story + 1 banner",
     formats: ["1:1", "1:1", "9:16", "16:9"],
   },
-  {
-    value: "stories",
-    label: "Pacote Stories",
-    description: "4 stories verticais",
-    formats: ["9:16", "9:16", "9:16", "9:16"],
-  },
-  {
-    value: "ads",
-    label: "Pacote Anúncios",
-    description: "2 banners + 2 quadrados",
-    formats: ["16:9", "16:9", "1:1", "1:1"],
-  },
 ] as const;
 
 function downloadImageBase64(base64: string, filename: string) {
@@ -65,6 +53,7 @@ function downloadImageBase64(base64: string, filename: string) {
 
 function ConceptCard({ concept, index }: { concept: CreativeConcept; index: number }) {
   const { toast } = useToast();
+  const [showTechnical, setShowTechnical] = useState(false);
   const FormatIcon = formatIcons[concept.format] ?? formatIcons.default;
 
   const copyAll = () => {
@@ -152,8 +141,19 @@ function ConceptCard({ concept, index }: { concept: CreativeConcept; index: numb
 
           {concept.imagePrompt && (
             <div>
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Prompt de Imagem IA</p>
-              <p className="text-xs text-muted-foreground/70 leading-relaxed italic">{concept.imagePrompt}</p>
+              <button
+                onClick={() => setShowTechnical((v) => !v)}
+                className="flex items-center gap-1 text-xs text-white/30 hover:text-white/60 transition-colors"
+              >
+                {showTechnical ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                Detalhes técnicos
+              </button>
+              {showTechnical && (
+                <div className="mt-1.5 p-2 rounded bg-white/3 border border-white/5">
+                  <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Prompt de Imagem IA</p>
+                  <p className="text-xs text-muted-foreground/70 leading-relaxed italic">{concept.imagePrompt}</p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -166,7 +166,7 @@ export function CreativeGenerator() {
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
-  const [formatPack, setFormatPack] = useState<"social" | "stories" | "ads">("social");
+  const [formatPack, setFormatPack] = useState<"social">("social");
   const { status, result, error, generate, reset } = useAiStream<CreativeIdeasResult>();
   const { toast } = useToast();
 
@@ -192,11 +192,11 @@ export function CreativeGenerator() {
       const raw = sessionStorage.getItem("iattom_restore_creative_v1");
       if (!raw) return;
       sessionStorage.removeItem("iattom_restore_creative_v1");
-      const saved = JSON.parse(raw) as { briefing?: { prompt?: string; style?: string; targetAudience?: string; formatPack?: "social" | "stories" | "ads" }; result?: CreativeIdeasResult };
+      const saved = JSON.parse(raw) as { briefing?: { prompt?: string; style?: string; targetAudience?: string; formatPack?: string }; result?: CreativeIdeasResult };
       if (saved.briefing?.prompt) setPrompt(saved.briefing.prompt);
       if (saved.briefing?.style) setStyle(saved.briefing.style);
       if (saved.briefing?.targetAudience) setTargetAudience(saved.briefing.targetAudience);
-      if (saved.briefing?.formatPack) setFormatPack(saved.briefing.formatPack);
+      if (saved.briefing?.formatPack === "social") setFormatPack("social");
       if (saved.result) setRestoredResult(saved.result);
     } catch {}
   }, []);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, TrendingUp, Star, DollarSign, BarChart2, Loader2, AlertCircle, RefreshCw, Zap, Users, Save } from "lucide-react";
+import { Search, TrendingUp, Star, DollarSign, BarChart2, Loader2, AlertCircle, RefreshCw, Zap, Users, Save, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -255,14 +255,35 @@ export function FindProducts() {
                             </div>
                           )}
                         </div>
-                        <div className="shrink-0 text-right">
-                          <div className="flex items-center gap-1 justify-end mb-1">
-                            <Star className="w-4 h-4 text-primary fill-primary" />
-                            <span className="text-2xl font-bold text-white tabular-nums">{product.score}</span>
+                        <div className="shrink-0 flex flex-col items-end gap-2">
+                          <button
+                            onClick={() => {
+                              const parts = [
+                                product.name,
+                                product.category ? `Categoria: ${product.category}` : "",
+                                `Demanda: ${product.demand} | Margem: ${product.margin} | Tendência: ${product.trend} | Concorrência: ${product.competition}`,
+                                `Score: ${product.score}`,
+                                product.whyNow ? `Por que agora: ${product.whyNow}` : "",
+                                product.keySellingPoints?.length ? `Diferenciais: ${product.keySellingPoints.join(", ")}` : "",
+                                product.estimatedMonthlyRevenue ? `Receita estimada: ${product.estimatedMonthlyRevenue}` : "",
+                              ].filter(Boolean).join("\n");
+                              navigator.clipboard.writeText(parts);
+                              toast({ description: "Produto copiado" });
+                            }}
+                            className="text-muted-foreground hover:text-white transition-colors"
+                            title="Copiar produto"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 justify-end mb-1">
+                              <Star className="w-4 h-4 text-primary fill-primary" />
+                              <span className="text-2xl font-bold text-white tabular-nums">{product.score}</span>
+                            </div>
+                            {product.estimatedMonthlyRevenue && (
+                              <p className="text-xs text-emerald-400 font-medium">{product.estimatedMonthlyRevenue}</p>
+                            )}
                           </div>
-                          {product.estimatedMonthlyRevenue && (
-                            <p className="text-xs text-emerald-400 font-medium">{product.estimatedMonthlyRevenue}</p>
-                          )}
                         </div>
                       </div>
                     </CardContent>

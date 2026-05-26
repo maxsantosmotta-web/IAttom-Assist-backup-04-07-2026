@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap, AlertTriangle, Save, Download, ExternalLink } from "lucide-react";
+import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap, Save, Download, ExternalLink } from "lucide-react";
 import { saveProjectAssets } from "@/lib/assetStorage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,71 +16,24 @@ const platformIcons: Record<string, string> = {
   facebook: "fb", instagram: "ig", google: "g", email: "em", tiktok: "tk",
 };
 
-const DIGITAL_GOALS = ["Vender na Hotmart", "Vender na Kiwify"];
-const PHYSICAL_GOALS = ["Vender na Shopee", "Vender no Mercado Livre"];
-
-const DIGITAL_KEYWORDS = [
-  "curso", "ebook", "e-book", "planilha", "template", "mentoria", "consultoria",
-  "coaching", "treinamento", "workshop", "masterclass", "aula", "infoproduto",
-  "formação", "certificação", "programa", "método", "sistema", "software", "saas",
-  "pdf", "videoaula", "módulo", "digital", "online", "assinatura", "acesso",
+const NICHE_OPTIONS = [
+  "Moda e Vestuário",
+  "Beleza e Skincare",
+  "Saúde e Bem-estar",
+  "Fitness e Esportes",
+  "Alimentação e Gastronomia",
+  "Educação e Cursos Online",
+  "Finanças e Investimentos",
+  "Casa e Decoração",
+  "Tecnologia e Gadgets",
+  "Games e Entretenimento",
+  "Pet Shop",
+  "Bebê e Maternidade",
+  "Viagem e Turismo",
+  "Negócios e Empreendedorismo",
+  "Marketing Digital",
+  "Artesanato e Hobbies",
 ];
-const PHYSICAL_KEYWORDS = [
-  "roupa", "camiseta", "tênis", "sapato", "calçado", "bolsa", "mochila",
-  "eletrônico", "celular", "tablet", "garrafa", "utensílio", "cosmético",
-  "perfume", "kit", "aparelho", "dispositivo", "equipamento", "alimento",
-  "suplemento", "vitamina", "remédio", "skincare", "caderno", "agenda",
-  "óculos", "relógio", "acessório", "brinquedo", "produto físico", "tênis",
-];
-
-interface CompatAlert {
-  title: string;
-  message: string;
-  suggestions: string[];
-}
-
-function detectProductType(name: string): "digital" | "physical" | "unknown" {
-  const lower = name.toLowerCase();
-  const isDigital = DIGITAL_KEYWORDS.some((k) => lower.includes(k));
-  const isPhysical = PHYSICAL_KEYWORDS.some((k) => lower.includes(k));
-  if (isDigital && !isPhysical) return "digital";
-  if (isPhysical && !isDigital) return "physical";
-  return "unknown";
-}
-
-function getCompatAlert(product: string, goal: string): CompatAlert | null {
-  if (!goal || !product.trim()) return null;
-  const type = detectProductType(product);
-  if (type === "unknown") return null;
-
-  if (DIGITAL_GOALS.includes(goal) && type === "physical") {
-    const platform = goal.replace("Vender na ", "").replace("Vender no ", "");
-    return {
-      title: `Produto físico detectado`,
-      message: `${platform} é uma plataforma voltada para produtos digitais (cursos, ebooks, mentorias, infoprodutos). Gerar uma campanha nessa combinação pode desperdiçar seus créditos.`,
-      suggestions: [
-        `Transformar em produto digital (ex: curso ou ebook sobre o tema)`,
-        `Migrar o objetivo para Shopee ou Mercado Livre`,
-        `Atuar como afiliado de um infoproduto relacionado na ${platform}`,
-      ],
-    };
-  }
-
-  if (PHYSICAL_GOALS.includes(goal) && type === "digital") {
-    const platform = goal.replace("Vender na ", "").replace("Vender no ", "");
-    return {
-      title: `Produto digital detectado`,
-      message: `${platform} é uma plataforma voltada para produtos físicos. Gerar uma campanha nessa combinação pode desperdiçar seus créditos.`,
-      suggestions: [
-        `Migrar o objetivo para Hotmart ou Kiwify`,
-        `Adaptar para entrega física (apostila ou livro impresso)`,
-        `Explorar venda pelo Instagram ou WhatsApp`,
-      ],
-    };
-  }
-
-  return null;
-}
 
 function isCampaignComplete(r: CampaignResult | null): r is CampaignResult {
   if (!r) return false;
@@ -322,7 +275,8 @@ export function CreateCampaign() {
   const [audience, setAudience] = useState("");
   const [goal, setGoal] = useState("");
   const [mode, setMode] = useState("");
-  const [bypassCompat, setBypassCompat] = useState(false);
+  const [productType, setProductType] = useState("");
+  const [niche, setNiche] = useState("");
   const { status, result, error, generate, reset } = useAiStream<CampaignResult>();
   const { toast } = useToast();
 
@@ -336,10 +290,6 @@ export function CreateCampaign() {
   const isDone = status === "done";
   const isError = status === "error";
 
-  const compatAlert = bypassCompat ? null : getCompatAlert(product, goal);
-  const isBlocked = compatAlert !== null;
-
-  useEffect(() => { setBypassCompat(false); }, [product, goal]);
 
   useEffect(() => {
     try {
@@ -358,7 +308,7 @@ export function CreateCampaign() {
       if (!raw) return;
       sessionStorage.removeItem("iattom_reopen_campaign_v1");
       const saved = JSON.parse(raw) as {
-        briefing?: { product?: string; goal?: string; mode?: string; audience?: string };
+        briefing?: { product?: string; goal?: string; mode?: string; audience?: string; productType?: string; niche?: string };
         result?: CampaignResult;
         creatives?: CreativeIdeasResult;
       };
@@ -366,6 +316,8 @@ export function CreateCampaign() {
       if (saved.briefing?.goal) setGoal(saved.briefing.goal);
       if (saved.briefing?.mode) setMode(saved.briefing.mode);
       if (saved.briefing?.audience) setAudience(saved.briefing.audience);
+      if (saved.briefing?.productType) setProductType(saved.briefing.productType);
+      if (saved.briefing?.niche) setNiche(saved.briefing.niche);
       if (saved.result) {
         setCampaignData(saved.result);
         setIsRestored(true);
@@ -390,6 +342,8 @@ export function CreateCampaign() {
       audience: audience || undefined,
       goal: goal || undefined,
       mode: mode || undefined,
+      productType: productType || undefined,
+      niche: niche || undefined,
     }).then((res) => {
       if (res !== null) {
         charge();
@@ -441,12 +395,11 @@ export function CreateCampaign() {
     toast({ description: "Copiado para a área de transferência" });
   };
 
-  const handleSaveAndDownload = () => {
-    if (!campaignData) return;
+  const buildCampaignMeta = () => {
+    if (!campaignData) return null;
     const title = product.trim()
       ? `${product.trim()}${goal ? ` — ${goal}` : ""}`
       : campaignData.headline;
-
     const goalLower = goal.toLowerCase();
     let platform: string | undefined;
     if (goalLower.includes("hotmart")) platform = "hotmart";
@@ -456,7 +409,6 @@ export function CreateCampaign() {
     else if (goalLower.includes("whatsapp")) platform = "whatsapp";
     else if (goalLower.includes("instagram")) platform = "instagram";
     else if (goalLower.includes("tiktok")) platform = "tiktok";
-
     const lines: string[] = [];
     lines.push(`CAMPANHA: ${campaignData.headline}`);
     if (campaignData.subheadline) lines.push(`Subheadline: ${campaignData.subheadline}`);
@@ -477,15 +429,11 @@ export function CreateCampaign() {
     }
     if (campaignData.launchTimeline) lines.push(`\nCRONOGRAMA:\n${campaignData.launchTimeline}`);
     const content = lines.join("\n");
-
     const sanitizedCreatives = creativeResult
-      ? {
-          ...creativeResult,
-          concepts: (creativeResult.concepts ?? []).map(({ imageBase64: _b64, ...rest }) => rest),
-        }
+      ? { ...creativeResult, concepts: (creativeResult.concepts ?? []).map(({ imageBase64: _b64, ...rest }) => rest) }
       : null;
     const structuredData = JSON.stringify({
-      briefing: { product: product.trim(), goal, mode, audience },
+      briefing: { product: product.trim(), goal, mode, audience, productType, niche },
       result: campaignData,
       creatives: sanitizedCreatives,
     });
@@ -494,40 +442,44 @@ export function CreateCampaign() {
         ? { conceptIndex: i, base64: c.imageBase64, label: c.label ?? `Criativo ${i + 1}`, format: c.format ?? "PNG" }
         : null)
       .filter((a): a is NonNullable<typeof a> => a !== null);
+    return { title, platform, content, structuredData, imageAssets };
+  };
+
+  const handleSave = () => {
+    if (!campaignData) return;
+    const meta = buildCampaignMeta();
+    if (!meta) return;
+    const { title, platform, content, structuredData, imageAssets } = meta;
     const projectId = crypto.randomUUID();
-    const entry = {
-      id: projectId,
-      title,
-      type: "campaign",
-      platform,
-      content,
-      data: structuredData,
-      hasImages: imageAssets.length > 0,
-      createdAt: new Date().toISOString(),
-    };
     try {
       const raw = localStorage.getItem("iattom_saved_items_v1");
       const existing = raw ? (JSON.parse(raw) as object[]) : [];
-      existing.unshift(entry);
+      existing.unshift({ id: projectId, title, type: "campaign", platform, content, data: structuredData, hasImages: imageAssets.length > 0, createdAt: new Date().toISOString() });
       localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
-    } catch {}
-    if (imageAssets.length > 0) {
-      void saveProjectAssets(projectId, imageAssets);
+      if (imageAssets.length > 0) void saveProjectAssets(projectId, imageAssets);
+      toast({ description: "Campanha salva com sucesso." });
+    } catch {
+      toast({ description: "Erro ao salvar.", variant: "destructive" });
     }
+  };
 
+  const handleDownload = () => {
+    if (!campaignData) return;
+    const meta = buildCampaignMeta();
+    if (!meta) return;
+    const { title } = meta;
     const copyObj = campaignData.copy as Record<string, string>;
     const creativesSection = creativeResult?.concepts?.length
       ? `<h2>Criativos</h2>
 ${creativeResult.overarchingTheme ? `<div class="field"><div class="label">Tema Criativo</div><div class="value">${escapeHtml(creativeResult.overarchingTheme)}</div></div>` : ""}
-${creativeResult.concepts.map((c, i) => `<div class="creative-card"><h3>Criativo ${i + 1} — ${escapeHtml(c.label)} (${escapeHtml(c.format)})</h3>${c.imageBase64 ? `<img src="data:image/png;base64,${c.imageBase64}" style="max-width:100%;border-radius:8px;margin:8px 0;border:1px solid #eee;">` : ""}<div class="field"><div class="label">Hook</div><div class="value">${escapeHtml(c.copyHook)}</div></div><div class="field"><div class="label">Copy</div><div class="value">${escapeHtml(c.bodyText)}</div></div><div class="field"><div class="label">CTA</div><div class="value">${escapeHtml(c.cta)}</div></div>${c.imagePrompt ? `<div class="field"><div class="label">Prompt IA</div><div class="value">${escapeHtml(c.imagePrompt)}</div></div>` : ""}</div>`).join("")}`
+${creativeResult.concepts.map((c, i) => `<div class="creative-card"><h3>Criativo ${i + 1} — ${escapeHtml(c.label)} (${escapeHtml(c.format)})</h3>${c.imageBase64 ? `<img src="data:image/png;base64,${c.imageBase64}" style="max-width:100%;border-radius:8px;margin:8px 0;border:1px solid #eee;">` : ""}<div class="field"><div class="label">Hook</div><div class="value">${escapeHtml(c.copyHook)}</div></div><div class="field"><div class="label">Copy</div><div class="value">${escapeHtml(c.bodyText)}</div></div><div class="field"><div class="label">CTA</div><div class="value">${escapeHtml(c.cta)}</div></div></div>`).join("")}`
       : "";
-
     const html = `<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
 <style>body{font-family:Arial,sans-serif;max-width:820px;margin:0 auto;padding:2rem;background:#fff;color:#1a1a1a}h1{font-size:1.5rem;border-bottom:3px solid #C9A84C;padding-bottom:.5rem;margin-bottom:1.5rem}h2{font-size:1rem;color:#C9A84C;margin-top:2rem;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.05em}h3{font-size:.875rem;color:#555;margin-top:1.25rem;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.05em}.field{margin-bottom:1rem}.label{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#888;margin-bottom:.25rem}.value{font-size:.9rem;white-space:pre-wrap;background:#f9f9f9;padding:.75rem;border-radius:4px;border:1px solid #eee;line-height:1.6}.chip{display:inline-block;background:#f0e8d5;color:#8a6d2a;border-radius:3px;padding:2px 8px;font-size:.8rem;margin:2px}ul{padding-left:1.25rem;margin:0}li{margin-bottom:.5rem;font-size:.9rem;line-height:1.5}.creative-card{border:1px solid #eee;border-radius:8px;padding:1rem;margin-bottom:1rem;background:#fafafa}.footer{margin-top:3rem;font-size:.7rem;color:#aaa;border-top:1px solid #eee;padding-top:1rem;text-align:center}</style>
 </head><body>
 <h1>${escapeHtml(title)}</h1>
-${product.trim() ? `<p style="color:#888;font-size:.85rem;">Produto: ${escapeHtml(product)}${goal ? ` · ${escapeHtml(goal)}` : ""}</p>` : ""}
+${product.trim() ? `<p style="color:#888;font-size:.85rem;">Produto: ${escapeHtml(product)}${goal ? ` · ${escapeHtml(goal)}` : ""}${productType ? ` · ${escapeHtml(productType)}` : ""}${niche ? ` · ${escapeHtml(niche)}` : ""}</p>` : ""}
 <h2>Manchete</h2>
 <div class="field"><div class="label">Headline</div><div class="value">${escapeHtml(campaignData.headline)}</div></div>
 ${campaignData.subheadline ? `<div class="field"><div class="label">Subheadline</div><div class="value">${escapeHtml(campaignData.subheadline)}</div></div>` : ""}
@@ -546,13 +498,10 @@ ${campaignData.launchTimeline ? `<h2>Cronograma</h2><div class="field"><div clas
 ${creativesSection}
 <div class="footer">Gerado por IAttom Assist &middot; ${new Date().toLocaleDateString("pt-BR")}</div>
 </body></html>`;
-
     const slug = product.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") || "campanha";
-
     void (async () => {
       toast({ description: "Baixando campanha..." });
       await new Promise(r => setTimeout(r, 80));
-
       const htmlBlob = new Blob([html], { type: "text/html;charset=utf-8" });
       const htmlUrl = URL.createObjectURL(htmlBlob);
       const htmlA = document.createElement("a");
@@ -562,7 +511,6 @@ ${creativesSection}
       htmlA.click();
       document.body.removeChild(htmlA);
       URL.revokeObjectURL(htmlUrl);
-
       const imageConcepts = (creativeResult?.concepts ?? []).filter(c => c.imageBase64);
       if (imageConcepts.length > 0) {
         await new Promise(r => setTimeout(r, 300));
@@ -584,8 +532,7 @@ ${creativesSection}
           URL.revokeObjectURL(imgUrl);
         }
       }
-
-      toast({ description: "Campanha salva e arquivos baixados." });
+      toast({ description: "Arquivos baixados." });
     })();
   };
 
@@ -676,38 +623,41 @@ ${creativesSection}
                 </select>
               </div>
             </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm text-muted-foreground">Tipo de Produto</Label>
+                <select
+                  value={productType}
+                  onChange={(e) => setProductType(e.target.value)}
+                  className="w-full h-9 rounded-md border border-white/10 bg-[#0a0a0a] px-3 py-1 text-sm text-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-0"
+                >
+                  <option value="">Selecionar tipo (opcional)</option>
+                  <option value="Digital">Digital — curso, ebook, software, assinatura</option>
+                  <option value="Físico">Físico — roupas, eletrônicos, suplementos</option>
+                  <option value="Serviço">Serviço — consultoria, mentoria, agência</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm text-muted-foreground">Nicho / Segmento (opcional)</Label>
+                <select
+                  value={niche}
+                  onChange={(e) => setNiche(e.target.value)}
+                  className="w-full h-9 rounded-md border border-white/10 bg-[#0a0a0a] px-3 py-1 text-sm text-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-0"
+                >
+                  <option value="">Selecionar nicho</option>
+                  {NICHE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <div className="space-y-1.5">
               <Label className="text-sm text-muted-foreground">Público-alvo (opcional)</Label>
               <Input placeholder="ex: Atletas 25-40, entusiastas de atividades ao ar livre" className="bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50" value={audience} onChange={(e) => setAudience(e.target.value)} />
             </div>
-            {isBlocked && compatAlert && (
-              <div className="rounded-lg border border-amber-500/25 bg-amber-950/20 p-4 space-y-3">
-                <div className="flex items-start gap-2.5">
-                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <div className="space-y-1 flex-1">
-                    <p className="text-sm font-semibold text-amber-400">{compatAlert.title}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{compatAlert.message}</p>
-                  </div>
-                </div>
-                <div className="space-y-1 pl-6">
-                  <p className="text-xs text-muted-foreground font-medium">Alternativas sugeridas:</p>
-                  {compatAlert.suggestions.map((s, i) => (
-                    <p key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                      <span className="text-amber-500/60 shrink-0">•</span>{s}
-                    </p>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setBypassCompat(true)}
-                  className="pl-6 text-xs text-muted-foreground hover:text-white transition-colors underline underline-offset-2"
-                >
-                  Gerar mesmo assim
-                </button>
-              </div>
-            )}
-            <CreditsGate feature="campaign" onSuccess={runGenerate} disabled={!product.trim() || isGenerating || isBlocked}>
+            <CreditsGate feature="campaign" onSuccess={runGenerate} disabled={!product.trim() || isGenerating}>
               {({ trigger, isLoading }) => (
-                <Button onClick={trigger} disabled={isLoading || isGenerating || !product.trim() || isBlocked} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full">
+                <Button onClick={trigger} disabled={isLoading || isGenerating || !product.trim()} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full">
                   {isLoading || isGenerating ? (
                     <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Construindo sua campanha...</>
                   ) : "Gerar Campanha"}
@@ -751,10 +701,16 @@ ${creativesSection}
                   <CardTitle className="text-base text-white">Estratégia de Campanha</CardTitle>
                   <div className="ml-auto flex items-center gap-2">
                     <button
-                      onClick={handleSaveAndDownload}
+                      onClick={handleSave}
+                      className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1"
+                    >
+                      <Save className="w-3 h-3" /> Salvar
+                    </button>
+                    <button
+                      onClick={handleDownload}
                       className="text-xs text-primary/80 hover:text-primary transition-colors flex items-center gap-1 border border-primary/20 hover:border-primary/40 rounded px-2 py-1 bg-primary/5 hover:bg-primary/10"
                     >
-                      <Download className="w-3 h-3" /> Salvar/Baixar
+                      <Download className="w-3 h-3" /> Baixar
                     </button>
                     <button onClick={handleReset} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1">
                       <RefreshCw className="w-3 h-3" /> Nova campanha

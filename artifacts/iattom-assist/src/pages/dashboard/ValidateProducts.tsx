@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, AlertTriangle, TrendingUp, Users, DollarSign, Loader2, AlertCircle, RefreshCw, Lightbulb, Target, Zap, Save } from "lucide-react";
+import { CheckCircle, AlertTriangle, TrendingUp, Users, DollarSign, Loader2, AlertCircle, RefreshCw, Lightbulb, Target, Zap, Save, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,11 @@ const demandTrendColors: Record<string, string> = {
   Growing: "text-primary",
   Stable: "text-amber-400",
   Declining: "text-red-400",
+  Acelerando: "text-emerald-400",
+  Crescendo: "text-primary",
+  Estável: "text-amber-400",
+  "Em Queda": "text-red-400",
+  "Em declínio": "text-red-400",
 };
 
 function ScoreRing({ score }: { score: number }) {
@@ -278,19 +283,44 @@ export function ValidateProducts() {
 
                 <div className="space-y-3 border-t border-white/5 pt-5">
                   <div>
-                    <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-1.5">Recomendação IA</p>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-xs font-semibold text-primary uppercase tracking-widest">Recomendação IA</p>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(result.recommendation); toast({ description: "Recomendação copiada" }); }}
+                        className="text-muted-foreground hover:text-white transition-colors"
+                        title="Copiar recomendação"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">{result.recommendation}</p>
                   </div>
                   {result.launchStrategy && (
                     <div>
-                      <p className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-1.5">Estratégia de Lançamento</p>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-xs font-semibold text-white/60 uppercase tracking-widest">Estratégia de Lançamento</p>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(result.launchStrategy!); toast({ description: "Estratégia copiada" }); }}
+                          className="text-muted-foreground hover:text-white transition-colors"
+                          title="Copiar estratégia"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                       <p className="text-sm text-muted-foreground leading-relaxed">{result.launchStrategy}</p>
                     </div>
                   )}
                   {result.pricingInsight && (
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/15">
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/15 group">
                       <Zap className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                      <p className="text-xs text-white/80">{result.pricingInsight}</p>
+                      <p className="text-xs text-white/80 flex-1">{result.pricingInsight}</p>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(result.pricingInsight!); toast({ description: "Insight copiado" }); }}
+                        className="text-muted-foreground hover:text-white transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                        title="Copiar insight"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   )}
                 </div>
