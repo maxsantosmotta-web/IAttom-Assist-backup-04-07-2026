@@ -10,6 +10,7 @@ interface CreateCampaignInput {
   mode?: string;
   platforms?: string[];
   budget?: string;
+  productType?: string;
 }
 
 export interface CampaignResult {
@@ -310,6 +311,7 @@ export async function streamCreateCampaign(
   const userPrompt = campaignMode === "organic"
     ? `Crie uma estratégia de marketing orgânico completa para:
 Produto/Marca: "${params.product}"
+${params.productType ? `Tipo de produto: ${params.productType} — adapte toda a linguagem, canais, copy e abordagem para este tipo de produto. Digital: autoridade, conteúdo educativo, entrega imediata, bônus digitais. Físico: apelo sensorial, entrega, qualidade tangível, experiência de uso. Serviço: confiança, processo, resultado concreto, prova social.` : ""}
 ${params.audience ? `Público-alvo: ${params.audience}` : ""}
 ${params.goal ? `Objetivo: ${params.goal}` : "Gerar vendas via canais orgânicos"}
 ${params.platforms?.length ? `Plataformas preferidas: ${params.platforms.join(", ")}` : ""}
@@ -317,13 +319,14 @@ ${params.platforms?.length ? `Plataformas preferidas: ${params.platforms.join(",
 IMPORTANTE: Esta é uma estratégia 100% orgânica. Não inclua nenhum tipo de mídia paga, ads ou orçamento de anúncios. Crie copy específico para cada plataforma usando apenas abordagens orgânicas, integralmente em português brasileiro.`
     : `Crie uma campanha de marketing completa para:
 Produto/Marca: "${params.product}"
+${params.productType ? `Tipo de produto: ${params.productType} — adapte toda a linguagem, canais, copy e abordagem para este tipo de produto. Digital: urgência de acesso, transformação, resultados, funil direto. Físico: apelo visual, qualidade tangível, entrega, experiência de uso. Serviço: credibilidade, processo, resultado concreto, cases de sucesso.` : ""}
 ${params.audience ? `Público-alvo: ${params.audience}` : ""}
 ${params.goal ? `Objetivo da campanha: ${params.goal}` : "Gerar vendas"}
 ${params.mode ? `Modo da campanha: ${params.mode}` : "Modo da campanha: Conversão"}
 ${params.platforms?.length ? `Plataformas preferidas: ${params.platforms.join(", ")}` : ""}
 ${params.budget ? `Orçamento: ${params.budget}` : ""}
 
-Adapte toda a estrutura da campanha ao modo informado. Crie copy específico para cada plataforma, integralmente em português brasileiro.`;
+Adapte toda a estrutura da campanha ao modo e tipo de produto informados. Crie copy específico para cada plataforma, integralmente em português brasileiro.`;
 
   let fullResponse = "";
 

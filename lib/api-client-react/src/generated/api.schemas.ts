@@ -388,6 +388,15 @@ export interface AiValidateProductBody {
   pricePoint?: string;
 }
 
+export type AiCreateCampaignBodyProductType =
+  (typeof AiCreateCampaignBodyProductType)[keyof typeof AiCreateCampaignBodyProductType];
+
+export const AiCreateCampaignBodyProductType = {
+  Digital: "Digital",
+  Físico: "Físico",
+  Serviço: "Serviço",
+} as const;
+
 export interface AiCreateCampaignBody {
   product: string;
   audience?: string;
@@ -395,6 +404,7 @@ export interface AiCreateCampaignBody {
   mode?: string;
   platforms?: string[];
   budget?: string;
+  productType?: AiCreateCampaignBodyProductType;
 }
 
 export interface AiRefineCampaignBlockBody {

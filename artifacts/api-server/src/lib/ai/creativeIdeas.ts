@@ -35,6 +35,7 @@ export interface CreativeIdeasResult {
   colorPalette: string;
   typographyDirection: string;
   brandVoiceNotes: string;
+  visualAnchor?: string;
 }
 
 type ImageSize = "1024x1024" | "1536x1024" | "1024x1536" | "auto";
@@ -61,11 +62,12 @@ function getFormatPack(formatPack?: string): string[] {
   return FORMAT_PACKS.social;
 }
 
-function enrichImagePrompt(basePrompt: string, productName: string, style?: string, format?: string): string {
+function enrichImagePrompt(basePrompt: string, productName: string, visualAnchor: string, style?: string, format?: string): string {
+  const anchorPrefix = visualAnchor ? `CAMPAIGN VISUAL ANCHOR — apply consistently across all images: ${visualAnchor}. ` : "";
   const productAnchor = `${productName} — exact product as specified by user, preserve real product appearance, proportions and category`;
   const styleSuffix = style ? ` Visual style: ${style}.` : "";
   const formatSuffix = format ? ` Ad format: ${format}.` : "";
-  return `${productAnchor}. ${basePrompt}${styleSuffix}${formatSuffix}`;
+  return `${anchorPrefix}${productAnchor}. ${basePrompt}${styleSuffix}${formatSuffix}`;
 }
 
 export async function streamCreativeIdeas(
@@ -122,8 +124,12 @@ Retorne exatamente esta estrutura:
   "overarchingTheme": string (tema criativo unificador de todos os conceitos, em PT-BR),
   "colorPalette": string (3-4 cores específicas em hex com nomes em PT-BR),
   "typographyDirection": string (guia de estilo tipográfico e hierarquia, em PT-BR),
-  "brandVoiceNotes": string (guia de tom e mensagem da marca, em PT-BR)
+  "brandVoiceNotes": string (guia de tom e mensagem da marca, em PT-BR),
+  "visualAnchor": string (âncora visual obrigatória do pacote — em inglês, pois será usada em imagePrompts: produto exato + paleta dominante (2-3 cores hex) + estilo visual + iluminação principal. Exemplo: "HydroElite bottle, dominant colors #1a1a2e and #C9A84C gold, photorealistic lifestyle style, soft cinematic side lighting")
 }
+
+REGRA DE PACOTE VISUAL COESO (máxima prioridade para imagePrompts):
+As 4 imagens devem pertencer à MESMA CAMPANHA VISUAL — não a 4 campanhas independentes. Antes de escrever qualquer imagePrompt, defina a âncora visual no campo "visualAnchor" com: produto exato + paleta de cores dominante (2-3 cores hex) + estilo visual + iluminação principal. Todos os 4 imagePrompts devem começar referenciando essa âncora. Variações PERMITIDAS entre as 4 imagens: ângulo, enquadramento, cenário, composição, posição do produto, contexto de uso. Variações PROIBIDAS: categoria do produto, paleta dominante, estilo visual principal, iluminação central, identidade da marca. Quando houver imagem de referência: preserve estrutura, silhueta, proporções e aparência do produto — não reinvente o produto em nenhum dos 4 imagePrompts.
 
 Crie 4 conceitos criativos distintos. Cada um deve parecer que saiu de uma agência de ponta.`;
 
@@ -164,9 +170,11 @@ Crie 4 conceitos criativos visualmente impactantes, alinhados ao produto e focad
 
     const textResult: CreativeIdeasResult = JSON.parse(fullResponse);
 
+    const visualAnchor = textResult.visualAnchor?.trim() ?? "";
+
     const enrichedConcepts = textResult.concepts.map((concept) => ({
       ...concept,
-      imagePrompt: enrichImagePrompt(concept.imagePrompt, productName, params.style, concept.format),
+      imagePrompt: enrichImagePrompt(concept.imagePrompt, productName, visualAnchor, params.style, concept.format),
     }));
 
     if (process.env.NODE_ENV !== "production") {
@@ -182,7 +190,8 @@ Crie 4 conceitos criativos visualmente impactantes, alinhados ao produto e focad
     const imageResults = await Promise.allSettled(
       enrichedConcepts.map((concept) => {
         if (referenceBuffer) {
-          const editPrompt = `Preserve the exact product shown in the reference image — keep its shape, structure, proportions and visual identity unchanged. Enhance with: premium commercial lighting, professional composition, clean or contextual lifestyle background. Apply this creative concept: ${concept.imagePrompt}`;
+          const anchorNote = visualAnchor ? ` Maintain campaign visual identity: ${visualAnchor}.` : "";
+          const editPrompt = `Preserve the exact product shown in the reference image — keep its shape, structure, proportions and visual identity unchanged. Enhance with: premium commercial lighting, professional composition, clean or contextual lifestyle background.${anchorNote} Apply this creative concept: ${concept.imagePrompt}`;
           return editImageFromBuffer(referenceBuffer, editPrompt, mapFormatToSize(concept.format));
         }
         return generateImageBuffer(concept.imagePrompt, mapFormatToSize(concept.format));

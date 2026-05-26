@@ -1181,6 +1181,12 @@ components:
             type: string
         budget:
           type: string
+        productType:
+          type: string
+          enum:
+            - Digital
+            - Físico
+            - Serviço
       required:
         - product
 

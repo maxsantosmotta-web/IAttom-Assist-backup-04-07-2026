@@ -308,6 +308,7 @@ export const AiCreateCampaignBody = zod.object({
   mode: zod.string().optional(),
   platforms: zod.array(zod.string()).optional(),
   budget: zod.string().optional(),
+  productType: zod.enum(["Digital", "Físico", "Serviço"]).optional(),
 });
 
 /**
@@ -342,8 +343,6 @@ export const AiCreativeIdeasBody = zod.object({
   style: zod.string().optional(),
   product: zod.string().optional(),
   targetAudience: zod.string().optional(),
-  formatPack: zod.string().optional(),
-  referenceImageBase64: zod.string().optional(),
 });
 
 /**
