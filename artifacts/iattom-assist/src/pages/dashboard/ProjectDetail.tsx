@@ -4,11 +4,13 @@ import { useParams, useLocation } from "wouter";
 import { loadProjectAssets, deleteProjectAssets } from "@/lib/assetStorage";
 import {
   ArrowLeft, Trash2, Loader2, Copy, Check, ChevronDown, ChevronUp,
-  FileText, Megaphone, Sparkles, Video, Search, ImageOff, Download,
+  FileText, Megaphone, Sparkles, Video, Search, ImageOff, Download, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { moveToTrash } from "@/lib/trashStorage";
 import type {
   CampaignResult, ContentResult, CreativeIdeasResult,
   VideoScriptResult, FindProductsResult, ValidationResult,
@@ -58,6 +60,17 @@ const platformLabels: Record<string, string> = {
   mercado_livre: "Mercado Livre", tiktok: "TikTok",
   whatsapp: "WhatsApp", instagram: "Instagram", facebook: "Facebook",
 };
+
+const AD_PLATFORMS = [
+  { id: "shopee",        label: "Shopee" },
+  { id: "mercado_livre", label: "Mercado Livre" },
+  { id: "hotmart",       label: "Hotmart" },
+  { id: "kiwify",        label: "Kiwify" },
+  { id: "tiktok",        label: "TikTok" },
+  { id: "facebook",      label: "Facebook" },
+  { id: "instagram",     label: "Instagram" },
+  { id: "whatsapp",      label: "WhatsApp" },
+] as const;
 
 function formatDate(iso: string) {
   try {
@@ -272,7 +285,7 @@ function extractImages(type: string, parsed: { result: unknown; creatives?: Crea
   return images;
 }
 
-function ImagesSection({ images }: { images: ImageEntry[] }) {
+function ImagesSection({ images, onPreview }: { images: ImageEntry[]; onPreview: (img: ImageEntry, idx: number) => void }) {
   const handleDownload = (img: ImageEntry, idx: number) => {
     const a = document.createElement("a");
     a.href = `data:image/png;base64,${img.base64}`;
@@ -294,12 +307,23 @@ function ImagesSection({ images }: { images: ImageEntry[] }) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {images.map((img, i) => (
-            <div key={i} className="rounded-xl border border-white/[0.06] bg-[#0a0a0a] overflow-hidden">
-              <img
-                src={`data:image/png;base64,${img.base64}`}
-                alt={img.label}
-                className="w-full object-cover"
-              />
+            <div key={i} className="rounded-xl border border-white/[0.06] bg-[#0a0a0a] overflow-hidden group/img">
+              <button
+                onClick={() => onPreview(img, i)}
+                className="block w-full relative"
+                title="Clique para ampliar"
+              >
+                <img
+                  src={`data:image/png;base64,${img.base64}`}
+                  alt={img.label}
+                  className="w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-colors duration-200 flex items-center justify-center">
+                  <span className="text-white text-xs font-medium opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 bg-black/60 px-3 py-1.5 rounded-full">
+                    Ampliar
+                  </span>
+                </div>
+              </button>
               <div className="p-3 flex items-center justify-between gap-2">
                 <p className="text-xs text-zinc-400 truncate">{img.label}</p>
                 <button
@@ -376,6 +400,11 @@ export function ProjectDetail() {
   const [deletingId, setDeletingId] = useState(false);
   const [allCopied, setAllCopied] = useState(false);
   const [idbImages, setIdbImages] = useState<ImageEntry[]>([]);
+  const [previewImage, setPreviewImage] = useState<{ img: ImageEntry; idx: number } | null>(null);
+  const [adModalOpen, setAdModalOpen] = useState(false);
+  const [adPhase, setAdPhase] = useState<"pick" | "prepare">("pick");
+  const [adPlatform, setAdPlatform] = useState<string | null>(null);
+  const [confirmTrashOpen, setConfirmTrashOpen] = useState(false);
 
   useEffect(() => {
     if (!id) { setItem("not_found"); return; }
@@ -394,14 +423,17 @@ export function ProjectDetail() {
   }, [id]);
 
   const handleDelete = useCallback(() => {
+    setConfirmTrashOpen(true);
+  }, []);
+
+  const handleConfirmTrash = useCallback(() => {
     if (!item || item === "not_found") return;
     setDeletingId(true);
-    const projectId = (item as SavedItem).id;
-    void deleteProjectAssets(projectId).catch(() => {});
+    const saved = item as SavedItem;
+    moveToTrash(saved);
+    setConfirmTrashOpen(false);
     setTimeout(() => {
-      const items = readStorage().filter(i => i.id !== projectId);
-      writeStorage(items);
-      toast({ description: "Projeto excluído." });
+      toast({ description: "Projeto enviado para a lixeira." });
       navigate("/dashboard/projects");
     }, 200);
   }, [item, navigate, toast]);
@@ -533,11 +565,11 @@ export function ProjectDetail() {
           </Button>
           <Button
             size="sm"
-            disabled
-            title="Disponível em breve"
-            className="h-7 px-3 text-xs bg-white/[0.03] text-zinc-600 border border-white/[0.05] cursor-not-allowed"
+            onClick={() => { setAdPhase("pick"); setAdPlatform(null); setAdModalOpen(true); }}
+            className="h-7 px-3 text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/30"
           >
-            Usar projeto
+            <Megaphone className="w-3 h-3 mr-1.5" />
+            Criar anuncio
           </Button>
         </div>
       </div>
@@ -549,7 +581,7 @@ export function ProjectDetail() {
       </div>
 
       {/* Images */}
-      <ImagesSection images={images} />
+      <ImagesSection images={images} onPreview={(img, idx) => setPreviewImage({ img, idx })} />
 
       {/* Tech details */}
       {(() => {
@@ -563,6 +595,143 @@ export function ProjectDetail() {
           />
         );
       })()}
+
+      {/* ── Modal: image preview ─────────────────────────────── */}
+      <Dialog open={!!previewImage} onOpenChange={(open) => { if (!open) setPreviewImage(null); }}>
+        <DialogContent className="bg-[#080808] border-white/[0.08] text-white max-w-3xl p-0 overflow-hidden shadow-depth-lg">
+          <div className="relative">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/60 text-zinc-300 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            {previewImage && (
+              <>
+                <img
+                  src={`data:image/png;base64,${previewImage.img.base64}`}
+                  alt={previewImage.img.label}
+                  className="w-full object-contain max-h-[80vh]"
+                />
+                <div className="px-4 py-3 flex items-center justify-between gap-3 border-t border-white/[0.06]">
+                  <p className="text-sm text-zinc-300 truncate">{previewImage.img.label}</p>
+                  <button
+                    onClick={() => {
+                      const a = document.createElement("a");
+                      a.href = `data:image/png;base64,${previewImage.img.base64}`;
+                      a.download = `criativo-${previewImage.idx + 1}.png`;
+                      a.click();
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-primary transition-colors shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Baixar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: criar anuncio ─────────────────────────────── */}
+      <Dialog open={adModalOpen} onOpenChange={(open) => { if (!open) { setAdModalOpen(false); setAdPhase("pick"); setAdPlatform(null); } }}>
+        <DialogContent className="bg-[#0f0f0f] border-white/[0.10] text-white max-w-md shadow-depth-lg animate-scale-in">
+          {adPhase === "pick" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-white text-base flex items-center gap-2">
+                  <Megaphone className="w-4 h-4 text-primary" />
+                  Criar anuncio — escolha a plataforma
+                </DialogTitle>
+              </DialogHeader>
+              <p className="text-xs text-zinc-500">Selecione onde deseja publicar este projeto como anuncio.</p>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {AD_PLATFORMS.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setAdPlatform(p.id); setAdPhase("prepare"); }}
+                    className="px-4 py-3 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-primary/[0.06] hover:border-primary/20 text-sm text-zinc-300 hover:text-white transition-all duration-200 text-left font-medium"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-white text-base flex items-center gap-2">
+                  <Megaphone className="w-4 h-4 text-primary" />
+                  Publicacao assistida — {AD_PLATFORMS.find(p => p.id === adPlatform)?.label}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="rounded-xl bg-primary/[0.06] border border-primary/20 px-4 py-3 space-y-1">
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-widest">Projeto selecionado</p>
+                  <p className="text-sm font-medium text-zinc-200">{(item as SavedItem).title}</p>
+                  <p className="text-xs text-zinc-500">{typeConfig[(item as SavedItem).type]?.label ?? ""}</p>
+                </div>
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-3 space-y-2">
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-widest">Proxima etapa</p>
+                  <p className="text-sm text-zinc-300 leading-relaxed">
+                    A publicacao assistida no <span className="text-primary font-medium">{AD_PLATFORMS.find(p => p.id === adPlatform)?.label}</span> esta sendo preparada. Na proxima etapa, voce podera revisar o material, ajustar o formato para a plataforma e publicar diretamente.
+                  </p>
+                </div>
+                <p className="text-xs text-zinc-600 leading-relaxed">Nenhuma publicacao foi feita ainda. Tudo sera revisado antes de ir ao ar.</p>
+              </div>
+              <DialogFooter className="gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-white/10 text-zinc-400 hover:text-white"
+                  onClick={() => setAdPhase("pick")}
+                >
+                  Voltar
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
+                  onClick={() => { setAdModalOpen(false); setAdPhase("pick"); setAdPlatform(null); toast({ description: "Publicacao assistida registrada. Disponivel na proxima etapa." }); }}
+                >
+                  Entendido
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: confirm trash ─────────────────────────────── */}
+      <Dialog open={confirmTrashOpen} onOpenChange={(open) => { if (!open) setConfirmTrashOpen(false); }}>
+        <DialogContent className="bg-[#0f0f0f] border-white/[0.10] text-white max-w-sm shadow-depth-lg animate-scale-in">
+          <DialogHeader>
+            <DialogTitle className="text-white text-base">Enviar para lixeira?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            O projeto sera movido para a lixeira e excluido definitivamente apos <span className="text-zinc-200 font-medium">48 horas</span>. Voce pode restaura-lo antes do prazo.
+          </p>
+          <DialogFooter className="gap-2 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-white/10 text-zinc-400 hover:text-white"
+              onClick={() => setConfirmTrashOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmTrash}
+              disabled={deletingId}
+              className="bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
+            >
+              {deletingId ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Trash2 className="w-3.5 h-3.5 mr-1.5" />}
+              Enviar para lixeira
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
