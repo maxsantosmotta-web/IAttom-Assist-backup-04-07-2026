@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Video, Loader2, Copy, AlertCircle, RefreshCw, Clock, Music, Zap, Film, Share2, Save } from "lucide-react";
+import { Video, Loader2, Copy, AlertCircle, RefreshCw, Clock, Music, Zap, Film, Share2, Save, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ export function VideoScripts() {
   const [format, setFormat] = useState("");
   const [duration, setDuration] = useState("");
   const [style, setStyle] = useState("");
+  const [showProduction, setShowProduction] = useState(false);
   const { status, result, error, generate, reset } = useAiStream<VideoScriptResult>();
   const { toast } = useToast();
 
@@ -96,9 +97,8 @@ export function VideoScripts() {
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Inteligência de Script</p>
         <h2 className="text-2xl font-bold text-white mb-1">Scripts de Vídeo</h2>
-        <p className="text-muted-foreground text-sm">Gere scripts de vídeo prontos para produção com hooks, cenas e notas de direção.</p>
+        <p className="text-muted-foreground text-sm">Roteiros prontos com hooks, cenas e direção.</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
@@ -212,23 +212,34 @@ export function VideoScripts() {
               </CardHeader>
               <CardContent className="space-y-5">
                 {(activeResult.voiceoverStyle || activeResult.musicMood || activeResult.editingPace) && (
-                  <div className="grid grid-cols-3 gap-3">
-                    {activeResult.voiceoverStyle && (
-                      <div className="p-3 rounded-lg bg-white/5 border border-white/5">
-                        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Narração</p>
-                        <p className="text-xs text-white">{activeResult.voiceoverStyle}</p>
-                      </div>
-                    )}
-                    {activeResult.musicMood && (
-                      <div className="p-3 rounded-lg bg-white/5 border border-white/5">
-                        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1"><Music className="w-3 h-3" />Música</p>
-                        <p className="text-xs text-white">{activeResult.musicMood}</p>
-                      </div>
-                    )}
-                    {activeResult.editingPace && (
-                      <div className="p-3 rounded-lg bg-white/5 border border-white/5">
-                        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1"><Film className="w-3 h-3" />Edição</p>
-                        <p className="text-xs text-white">{activeResult.editingPace}</p>
+                  <div>
+                    <button
+                      onClick={() => setShowProduction((v) => !v)}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors mb-2"
+                    >
+                      {showProduction ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      Detalhes de Produção
+                    </button>
+                    {showProduction && (
+                      <div className="grid grid-cols-3 gap-3">
+                        {activeResult.voiceoverStyle && (
+                          <div className="p-3 rounded-lg bg-white/5 border border-white/5">
+                            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Narração</p>
+                            <p className="text-xs text-white">{activeResult.voiceoverStyle}</p>
+                          </div>
+                        )}
+                        {activeResult.musicMood && (
+                          <div className="p-3 rounded-lg bg-white/5 border border-white/5">
+                            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1"><Music className="w-3 h-3" />Música</p>
+                            <p className="text-xs text-white">{activeResult.musicMood}</p>
+                          </div>
+                        )}
+                        {activeResult.editingPace && (
+                          <div className="p-3 rounded-lg bg-white/5 border border-white/5">
+                            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1"><Film className="w-3 h-3" />Edição</p>
+                            <p className="text-xs text-white">{activeResult.editingPace}</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -288,7 +299,7 @@ export function VideoScripts() {
                           {scene.direction && (
                             <div className="px-4 pb-3">
                               <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Orientação de filmagem</p>
-                              <p className="text-xs text-muted-foreground/70">{scene.direction}</p>
+                              <p className="text-xs text-muted-foreground/70 line-clamp-1">{scene.direction}</p>
                             </div>
                           )}
                         </motion.div>

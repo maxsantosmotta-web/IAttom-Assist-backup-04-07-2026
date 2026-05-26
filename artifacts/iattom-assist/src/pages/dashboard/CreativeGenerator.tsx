@@ -98,9 +98,9 @@ function ConceptCard({ concept, index }: { concept: CreativeConcept; index: numb
           </div>
 
           {concept.visualDirection && (
-            <div className="p-2.5 rounded bg-white/5 border border-white/5">
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Direção Visual</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{concept.visualDirection}</p>
+            <div className="px-2 py-1.5 rounded bg-white/3 border border-white/5">
+              <p className="text-[10px] text-white/30 uppercase tracking-wider mb-0.5">Direção Visual</p>
+              <p className="text-xs text-muted-foreground/80 line-clamp-2">{concept.visualDirection}</p>
             </div>
           )}
 
@@ -242,9 +242,8 @@ export function CreativeGenerator() {
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Inteligência Visual</p>
         <h2 className="text-2xl font-bold text-white mb-1">Gerador Criativo</h2>
-        <p className="text-muted-foreground text-sm">Gere conceitos criativos premium — copy, hooks, direções visuais e imagens prontas para publicação.</p>
+        <p className="text-muted-foreground text-sm">Gere imagens e conceitos prontos para publicação.</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
@@ -252,7 +251,7 @@ export function CreativeGenerator() {
           <CardContent className="p-6 space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-1.5 md:col-span-2">
-                <Label className="text-sm text-muted-foreground">Criativo por Imagem</Label>
+                <Label className="text-sm text-muted-foreground">Gerador de Imagem</Label>
                 <Input placeholder="Ex: Moto premium em rua neon noturna" className="bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
               </div>
               <div className="space-y-1.5">
@@ -361,9 +360,9 @@ export function CreativeGenerator() {
             </div>
 
             {activeResult.brandVoiceNotes && (
-              <div className="mt-4 p-4 rounded-lg bg-white/5 border border-white/5">
-                <p className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-1">Notas de Voz da Marca</p>
-                <p className="text-sm text-muted-foreground">{activeResult.brandVoiceNotes}</p>
+              <div className="mt-3 px-3 py-2.5 rounded-lg bg-white/3 border border-white/5">
+                <p className="text-[10px] font-medium text-white/30 uppercase tracking-widest mb-0.5">Voz da Marca</p>
+                <p className="text-xs text-muted-foreground/80 line-clamp-2">{activeResult.brandVoiceNotes}</p>
               </div>
             )}
           </motion.div>
