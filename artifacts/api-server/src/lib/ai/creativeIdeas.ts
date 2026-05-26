@@ -100,7 +100,7 @@ Retorne exatamente esta estrutura:
       "cta": string (texto do botão de chamada para ação, em PT-BR),
       "emotionalTrigger": string (emoção central sendo ativada, em PT-BR),
       "bestPlatform": string (onde este criativo funciona melhor, em PT-BR),
-      "imagePrompt": string (prompt detalhado para geração de imagem IA — SEMPRE em inglês. OBRIGATÓRIO para qualidade premium: photorealistic, commercial photography quality, cinematic lighting with soft shadows and highlights, clear visual hierarchy, modern and clean composition, professional depth of field with sharp subject and soft background, premium advertising aesthetic, product or subject centered and well-composed, high-end magazine quality, clean background or contextual lifestyle setting, natural human anatomy if people appear, no extra fingers, no deformities, no text overlays, no logos, no watermarks, no brand names visible, no amateur look, no blurry elements, no distortion, no cluttered composition, ready-to-publish ad quality, aspirational mood)
+      "imagePrompt": string (prompt detalhado para geração de imagem IA — SEMPRE em inglês. REGRA CRÍTICA DE FIDELIDADE AO PRODUTO: Antes de escrever o imagePrompt, verifique se o briefing contém marca, modelo, nome comercial, versão ou produto popular específico. Se houver, preserve OBRIGATORIAMENTE as características físicas reconhecíveis do produto real: formato, proporção, estrutura, cor típica, componentes principais, estilo comercial e aparência de mercado. Use o nome exato do produto e repita o modelo/nome comercial na descrição visual. NÃO substitua por produto genérico parecido. NÃO invente marcas, formatos ou versões. Se o visual exato não for conhecido, gere imagem comercial fiel ao tipo/categoria do produto — sem alterar categoria, formato ou proporção principal. OBRIGATÓRIO para qualidade premium: photorealistic, commercial photography quality, cinematic lighting with soft shadows and highlights, clear visual hierarchy, modern and clean composition, professional depth of field with sharp subject and soft background, premium advertising aesthetic, product or subject centered and well-composed, high-end magazine quality, clean background or contextual lifestyle setting, natural human anatomy if people appear, no extra fingers, no deformities, no text overlays, no logos, no watermarks, no brand names visible, no amateur look, no blurry elements, no distortion, no cluttered composition, ready-to-publish ad quality, aspirational mood)
     }
   ],
   "overarchingTheme": string (tema criativo unificador de todos os conceitos, em PT-BR),
@@ -118,6 +118,8 @@ ${params.style ? `Estilo visual: ${params.style}` : ""}
 ${params.targetAudience ? `Público-alvo: ${params.targetAudience}` : ""}
 
 ${formatInstruction}
+
+INSTRUÇÃO CRÍTICA PARA imagePrompt: Se o briefing ou produto acima contiver nome de marca, modelo, nome comercial ou produto popular específico, use esse nome exato no imagePrompt e repita-o na descrição visual. Preserve as características físicas reconhecíveis do produto real. Não substitua por versão genérica. Use o nome comercial exato na frase de abertura do imagePrompt.
 
 Crie 4 conceitos criativos visualmente impactantes, alinhados à marca e focados em conversão. Responda integralmente em português brasileiro.`;
 
