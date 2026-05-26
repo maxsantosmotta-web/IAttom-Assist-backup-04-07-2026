@@ -40,6 +40,7 @@ const Analytics = lazy(() => import("@/pages/dashboard/Analytics").then((m) => (
 const SavedPrompts = lazy(() => import("@/pages/dashboard/SavedPrompts").then((m) => ({ default: m.SavedPrompts })));
 const Referral = lazy(() => import("@/pages/dashboard/Referral").then((m) => ({ default: m.Referral })));
 const Trash = lazy(() => import("@/pages/dashboard/Trash").then((m) => ({ default: m.Trash })));
+const ProjectDetail = lazy(() => import("@/pages/dashboard/ProjectDetail").then((m) => ({ default: m.ProjectDetail })));
 const MercadoLivre = lazy(() => import("@/pages/dashboard/MercadoLivre").then((m) => ({ default: m.MercadoLivre })));
 const Shopee = lazy(() => import("@/pages/dashboard/Shopee").then((m) => ({ default: m.Shopee })));
 const TikTok = lazy(() => import("@/pages/dashboard/TikTok").then((m) => ({ default: m.TikTok })));
@@ -244,6 +245,7 @@ function ProtectedDashboard() {
                   <Route path="/dashboard/create-content" component={CreateContent} />
                   <Route path="/dashboard/creative-generator" component={CreativeGenerator} />
                   <Route path="/dashboard/video-scripts" component={VideoScripts} />
+                  <Route path="/dashboard/projects/:id" component={ProjectDetail} />
                   <Route path="/dashboard/projects" component={Projects} />
                   <Route path="/dashboard/history" component={History} />
                   <Route path="/dashboard/credits" component={Credits} />

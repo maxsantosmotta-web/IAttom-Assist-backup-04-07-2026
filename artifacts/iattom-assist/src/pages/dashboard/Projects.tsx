@@ -78,33 +78,7 @@ export function Projects() {
   });
 
   const handleOpenItem = (item: SavedItem) => {
-    if (item.type === "campaign") {
-      if (item.data) sessionStorage.setItem("iattom_reopen_campaign_v1", item.data);
-      navigate("/dashboard/create-campaign");
-      return;
-    }
-    if (item.data) {
-      const keyMap: Record<string, string> = {
-        content:          "iattom_restore_content_v1",
-        video_script:     "iattom_restore_video_v1",
-        product_discovery:"iattom_restore_products_v1",
-        creative:         "iattom_restore_creative_v1",
-      };
-      const routeMap: Record<string, string> = {
-        content:          "/dashboard/create-content",
-        video_script:     "/dashboard/video-scripts",
-        product_discovery:"/dashboard/find-products",
-        creative:         "/dashboard/creative-generator",
-      };
-      const key = keyMap[item.type];
-      const route = routeMap[item.type];
-      if (key && route) {
-        sessionStorage.setItem(key, item.data);
-        navigate(route);
-        return;
-      }
-    }
-    setViewingItem(item);
+    navigate(`/dashboard/projects/${item.id}`);
   };
 
   const handleDeleteItem = (id: string) => {
