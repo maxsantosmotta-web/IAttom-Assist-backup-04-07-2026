@@ -246,7 +246,7 @@ export function CreateCampaign() {
   const [productType, setProductType] = useState("");
   const { status, result, error, generate, reset } = useAiStream<CampaignResult>();
   const { toast } = useToast();
-  const { saveItem } = useSavedItems();
+  const { saveItem, saveItemAssets } = useSavedItems();
 
   const [campaignData, setCampaignData] = useState<CampaignResult | null>(null);
   const [creativeResult, setCreativeResult] = useState<CreativeIdeasResult | null>(null);
@@ -423,7 +423,11 @@ export function CreateCampaign() {
       localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
     } catch {}
     if (imageAssets.length > 0) void saveProjectAssets(projectId, imageAssets);
-    void saveItem({ id: projectId, title, type: "campaign", platform, content, data: structuredData, hasImages: imageAssets.length > 0 }).catch(() => {});
+    void saveItem({ id: projectId, title, type: "campaign", platform, content, data: structuredData, hasImages: imageAssets.length > 0 })
+      .then(() => {
+        if (imageAssets.length > 0) void saveItemAssets(projectId, imageAssets).catch(() => {});
+      })
+      .catch(() => {});
     toast({ description: "Projeto salvo" });
   };
 

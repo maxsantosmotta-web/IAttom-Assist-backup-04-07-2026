@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useParams, useLocation } from "wouter";
-import { loadProjectAssets, deleteProjectAssets } from "@/lib/assetStorage";
+import { loadProjectAssets, saveProjectAssets, deleteProjectAssets } from "@/lib/assetStorage";
+import { useSavedItems } from "@/hooks/useSavedItems";
 import {
   ArrowLeft, Trash2, Loader2, Copy, Check, ChevronDown, ChevronUp,
   FileText, Megaphone, Sparkles, Video, Search, ImageOff, Download, X,
@@ -390,6 +391,7 @@ export function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { getItems, getItemAssets } = useSavedItems();
   const [item, setItem] = useState<SavedItem | null | "not_found">(null);
   const [deletingId, setDeletingId] = useState(false);
   const [allCopied, setAllCopied] = useState(false);
@@ -402,18 +404,51 @@ export function ProjectDetail() {
 
   useEffect(() => {
     if (!id) { setItem("not_found"); return; }
-    const items = readStorage();
-    const found = items.find(i => i.id === id);
-    setItem(found ?? "not_found");
-    if (found) {
-      loadProjectAssets(id)
-        .then((assets) => {
-          setIdbImages(
-            assets.map((a) => ({ label: a.label, base64: a.base64, format: a.format }))
-          );
-        })
-        .catch(() => {});
+
+    async function loadItem() {
+      // 1. Try localStorage first (fast path)
+      const items = readStorage();
+      const found = items.find(i => i.id === id);
+      const resolved = found ?? await (async () => {
+        // 2. Fallback: fetch from API (cross-device sync)
+        try {
+          const apiItems = await getItems();
+          const apiFound = apiItems.find(i => i.id === id);
+          if (apiFound) {
+            // Cache in localStorage for future visits (text only — no images)
+            try {
+              writeStorage([...readStorage().filter(i => i.id !== id), apiFound as SavedItem]);
+            } catch { /* noop */ }
+          }
+          return apiFound as SavedItem | undefined;
+        } catch { return undefined; }
+      })();
+
+      setItem(resolved ?? "not_found");
+      if (!resolved) return;
+
+      // 3. Load images: IndexedDB first (local cache), then API fallback (cross-device)
+      try {
+        const idbAssets = await loadProjectAssets(id);
+        if (idbAssets.length > 0) {
+          setIdbImages(idbAssets.map(a => ({ label: a.label, base64: a.base64, format: a.format })));
+          return;
+        }
+      } catch { /* IndexedDB unavailable */ }
+
+      // 4. No local images — try API assets (persisted on save device)
+      try {
+        const apiAssets = await getItemAssets(id);
+        if (apiAssets.length > 0) {
+          setIdbImages(apiAssets.map(a => ({ label: a.label, base64: a.base64, format: a.format })));
+          // Populate IndexedDB as cache for offline use
+          void saveProjectAssets(id, apiAssets).catch(() => {});
+        }
+      } catch { /* API unavailable */ }
     }
+
+    void loadItem();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const handleDelete = useCallback(() => {

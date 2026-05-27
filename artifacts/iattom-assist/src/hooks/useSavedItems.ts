@@ -18,6 +18,13 @@ export interface SavedItemRecord extends SavedItemPayload {
   expiresAt: string | null;
 }
 
+export interface AssetData {
+  conceptIndex: number;
+  base64: string;
+  label: string;
+  format: string;
+}
+
 async function apiFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -61,6 +68,23 @@ export function useSavedItems() {
     });
   }, [getToken]);
 
+  const saveItemAssets = useCallback(async (id: string, assets: AssetData[]): Promise<void> => {
+    if (!assets.length) return;
+    const token = await resolveToken(getToken);
+    if (!token) throw new Error("Não autenticado");
+    await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}/assets`, token, {
+      method: "POST",
+      body: JSON.stringify({ assets }),
+    });
+  }, [getToken]);
+
+  const getItemAssets = useCallback(async (id: string): Promise<AssetData[]> => {
+    const token = await resolveToken(getToken);
+    if (!token) return [];
+    const res = await apiFetch<{ assets: AssetData[] }>(`/api/saved-items/${id}/assets`, token);
+    return res.assets ?? [];
+  }, [getToken]);
+
   const trashItem = useCallback(async (id: string): Promise<void> => {
     const token = await resolveToken(getToken);
     if (!token) throw new Error("Não autenticado");
@@ -85,5 +109,5 @@ export function useSavedItems() {
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}/permanent`, token, { method: "DELETE" });
   }, [getToken]);
 
-  return { getItems, saveItem, trashItem, getTrash, restoreItem, permanentDelete };
+  return { getItems, saveItem, saveItemAssets, getItemAssets, trashItem, getTrash, restoreItem, permanentDelete };
 }

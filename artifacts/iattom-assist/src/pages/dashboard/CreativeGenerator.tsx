@@ -115,7 +115,7 @@ export function CreativeGenerator() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { status, result, error, generate, reset } = useAiStream<CreativeIdeasResult>();
   const { toast } = useToast();
-  const { saveItem } = useSavedItems();
+  const { saveItem, saveItemAssets } = useSavedItems();
 
   const needsRef = needsReferenceImage(prompt);
   const showHint = needsRef && !referenceImage;
@@ -227,7 +227,11 @@ export function CreativeGenerator() {
       localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
     } catch {}
     if (imageAssets.length > 0) void saveProjectAssets(projectId, imageAssets);
-    void saveItem({ id: projectId, title, type: "creative", content, data, hasImages: imageAssets.length > 0 }).catch(() => {});
+    void saveItem({ id: projectId, title, type: "creative", content, data, hasImages: imageAssets.length > 0 })
+      .then(() => {
+        if (imageAssets.length > 0) void saveItemAssets(projectId, imageAssets).catch(() => {});
+      })
+      .catch(() => {});
     toast({ description: "Projeto salvo" });
   };
 
