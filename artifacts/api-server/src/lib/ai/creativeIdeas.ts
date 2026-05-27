@@ -190,8 +190,28 @@ Crie 4 conceitos criativos visualmente impactantes, alinhados ao produto e focad
     const imageResults = await Promise.allSettled(
       enrichedConcepts.map((concept) => {
         if (referenceBuffer) {
-          const anchorNote = visualAnchor ? ` Maintain campaign visual identity: ${visualAnchor}.` : "";
-          const editPrompt = `Preserve the exact product shown in the reference image — keep its shape, structure, proportions and visual identity unchanged. Enhance with: premium commercial lighting, professional composition, clean or contextual lifestyle background.${anchorNote} Apply this creative concept: ${concept.imagePrompt}`;
+          // When reference image is provided, it is the VISUAL ANCHOR for the product.
+          // NEVER change the product. Only vary: scene, lighting, background, composition, angle.
+          const sceneInstruction = (() => {
+            const c = concept.concept ?? "";
+            const vd = concept.visualDirection ?? "";
+            // Extract only scene/setting/mood — NOT product description
+            const combined = `${c} ${vd}`.trim();
+            return combined.length > 10 ? combined.slice(0, 300) : "premium lifestyle setting";
+          })();
+          const editPrompt = [
+            "PRODUCT ANCHOR: The product in the reference image is the sole subject.",
+            "ABSOLUTE RULES — DO NOT violate:",
+            "- Keep the exact product: same shape, silhouette, proportions, color, structure, all physical components",
+            "- Do NOT replace, simplify, generalize or reinvent the product",
+            "- Do NOT add or remove parts that are not in the reference",
+            "WHAT YOU MAY CHANGE:",
+            `- Scene, environment and background: ${sceneInstruction}`,
+            "- Lighting: premium commercial, cinematic, soft shadows and highlights",
+            "- Camera angle and composition: varied but professional",
+            "- Mood and atmosphere: aspirational lifestyle",
+            "OUTPUT QUALITY: photorealistic, commercial photography quality, magazine-ready, no text overlays, no logos, no watermarks.",
+          ].join(" ");
           return editImageFromBuffer(referenceBuffer, editPrompt, mapFormatToSize(concept.format));
         }
         return generateImageBuffer(concept.imagePrompt, mapFormatToSize(concept.format));
