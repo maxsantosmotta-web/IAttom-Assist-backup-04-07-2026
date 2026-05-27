@@ -43,7 +43,6 @@ const PLATFORM_LABELS: Record<string, string> = {
   shopee: "Shopee",
   kiwify: "Kiwify",
   meta: "Meta",
-  whatsapp: "WhatsApp",
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -52,7 +51,6 @@ const PLATFORM_COLORS: Record<string, string> = {
   shopee: "bg-orange-600/15 text-orange-500 border-orange-600/30",
   kiwify: "bg-violet-500/15 text-violet-400 border-violet-500/30",
   meta: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  whatsapp: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
 };
 
 const TYPE_LABELS: Record<string, string> = {

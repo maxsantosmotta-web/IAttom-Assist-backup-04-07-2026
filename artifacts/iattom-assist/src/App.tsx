@@ -56,7 +56,6 @@ const AdminActivity = lazy(() => import("@/pages/admin/AdminActivity").then((m) 
 const AdminWaitlist = lazy(() => import("@/pages/admin/AdminWaitlist").then((m) => ({ default: m.AdminWaitlist })));
 const AdminFeedback = lazy(() => import("@/pages/admin/AdminFeedback").then((m) => ({ default: m.AdminFeedback })));
 const AdminLaunchChecklist = lazy(() => import("@/pages/admin/AdminLaunchChecklist").then((m) => ({ default: m.AdminLaunchChecklist })));
-const AdminWhatsApp = lazy(() => import("@/pages/admin/AdminWhatsApp").then((m) => ({ default: m.AdminWhatsApp })));
 const AdminInstagram = lazy(() => import("@/pages/admin/AdminInstagram").then((m) => ({ default: m.AdminInstagram })));
 const AdminFacebook  = lazy(() => import("@/pages/admin/AdminFacebook").then((m) => ({ default: m.AdminFacebook })));
 const AdminShopee = lazy(() => import("@/pages/admin/AdminShopee").then((m) => ({ default: m.AdminShopee })));
@@ -290,7 +289,6 @@ function ProtectedAdmin() {
                 <Route path="/admin/feedback" component={AdminFeedback} />
                 <Route path="/admin/launch-checklist" component={AdminLaunchChecklist} />
                 <Route path="/admin/integrations" component={AdminIntegrations} />
-                <Route path="/admin/whatsapp" component={AdminWhatsApp} />
                 <Route path="/admin/instagram" component={AdminInstagram} />
                 <Route path="/admin/facebook"  component={AdminFacebook}  />
                 <Route path="/admin/shopee" component={AdminShopee} />

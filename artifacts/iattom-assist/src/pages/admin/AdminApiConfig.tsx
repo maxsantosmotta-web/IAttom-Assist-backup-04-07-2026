@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Settings2, Save, Trash2, CheckCircle2,
   Loader2, Eye, EyeOff, ShoppingBag, ShoppingCart, Flame,
-  Zap, Phone, Instagram, Video, Copy, ExternalLink, Info,
+  Zap, Instagram, Video, Copy, ExternalLink, Info,
   Shield, RefreshCw, TrendingUp, Clock, Wifi, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /* ─── Types ─────────────────────────────────────────────────── */
-type IntegrationKey = "shopee" | "ml" | "hotmart" | "kiwify" | "meta" | "whatsapp" | "tiktok";
+type IntegrationKey = "shopee" | "ml" | "hotmart" | "kiwify" | "meta" | "tiktok";
 
 interface AllConfigs {
   shopee:   { configured: boolean; isActive: boolean; partnerId: string; partnerKey: string; redirectUrl: string; environment: string; updatedAt: string | null };
@@ -38,7 +38,6 @@ interface AllConfigs {
   hotmart:  { configured: boolean; isActive: boolean; clientId: string; clientSecret: string; basicToken: string; webhookToken: string; environment: string; updatedAt: string | null };
   kiwify:   { configured: boolean; isActive: boolean; storeId: string; clientId: string; clientSecret: string; webhookSecret: string; updatedAt: string | null };
   meta:     { configured: boolean; isActive: boolean; appId: string; appSecret: string; verifyToken: string; userAccessToken: string; webhookUrl: string; updatedAt: string | null };
-  whatsapp: { configured: boolean; isActive: boolean; businessAccountId: string; phoneNumberId: string; accessToken: string; verifyToken: string; webhookUrl: string; updatedAt: string | null };
   tiktok:   { configured: boolean; isActive: boolean; clientKey: string; clientSecret: string; redirectUri: string; environment: string; updatedAt: string | null };
 }
 
@@ -173,14 +172,12 @@ const TABS: { id: IntegrationKey; label: string; icon: typeof ShoppingBag; color
   { id: "ml",       label: "Mercado Livre",  icon: ShoppingCart, color: "text-amber-400"   },
   { id: "hotmart",  label: "Hotmart",        icon: Flame,        color: "text-red-400"     },
   { id: "kiwify",   label: "Kiwify",         icon: Zap,          color: "text-violet-400"  },
-  { id: "whatsapp", label: "WhatsApp",       icon: Phone,        color: "text-emerald-400" },
   { id: "meta",     label: "Meta (IG + FB)", icon: Instagram,    color: "text-pink-400"    },
   { id: "tiktok",   label: "TikTok",         icon: Video,        color: "text-cyan-400"    },
 ];
 
 /* ─── Checklist ──────────────────────────────────────────────── */
 const CHECKLIST_ITEMS: { id: IntegrationId; icon: typeof ShoppingBag; iconColor: string; label: string }[] = [
-  { id: "whatsapp", icon: Phone,        iconColor: "text-emerald-400", label: "WhatsApp Cloud API — mensagens e automações"       },
   { id: "meta",     icon: Instagram,    iconColor: "text-pink-400",    label: "Instagram Business + Facebook Pages"               },
   { id: "shopee",   icon: ShoppingBag,  iconColor: "text-orange-400",  label: "Shopee Open Platform — produtos e pedidos"         },
   { id: "ml",       icon: ShoppingCart, iconColor: "text-amber-400",   label: "Mercado Livre API — anúncios e pedidos"            },
@@ -192,7 +189,6 @@ const CHECKLIST_ITEMS: { id: IntegrationId; icon: typeof ShoppingBag; iconColor:
 
 /* ─── Event feed helpers ─────────────────────────────────────── */
 const PLATFORM_COLORS: Record<string, string> = {
-  whatsapp: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   meta:     "bg-pink-500/15 text-pink-400 border-pink-500/30",
   shopee:   "bg-orange-500/15 text-orange-400 border-orange-500/30",
   ml:       "bg-yellow-500/15 text-yellow-500 border-yellow-500/30",
@@ -277,7 +273,6 @@ export function AdminApiConfig() {
   const [hotmartForm,  setHotmartForm]  = useState({ clientId: "", clientSecret: "", basicToken: "", webhookToken: "", environment: "sandbox" });
   const [kiwifyForm,   setKiwifyForm]   = useState({ storeId: "", clientId: "", clientSecret: "", webhookSecret: "" });
   const [metaForm,     setMetaForm]     = useState({ appId: "", appSecret: "", verifyToken: "", userAccessToken: "", webhookUrl: `${origin}${BASE}/api/meta/webhook` });
-  const [whatsappForm, setWhatsappForm] = useState({ businessAccountId: "", phoneNumberId: "", accessToken: "", verifyToken: "", webhookUrl: `${origin}${BASE}/api/whatsapp/webhook` });
   const [tiktokForm,   setTiktokForm]   = useState({ clientKey: "", clientSecret: "", redirectUri: `${origin}${BASE}/api/tiktok/oauth/callback`, environment: "sandbox" });
 
   const loadConfigs = useCallback(async () => {
@@ -290,7 +285,6 @@ export function AdminApiConfig() {
       setHotmartForm(f  => ({ ...f, clientId: data.hotmart.clientId,    clientSecret: data.hotmart.clientSecret, basicToken: data.hotmart.basicToken, webhookToken: data.hotmart.webhookToken, environment: data.hotmart.environment || "sandbox" }));
       setKiwifyForm(f   => ({ ...f, storeId: data.kiwify.storeId,       clientId: data.kiwify.clientId,       clientSecret: data.kiwify.clientSecret, webhookSecret: data.kiwify.webhookSecret }));
       setMetaForm(f     => ({ ...f, appId: data.meta.appId,             appSecret: data.meta.appSecret,       verifyToken: data.meta.verifyToken, userAccessToken: data.meta.userAccessToken, webhookUrl: data.meta.webhookUrl || f.webhookUrl }));
-      setWhatsappForm(f => ({ ...f, businessAccountId: data.whatsapp.businessAccountId, phoneNumberId: data.whatsapp.phoneNumberId, accessToken: data.whatsapp.accessToken, verifyToken: data.whatsapp.verifyToken, webhookUrl: data.whatsapp.webhookUrl || f.webhookUrl }));
       setTiktokForm(f   => ({ ...f, clientKey: data.tiktok.clientKey,   clientSecret: data.tiktok.clientSecret, redirectUri: data.tiktok.redirectUri || f.redirectUri, environment: data.tiktok.environment || "sandbox" }));
     } catch {
       toast({ variant: "destructive", description: "Falha ao carregar configurações." });
@@ -565,54 +559,6 @@ export function AdminApiConfig() {
                       onClear={() => void clear("kiwify")}
                       saving={saving} testing={testing}
                       externalLink={{ href: "https://dashboard.kiwify.com.br", label: "Abrir Kiwify" }}
-                    />
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* ── WHATSAPP ─────────────────────────────────────── */}
-              {activeTab === "whatsapp" && (
-                <Card className="bg-[#111111] border-white/[0.06]">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-emerald-400" />
-                      WhatsApp Cloud API
-                      {configs?.whatsapp.configured && <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Configurado</Badge>}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <CallbackBox url={whatsappForm.webhookUrl} label="Webhook URL — configure no Meta Developers" />
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <PlainInput label="Phone Number ID" name="phoneNumberId" value={whatsappForm.phoneNumberId}
-                        onChange={v => setWhatsappForm(f => ({ ...f, phoneNumberId: v }))} placeholder="Ex: 112345678901234" />
-                      <PlainInput label="WhatsApp Business Account ID" name="businessAccountId" value={whatsappForm.businessAccountId}
-                        onChange={v => setWhatsappForm(f => ({ ...f, businessAccountId: v }))} placeholder="Ex: 987654321098765" />
-                    </div>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <SecretInput label="Access Token (permanente)" name="accessToken" value={whatsappForm.accessToken}
-                        onChange={v => setWhatsappForm(f => ({ ...f, accessToken: v }))} />
-                      <SecretInput label="Verify Token (webhook)" name="verifyToken" value={whatsappForm.verifyToken}
-                        onChange={v => setWhatsappForm(f => ({ ...f, verifyToken: v }))}
-                        hint="Token criado por você para validação do webhook" />
-                    </div>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <PlainInput label="Meta App ID" name="metaAppId" value={metaForm.appId}
-                        onChange={v => setMetaForm(f => ({ ...f, appId: v }))}
-                        hint="Compartilhado com Instagram e Facebook" />
-                      <SecretInput label="App Secret (Meta)" name="metaAppSecret" value={metaForm.appSecret}
-                        onChange={v => setMetaForm(f => ({ ...f, appSecret: v }))} />
-                    </div>
-                    <FormActions
-                      onSave={async () => {
-                        await Promise.all([
-                          save("meta", { appId: metaForm.appId, appSecret: metaForm.appSecret, verifyToken: metaForm.verifyToken, userAccessToken: metaForm.userAccessToken, webhookUrl: metaForm.webhookUrl }),
-                          save("whatsapp", whatsappForm),
-                        ]);
-                      }}
-                      onTest={() => void test("whatsapp")}
-                      onClear={() => void clear("whatsapp")}
-                      saving={saving} testing={testing}
-                      externalLink={{ href: "https://developers.facebook.com", label: "Abrir Meta Developers" }}
                     />
                   </CardContent>
                 </Card>
