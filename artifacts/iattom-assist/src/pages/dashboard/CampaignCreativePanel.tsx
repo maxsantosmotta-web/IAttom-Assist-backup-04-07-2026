@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Sparkles, Loader2, Copy, Image, AlertCircle, RefreshCw, Palette, Type, Paperclip, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -15,7 +15,6 @@ interface CampaignCreativePanelProps {
   uniqueAngle?: string;
   instagramCopy?: string;
   channels?: string[];
-  autoStart?: boolean;
   onResult?: (result: CreativeIdeasResult) => void;
 }
 
@@ -103,7 +102,6 @@ export function CampaignCreativePanel({
   uniqueAngle,
   instagramCopy,
   channels,
-  autoStart,
   onResult,
 }: CampaignCreativePanelProps) {
   const { status, result, error, generate, reset } = useAiStream<CreativeIdeasResult>();
@@ -112,7 +110,6 @@ export function CampaignCreativePanel({
   const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<(() => void) | null>(null);
-  const autoStartFired = useRef(false);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -132,13 +129,6 @@ export function CampaignCreativePanel({
   const isError = status === "error";
 
   const needsRef = needsReferenceImage(product ?? "", product);
-
-  useEffect(() => {
-    if (autoStart && !autoStartFired.current && triggerRef.current && !isGenerating && !isDone) {
-      autoStartFired.current = true;
-      triggerRef.current();
-    }
-  });
 
   const buildPrompt = () =>
     [
@@ -179,7 +169,7 @@ export function CampaignCreativePanel({
         </div>
         {isDone && (
           <button
-            onClick={() => { reset(); setStarted(false); autoStartFired.current = false; }}
+            onClick={() => { reset(); setStarted(false); }}
             className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 shrink-0"
           >
             <RefreshCw className="w-3 h-3" /> Regenerar Criativos
@@ -225,10 +215,10 @@ export function CampaignCreativePanel({
       )}
 
       {!started && !isDone && !isGenerating && !isError && (
-        <CreditsGate feature="creative" onSuccess={runGenerate} disabled={needsRef && !referenceImage}>
+        <CreditsGate feature="creative" onSuccess={runGenerate}>
           {({ trigger, isLoading }) => {
             triggerRef.current = trigger;
-            if (autoStart) return null;
+            if (!referenceImage) return null;
             return (
               <Button
                 onClick={trigger}
@@ -238,7 +228,7 @@ export function CampaignCreativePanel({
                 {isLoading ? (
                   <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Preparando...</>
                 ) : (
-                  <><Sparkles className="w-4 h-4 mr-2" /> Gerar Criativo da Campanha</>
+                  <><Sparkles className="w-4 h-4 mr-2" /> Gerar imagem da campanha</>
                 )}
               </Button>
             );

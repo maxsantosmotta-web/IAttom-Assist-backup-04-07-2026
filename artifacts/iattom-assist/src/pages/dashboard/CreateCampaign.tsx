@@ -560,7 +560,7 @@ export function CreateCampaign() {
             <Card className="bg-red-950/20 border-red-500/20">
               <CardContent className="p-5 flex items-center gap-4">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-                <div className="flex-1"><p className="text-sm font-semibold text-red-400">Falha na geração</p><p className="text-xs text-muted-foreground mt-0.5">{error}</p></div>
+                <div className="flex-1"><p className="text-sm font-semibold text-red-400">Falha na geração</p><p className="text-xs text-muted-foreground mt-0.5">Não foi possível gerar a campanha neste momento. Tente novamente.</p></div>
                 <Button size="sm" variant="outline" onClick={() => { handleReset(); }} className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente</Button>
               </CardContent>
             </Card>
@@ -622,7 +622,7 @@ export function CreateCampaign() {
                   <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1"><Globe className="w-3 h-3" /> Canais</p>
                     <div className="flex flex-wrap gap-1">
-                      {campaignData.channels?.map((c) => (<span key={c} className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{c}</span>))}
+                      {campaignData.channels?.filter((c) => !/whatsapp/i.test(c)).map((c) => (<span key={c} className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{c}</span>))}
                     </div>
                   </div>
                   <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
@@ -663,7 +663,7 @@ export function CreateCampaign() {
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 font-medium">Copy por Plataforma</p>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {Object.entries(campaignData.copy).map(([platform, copy]) => {
+                      {Object.entries(campaignData.copy).filter(([platform]) => !/whatsapp/i.test(platform)).map(([platform, copy]) => {
                         const blockId = `copy.${platform}`;
                         return (
                           <div key={platform} className="bg-[#0a0a0a] border border-white/5 rounded-lg p-4">
@@ -710,7 +710,7 @@ export function CreateCampaign() {
                 {campaignData.launchTimeline && (
                   <div className="border-t border-white/5 pt-4">
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 font-medium">Cronograma de Lançamento</p>
-                    <p className="text-sm text-muted-foreground whitespace-pre-line">{campaignData.launchTimeline}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{campaignData.launchTimeline.split("\n").filter((l) => !/whatsapp/i.test(l)).join("\n")}</p>
                     <RefineBar
                       blockId="launchTimeline"
                       value={refineInputs["launchTimeline"] ?? ""}
@@ -764,7 +764,6 @@ export function CreateCampaign() {
                   uniqueAngle={campaignData.uniqueAngle}
                   instagramCopy={(campaignData.copy as Record<string, string>)?.instagram}
                   channels={campaignData.channels}
-                  autoStart={true}
                   onResult={(r) => setCreativeResult(r)}
                 />
               </CardContent>
