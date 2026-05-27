@@ -58,7 +58,7 @@ const typeConfig: Record<string, { label: string; icon: React.ElementType; badge
 const platformLabels: Record<string, string> = {
   hotmart: "Hotmart", kiwify: "Kiwify", shopee: "Shopee",
   mercado_livre: "Mercado Livre", tiktok: "TikTok",
-  whatsapp: "WhatsApp", instagram: "Instagram", facebook: "Facebook",
+  instagram: "Instagram", facebook: "Facebook",
 };
 
 const AD_PLATFORMS = [
@@ -69,7 +69,6 @@ const AD_PLATFORMS = [
   { id: "tiktok",        label: "TikTok" },
   { id: "facebook",      label: "Facebook" },
   { id: "instagram",     label: "Instagram" },
-  { id: "whatsapp",      label: "WhatsApp" },
 ] as const;
 
 function formatDate(iso: string) {

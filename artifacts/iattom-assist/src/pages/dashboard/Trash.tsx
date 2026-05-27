@@ -71,7 +71,7 @@ const PROJECT_CFG: Record<string, { label: string; icon: React.ElementType; badg
 
 const PLATFORM_LABELS: Record<string, string> = {
   mercado_livre: "Mercado Livre", hotmart: "Hotmart", shopee: "Shopee",
-  kiwify: "Kiwify", meta: "Meta", whatsapp: "WhatsApp",
+  kiwify: "Kiwify", meta: "Meta",
 };
 
 const TYPE_LABELS: Record<string, string> = {

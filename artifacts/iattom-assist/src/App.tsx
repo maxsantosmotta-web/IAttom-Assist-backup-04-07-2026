@@ -48,8 +48,6 @@ const Hotmart = lazy(() => import("@/pages/dashboard/Hotmart").then((m) => ({ de
 const Kiwify = lazy(() => import("@/pages/dashboard/Kiwify").then((m) => ({ default: m.Kiwify })));
 const Facebook = lazy(() => import("@/pages/dashboard/Facebook").then((m) => ({ default: m.Facebook })));
 const Instagram = lazy(() => import("@/pages/dashboard/Instagram").then((m) => ({ default: m.Instagram })));
-const WhatsApp = lazy(() => import("@/pages/dashboard/WhatsApp").then((m) => ({ default: m.WhatsApp })));
-
 // Lazy load admin pages
 const AdminOverview = lazy(() => import("@/pages/admin/AdminOverview").then((m) => ({ default: m.AdminOverview })));
 const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers").then((m) => ({ default: m.AdminUsers })));
@@ -262,7 +260,6 @@ function ProtectedDashboard() {
                   <Route path="/dashboard/kiwify" component={Kiwify} />
                   <Route path="/dashboard/facebook" component={Facebook} />
                   <Route path="/dashboard/instagram" component={Instagram} />
-                  <Route path="/dashboard/whatsapp" component={WhatsApp} />
                   <Route component={NotFound} />
                 </Switch>
               </Suspense>

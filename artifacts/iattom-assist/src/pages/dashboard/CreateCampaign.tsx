@@ -167,7 +167,7 @@ function getPlatformGuide(goal: string, data: CampaignResult): PlatformGuide | n
         "Selecione o produto e acesse Configurações > Página de Vendas",
         `Atualize o título principal com: "${headline}"`,
         `Configure o botão de compra com: "${cta}"`,
-        "Copie o copy de e-mail e WhatsApp abaixo — principais canais de conversão na Kiwify",
+        "Copie o copy de e-mail abaixo — principal canal de conversão na Kiwify",
         "Ative o programa de afiliados em Afiliados > Configurações",
         "Monitore as vendas em Dashboard > Transações",
       ],
@@ -201,21 +201,6 @@ function getPlatformGuide(goal: string, data: CampaignResult): PlatformGuide | n
         "Adicione o copy de Facebook desta campanha na descrição",
         "Configure Produto Patrocinado em Publicidade",
         "Monitore visitas e conversões em Central do Vendedor",
-      ],
-      note: "Publicação Assistida — orientações para publicação manual. Nenhuma ação automática é executada pela plataforma.",
-    };
-  }
-  if (g.includes("whatsapp")) {
-    return {
-      name: "WhatsApp Business",
-      url: "https://business.whatsapp.com",
-      steps: [
-        "Abra o WhatsApp Business na sua conta",
-        `Crie um Catálogo com o produto e use como título: "${headline}"`,
-        `Envie a primeira mensagem de prospecção usando o copy: "${(copy.instagram ?? cta).slice(0, 100)}"`,
-        "Configure resposta automática com o link de compra",
-        "Crie uma lista de transmissão para clientes interessados",
-        "Use as Mensagens-chave desta campanha em sequência de follow-up",
       ],
       note: "Publicação Assistida — orientações para publicação manual. Nenhuma ação automática é executada pela plataforma.",
     };
@@ -385,7 +370,6 @@ export function CreateCampaign() {
     else if (goalLower.includes("kiwify")) platform = "kiwify";
     else if (goalLower.includes("shopee")) platform = "shopee";
     else if (goalLower.includes("mercado livre")) platform = "mercado_livre";
-    else if (goalLower.includes("whatsapp")) platform = "whatsapp";
     else if (goalLower.includes("instagram")) platform = "instagram";
     else if (goalLower.includes("tiktok")) platform = "tiktok";
     const lines: string[] = [];
@@ -494,7 +478,6 @@ export function CreateCampaign() {
                   <option value="Vender no Mercado Livre">Vender no Mercado Livre</option>
                   <option value="Vender na Hotmart">Vender na Hotmart</option>
                   <option value="Vender na Kiwify">Vender na Kiwify</option>
-                  <option value="Vender pelo WhatsApp">Vender pelo WhatsApp</option>
                   <option value="Vender pelo Instagram">Vender pelo Instagram</option>
                   <option value="Viralizar no Instagram">Viralizar no Instagram</option>
                   <option value="Viralizar no TikTok">Viralizar no TikTok</option>

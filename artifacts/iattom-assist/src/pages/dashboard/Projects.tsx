@@ -35,7 +35,7 @@ const typeLabels: Record<string, string> = {
 const platformLabels: Record<string, string> = {
   hotmart: "Hotmart", kiwify: "Kiwify", shopee: "Shopee",
   mercado_livre: "Mercado Livre", tiktok: "TikTok",
-  whatsapp: "WhatsApp", instagram: "Instagram", facebook: "Facebook",
+  instagram: "Instagram", facebook: "Facebook",
 };
 
 function timeAgo(date: string): string {
