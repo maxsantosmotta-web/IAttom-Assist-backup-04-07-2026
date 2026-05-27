@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Settings2, Save, Trash2, CheckCircle2,
@@ -6,6 +6,14 @@ import {
   Zap, Instagram, Video, Copy, ExternalLink, Info,
   Shield, RefreshCw, TrendingUp, Clock, Wifi, AlertTriangle,
 } from "lucide-react";
+
+function FacebookIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    </svg>
+  );
+}
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +38,12 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /* ─── Types ─────────────────────────────────────────────────── */
-type IntegrationKey = "shopee" | "ml" | "hotmart" | "kiwify" | "meta" | "tiktok";
+type IntegrationKey = "shopee" | "ml" | "hotmart" | "kiwify" | "instagram" | "facebook" | "tiktok";
+
+function toApiKey(tab: IntegrationKey): string {
+  if (tab === "instagram" || tab === "facebook") return "meta";
+  return tab;
+}
 
 interface AllConfigs {
   shopee:   { configured: boolean; isActive: boolean; partnerId: string; partnerKey: string; redirectUrl: string; environment: string; updatedAt: string | null };
@@ -167,34 +180,38 @@ function FormActions({ onSave, onTest, onClear, saving, testing, externalLink }:
 }
 
 /* ─── Tab meta ───────────────────────────────────────────────── */
-const TABS: { id: IntegrationKey; label: string; icon: typeof ShoppingBag; color: string }[] = [
-  { id: "shopee",   label: "Shopee",         icon: ShoppingBag,  color: "text-orange-400"  },
-  { id: "ml",       label: "Mercado Livre",  icon: ShoppingCart, color: "text-amber-400"   },
-  { id: "hotmart",  label: "Hotmart",        icon: Flame,        color: "text-red-400"     },
-  { id: "kiwify",   label: "Kiwify",         icon: Zap,          color: "text-violet-400"  },
-  { id: "meta",     label: "Meta (IG + FB)", icon: Instagram,    color: "text-pink-400"    },
-  { id: "tiktok",   label: "TikTok",         icon: Video,        color: "text-cyan-400"    },
+const TABS: Array<{ id: IntegrationKey; label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = [
+  { id: "shopee",    label: "Shopee",        icon: ShoppingBag,   color: "text-orange-400" },
+  { id: "ml",        label: "Mercado Livre", icon: ShoppingCart,  color: "text-amber-400"  },
+  { id: "hotmart",   label: "Hotmart",       icon: Flame,         color: "text-red-400"    },
+  { id: "kiwify",    label: "Kiwify",        icon: Zap,           color: "text-violet-400" },
+  { id: "instagram", label: "Instagram",     icon: Instagram,     color: "text-pink-400"   },
+  { id: "facebook",  label: "Facebook",      icon: FacebookIcon,  color: "text-blue-400"   },
+  { id: "tiktok",    label: "TikTok",        icon: Video,         color: "text-cyan-400"   },
 ];
 
 /* ─── Checklist ──────────────────────────────────────────────── */
-const CHECKLIST_ITEMS: { id: IntegrationId; icon: typeof ShoppingBag; iconColor: string; label: string }[] = [
-  { id: "meta",     icon: Instagram,    iconColor: "text-pink-400",    label: "Instagram Business + Facebook Pages"               },
-  { id: "shopee",   icon: ShoppingBag,  iconColor: "text-orange-400",  label: "Shopee Open Platform — produtos e pedidos"         },
-  { id: "ml",       icon: ShoppingCart, iconColor: "text-amber-400",   label: "Mercado Livre API — anúncios e pedidos"            },
-  { id: "hotmart",  icon: Flame,        iconColor: "text-red-400",     label: "Hotmart — produtos digitais e assinaturas"         },
-  { id: "kiwify",   icon: Zap,          iconColor: "text-violet-400",  label: "Kiwify — produtos digitais e checkout"             },
+const CHECKLIST_ITEMS: Array<{ id: IntegrationId; icon: React.ComponentType<{ className?: string }>; iconColor: string; label: string }> = [
+  { id: "meta",    icon: Instagram,    iconColor: "text-pink-400",   label: "Instagram Business — mensagens e insights"     },
+  { id: "meta",    icon: FacebookIcon, iconColor: "text-blue-400",   label: "Facebook Pages — publicações e eventos"        },
+  { id: "shopee",  icon: ShoppingBag,  iconColor: "text-orange-400", label: "Shopee Open Platform — produtos e pedidos"     },
+  { id: "ml",      icon: ShoppingCart, iconColor: "text-amber-400",  label: "Mercado Livre API — anúncios e pedidos"        },
+  { id: "hotmart", icon: Flame,        iconColor: "text-red-400",    label: "Hotmart — produtos digitais e assinaturas"     },
+  { id: "kiwify",  icon: Zap,          iconColor: "text-violet-400", label: "Kiwify — produtos digitais e checkout"         },
 ];
 
 /* TikTok is per-user OAuth (not a platform webhook) — handled separately in render */
 
 /* ─── Event feed helpers ─────────────────────────────────────── */
 const PLATFORM_COLORS: Record<string, string> = {
-  meta:     "bg-pink-500/15 text-pink-400 border-pink-500/30",
-  shopee:   "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  ml:       "bg-yellow-500/15 text-yellow-500 border-yellow-500/30",
-  hotmart:  "bg-red-500/15 text-red-400 border-red-500/30",
-  kiwify:   "bg-violet-500/15 text-violet-400 border-violet-500/30",
-  tiktok:   "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+  meta:      "bg-pink-500/15 text-pink-400 border-pink-500/30",
+  instagram: "bg-pink-500/15 text-pink-400 border-pink-500/30",
+  facebook:  "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  shopee:    "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  ml:        "bg-yellow-500/15 text-yellow-500 border-yellow-500/30",
+  hotmart:   "bg-red-500/15 text-red-400 border-red-500/30",
+  kiwify:    "bg-violet-500/15 text-violet-400 border-violet-500/30",
+  tiktok:    "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
 };
 
 const EVENT_LABELS: Record<string, string> = {
@@ -305,8 +322,9 @@ export function AdminApiConfig() {
 
   const save = async (integration: IntegrationKey, body: Record<string, string>) => {
     setSaving(true);
+    const apiKey = toApiKey(integration);
     try {
-      await apiFetch(`/api/admin/integrations/config/${integration}`, { method: "POST", body: JSON.stringify(body) });
+      await apiFetch(`/api/admin/integrations/config/${apiKey}`, { method: "POST", body: JSON.stringify(body) });
       toast({ description: `Credenciais ${TABS.find(t => t.id === integration)?.label} salvas com sucesso.` });
       void loadConfigs();
     } catch (err) {
@@ -318,8 +336,9 @@ export function AdminApiConfig() {
 
   const test = async (integration: IntegrationKey) => {
     setTesting(true);
+    const apiKey = toApiKey(integration);
     try {
-      const data = await apiFetch<{ ok: boolean; message: string }>(`/api/admin/integrations/config/${integration}/test`, { method: "POST" });
+      const data = await apiFetch<{ ok: boolean; message: string }>(`/api/admin/integrations/config/${apiKey}/test`, { method: "POST" });
       toast({ description: data.message, variant: data.ok ? "default" : "destructive" });
     } catch (err) {
       toast({ variant: "destructive", description: err instanceof Error ? err.message : "Falha no teste." });
@@ -330,8 +349,9 @@ export function AdminApiConfig() {
 
   const clear = async (integration: IntegrationKey) => {
     setSaving(true);
+    const apiKey = toApiKey(integration);
     try {
-      await apiFetch(`/api/admin/integrations/config/${integration}`, { method: "DELETE" });
+      await apiFetch(`/api/admin/integrations/config/${apiKey}`, { method: "DELETE" });
       toast({ description: `Credenciais ${TABS.find(t => t.id === integration)?.label} removidas.` });
       void loadConfigs();
     } catch (err) {
@@ -342,12 +362,14 @@ export function AdminApiConfig() {
   };
 
   const tabDot = (id: IntegrationKey): string => {
-    const cfg = configs?.[id];
+    const apiKey = toApiKey(id) as keyof AllConfigs;
+    const cfg = configs?.[apiKey];
     if (!cfg?.configured) return "bg-zinc-600";
-    if (id === "tiktok") {
+    if (apiKey === "tiktok") {
       return cfg.isActive ? "bg-emerald-400" : "bg-amber-400";
     }
-    const st = statuses.find(s => s.id === (id as IntegrationId));
+    const stId = (id === "instagram" || id === "facebook") ? "meta" : id;
+    const st = statuses.find(s => s.id === (stId as IntegrationId));
     if (st?.tokenExpired) return "bg-red-400";
     if (st?.isActive) return "bg-emerald-400";
     return "bg-amber-400";
@@ -564,13 +586,13 @@ export function AdminApiConfig() {
                 </Card>
               )}
 
-              {/* ── META (IG + FB) ────────────────────────────────── */}
-              {activeTab === "meta" && (
+              {/* ── INSTAGRAM ────────────────────────────────────── */}
+              {activeTab === "instagram" && (
                 <Card className="bg-[#111111] border-white/[0.06]">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
                       <Instagram className="w-4 h-4 text-pink-400" />
-                      Meta — Instagram + Facebook
+                      Instagram
                       {configs?.meta.configured && <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Configurado</Badge>}
                     </CardTitle>
                   </CardHeader>
@@ -589,16 +611,58 @@ export function AdminApiConfig() {
                         hint="Token criado por você para validação do webhook" />
                       <SecretInput label="User Access Token" name="userAccessToken" value={metaForm.userAccessToken}
                         onChange={v => setMetaForm(f => ({ ...f, userAccessToken: v }))}
-                        hint="Token de longa duração da conta conectada" />
+                        hint="Token de longa duração da conta Instagram conectada" />
                     </div>
-                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/15">
-                      <ExternalLink className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-                      <p className="text-[11px] text-blue-300/80">Um único App Meta cobre Instagram Business, Facebook Pages e WhatsApp. Estas credenciais são compartilhadas entre os três módulos.</p>
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-pink-500/5 border border-pink-500/15">
+                      <Info className="w-3.5 h-3.5 text-pink-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-pink-300/80">Credenciais do App Meta para Instagram Business — mensagens diretas, comentários e insights. As mesmas credenciais são usadas pelo módulo Facebook.</p>
                     </div>
                     <FormActions
-                      onSave={() => void save("meta", metaForm)}
-                      onTest={() => void test("meta")}
-                      onClear={() => void clear("meta")}
+                      onSave={() => void save("instagram", metaForm)}
+                      onTest={() => void test("instagram")}
+                      onClear={() => void clear("instagram")}
+                      saving={saving} testing={testing}
+                      externalLink={{ href: "https://developers.facebook.com", label: "Abrir Meta Developers" }}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ── FACEBOOK ─────────────────────────────────────── */}
+              {activeTab === "facebook" && (
+                <Card className="bg-[#111111] border-white/[0.06]">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+                      <FacebookIcon className="w-4 h-4 text-blue-400" />
+                      Facebook
+                      {configs?.meta.configured && <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Configurado</Badge>}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <CallbackBox url={`${origin}${BASE}/api/meta/oauth/callback`} label="Callback OAuth — cadastre no Meta Developers" />
+                    <CallbackBox url={metaForm.webhookUrl} label="Webhook URL — configure no Meta Developers" />
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <PlainInput label="Meta App ID" name="appId" value={metaForm.appId}
+                        onChange={v => setMetaForm(f => ({ ...f, appId: v }))} placeholder="Ex: 1234567890123456" />
+                      <SecretInput label="App Secret" name="appSecret" value={metaForm.appSecret}
+                        onChange={v => setMetaForm(f => ({ ...f, appSecret: v }))} />
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <SecretInput label="Verify Token (webhook)" name="verifyToken" value={metaForm.verifyToken}
+                        onChange={v => setMetaForm(f => ({ ...f, verifyToken: v }))}
+                        hint="Token criado por você para validação do webhook" />
+                      <SecretInput label="User Access Token" name="userAccessToken" value={metaForm.userAccessToken}
+                        onChange={v => setMetaForm(f => ({ ...f, userAccessToken: v }))}
+                        hint="Token de longa duração da Page Facebook conectada" />
+                    </div>
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/15">
+                      <Info className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-blue-300/80">Credenciais do App Meta para Facebook Pages — publicações, comentários e eventos. As mesmas credenciais são usadas pelo módulo Instagram.</p>
+                    </div>
+                    <FormActions
+                      onSave={() => void save("facebook", metaForm)}
+                      onTest={() => void test("facebook")}
+                      onClear={() => void clear("facebook")}
                       saving={saving} testing={testing}
                       externalLink={{ href: "https://developers.facebook.com", label: "Abrir Meta Developers" }}
                     />
