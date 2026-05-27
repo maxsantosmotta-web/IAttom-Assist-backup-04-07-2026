@@ -18,10 +18,8 @@ export interface SavedItemRecord extends SavedItemPayload {
   expiresAt: string | null;
 }
 
-const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
-
 async function apiFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(path, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -36,17 +34,26 @@ async function apiFetch<T>(path: string, token: string, init?: RequestInit): Pro
   return res.json() as Promise<T>;
 }
 
+async function resolveToken(getToken: () => Promise<string | null>): Promise<string | null> {
+  let token = await getToken();
+  if (!token) {
+    await new Promise(r => setTimeout(r, 700));
+    token = await getToken();
+  }
+  return token;
+}
+
 export function useSavedItems() {
   const { getToken } = useAuth();
 
   const getItems = useCallback(async (): Promise<SavedItemRecord[]> => {
-    const token = await getToken();
+    const token = await resolveToken(getToken);
     if (!token) return [];
     return apiFetch<SavedItemRecord[]>("/api/saved-items", token);
   }, [getToken]);
 
   const saveItem = useCallback(async (payload: SavedItemPayload): Promise<void> => {
-    const token = await getToken();
+    const token = await resolveToken(getToken);
     if (!token) throw new Error("Não autenticado");
     await apiFetch<SavedItemRecord>("/api/saved-items", token, {
       method: "POST",
@@ -55,25 +62,25 @@ export function useSavedItems() {
   }, [getToken]);
 
   const trashItem = useCallback(async (id: string): Promise<void> => {
-    const token = await getToken();
+    const token = await resolveToken(getToken);
     if (!token) throw new Error("Não autenticado");
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}`, token, { method: "DELETE" });
   }, [getToken]);
 
   const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
-    const token = await getToken();
+    const token = await resolveToken(getToken);
     if (!token) return [];
     return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);
   }, [getToken]);
 
   const restoreItem = useCallback(async (id: string): Promise<void> => {
-    const token = await getToken();
+    const token = await resolveToken(getToken);
     if (!token) throw new Error("Não autenticado");
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}/restore`, token, { method: "POST" });
   }, [getToken]);
 
   const permanentDelete = useCallback(async (id: string): Promise<void> => {
-    const token = await getToken();
+    const token = await resolveToken(getToken);
     if (!token) throw new Error("Não autenticado");
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}/permanent`, token, { method: "DELETE" });
   }, [getToken]);

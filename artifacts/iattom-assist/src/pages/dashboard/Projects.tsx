@@ -72,23 +72,38 @@ export function Projects() {
     const expired = purgeExpired();
     for (const id of expired) void deleteProjectAssets(id).catch(() => {});
 
-    void (async () => {
+    async function syncFromDB() {
       try {
         const apiItems = await getItems();
+        setSavedItems(apiItems as SavedItem[]);
         if (apiItems.length > 0) {
-          setSavedItems(apiItems as SavedItem[]);
+          try { localStorage.setItem("iattom_saved_items_v1", JSON.stringify(apiItems)); } catch { /* noop */ }
         } else {
           const local = readStorage();
           if (local.length > 0) {
-            void Promise.all(
-              local.map(item =>
-                saveItem({ id: item.id, title: item.title, type: item.type, platform: item.platform, content: item.content, data: item.data, hasImages: item.hasImages }).catch(() => {})
-              )
-            );
+            try {
+              await Promise.all(
+                local.map(item =>
+                  saveItem({ id: item.id, title: item.title, type: item.type, platform: item.platform, content: item.content, data: item.data, hasImages: item.hasImages })
+                )
+              );
+              const migrated = await getItems();
+              setSavedItems(migrated as SavedItem[]);
+              try { localStorage.setItem("iattom_saved_items_v1", JSON.stringify(migrated)); } catch { /* noop */ }
+            } catch { /* migração falhou — mantém visão local */ }
           }
         }
-      } catch { /* API failed — localStorage already shown */ }
-    })();
+      } catch { /* API offline — mantém dados do localStorage */ }
+    }
+
+    void syncFromDB();
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void syncFromDB();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredItems = savedItems.filter((item) => {

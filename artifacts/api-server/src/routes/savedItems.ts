@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { eq, and, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, lt } from "drizzle-orm";
 import { db, savedItemsTable } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
 
@@ -26,27 +26,23 @@ router.get("/saved-items/trash", requireAuth, async (req: Request, res: Response
   const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
   try {
     const now = new Date();
+    // Remove only expired items (TTL elapsed)
     await db
       .delete(savedItemsTable)
       .where(
         and(
           eq(savedItemsTable.clerkUserId, clerkUserId),
           isNotNull(savedItemsTable.expiresAt),
+          lt(savedItemsTable.expiresAt, now),
         )
       );
+    // Return remaining trash items
     const items = await db
       .select()
       .from(savedItemsTable)
       .where(and(eq(savedItemsTable.clerkUserId, clerkUserId), isNotNull(savedItemsTable.deletedAt)))
       .orderBy(savedItemsTable.deletedAt);
-    const active = items.filter(i => !i.expiresAt || new Date(i.expiresAt) > now);
-    await db.delete(savedItemsTable).where(
-      and(
-        eq(savedItemsTable.clerkUserId, clerkUserId),
-        isNotNull(savedItemsTable.expiresAt),
-      )
-    );
-    return res.json(active.reverse());
+    return res.json(items.reverse());
   } catch (err) {
     req.log.error({ err }, "Failed to list trash items");
     return res.status(500).json({ error: "Erro ao listar lixeira" });
