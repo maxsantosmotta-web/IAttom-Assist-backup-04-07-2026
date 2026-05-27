@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingBag, Plus, Copy, Trash2, ExternalLink, Loader2,
   Link2, Tag, X, Info, AlertCircle, CheckCircle2,
-  RefreshCw, Package, ClipboardList, Store, Search,
-  Megaphone, Zap, BarChart2, WifiOff, LogOut,
+  Package, ClipboardList, Store, Search,
+  Megaphone, BarChart2, WifiOff, LogOut, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -234,7 +234,6 @@ function AbaAfiliado() {
             <div className="space-y-3">
               {affiliates.map(product => (
                 <div key={product.id} className="p-4 rounded-xl bg-[#0d0d0d] border border-white/5 hover:border-orange-500/20 transition-colors space-y-3">
-                  {/* product info */}
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-lg bg-orange-500/10 border border-orange-500/15 flex items-center justify-center shrink-0">
                       <ShoppingBag className="w-4 h-4 text-orange-400" />
@@ -269,147 +268,243 @@ function AbaAfiliado() {
   );
 }
 
-/* ─── AbaMinhaContaSection helper ───────────────────────────── */
-function ContaSection({
-  icon: Icon,
-  title,
-  color,
-  emptyText,
-  actions,
-}: {
-  icon: React.ElementType;
-  title: string;
-  color: string;
-  emptyText: string;
-  actions: { label: string; icon: React.ElementType; onClick: () => void; loading?: boolean }[];
-}) {
-  return (
-    <Card className="bg-[#111111] border-white/[0.06]">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-            <Icon className={`w-4 h-4 ${color}`} />
-            {title}
-          </CardTitle>
-          <div className="flex gap-2 flex-wrap">
-            {actions.map(a => (
-              <Button key={a.label} size="sm" variant="outline" onClick={a.onClick} disabled={a.loading}
-                className="h-7 px-3 border-white/10 text-muted-foreground hover:text-white text-xs gap-1.5">
-                {a.loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <a.icon className="w-3 h-3" />}
-                {a.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center justify-center py-8 text-center gap-1">
-          <Icon className="w-8 h-8 text-white/8 mb-1" />
-          <p className="text-xs text-muted-foreground/60">{emptyText}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 /* ─── AbaMinhaContaLoja ─────────────────────────────────────── */
 function AbaMinhaContaLoja({ connected, onConnect }: { connected: boolean; onConnect: () => void }) {
-  const { toast } = useToast();
   const [modal, setModal] = useState<{ title: string; description: string } | null>(null);
-  const [syncingProducts, setSyncingProducts] = useState(false);
-  const [syncingOrders, setSyncingOrders] = useState(false);
 
-  const info = (title: string, description: string) => setModal({ title, description });
+  const showInfo = (title: string, description: string) => setModal({ title, description });
 
-  const handleSyncProducts = async () => {
-    setSyncingProducts(true);
-    await new Promise(r => setTimeout(r, 800));
-    setSyncingProducts(false);
-    toast({ description: "Função preparada para próxima etapa — sincronização ativa após conexão real." });
-  };
-
-  const handleSyncOrders = async () => {
-    setSyncingOrders(true);
-    await new Promise(r => setTimeout(r, 800));
-    setSyncingOrders(false);
-    toast({ description: "Função preparada para próxima etapa — pedidos sincronizados após conexão real." });
-  };
-
-  const handleAd = () => {
-    info(
-      "Criar Anúncio Shopee",
-      "A criação de anúncios diretamente via API Shopee Seller Center está preparada para a próxima etapa da plataforma. Você será notificado assim que estiver disponível.",
+  const handleAnalytics = () => {
+    showInfo(
+      "Análise Shopee",
+      "As métricas de performance estarão disponíveis após a conexão da conta.",
     );
   };
 
-  if (!connected) {
-    return (
-      <Card className="bg-[#111111] border-white/[0.06]">
-        <CardContent className="flex flex-col items-center justify-center py-16 text-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-orange-500/5 border border-orange-500/15 flex items-center justify-center mb-1">
-            <Store className="w-6 h-6 text-orange-400/30" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-muted-foreground">Conecte sua conta Shopee para sincronizar produtos, anúncios e pedidos.</p>
-            <p className="text-xs text-muted-foreground/50">A aba Afiliado funciona normalmente sem conexão.</p>
-          </div>
-          <Button onClick={onConnect} className="bg-orange-500 hover:bg-orange-400 text-white font-semibold gap-2">
-            <Link2 className="w-4 h-4" /> Conectar Shopee
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  const handleCriarCampanha = () => {
+    sessionStorage.setItem("campaign_platform_context", JSON.stringify({ platform: "shopee" }));
+    window.location.href = `${BASE}/dashboard/create-campaign`;
+  };
+
+  const handleCriarConteudo = () => {
+    sessionStorage.setItem("content_platform_context", JSON.stringify({ platform: "shopee" }));
+    window.location.href = `${BASE}/dashboard/create-content`;
+  };
 
   return (
     <div className="space-y-4">
-      {modal && <InformativeModal title={modal.title} description={modal.description} onClose={() => setModal(null)} />}
+      {modal && (
+        <InformativeModal
+          title={modal.title}
+          description={modal.description}
+          onClose={() => setModal(null)}
+        />
+      )}
 
-      <ContaSection
-        icon={Package} title="Produtos da Conta" color="text-orange-400"
-        emptyText="Conecte sua conta Shopee para sincronizar seus produtos."
-        actions={[
-          { label: "Sincronizar produtos", icon: RefreshCw, onClick: () => void handleSyncProducts(), loading: syncingProducts },
-        ]}
-      />
-
-      <ContaSection
-        icon={Megaphone} title="Anúncios" color="text-yellow-400"
-        emptyText="Seus anúncios Shopee aparecerão aqui após a conexão."
-        actions={[
-          { label: "Criar anúncio", icon: Plus, onClick: handleAd },
-        ]}
-      />
-
-      <ContaSection
-        icon={ClipboardList} title="Pedidos" color="text-blue-400"
-        emptyText="Histórico de pedidos disponível após conexão da conta."
-        actions={[
-          { label: "Sincronizar pedidos", icon: RefreshCw, onClick: () => void handleSyncOrders(), loading: syncingOrders },
-        ]}
-      />
-
+      {/* ── Status Card ──────────────────────────────────────── */}
       <Card className="bg-[#111111] border-white/[0.06]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-            <Zap className="w-4 h-4 text-violet-400" />
-            Automações
-            <Badge className="bg-violet-500/10 text-violet-400 border-violet-500/20 text-[10px]">Em breve</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-center gap-1">
-            <Zap className="w-8 h-8 text-white/8 mb-1" />
-            <p className="text-xs text-muted-foreground/60">Regras automáticas de precificação, estoque e campanhas em desenvolvimento.</p>
-            <button
-              onClick={() => info("Automações Shopee", "Automações de precificação dinâmica, alertas de estoque e disparo automático de campanhas estão em desenvolvimento. Esta área será ativada nas próximas versões da plataforma.")}
-              className="mt-2 text-[11px] text-violet-400/60 hover:text-violet-400 transition-colors"
-            >
-              Saber mais
-            </button>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {connected ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0" />
+            )}
+            <div className="flex-1">
+              <p className="text-sm text-muted-foreground">
+                {connected ? "Conta Shopee conectada" : "Conta Shopee não conectada"}
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">
+                {connected
+                  ? "Sua conta está ativa e sincronizada."
+                  : "Conecte sua conta para acessar produtos, campanhas e vendas."}
+              </p>
+            </div>
+            {!connected && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onConnect}
+                className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10 ml-auto shrink-0"
+              >
+                <Link2 className="w-3 h-3 mr-1.5" />
+                Conectar
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Feature Cards ─────────────────────────────────────── */}
+      <div className="grid md:grid-cols-2 gap-4">
+
+        {/* Anúncios */}
+        <Card className="bg-[#111111] border-white/[0.06]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Megaphone className="w-4 h-4 text-blue-400" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-semibold text-white">Anúncios</CardTitle>
+                <p className="text-xs text-muted-foreground">Campanhas</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Acompanhe suas campanhas da Shopee. Visualizações, alcance e conversões disponíveis após conexão.
+            </p>
+            <div className="grid grid-cols-3 gap-2 py-1">
+              {[
+                { icon: BarChart2, label: "Visualizações", value: "—" },
+                { icon: Package, label: "Alcance", value: "—" },
+                { icon: TrendingUp, label: "Conversões", value: "—" },
+              ].map(({ icon: Icon, label, value }) => (
+                <div key={label} className="p-2 rounded bg-white/5 text-center">
+                  <Icon className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
+                  <p className="text-xs font-semibold text-white">{value}</p>
+                  <p className="text-[10px] text-muted-foreground">{label}</p>
+                </div>
+              ))}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleAnalytics}
+              className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
+            >
+              <BarChart2 className="w-3 h-3 mr-1.5" />
+              Ver análise
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Conteúdo */}
+        <Card className="bg-[#111111] border-white/[0.06]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <ClipboardList className="w-4 h-4 text-violet-400" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-semibold text-white">Conteúdo</CardTitle>
+                <p className="text-xs text-muted-foreground">Publicações</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Crie conteúdos e campanhas utilizando os módulos centrais da plataforma.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCriarCampanha}
+                className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
+              >
+                <Megaphone className="w-3 h-3 mr-1.5" />
+                Criar campanha
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCriarConteudo}
+                className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
+              >
+                <ClipboardList className="w-3 h-3 mr-1.5" />
+                Criar conteúdo
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Atividade da conta */}
+        <Card className="bg-[#111111] border-white/[0.06]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <ClipboardList className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-semibold text-white">Atividade da conta</CardTitle>
+                <p className="text-xs text-muted-foreground">Movimentações recentes</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2 py-2">
+              {[
+                { icon: CheckCircle2, label: "Conexão",              value: connected ? "Ativa" : "Aguardando", ok: connected },
+                { icon: Package,      label: "Produtos conectados",  value: "—",                                ok: false },
+                { icon: BarChart2,    label: "Eventos recebidos",    value: "—",                                ok: false },
+              ].map(({ icon: Icon, label, value, ok }) => (
+                <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <Icon className={`w-3.5 h-3.5 ${ok ? "text-emerald-400" : "text-muted-foreground"}`} />
+                    <span className="text-xs text-muted-foreground">{label}</span>
+                  </div>
+                  <span className="text-xs font-medium text-white">{value}</span>
+                </div>
+              ))}
+            </div>
+            {!connected && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onConnect}
+                className="w-full border-orange-500/30 text-orange-400 hover:bg-orange-500/10 h-8 text-xs"
+              >
+                <Link2 className="w-3 h-3 mr-1.5" />
+                Conectar conta
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Análise */}
+        <Card className="bg-[#111111] border-white/[0.06]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-semibold text-white">Análise</CardTitle>
+                <p className="text-xs text-muted-foreground">Performance e métricas</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Acompanhe visualizações, engajamento e desempenho diretamente na plataforma.
+            </p>
+            <div className="grid grid-cols-2 gap-2 py-1">
+              {[
+                { icon: Package,    label: "Produtos",    value: "—" },
+                { icon: TrendingUp, label: "Conversões",  value: "—" },
+              ].map(({ icon: Icon, label, value }) => (
+                <div key={label} className="p-2 rounded bg-white/5 text-center">
+                  <Icon className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
+                  <p className="text-xs font-semibold text-white">{value}</p>
+                  <p className="text-[10px] text-muted-foreground">{label}</p>
+                </div>
+              ))}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleAnalytics}
+              className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
+            >
+              <TrendingUp className="w-3 h-3 mr-1.5" />
+              Ver análise
+            </Button>
+          </CardContent>
+        </Card>
+
+      </div>
     </div>
   );
 }
@@ -429,7 +524,7 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 /* ─── Shopee (root) ─────────────────────────────────────────── */
 export function Shopee() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"afiliado" | "conta">("afiliado");
+  const [activeTab, setActiveTab] = useState<"conta" | "afiliado">("conta");
   const [status, setStatus] = useState<ShopeeStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -515,21 +610,20 @@ export function Shopee() {
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
 
-        {/* ─── Header premium ─────────────────────────────────── */}
+        {/* ─── Header ─────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between mb-6">
           <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-xl bg-orange-500/10 border border-orange-500/25 flex items-center justify-center shrink-0">
-              <ShoppingBag className="w-6 h-6 text-orange-400" />
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/25 flex items-center justify-center shrink-0">
+              <ShoppingBag className="w-5 h-5 text-orange-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Shopee</h1>
-              <p className="text-xs text-muted-foreground mt-0.5 max-w-sm leading-relaxed">
-                Importe produtos, crie campanhas e organize suas vendas com Inteligência.
+              <h1 className="text-lg font-bold text-white">Shopee</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Gerencie produtos, campanhas e suas vendas na Shopee
               </p>
             </div>
           </div>
 
-          {/* Status / ação */}
           <div className="flex items-center gap-2 shrink-0">
             <AnimatePresence mode="wait">
               {loadingStatus ? (
@@ -540,14 +634,9 @@ export function Shopee() {
                 </motion.div>
               ) : status?.connected ? (
                 <motion.div key="connected" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2">
-                  <div className="flex flex-col items-end gap-0.5">
-                    <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 gap-1.5">
-                      <CheckCircle2 className="w-3 h-3" /> Conta conectada
-                    </Badge>
-                    {status.shopId && (
-                      <span className="text-[10px] text-muted-foreground/60">Shop ID: {status.shopId}</span>
-                    )}
-                  </div>
+                  <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 gap-1.5">
+                    <CheckCircle2 className="w-3 h-3" /> Conta conectada
+                  </Badge>
                   <Button size="sm" variant="outline" onClick={() => setShowDisconnect(true)}
                     className="h-7 px-2 border-red-500/30 text-red-400 hover:bg-red-500/10 gap-1 text-xs">
                     <LogOut className="w-3 h-3" /> Desconectar
@@ -576,12 +665,12 @@ export function Shopee() {
 
         {/* Banner: plataforma sem credenciais */}
         {!loadingStatus && !status?.platformConfigured && (
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 mb-2">
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15 mb-4">
             <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-amber-300">Conexão Shopee aguardando configuração das credenciais oficiais.</p>
+              <p className="text-sm font-semibold text-amber-300">Conexão Shopee aguardando ativação.</p>
               <p className="text-xs text-amber-400/70 mt-0.5">
-                As funcionalidades de Minha Conta estarão disponíveis após a configuração pelo administrador. A aba Afiliado funciona normalmente.
+                As funcionalidades de Minha Conta estarão disponíveis em breve. A aba Afiliado funciona normalmente.
               </p>
             </div>
           </div>
@@ -589,12 +678,12 @@ export function Shopee() {
 
         {/* Banner: credenciais OK mas usuário não conectou */}
         {!loadingStatus && status?.platformConfigured && !status?.connected && (
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/5 border border-blue-500/15 mb-2">
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/5 border border-blue-500/15 mb-4">
             <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-blue-300">Conecte sua conta Shopee para acessar Minha Conta.</p>
               <p className="text-xs text-blue-400/70 mt-0.5">
-                Clique em "Conectar Shopee" acima para autorizar o acesso via OAuth. A aba Afiliado funciona sem conexão.
+                Clique em "Conectar Shopee" acima para iniciar a conexão. A aba Afiliado funciona sem conexão.
               </p>
             </div>
           </div>
@@ -603,8 +692,8 @@ export function Shopee() {
         {/* ─── Tabs ───────────────────────────────────────────── */}
         <div className="flex gap-1 p-1 bg-[#111111] border border-white/[0.06] rounded-lg w-fit mb-5">
           {([
-            { id: "afiliado", label: "Afiliado", icon: Tag },
             { id: "conta",    label: "Minha Conta", icon: Store },
+            { id: "afiliado", label: "Afiliado",    icon: Tag   },
           ] as const).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
