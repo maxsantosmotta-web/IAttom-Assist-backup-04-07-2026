@@ -187,7 +187,7 @@ const TABS: Array<{ id: IntegrationKey; label: string; icon: React.ComponentType
   { id: "facebook",  label: "Facebook",      icon: FacebookIcon,  color: "text-blue-400"   },
   { id: "instagram", label: "Instagram",     icon: Instagram,     color: "text-pink-400"   },
   { id: "hotmart",   label: "Hotmart",       icon: Flame,         color: "text-red-400"    },
-  { id: "ml",        label: "Mercado L.",    icon: ShoppingCart,  color: "text-amber-400"  },
+  { id: "ml",        label: "Mercado L",     icon: ShoppingCart,  color: "text-amber-400"  },
 ];
 
 /* ─── Checklist ──────────────────────────────────────────────── */
