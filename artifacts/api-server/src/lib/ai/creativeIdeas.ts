@@ -11,6 +11,7 @@ interface CreativeIdeasInput {
   product?: string;
   targetAudience?: string;
   formatPack?: string;
+  platform?: string;
   referenceImageBase64?: string;
 }
 
@@ -57,7 +58,19 @@ const FORMAT_PACKS: Record<string, string[]> = {
   ads:     ["16:9 banner",  "16:9 banner",  "1:1 quadrado", "1:1 quadrado"],
 };
 
-function getFormatPack(formatPack?: string): string[] {
+const PLATFORM_IMAGE_PRESETS: Record<string, string[]> = {
+  mercado_livre: ["1:1 quadrado", "1:1 quadrado variação"],
+  shopee:        ["1:1 quadrado", "16:9 banner"],
+  instagram:     ["1:1 feed", "9:16 story"],
+  facebook:      ["1:1 feed", "16:9 banner"],
+  tiktok:        ["9:16 vertical", "9:16 vertical variação"],
+  hotmart:       ["1:1 thumb/feed", "16:9 banner"],
+  kiwify:        ["1:1 thumb/feed", "1:1 thumb/feed variação"],
+  whatsapp:      ["1:1 feed", "9:16 status"],
+};
+
+function getFormatPack(formatPack?: string, platform?: string): string[] {
+  if (platform && PLATFORM_IMAGE_PRESETS[platform]) return PLATFORM_IMAGE_PRESETS[platform];
   if (formatPack && FORMAT_PACKS[formatPack]) return FORMAT_PACKS[formatPack];
   return FORMAT_PACKS.social;
 }
@@ -83,8 +96,9 @@ export async function streamCreativeIdeas(
     logger.info({ productName }, "[creativeIdeas] productName resolved");
   }
 
-  const formats = getFormatPack(params.formatPack);
-  const formatInstruction = `Os 4 conceitos devem usar exatamente estes formatos, nesta ordem: ${formats.map((f, i) => `conceito ${i + 1}: "${f}"`).join(", ")}.`;
+  const formats = getFormatPack(params.formatPack, params.platform);
+  const numConcepts = formats.length;
+  const formatInstruction = `Os ${numConcepts} conceitos devem usar exatamente estes formatos, nesta ordem: ${formats.map((f, i) => `conceito ${i + 1}: "${f}"`).join(", ")}.`;
 
   const systemPrompt = `Você é um diretor criativo de nível mundial para publicidade digital. Desenvolve conceitos criativos revolucionários que param o scroll, constroem desejo pela marca e geram conversões.
 
@@ -108,7 +122,7 @@ Retorne exatamente esta estrutura:
 {
   "concepts": [
     {
-      "id": number (1-4),
+      "id": number (1-${numConcepts}),
       "label": string (nome do criativo em PT-BR, ex: "Feed Principal", "Story Emocional", "Banner Conversão", "Destaque do Produto"),
       "format": string (OBRIGATÓRIO: usar exatamente "1:1 quadrado", "9:16 story" ou "16:9 banner"),
       "concept": string (1-2 frases descrevendo o conceito criativo, em PT-BR),
@@ -129,9 +143,9 @@ Retorne exatamente esta estrutura:
 }
 
 REGRA DE PACOTE VISUAL COESO (máxima prioridade para imagePrompts):
-As 4 imagens devem pertencer à MESMA CAMPANHA VISUAL — não a 4 campanhas independentes. Antes de escrever qualquer imagePrompt, defina a âncora visual no campo "visualAnchor" com: produto exato + paleta de cores dominante (2-3 cores hex) + estilo visual + iluminação principal. Todos os 4 imagePrompts devem começar referenciando essa âncora. Variações PERMITIDAS entre as 4 imagens: ângulo, enquadramento, cenário, composição, posição do produto, contexto de uso. Variações PROIBIDAS: categoria do produto, paleta dominante, estilo visual principal, iluminação central, identidade da marca. Quando houver imagem de referência: preserve estrutura, silhueta, proporções e aparência do produto — não reinvente o produto em nenhum dos 4 imagePrompts.
+As ${numConcepts} imagens devem pertencer à MESMA CAMPANHA VISUAL — não a campanhas independentes. Antes de escrever qualquer imagePrompt, defina a âncora visual no campo "visualAnchor" com: produto exato + paleta de cores dominante (2-3 cores hex) + estilo visual + iluminação principal. Todos os ${numConcepts} imagePrompts devem começar referenciando essa âncora. Variações PERMITIDAS entre as ${numConcepts} imagens: ângulo, enquadramento, cenário, composição, posição do produto, contexto de uso. Variações PROIBIDAS: categoria do produto, paleta dominante, estilo visual principal, iluminação central, identidade da marca. Quando houver imagem de referência: preserve estrutura, silhueta, proporções e aparência do produto — não reinvente o produto em nenhum dos ${numConcepts} imagePrompts.
 
-Crie 4 conceitos criativos distintos. Cada um deve parecer que saiu de uma agência de ponta.`;
+Crie ${numConcepts} conceitos criativos distintos. Cada um deve parecer que saiu de uma agência de ponta.`;
 
   const userPrompt = `PRODUTO CENTRAL (referência obrigatória para todos os conceitos e imagens): "${productName}"
 
@@ -144,7 +158,7 @@ ${formatInstruction}
 
 INSTRUÇÃO OBRIGATÓRIA PARA imagePrompt: Inicie SEMPRE com o nome exato "${productName}". Descreva as características físicas prováveis deste produto específico (formato, proporção, cor, componentes, estilo comercial). NÃO substitua por versão genérica. O nome "${productName}" deve aparecer na primeira frase do imagePrompt.
 
-Crie 4 conceitos criativos visualmente impactantes, alinhados ao produto e focados em conversão. Responda integralmente em português brasileiro.`;
+Crie ${numConcepts} conceitos criativos visualmente impactantes, alinhados ao produto e focados em conversão. Responda integralmente em português brasileiro.`;
 
   let fullResponse = "";
 

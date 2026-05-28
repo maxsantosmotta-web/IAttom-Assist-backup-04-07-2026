@@ -464,7 +464,7 @@ export function ProjectDetail() {
       const localAssets = await loadProjectAssets(id);
       if (localAssets.length === 0) {
         toast({
-          description: "As imagens estão no dispositivo onde foram geradas. Abra o projeto naquele dispositivo e clique em Salvar novamente.",
+          description: "As imagens não estão neste dispositivo. Abra este projeto no aparelho onde as imagens foram geradas para sincronizar.",
           variant: "destructive",
         });
         return;

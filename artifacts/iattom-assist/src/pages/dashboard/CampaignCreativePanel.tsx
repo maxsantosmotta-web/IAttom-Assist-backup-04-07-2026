@@ -15,6 +15,7 @@ interface CampaignCreativePanelProps {
   uniqueAngle?: string;
   instagramCopy?: string;
   channels?: string[];
+  platform?: string;
   onResult?: (result: CreativeIdeasResult) => void;
 }
 
@@ -101,6 +102,7 @@ export function CampaignCreativePanel({
   uniqueAngle,
   instagramCopy,
   channels,
+  platform,
   onResult,
 }: CampaignCreativePanelProps) {
   const { status, result, error, generate, reset } = useAiStream<CreativeIdeasResult>();
@@ -148,6 +150,7 @@ export function CampaignCreativePanel({
       prompt: buildPrompt(),
       product,
       targetAudience: audience || undefined,
+      platform: platform || undefined,
       referenceImageBase64: referenceImage || undefined,
     }).then((res) => {
       if (res !== null) {

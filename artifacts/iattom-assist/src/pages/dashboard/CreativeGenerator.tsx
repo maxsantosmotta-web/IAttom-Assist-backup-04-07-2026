@@ -29,13 +29,16 @@ const gradients = [
   "from-rose-900/30 to-orange-900/20",
 ];
 
-const FORMAT_PACK_OPTIONS = [
-  {
-    value: "social",
-    label: "Pacote Social",
-    description: "2 quadrados + 1 story + 1 banner",
-    formats: ["1:1", "1:1", "9:16", "16:9"],
-  },
+const PLATFORM_OPTIONS = [
+  { value: "",              label: "Social Geral",    formats: ["1:1", "1:1", "9:16", "16:9"] },
+  { value: "instagram",     label: "Instagram",       formats: ["1:1 feed", "9:16 story"] },
+  { value: "tiktok",        label: "TikTok",          formats: ["9:16 vertical", "9:16 variação"] },
+  { value: "facebook",      label: "Facebook",        formats: ["1:1 feed", "16:9 banner"] },
+  { value: "whatsapp",      label: "WhatsApp",        formats: ["1:1 feed", "9:16 status"] },
+  { value: "shopee",        label: "Shopee",          formats: ["1:1 quadrado", "16:9 banner"] },
+  { value: "mercado_livre", label: "Mercado Livre",   formats: ["1:1 quadrado", "1:1 variação"] },
+  { value: "hotmart",       label: "Hotmart",         formats: ["1:1 thumb", "16:9 banner"] },
+  { value: "kiwify",        label: "Kiwify",          formats: ["1:1 thumb", "1:1 variação"] },
 ] as const;
 
 function ConceptCard({ concept, index }: { concept: CreativeConcept; index: number }) {
@@ -109,7 +112,7 @@ export function CreativeGenerator() {
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
-  const [formatPack, setFormatPack] = useState<"social">("social");
+  const [platform, setPlatform] = useState("");
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -164,7 +167,7 @@ export function CreativeGenerator() {
       if (saved.briefing?.prompt) setPrompt(saved.briefing.prompt);
       if (saved.briefing?.style) setStyle(saved.briefing.style);
       if (saved.briefing?.targetAudience) setTargetAudience(saved.briefing.targetAudience);
-      if (saved.briefing?.formatPack === "social") setFormatPack("social");
+      if (saved.briefing?.formatPack) setPlatform("");
       if (saved.result) setRestoredResult(saved.result);
     } catch {}
   }, []);
@@ -178,7 +181,7 @@ export function CreativeGenerator() {
       prompt,
       style: style || undefined,
       targetAudience: targetAudience || undefined,
-      formatPack,
+      platform: platform || undefined,
       referenceImageBase64: referenceImage || undefined,
     }).then((res) => {
       if (res !== null) charge();
@@ -211,7 +214,7 @@ export function CreativeGenerator() {
     };
 
     const data = JSON.stringify({
-      briefing: { prompt: prompt.trim(), style, targetAudience, formatPack },
+      briefing: { prompt: prompt.trim(), style, targetAudience, platform },
       result: resultWithoutImages,
     });
 
@@ -292,11 +295,23 @@ export function CreativeGenerator() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground">Formato:</span>
-              {FORMAT_PACK_OPTIONS[0].formats.map((f, i) => (
-                <span key={i} className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-primary/10 text-primary border border-primary/20">{f}</span>
-              ))}
+            <div className="space-y-1.5">
+              <label className="text-sm text-muted-foreground">Onde vai divulgar?</label>
+              <select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value)}
+                className="w-full h-9 rounded-md border border-white/10 bg-[#0a0a0a] px-3 py-1 text-sm text-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-0"
+              >
+                {PLATFORM_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                <span className="text-[10px] text-muted-foreground/60">Formatos:</span>
+                {(PLATFORM_OPTIONS.find((o) => o.value === platform) ?? PLATFORM_OPTIONS[0]).formats.map((f, i) => (
+                  <span key={i} className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-primary/10 text-primary border border-primary/20">{f}</span>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -362,7 +377,7 @@ export function CreativeGenerator() {
               <CardContent className="p-5 flex items-center gap-4">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
                 <div className="flex-1"><p className="text-sm font-semibold text-red-400">Falha na geração</p><p className="text-xs text-muted-foreground">{error}</p></div>
-                <Button size="sm" variant="outline" onClick={() => { reset(); generate("/api/ai/creative-ideas", { prompt, style: style || undefined, targetAudience: targetAudience || undefined, formatPack }); }} className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente</Button>
+                <Button size="sm" variant="outline" onClick={() => { reset(); generate("/api/ai/creative-ideas", { prompt, style: style || undefined, targetAudience: targetAudience || undefined, platform: platform || undefined }); }} className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente</Button>
               </CardContent>
             </Card>
           </motion.div>

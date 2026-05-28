@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap, Save, ExternalLink } from "lucide-react";
 import { saveProjectAssets } from "@/lib/assetStorage";
@@ -248,8 +248,22 @@ export function CreateCampaign() {
   const { toast } = useToast();
   const { saveItem, saveItemAssets } = useSavedItems();
 
+  const [isSaving, setIsSaving] = useState(false);
   const [campaignData, setCampaignData] = useState<CampaignResult | null>(null);
   const [creativeResult, setCreativeResult] = useState<CreativeIdeasResult | null>(null);
+
+  const detectedPlatform = useMemo(() => {
+    const gl = goal.toLowerCase();
+    if (gl.includes("hotmart")) return "hotmart";
+    if (gl.includes("kiwify")) return "kiwify";
+    if (gl.includes("shopee")) return "shopee";
+    if (gl.includes("mercado livre")) return "mercado_livre";
+    if (gl.includes("instagram")) return "instagram";
+    if (gl.includes("tiktok")) return "tiktok";
+    if (gl.includes("facebook")) return "facebook";
+    if (gl.includes("whatsapp")) return "whatsapp";
+    return undefined;
+  }, [goal]);
   const [refineInputs, setRefineInputs] = useState<Record<string, string>>({});
   const [refiningBlock, setRefiningBlock] = useState<string | null>(null);
   const [isRestored, setIsRestored] = useState(false);
@@ -366,14 +380,7 @@ export function CreateCampaign() {
     const title = product.trim()
       ? `${product.trim()}${goal ? ` — ${goal}` : ""}`
       : campaignData.headline;
-    const goalLower = goal.toLowerCase();
-    let platform: string | undefined;
-    if (goalLower.includes("hotmart")) platform = "hotmart";
-    else if (goalLower.includes("kiwify")) platform = "kiwify";
-    else if (goalLower.includes("shopee")) platform = "shopee";
-    else if (goalLower.includes("mercado livre")) platform = "mercado_livre";
-    else if (goalLower.includes("instagram")) platform = "instagram";
-    else if (goalLower.includes("tiktok")) platform = "tiktok";
+    const platform = detectedPlatform;
     const lines: string[] = [];
     lines.push(`CAMPANHA: ${campaignData.headline}`);
     if (campaignData.subheadline) lines.push(`Subheadline: ${campaignData.subheadline}`);
@@ -410,8 +417,8 @@ export function CreateCampaign() {
     return { title, platform, content, structuredData, imageAssets };
   };
 
-  const handleSave = () => {
-    if (!campaignData) return;
+  const handleSave = async () => {
+    if (!campaignData || isSaving) return;
     const meta = buildCampaignMeta();
     if (!meta) return;
     const { title, platform, content, structuredData, imageAssets } = meta;
@@ -423,12 +430,23 @@ export function CreateCampaign() {
       localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
     } catch {}
     if (imageAssets.length > 0) void saveProjectAssets(projectId, imageAssets);
-    void saveItem({ id: projectId, title, type: "campaign", platform, content, data: structuredData, hasImages: imageAssets.length > 0 })
-      .then(() => {
-        if (imageAssets.length > 0) void saveItemAssets(projectId, imageAssets).catch(() => {});
-      })
-      .catch(() => {});
-    toast({ description: "Projeto salvo" });
+    setIsSaving(true);
+    try {
+      await saveItem({ id: projectId, title, type: "campaign", platform, content, data: structuredData, hasImages: imageAssets.length > 0 });
+      if (imageAssets.length > 0) {
+        try {
+          await saveItemAssets(projectId, imageAssets);
+        } catch {
+          toast({ description: "Projeto salvo, mas as imagens não foram sincronizadas. Tente salvar novamente.", variant: "destructive" });
+          return;
+        }
+      }
+      toast({ description: "Projeto salvo." });
+    } catch {
+      toast({ description: "Erro ao salvar projeto. Tente novamente.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
 
@@ -769,6 +787,7 @@ export function CreateCampaign() {
                   uniqueAngle={campaignData.uniqueAngle}
                   instagramCopy={(campaignData.copy as Record<string, string>)?.instagram}
                   channels={campaignData.channels}
+                  platform={detectedPlatform}
                   onResult={(r) => setCreativeResult(r)}
                 />
               </CardContent>
