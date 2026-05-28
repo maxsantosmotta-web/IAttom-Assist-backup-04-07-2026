@@ -501,10 +501,9 @@ export function CreateCampaign() {
                   <option value="Vender no Mercado Livre">Vender no Mercado Livre</option>
                   <option value="Vender na Hotmart">Vender na Hotmart</option>
                   <option value="Vender na Kiwify">Vender na Kiwify</option>
-                  <option value="Vender pelo Instagram">Vender pelo Instagram</option>
-                  <option value="Viralizar no Instagram">Viralizar no Instagram</option>
-                  <option value="Viralizar no TikTok">Viralizar no TikTok</option>
-                  <option value="Anunciar no Facebook">Anunciar no Facebook</option>
+                  <option value="Vender no Instagram">Vender no Instagram</option>
+                  <option value="Vender no TikTok">Vender no TikTok</option>
+                  <option value="Vender no Facebook">Vender no Facebook</option>
                 </select>
               </div>
             </div>

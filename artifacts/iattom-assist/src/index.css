@@ -537,23 +537,76 @@
 }
 
 /* ── Clerk UserProfile modal — layout isolation ──────────────── */
+/*
+ * Root cause: Tailwind v4 preflight sets min-width:0 globally, collapsing
+ * Clerk's internal flex containers → text breaks letter-by-letter.
+ * Fix: reset min-width + word-break inside every Clerk surface.
+ */
 .cl-rootBox {
   isolation: isolate;
-  color-scheme: light;
+}
+
+/* Reset Tailwind preflight overrides inside Clerk */
+.cl-rootBox *,
+.cl-modalContent * {
+  min-width: auto;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Modal must not collapse below a usable width */
+.cl-modalContent {
+  min-width: min(90vw, 820px) !important;
+  width: min(90vw, 820px) !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+.cl-card {
+  width: 100% !important;
+}
+
+/* Avatar: never overlap sibling text */
+.cl-avatarBox {
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
 }
 .cl-avatarImage {
-  display: inline-block !important;
-  max-width: none !important;
-  width: 2.5rem !important;
-  height: 2.5rem !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: unset !important;
   object-fit: cover !important;
 }
-.cl-userProfile-root {
-  isolation: isolate;
-}
+
+/* Buttons: keep on one line, never collapse */
 .cl-profileSectionPrimaryButton,
-.cl-formButtonPrimary {
+.cl-formButtonPrimary,
+.cl-formButtonSecondary {
   display: inline-flex !important;
   align-items: center !important;
+  justify-content: center !important;
   white-space: nowrap !important;
+  min-width: fit-content !important;
+  flex-shrink: 0 !important;
+}
+
+/* Profile section row: allow text area to shrink but not to zero */
+.cl-profileSectionContent {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  word-break: break-word !important;
+}
+
+/* Form fields: full width, no collapse */
+.cl-formField,
+.cl-formFieldRow {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.cl-formFieldInput {
+  width: 100% !important;
+  min-width: 0 !important;
+  word-break: normal !important;
 }

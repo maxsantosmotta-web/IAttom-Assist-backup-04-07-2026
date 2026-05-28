@@ -30,13 +30,13 @@ const gradients = [
 ];
 
 const PLATFORM_OPTIONS = [
-  { value: "instagram",     label: "Instagram",       formats: ["1:1 feed", "9:16 story"] },
-  { value: "tiktok",        label: "TikTok",          formats: ["9:16 vertical", "9:16 variação"] },
-  { value: "facebook",      label: "Facebook",        formats: ["1:1 feed", "16:9 banner"] },
-  { value: "shopee",        label: "Shopee",          formats: ["1:1 quadrado", "16:9 banner"] },
-  { value: "mercado_livre", label: "Mercado Livre",   formats: ["1:1 quadrado", "1:1 variação"] },
-  { value: "hotmart",       label: "Hotmart",         formats: ["1:1 thumb", "16:9 banner"] },
-  { value: "kiwify",        label: "Kiwify",          formats: ["1:1 thumb", "1:1 variação"] },
+  { value: "instagram",     label: "Vender no Instagram",     formats: ["1:1 feed", "9:16 story"] },
+  { value: "tiktok",        label: "Vender no TikTok",        formats: ["9:16 vertical", "9:16 variação"] },
+  { value: "facebook",      label: "Vender no Facebook",      formats: ["1:1 feed", "16:9 banner"] },
+  { value: "shopee",        label: "Vender na Shopee",        formats: ["1:1 quadrado", "16:9 banner"] },
+  { value: "mercado_livre", label: "Vender no Mercado Livre", formats: ["1:1 quadrado", "1:1 variação"] },
+  { value: "hotmart",       label: "Vender na Hotmart",       formats: ["1:1 thumb", "16:9 banner"] },
+  { value: "kiwify",        label: "Vender na Kiwify",        formats: ["1:1 thumb", "1:1 variação"] },
 ] as const;
 
 function ConceptCard({ concept, index }: { concept: CreativeConcept; index: number }) {
