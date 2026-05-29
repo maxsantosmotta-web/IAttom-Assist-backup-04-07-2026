@@ -430,6 +430,8 @@ export interface AiCreativeIdeasBody {
   style?: string;
   product?: string;
   targetAudience?: string;
+  platform?: string;
+  referenceImageBase64?: string;
 }
 
 export interface AiVideoScriptBody {

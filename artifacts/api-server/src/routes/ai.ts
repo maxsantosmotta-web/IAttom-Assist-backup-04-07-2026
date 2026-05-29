@@ -81,11 +81,7 @@ router.post("/ai/creative-ideas", requireAuth, async (req, res): Promise<void> =
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  await streamCreativeIdeas(
-    { ...parsed.data, platform: typeof req.body.platform === "string" ? req.body.platform : undefined },
-    res,
-    clerkUserId,
-  );
+  await streamCreativeIdeas(parsed.data, res, clerkUserId);
 });
 
 router.post("/ai/video-script", requireAuth, async (req, res): Promise<void> => {
