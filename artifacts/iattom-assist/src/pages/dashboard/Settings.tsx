@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Bell, Shield, CreditCard, Zap, ExternalLink } from "lucide-react";
+import { User, Bell, Shield, CreditCard, Zap, ExternalLink, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +57,43 @@ export function Settings() {
   const [, navigate] = useLocation();
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(loadNotifPrefs);
 
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
+
+  useEffect(() => {
+    if (isLoaded && user) {
+      setEditFirstName(user.firstName ?? "");
+      setEditLastName(user.lastName ?? "");
+    }
+  }, [isLoaded, user]);
+
+  const email = user?.primaryEmailAddress?.emailAddress ?? "";
+  const plan = (me?.plan ?? "free") as keyof typeof PLAN_CREDITS;
+  const planInfo = PLAN_PRICES[plan];
+  const planCredits = PLAN_CREDITS[plan];
+
+  const hasNameChanged =
+    editFirstName !== (user?.firstName ?? "") ||
+    editLastName !== (user?.lastName ?? "");
+
+  const handleSaveName = async () => {
+    if (!user || !hasNameChanged) return;
+    setIsSaving(true);
+    setSaveStatus("idle");
+    try {
+      await user.update({ firstName: editFirstName, lastName: editLastName });
+      setSaveStatus("success");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 4000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const updatePref = (key: keyof NotifPrefs, value: boolean) => {
     const next = { ...notifPrefs, [key]: value };
     setNotifPrefs(next);
@@ -64,13 +101,6 @@ export function Settings() {
       localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(next));
     } catch {}
   };
-
-  const firstName = user?.firstName ?? "";
-  const lastName = user?.lastName ?? "";
-  const email = user?.primaryEmailAddress?.emailAddress ?? "";
-  const plan = (me?.plan ?? "free") as keyof typeof PLAN_CREDITS;
-  const planInfo = PLAN_PRICES[plan];
-  const planCredits = PLAN_CREDITS[plan];
 
   const openClerkProfile = () => {
     openUserProfile();
@@ -107,20 +137,23 @@ export function Settings() {
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Nome</Label>
                       <Input
-                        readOnly
-                        value={firstName}
-                        className="bg-[#0a0a0a] border-white/10 text-white cursor-default focus-visible:ring-0"
+                        value={editFirstName}
+                        onChange={(e) => { setEditFirstName(e.target.value); setSaveStatus("idle"); }}
+                        placeholder="Seu nome"
+                        className="bg-[#0a0a0a] border-white/10 text-white focus-visible:ring-primary/40"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Sobrenome</Label>
                       <Input
-                        readOnly
-                        value={lastName}
-                        className="bg-[#0a0a0a] border-white/10 text-white cursor-default focus-visible:ring-0"
+                        value={editLastName}
+                        onChange={(e) => { setEditLastName(e.target.value); setSaveStatus("idle"); }}
+                        placeholder="Seu sobrenome"
+                        className="bg-[#0a0a0a] border-white/10 text-white focus-visible:ring-primary/40"
                       />
                     </div>
                   </div>
+
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">E-mail</Label>
                     <Input
@@ -130,8 +163,35 @@ export function Settings() {
                       className="bg-[#0a0a0a] border-white/10 text-white cursor-default focus-visible:ring-0"
                     />
                   </div>
+
+                  {hasNameChanged && (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs text-muted-foreground">
+                        {saveStatus === "success" && (
+                          <span className="text-emerald-400">Nome salvo com sucesso.</span>
+                        )}
+                        {saveStatus === "error" && (
+                          <span className="text-red-400">Erro ao salvar. Tente novamente.</span>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveName}
+                        disabled={isSaving}
+                        className="bg-primary hover:bg-primary/90 text-black font-semibold text-xs shrink-0"
+                      >
+                        <Save className="w-3 h-3 mr-1.5" />
+                        {isSaving ? "Salvando..." : "Salvar Nome"}
+                      </Button>
+                    </div>
+                  )}
+
+                  {saveStatus === "success" && !hasNameChanged && (
+                    <p className="text-xs text-emerald-400">Nome salvo com sucesso.</p>
+                  )}
+
                   <div className="flex items-center justify-between rounded-lg bg-white/5 border border-white/5 p-3">
-                    <p className="text-xs text-muted-foreground">Nome, e-mail e avatar são gerenciados pela sua conta.</p>
+                    <p className="text-xs text-muted-foreground">E-mail e avatar são gerenciados pela sua conta.</p>
                     <Button
                       size="sm"
                       variant="ghost"
