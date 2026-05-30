@@ -232,6 +232,7 @@ Crie ${numConcepts} conceitos criativos visualmente impactantes, alinhados ao pr
             "Marketplace: white, black, blue;",
             "Sport: red, black, yellow.",
             `CREATIVE CONTEXT: ${sceneInstruction}`,
+            "FULL PRODUCT VISIBLE — MANDATORY FRAMING: The entire product must be completely visible inside the frame. Do NOT crop any part of the product. Leave generous safe margins around all sides. Do NOT allow wheels, mirrors, handlebars, seat, antennas, accessories or any structural element to touch or exceed the frame edges. Product must fit entirely within the image with clear space on all sides. Centered composition. Commercial catalog framing. No partial product. No cropped elements.",
             "STRICT PROHIBITIONS: no human body parts, no hands, no arms, no legs, no faces, no partial persons; no objects unrelated to the product; no extra items not present in the reference; no deformations; no distortions; no blurry elements; no text; no logos; no watermarks.",
             "OUTPUT: photorealistic, commercial photography quality, magazine-ready.",
           ].join(" ");
