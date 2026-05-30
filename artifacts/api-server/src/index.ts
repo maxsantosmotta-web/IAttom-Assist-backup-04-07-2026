@@ -3,6 +3,7 @@ import app from "./app.js";
 import { logger } from "./lib/logger.js";
 import { getStripeSync } from "./lib/stripeClient.js";
 import { rehydrateMLTokens } from "./lib/mlTokenStartup.js";
+import { getPrimaryHost } from "./lib/appDomain.js";
 
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -36,8 +37,7 @@ async function initStripe() {
 
   // Step 3: Register webhook and start background sync.
   try {
-    const domains = process.env.REPLIT_DOMAINS ?? "";
-    const primaryDomain = domains.split(",")[0];
+    const primaryDomain = getPrimaryHost();
     if (primaryDomain) {
       const webhookUrl = `https://${primaryDomain}/api/stripe/webhook`;
       await stripeSync.findOrCreateManagedWebhook(webhookUrl);

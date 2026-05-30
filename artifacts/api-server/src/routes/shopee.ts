@@ -24,7 +24,8 @@ import {
 
 function getFrontendBase(): string {
   const basePath = process.env.BASE_PATH ?? "";
-  const domain = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
+  const domain = process.env.APP_CUSTOM_DOMAIN
+    ?? process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
   if (domain) return `https://${domain}${basePath}`;
   return `http://localhost:80${basePath}`;
 }

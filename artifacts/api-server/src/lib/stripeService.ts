@@ -1,11 +1,9 @@
 import { eq } from "drizzle-orm";
 import { db, users } from "@workspace/db";
 import { getUncachableStripeClient } from "./stripeClient.js";
+import { getPrimaryOrigin } from "./appDomain.js";
 
-const APP_ORIGIN =
-  process.env.REPLIT_DOMAINS
-    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
-    : "http://localhost:80";
+const APP_ORIGIN = getPrimaryOrigin();
 
 const BASE_PATH = (process.env.BASE_PATH ?? "/").replace(/\/$/, "");
 
