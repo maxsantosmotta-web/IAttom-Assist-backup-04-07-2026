@@ -109,6 +109,7 @@ export function CampaignCreativePanel({
   const [started, setStarted] = useState(false);
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<(() => void) | null>(null);
 
@@ -120,6 +121,7 @@ export function CampaignCreativePanel({
       const dataUrl = ev.target?.result as string;
       setReferenceImagePreview(dataUrl);
       setReferenceImage(dataUrl.split(",")[1]);
+      setConfirmed(false);
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -193,7 +195,7 @@ export function CampaignCreativePanel({
               <div className="flex items-center gap-2">
                 <img src={referenceImagePreview} alt="Referência" className="w-8 h-8 rounded object-cover border border-primary/40" />
                 <span className="text-xs text-primary">Referência adicionada</span>
-                <button onClick={() => { setReferenceImage(null); setReferenceImagePreview(null); }} className="text-muted-foreground hover:text-white transition-colors">
+                <button onClick={() => { setReferenceImage(null); setReferenceImagePreview(null); setConfirmed(false); }} className="text-muted-foreground hover:text-white transition-colors">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -209,9 +211,22 @@ export function CampaignCreativePanel({
             )}
           </div>
           {referenceImage ? (
-            <p className="text-xs text-amber-300/70 leading-relaxed">
-              A imagem enviada deve ser uma foto real do produto desta campanha.
-            </p>
+            <div className="space-y-2.5">
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5">
+                <p className="text-xs text-amber-300/85 leading-relaxed">
+                  A imagem enviada deve ser uma foto real do produto desta campanha. Se enviar outro produto, a imagem gerada seguirá a referência e poderá sair incoerente com a campanha.
+                </p>
+              </div>
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                  className="w-3.5 h-3.5 accent-primary shrink-0"
+                />
+                <span className="text-xs text-zinc-400">Confirmo que esta imagem é do produto desta campanha.</span>
+              </label>
+            </div>
           ) : needsRef ? (
             <p className="text-xs text-primary/60">
               Para gerar imagens mais fiéis ao produto, adicione uma foto de referência.
@@ -224,11 +239,12 @@ export function CampaignCreativePanel({
         <CreditsGate feature="creative" onSuccess={runGenerate}>
           {({ trigger, isLoading }) => {
             triggerRef.current = trigger;
+            if (!referenceImage) return null;
             return (
               <Button
                 onClick={trigger}
-                disabled={isLoading || isGenerating}
-                className="bg-primary text-black hover:bg-primary/90 font-semibold w-full"
+                disabled={isLoading || isGenerating || !confirmed}
+                className="bg-primary text-black hover:bg-primary/90 font-semibold w-full disabled:opacity-40"
               >
                 {isLoading ? (
                   <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Preparando...</>
