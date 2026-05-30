@@ -553,8 +553,8 @@
 
 /* ── Modal shell ──────────────────────────────────────────────── */
 .cl-modalContent {
-  width: min(92vw, 860px) !important;
-  max-width: 860px !important;
+  width: min(92vw, 720px) !important;
+  max-width: 720px !important;
   max-height: 90dvh !important;
   border-radius: 12px !important;
   overflow: hidden !important;
