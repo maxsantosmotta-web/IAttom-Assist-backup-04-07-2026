@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap, Save, ExternalLink } from "lucide-react";
 import { saveProjectAssets } from "@/lib/assetStorage";
-import { detectIncompatibility, INCOMPATIBILITY_MESSAGES } from "@/lib/productPlatformCompatibility";
+import { getEffectiveProductType, detectIncompatibility, INCOMPATIBILITY_MESSAGES } from "@/lib/productPlatformCompatibility";
 import { useSavedItems } from "@/hooks/useSavedItems";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -317,7 +317,7 @@ export function CreateCampaign() {
     setIsRestored(false);
   };
 
-  const incompatibility = detectIncompatibility(productType || null, goal);
+  const incompatibility = detectIncompatibility(getEffectiveProductType(product, productType || null), goal);
 
   const runGenerate = (charge: () => void) => {
     if (isGenerating) return;

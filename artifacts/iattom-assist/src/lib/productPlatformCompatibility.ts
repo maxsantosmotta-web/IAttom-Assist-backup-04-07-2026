@@ -32,6 +32,22 @@ export function inferProductType(text: string): "físico" | "digital" | null {
   return null;
 }
 
+/**
+ * Returns the effective product type used for compatibility checks.
+ * Inferred type from product text takes priority over selected type.
+ * If text inference is inconclusive, falls back to selected type.
+ * If both are inconclusive, returns null (no blocking).
+ */
+export function getEffectiveProductType(
+  productText: string,
+  selectedType: string | null,
+): string | null {
+  const inferred = inferProductType(productText);
+  if (inferred !== null) return inferred;
+  if (!selectedType) return null;
+  return selectedType.toLowerCase();
+}
+
 export type IncompatibilityType = "physical_on_digital" | "digital_on_physical" | null;
 
 export function detectIncompatibility(
@@ -51,7 +67,7 @@ export function detectIncompatibility(
 
 export const INCOMPATIBILITY_MESSAGES: Record<NonNullable<IncompatibilityType>, string> = {
   physical_on_digital:
-    "ATENÇÃO: Produto físico incompatível com a plataforma selecionada. Hotmart e Kiwify são voltadas principalmente para produtos digitais.",
+    "ATENÇÃO: O produto informado parece ser físico, mas a plataforma selecionada é voltada para produtos digitais. Use Mercado Livre, Shopee, Facebook, Instagram ou TikTok para produtos físicos.",
   digital_on_physical:
-    "ATENÇÃO: Produto digital incompatível com a plataforma selecionada. Para produtos digitais, use Hotmart ou Kiwify.",
+    "ATENÇÃO: O produto informado parece ser digital, mas a plataforma selecionada é voltada para produtos físicos. Use Hotmart ou Kiwify para produtos digitais.",
 };
