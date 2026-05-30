@@ -15,6 +15,7 @@ import { streamCreateCampaign, refineCampaignBlock } from "../lib/ai/createCampa
 import { streamCreateContent } from "../lib/ai/createContent.js";
 import { streamCreativeIdeas } from "../lib/ai/creativeIdeas.js";
 import { streamVideoScript } from "../lib/ai/videoScript.js";
+import { analyzeReference } from "../lib/ai/analyzeReference.js";
 
 const router: IRouter = Router();
 
@@ -92,6 +93,25 @@ router.post("/ai/video-script", requireAuth, async (req, res): Promise<void> => 
     return;
   }
   await streamVideoScript(parsed.data, res, clerkUserId);
+});
+
+router.post("/ai/analyze-reference", requireAuth, async (req, res): Promise<void> => {
+  const { imageBase64, productName } = req.body as { imageBase64?: unknown; productName?: unknown };
+  if (typeof imageBase64 !== "string" || !imageBase64.trim()) {
+    res.status(400).json({ error: "imageBase64 is required" });
+    return;
+  }
+  if (typeof productName !== "string" || !productName.trim()) {
+    res.status(400).json({ error: "productName is required" });
+    return;
+  }
+  try {
+    const result = await analyzeReference(imageBase64, productName);
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "analyze-reference failed");
+    res.status(500).json({ error: "Falha ao analisar imagem" });
+  }
 });
 
 export default router;

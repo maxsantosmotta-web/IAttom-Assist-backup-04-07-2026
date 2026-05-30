@@ -1,10 +1,11 @@
-import { useState, useRef } from "react";
-import { Sparkles, Loader2, Copy, Image, AlertCircle, RefreshCw, Palette, Type, Paperclip, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Sparkles, Loader2, Copy, Image, AlertCircle, RefreshCw, Palette, Type, Paperclip, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { CreditsGate } from "@/components/CreditsGate";
 import { useAiStream } from "@/hooks/useAiStream";
 import { needsReferenceImage } from "@/lib/needsReferenceImage";
+import { useReferenceAnalysis } from "@/hooks/useReferenceAnalysis";
 import type { CreativeIdeasResult, CreativeConcept } from "@/types/ai";
 
 interface CampaignCreativePanelProps {
@@ -113,18 +114,35 @@ export function CampaignCreativePanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<(() => void) | null>(null);
 
+  const { analyze, analysisStatus, analysisResult, resetAnalysis } = useReferenceAnalysis();
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
+      const base64 = dataUrl.split(",")[1];
       setReferenceImagePreview(dataUrl);
-      setReferenceImage(dataUrl.split(",")[1]);
+      setReferenceImage(base64);
       setConfirmed(false);
+      resetAnalysis();
     };
     reader.readAsDataURL(file);
     e.target.value = "";
+  };
+
+  useEffect(() => {
+    if (referenceImage && product.trim()) {
+      void analyze(referenceImage, product);
+    }
+  }, [referenceImage, product]);
+
+  const handleRemove = () => {
+    setReferenceImage(null);
+    setReferenceImagePreview(null);
+    setConfirmed(false);
+    resetAnalysis();
   };
 
   const isGenerating = status === "generating";
@@ -132,6 +150,15 @@ export function CampaignCreativePanel({
   const isError = status === "error";
 
   const needsRef = needsReferenceImage(product ?? "", product);
+
+  const canGenerate = (() => {
+    if (!referenceImage) return false;
+    if (analysisStatus !== "done") return false;
+    if (analysisResult === null) return false;
+    if (analysisResult.compatible) return true;
+    if (analysisResult.confidence === "low") return confirmed;
+    return false;
+  })();
 
   const buildPrompt = () =>
     [
@@ -182,7 +209,7 @@ export function CampaignCreativePanel({
       </div>
 
       {!started && !isDone && !isGenerating && !isError && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <input
             ref={fileInputRef}
             type="file"
@@ -195,7 +222,7 @@ export function CampaignCreativePanel({
               <div className="flex items-center gap-2">
                 <img src={referenceImagePreview} alt="Referência" className="w-8 h-8 rounded object-cover border border-primary/40" />
                 <span className="text-xs text-primary">Referência adicionada</span>
-                <button onClick={() => { setReferenceImage(null); setReferenceImagePreview(null); setConfirmed(false); }} className="text-muted-foreground hover:text-white transition-colors">
+                <button onClick={handleRemove} className="text-muted-foreground hover:text-white transition-colors">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -210,28 +237,78 @@ export function CampaignCreativePanel({
               </button>
             )}
           </div>
-          {referenceImage ? (
-            <div className="space-y-2.5">
-              <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5">
-                <p className="text-xs text-amber-300/85 leading-relaxed">
-                  A imagem enviada deve ser uma foto real do produto desta campanha. Se enviar outro produto, a imagem gerada seguirá a referência e poderá sair incoerente com a campanha.
-                </p>
-              </div>
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={confirmed}
-                  onChange={(e) => setConfirmed(e.target.checked)}
-                  className="w-3.5 h-3.5 accent-primary shrink-0"
-                />
-                <span className="text-xs text-zinc-400">Confirmo que esta imagem é do produto desta campanha.</span>
-              </label>
+
+          {referenceImage && (
+            <div className="space-y-2">
+              {analysisStatus === "analyzing" && (
+                <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                  <Loader2 className="w-3.5 h-3.5 text-muted-foreground animate-spin shrink-0" />
+                  <p className="text-xs text-muted-foreground">Verificando imagem...</p>
+                </div>
+              )}
+
+              {analysisStatus === "done" && analysisResult !== null && analysisResult.compatible && (
+                <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-2.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <p className="text-xs text-emerald-300/90">
+                    Produto identificado: <span className="font-semibold">{analysisResult.productDetected}</span>
+                  </p>
+                </div>
+              )}
+
+              {analysisStatus === "done" && analysisResult !== null && !analysisResult.compatible && analysisResult.confidence !== "low" && (
+                <div className="flex items-start gap-2.5 rounded-lg border border-red-500/30 bg-red-500/[0.07] px-3.5 py-3">
+                  <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-300/90 leading-relaxed">
+                    A imagem enviada parece mostrar <span className="font-semibold">{analysisResult.productDetected}</span>, mas esta campanha é para <span className="font-semibold">{product}</span>. Envie uma imagem do produto correto.
+                  </p>
+                </div>
+              )}
+
+              {analysisStatus === "done" && analysisResult !== null && !analysisResult.compatible && analysisResult.confidence === "low" && (
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-3">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-300/85 leading-relaxed">
+                      Não foi possível confirmar com certeza se a imagem corresponde ao produto da campanha.
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={confirmed}
+                      onChange={(e) => setConfirmed(e.target.checked)}
+                      className="w-3.5 h-3.5 accent-primary shrink-0"
+                    />
+                    <span className="text-xs text-zinc-400">Confirmo que esta imagem é do produto desta campanha.</span>
+                  </label>
+                </div>
+              )}
+
+              {analysisStatus === "error" && (
+                <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-3">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs text-amber-300/85 leading-relaxed">
+                      Não foi possível verificar a imagem automaticamente.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => void analyze(referenceImage, product)}
+                    className="text-xs text-amber-400 hover:text-amber-300 transition-colors shrink-0"
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
             </div>
-          ) : needsRef ? (
+          )}
+
+          {!referenceImage && needsRef && (
             <p className="text-xs text-primary/60">
               Para gerar imagens mais fiéis ao produto, adicione uma foto de referência.
             </p>
-          ) : null}
+          )}
         </div>
       )}
 
@@ -243,7 +320,7 @@ export function CampaignCreativePanel({
             return (
               <Button
                 onClick={trigger}
-                disabled={isLoading || isGenerating || !confirmed}
+                disabled={isLoading || isGenerating || !canGenerate}
                 className="bg-primary text-black hover:bg-primary/90 font-semibold w-full disabled:opacity-40"
               >
                 {isLoading ? (

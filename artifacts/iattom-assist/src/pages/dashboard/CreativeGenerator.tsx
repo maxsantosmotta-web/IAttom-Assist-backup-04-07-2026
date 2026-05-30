@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, Copy, RefreshCw, AlertCircle, Monitor, Smartphone, Image, Palette, Type, Save, ChevronDown, ChevronUp, Paperclip, X } from "lucide-react";
+import { Sparkles, Loader2, Copy, RefreshCw, AlertCircle, Monitor, Smartphone, Image, Palette, Type, Save, Paperclip, X, CheckCircle2 } from "lucide-react";
 import { saveProjectAssets } from "@/lib/assetStorage";
 import { useSavedItems } from "@/hooks/useSavedItems";
 import { needsReferenceImage } from "@/lib/needsReferenceImage";
+import { useReferenceAnalysis } from "@/hooks/useReferenceAnalysis";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,7 +42,6 @@ const PLATFORM_OPTIONS = [
 
 function ConceptCard({ concept, index }: { concept: CreativeConcept; index: number }) {
   const { toast } = useToast();
-  const [showTechnical, setShowTechnical] = useState(false);
   const FormatIcon = formatIcons[concept.format] ?? formatIcons.default;
 
   const copyAll = () => {
@@ -113,10 +113,13 @@ export function CreativeGenerator() {
   const [platform, setPlatform] = useState("");
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { status, result, error, generate, reset } = useAiStream<CreativeIdeasResult>();
   const { toast } = useToast();
   const { saveItem, saveItemAssets } = useSavedItems();
+
+  const { analyze, analysisStatus, analysisResult, resetAnalysis } = useReferenceAnalysis();
 
   const needsRef = needsReferenceImage(prompt);
   const showHint = needsRef && !referenceImage;
@@ -127,16 +130,27 @@ export function CreativeGenerator() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
+      const base64 = dataUrl.split(",")[1];
       setReferenceImagePreview(dataUrl);
-      setReferenceImage(dataUrl.split(",")[1]);
+      setReferenceImage(base64);
+      setConfirmed(false);
+      resetAnalysis();
     };
     reader.readAsDataURL(file);
     e.target.value = "";
   };
 
+  useEffect(() => {
+    if (referenceImage && prompt.trim()) {
+      void analyze(referenceImage, prompt);
+    }
+  }, [referenceImage, prompt]);
+
   const removeReference = () => {
     setReferenceImage(null);
     setReferenceImagePreview(null);
+    setConfirmed(false);
+    resetAnalysis();
   };
 
   useEffect(() => {
@@ -173,6 +187,15 @@ export function CreativeGenerator() {
   const isGenerating = status === "generating";
   const isDone = status === "done";
   const isError = status === "error";
+
+  const referenceBlocked = (() => {
+    if (!referenceImage) return false;
+    if (analysisStatus === "analyzing") return true;
+    if (analysisStatus !== "done" || analysisResult === null) return false;
+    if (analysisResult.compatible) return false;
+    if (analysisResult.confidence === "low") return !confirmed;
+    return true;
+  })();
 
   const runGenerate = (charge: () => void) => {
     generate("/api/ai/creative-ideas", {
@@ -231,7 +254,6 @@ export function CreativeGenerator() {
       localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
     } catch {}
 
-    // Cache images in local IndexedDB immediately (this device)
     if (imageAssets.length > 0) void saveProjectAssets(projectId, imageAssets);
 
     try {
@@ -335,16 +357,83 @@ export function CreativeGenerator() {
                   </button>
                 )}
               </div>
+
+              {referenceImage && (
+                <div className="space-y-2 mt-1">
+                  {analysisStatus === "analyzing" && (
+                    <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                      <Loader2 className="w-3.5 h-3.5 text-muted-foreground animate-spin shrink-0" />
+                      <p className="text-xs text-muted-foreground">Verificando imagem...</p>
+                    </div>
+                  )}
+
+                  {analysisStatus === "done" && analysisResult !== null && analysisResult.compatible && (
+                    <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-2.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <p className="text-xs text-emerald-300/90">
+                        Produto identificado: <span className="font-semibold">{analysisResult.productDetected}</span>
+                      </p>
+                    </div>
+                  )}
+
+                  {analysisStatus === "done" && analysisResult !== null && !analysisResult.compatible && analysisResult.confidence !== "low" && (
+                    <div className="flex items-start gap-2.5 rounded-lg border border-red-500/30 bg-red-500/[0.07] px-3.5 py-3">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                      <p className="text-xs text-red-300/90 leading-relaxed">
+                        A imagem enviada parece mostrar <span className="font-semibold">{analysisResult.productDetected}</span>, mas o produto informado é <span className="font-semibold">{prompt}</span>. Envie uma imagem do produto correto.
+                      </p>
+                    </div>
+                  )}
+
+                  {analysisStatus === "done" && analysisResult !== null && !analysisResult.compatible && analysisResult.confidence === "low" && (
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-3">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-300/85 leading-relaxed">
+                          Não foi possível confirmar com certeza se a imagem corresponde ao produto informado.
+                        </p>
+                      </div>
+                      <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={confirmed}
+                          onChange={(e) => setConfirmed(e.target.checked)}
+                          className="w-3.5 h-3.5 accent-primary shrink-0"
+                        />
+                        <span className="text-xs text-zinc-400">Confirmo que esta imagem é do produto informado.</span>
+                      </label>
+                    </div>
+                  )}
+
+                  {analysisStatus === "error" && (
+                    <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-3">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-amber-300/85 leading-relaxed">
+                          Não foi possível verificar a imagem automaticamente.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => void analyze(referenceImage, prompt)}
+                        className="text-xs text-amber-400 hover:text-amber-300 transition-colors shrink-0"
+                      >
+                        Tentar novamente
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {showHint && (
                 <p className="text-xs text-primary/60">
-                  ⚡ Para gerar imagens mais fiéis ao produto, adicione uma foto de referência.
+                  Para gerar imagens mais fiéis ao produto, adicione uma foto de referência.
                 </p>
               )}
             </div>
 
-            <CreditsGate feature="creative" onSuccess={runGenerate} disabled={!prompt.trim() || isGenerating || (needsRef && !referenceImage)}>
+            <CreditsGate feature="creative" onSuccess={runGenerate} disabled={!prompt.trim() || isGenerating || (needsRef && !referenceImage) || referenceBlocked}>
               {({ trigger, isLoading }) => (
-                <Button onClick={trigger} disabled={isLoading || isGenerating || !prompt.trim() || (needsRef && !referenceImage)} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full">
+                <Button onClick={trigger} disabled={isLoading || isGenerating || !prompt.trim() || (needsRef && !referenceImage) || referenceBlocked} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full">
                   {isLoading || isGenerating ? (<><Loader2 className="w-4 h-4 animate-spin mr-2" /> Gerando conceitos...</>) : (<><Sparkles className="w-4 h-4 mr-2" /> Gerar Conceitos Criativos</>)}
                 </Button>
               )}
