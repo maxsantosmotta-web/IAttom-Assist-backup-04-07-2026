@@ -3,7 +3,6 @@ import { Switch, Route, Redirect, Router as WouterRouter, useLocation } from "wo
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ClerkProvider, Show, useClerk, SignIn, SignUp } from "@clerk/react";
 import { ptBR } from "@clerk/localizations";
-import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { AnimatePresence } from "framer-motion";
 import { Toaster } from "@/components/ui/toaster";
