@@ -328,51 +328,46 @@ ${params.budget ? `Orçamento: ${params.budget}` : ""}
 
 Adapte toda a estrutura da campanha ao modo e tipo de produto informados. Crie copy específico para cada plataforma, integralmente em português brasileiro.`;
 
-  let fullResponse = "";
+  const MAX_ATTEMPTS = 2;
+  const FALLBACK_MSG = "Não consegui gerar a campanha completa desta vez. Tente novamente.";
 
-  try {
-    const stream = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 4096,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: { type: "json_object" },
-      stream: true,
-    });
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-5-mini",
+        max_completion_tokens: 8192,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        stream: false,
+      });
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        fullResponse += content;
-        sendSSE(res, { type: "chunk", content });
+      const rawText = response.choices[0]?.message?.content ?? "";
+
+      const parsed = safeParseJson(rawText);
+      if (!parsed.success) {
+        continue;
       }
-    }
 
-    const parsed = safeParseJson(fullResponse);
-    if (!parsed.success) {
-      sendSSEError(res, parsed.error);
+      const raw = parsed.data as CampaignResult;
+      const validationError = validateCampaignResult(raw);
+      if (validationError) {
+        continue;
+      }
+
+      const result = campaignMode === "organic" ? hardLockOrganicResult(raw) : raw;
+      sendSSE(res, { type: "result", data: result });
+      await logAiUsage({ clerkUserId, action: `Campaign created: ${params.product} [${campaignMode}]`, module: "campaign" });
+      sendSSEDone(res);
       return;
+    } catch {
+      // transient API/network error — retry on next attempt
     }
-
-    const raw = parsed.data as CampaignResult;
-    const validationError = validateCampaignResult(raw);
-    if (validationError) {
-      sendSSEError(res, `Campanha gerada incompleta: ${validationError} Tente novamente.`);
-      return;
-    }
-
-    const result = campaignMode === "organic" ? hardLockOrganicResult(raw) : raw;
-    sendSSE(res, { type: "result", data: result });
-    await logAiUsage({ clerkUserId, action: `Campaign created: ${params.product} [${campaignMode}]`, module: "campaign" });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "AI generation failed";
-    sendSSEError(res, msg);
-    return;
   }
 
-  sendSSEDone(res);
+  sendSSEError(res, FALLBACK_MSG);
 }
 
 export async function refineCampaignBlock(
