@@ -29,6 +29,7 @@ NODE_ENV = "production"
 PORT = "25638"
 BASE_PATH = "/"
 VITE_BETA_MODE = "true"
+VITE_CLERK_PROXY_URL = "https://iattomassist.com.br/api/__clerk"
 
 [[services.production.rewrites]]
 from = "/*"
