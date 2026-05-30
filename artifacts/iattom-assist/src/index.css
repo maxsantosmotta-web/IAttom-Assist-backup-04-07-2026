@@ -563,7 +563,6 @@
 .cl-card {
   width: 100% !important;
   height: 100% !important;
-  overflow: hidden !important;
 }
 
 .cl-userProfile-root {
