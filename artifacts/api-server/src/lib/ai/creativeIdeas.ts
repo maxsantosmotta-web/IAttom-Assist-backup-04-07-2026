@@ -232,7 +232,8 @@ Crie ${numConcepts} conceitos criativos visualmente impactantes, alinhados ao pr
             "Marketplace: white, black, blue;",
             "Sport: red, black, yellow.",
             `CREATIVE CONTEXT: ${sceneInstruction}`,
-            "OUTPUT: photorealistic, commercial photography quality, magazine-ready, no text overlays, no logos, no watermarks.",
+            "STRICT PROHIBITIONS: no human body parts, no hands, no arms, no legs, no faces, no partial persons; no objects unrelated to the product; no extra items not present in the reference; no deformations; no distortions; no blurry elements; no text; no logos; no watermarks.",
+            "OUTPUT: photorealistic, commercial photography quality, magazine-ready.",
           ].join(" ");
           return editImageFromBuffer(referenceBuffer, editPrompt, mapFormatToSize(concept.format));
         }

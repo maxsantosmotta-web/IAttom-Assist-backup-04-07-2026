@@ -544,6 +544,14 @@ export function CreateCampaign() {
               <Label className="text-sm text-muted-foreground">Público-alvo (opcional)</Label>
               <Input placeholder="ex: Atletas 25-40, entusiastas de atividades ao ar livre" className="bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50" value={audience} onChange={(e) => setAudience(e.target.value)} />
             </div>
+            {productType === "Físico" && (goal.includes("Hotmart") || goal.includes("Kiwify")) && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/[0.07] px-3.5 py-3">
+                <span className="text-amber-400 text-sm leading-none mt-0.5">!</span>
+                <p className="text-xs text-amber-300/90 leading-relaxed">
+                  Hotmart e Kiwify são plataformas voltadas principalmente para produtos digitais. Considere Mercado Livre, Shopee, Facebook ou Instagram para produtos físicos.
+                </p>
+              </div>
+            )}
             <CreditsGate feature="campaign" onSuccess={runGenerate} disabled={!product.trim() || isGenerating}>
               {({ trigger, isLoading }) => (
                 <Button onClick={trigger} disabled={isLoading || isGenerating || !product.trim()} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full">

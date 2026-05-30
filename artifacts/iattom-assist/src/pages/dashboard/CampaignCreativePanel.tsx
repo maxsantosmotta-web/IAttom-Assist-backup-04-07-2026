@@ -208,11 +208,15 @@ export function CampaignCreativePanel({
               </button>
             )}
           </div>
-          {needsRef && !referenceImage && (
-            <p className="text-xs text-primary/60">
-              ⚡ Para gerar imagens mais fiéis ao produto, adicione uma foto de referência.
+          {referenceImage ? (
+            <p className="text-xs text-amber-300/70 leading-relaxed">
+              A imagem enviada deve ser uma foto real do produto desta campanha.
             </p>
-          )}
+          ) : needsRef ? (
+            <p className="text-xs text-primary/60">
+              Para gerar imagens mais fiéis ao produto, adicione uma foto de referência.
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -220,7 +224,6 @@ export function CampaignCreativePanel({
         <CreditsGate feature="creative" onSuccess={runGenerate}>
           {({ trigger, isLoading }) => {
             triggerRef.current = trigger;
-            if (!referenceImage) return null;
             return (
               <Button
                 onClick={trigger}
