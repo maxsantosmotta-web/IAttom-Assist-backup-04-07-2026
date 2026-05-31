@@ -131,6 +131,34 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+function buildGoalContext(goal: string): string {
+  if (!goal) return goal;
+  const lower = goal.toLowerCase();
+
+  if (lower.includes("mercado livre")) {
+    return `Vender no Mercado Livre — campanha para anúncio de produto em marketplace físico.
+Gere: título de anúncio como headline (máx. 60 chars, palavras-chave relevantes no início), descrição detalhada do produto como copy.facebook, benefícios e especificações como keyMessages, argumento competitivo de venda no uniqueAngle.
+CTA focado em compra no marketplace (ex: "Compre agora", "Adicione ao carrinho", "Aproveite a oferta").
+Canais recomendados: Mercado Livre, Mercado Ads. Orçamento: valor mensal realista para Produto Patrocinado (Mercado Ads).
+PROIBIDO: CTA de seguir no Instagram/TikTok, orçamento de Meta Ads ou Google Ads como canal principal, segmentação de público para campanha Facebook.`;
+  }
+
+  if (lower.includes("hotmart")) {
+    return `Vender na Hotmart — campanha para produto digital em plataforma de infoprodutos.
+Gere: headline de página de vendas, promessa clara no subheadline, keyMessages com transformação prometida / bônus / garantia, copy para aquecer lista e atrair tráfego frio para a página.
+CTA de checkout direto (ex: "Quero acesso agora", "Garantir minha vaga", "Comprar com desconto").
+Estrutura de lançamento: captação → aquecimento → abertura de carrinho.`;
+  }
+
+  if (lower.includes("kiwify")) {
+    return `Vender na Kiwify — campanha para produto digital com foco em conversão direta e programa de afiliados.
+Gere: headline de oferta direta, subheadline com entrega de valor imediata, copy para e-mail e Instagram com urgência e prova social, keyMessages com preço acessível / entrega imediata / garantia.
+CTA de compra low ticket (ex: "Acesse por apenas R$...", "Comprar agora", "Garantir acesso").`;
+  }
+
+  return goal;
+}
+
 interface PlatformGuide {
   name: string;
   url: string;
@@ -338,11 +366,11 @@ export function CreateCampaign() {
   const typeMismatch = detectProductTypeMismatch(product, productType || null);
 
   const runGenerate = (charge: () => void) => {
-    if (isGenerating) return;
+    if (isGenerating || !goal) return;
     generate("/api/ai/create-campaign", {
       product,
       audience: audience || undefined,
-      goal: goal || undefined,
+      goal: buildGoalContext(goal) || undefined,
       mode: mode || undefined,
       productType: productType || undefined,
     }).then((res) => {
@@ -511,11 +539,13 @@ export function CreateCampaign() {
                 <Input placeholder="ex: Garrafa HydroElite" className="bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50" value={product} onChange={(e) => setProduct(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-sm text-muted-foreground">Objetivo da Campanha</Label>
+                <Label className="text-sm text-muted-foreground">
+                  Objetivo da Campanha <span className="text-red-400">*</span>
+                </Label>
                 <select
                   value={goal}
                   onChange={(e) => setGoal(e.target.value)}
-                  className="w-full h-9 rounded-md border border-white/10 bg-[#0a0a0a] px-3 py-1 text-sm text-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-0"
+                  className={`w-full h-9 rounded-md border bg-[#0a0a0a] px-3 py-1 text-sm text-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-0 transition-colors ${product.trim() && !goal ? "border-amber-500/40" : "border-white/10"}`}
                 >
                   <option value="" disabled>Selecionar objetivo</option>
                   <option value="Vender na Shopee">Vender na Shopee</option>
@@ -581,9 +611,17 @@ export function CreateCampaign() {
                 </p>
               </div>
             )}
-            <CreditsGate feature="campaign" onSuccess={runGenerate} disabled={!product.trim() || isGenerating || incompatibility !== null || typeMismatch}>
+            {product.trim() && !goal && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-3">
+                <span className="text-amber-400 text-sm leading-none mt-0.5">!</span>
+                <p className="text-xs text-amber-300/90 leading-relaxed">
+                  Escolha o objetivo da campanha antes de gerar.
+                </p>
+              </div>
+            )}
+            <CreditsGate feature="campaign" onSuccess={runGenerate} disabled={!product.trim() || !goal || isGenerating || incompatibility !== null || typeMismatch}>
               {({ trigger, isLoading }) => (
-                <Button onClick={trigger} disabled={isLoading || isGenerating || !product.trim() || incompatibility !== null || typeMismatch} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full disabled:opacity-40">
+                <Button onClick={trigger} disabled={isLoading || isGenerating || !product.trim() || !goal || incompatibility !== null || typeMismatch} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full disabled:opacity-40">
                   {isLoading || isGenerating ? (
                     <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Construindo sua campanha...</>
                   ) : "Gerar Campanha"}
