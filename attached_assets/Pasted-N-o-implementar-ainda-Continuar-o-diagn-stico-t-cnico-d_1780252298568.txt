@@ -1,0 +1,129 @@
+Não implementar ainda.
+
+Continuar o diagnóstico técnico do menor caminho para concluir o fluxo oficial, sem executar alterações.
+
+O endpoint atual POST /me/ml/create-listing só recebe title, price e quantity. Isso é insuficiente para o fluxo aprovado.
+
+Mapear agora:
+
+1. Quais dados completos existem no Projeto Salvo:
+
+
+
+título
+
+descrição
+
+copy
+
+preço
+
+imagem/criativo
+
+categoria
+
+estoque/quantidade
+
+condição
+
+atributos obrigatórios do Mercado Livre
+
+2. O que falta no backend para aceitar esses dados.
+
+
+3. O que falta no modal do ProjectDetail para deixar de ser apenas mensagem e virar etapa real de revisão.
+
+
+4. Se a publicação com imagem exige upload separado para o Mercado Livre antes de criar o anúncio.
+
+
+5. Qual seria a microetapa 1 mais segura:
+
+
+
+ampliar backend primeiro;
+
+criar tela/modal de revisão primeiro;
+
+ou testar publicação real simples com title, price e quantity.
+
+Não alterar nada.
+Não implementar ainda.
+Responder com o plano técnico de execução em microetapas.
+
+6. Confirmar exatamente quais campos o endpoint do Mercado Livre exige hoje para criar um anúncio válido.
+
+
+7. Informar quais desses campos já existem hoje dentro dos Projetos Salvos e quais não existem.
+
+
+8. Verificar se existe compatibilidade direta entre os dados do Projeto Salvo e os campos exigidos pelo Mercado Livre, sem criar novas estruturas.
+
+
+9. Confirmar se as imagens geradas pelo IAttom possuem URL pública utilizável pelo Mercado Livre ou se será necessário um fluxo de upload intermediário.
+
+
+10. Informar se a categoria do Mercado Livre pode ser:
+
+
+
+escolhida automaticamente;
+
+inferida pelo conteúdo do projeto;
+
+ou obrigatoriamente selecionada pelo usuário.
+
+11. Identificar qual é o menor caminho para chegar ao primeiro anúncio real publicado:
+
+
+
+sem refatoração;
+
+sem alterar arquitetura validada;
+
+sem criar segundo fluxo;
+
+reutilizando Projetos Salvos como ponto único de publicação.
+
+12. Informar qual será a ordem correta das microetapas até o primeiro anúncio real:
+Microetapa 1
+Microetapa 2
+Microetapa 3
+...
+até publicação validada.
+
+
+13. Confirmar se o mesmo fluxo poderá futuramente ser reaproveitado para:
+
+
+
+Hotmart;
+
+Kiwify;
+
+Shopee;
+
+TikTok;
+
+Facebook;
+
+Instagram.
+
+Identificando quais partes serão específicas do Mercado Livre e quais serão reutilizáveis para todas as plataformas.
+
+estimativa de proximidade da conclusão do fluxo:
+
+25%
+
+50%
+
+75%
+
+90%
+
+100%
+
+Justificar a classificação.
+
+BASE BLINDADA CONTINUA ATIVA:
+não alterar domínio, DNS, Clerk/Auth, login/cadastro, App.tsx, Deployments, banco, estrutura validada, módulos USER/ADMIN já aprovados.
