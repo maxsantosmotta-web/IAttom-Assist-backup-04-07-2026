@@ -104,7 +104,7 @@ const queryClient = new QueryClient({
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+  (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string)?.replace(/\.+$/, ""),
 );
 
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
