@@ -528,7 +528,6 @@ export function ProjectDetail() {
     setAdContinueError("");
 
     const PLATFORM_ROUTES: Record<string, string> = {
-      mercado_livre: "/dashboard/mercado-livre/criar-anuncio",
       shopee:        "/dashboard/shopee",
       tiktok:        "/dashboard/tiktok",
       hotmart:       "/dashboard/hotmart",
@@ -540,6 +539,17 @@ export function ProjectDetail() {
     try {
       const savedItem = item as SavedItem;
 
+      // For Mercado Livre: open official external listing creation page in a new tab.
+      // The user stays on this page to use the project materials as reference.
+      if (adContextPlatform === "mercado_livre") {
+        window.open("https://www.mercadolivre.com.br/publicar", "_blank", "noopener,noreferrer");
+        toast({
+          title: "Mercado Livre aberto em nova aba",
+          description: "Use os materiais do projeto abaixo para preencher o anuncio: titulo, descricao, preco sugerido e copy.",
+        });
+        return;
+      }
+
       // Extract suggested price from briefing for the platform page to pre-fill
       let suggestedPrice = "";
       if (savedItem.data) {
@@ -548,21 +558,6 @@ export function ProjectDetail() {
           const raw = p.briefing?.["price"] ?? p.briefing?.["preco"] ?? p.briefing?.["valor"] ?? "";
           if (raw) suggestedPrice = String(raw);
         } catch { /* noop */ }
-      }
-
-      // For Mercado Livre: validate connection before navigating
-      if (adContextPlatform === "mercado_livre") {
-        const token = await getToken();
-        if (!token) {
-          setAdContinueError("Sessao expirada. Faca login novamente.");
-          return;
-        }
-        const r = await fetch("/api/me/ml/status", { headers: { Authorization: `Bearer ${token}` } });
-        const data = await r.json() as { connected?: boolean };
-        if (!data.connected) {
-          setAdContinueError("Conecte sua conta Mercado Livre antes de criar o anuncio.");
-          return;
-        }
       }
 
       // Write project context to sessionStorage for the platform page to read.
@@ -723,7 +718,7 @@ export function ProjectDetail() {
                   className="h-6 px-2.5 text-[11px] bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
                   onClick={() => {
                     const routes: Record<string, string> = {
-                      mercado_livre: "/dashboard/mercado-livre/criar-anuncio",
+                      mercado_livre: "/dashboard/mercado-livre",
                       shopee:        "/dashboard/shopee",
                       tiktok:        "/dashboard/tiktok",
                       hotmart:       "/dashboard/hotmart",
