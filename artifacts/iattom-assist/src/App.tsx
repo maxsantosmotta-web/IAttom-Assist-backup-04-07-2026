@@ -42,6 +42,7 @@ const Referral = lazy(() => import("@/pages/dashboard/Referral").then((m) => ({ 
 const Trash = lazy(() => import("@/pages/dashboard/Trash").then((m) => ({ default: m.Trash })));
 const ProjectDetail = lazy(() => import("@/pages/dashboard/ProjectDetail").then((m) => ({ default: m.ProjectDetail })));
 const MercadoLivre = lazy(() => import("@/pages/dashboard/MercadoLivre").then((m) => ({ default: m.MercadoLivre })));
+const MercadoLivreCreateAd = lazy(() => import("@/pages/dashboard/MercadoLivreCreateAd").then((m) => ({ default: m.MercadoLivreCreateAd })));
 const Shopee = lazy(() => import("@/pages/dashboard/Shopee").then((m) => ({ default: m.Shopee })));
 const TikTok = lazy(() => import("@/pages/dashboard/TikTok").then((m) => ({ default: m.TikTok })));
 const Hotmart = lazy(() => import("@/pages/dashboard/Hotmart").then((m) => ({ default: m.Hotmart })));
@@ -251,6 +252,7 @@ function ProtectedDashboard() {
                   <Route path="/dashboard/prompts" component={SavedPrompts} />
                   <Route path="/dashboard/referral" component={Referral} />
                   <Route path="/dashboard/trash" component={Trash} />
+                  <Route path="/dashboard/mercado-livre/criar-anuncio" component={MercadoLivreCreateAd} />
                   <Route path="/dashboard/mercado-livre" component={MercadoLivre} />
                   <Route path="/dashboard/shopee" component={Shopee} />
                   <Route path="/dashboard/tiktok" component={TikTok} />
