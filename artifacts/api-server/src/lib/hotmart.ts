@@ -68,15 +68,15 @@ export function getHotmartAuthorizationUrl(
   clientId: string,
   redirectUri: string,
   state: string,
-  scope = "openid",
+  scope?: string,
 ): string {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope,
     state,
   });
+  if (scope) params.set("scope", scope);
   return `${HOTMART_AUTH_URL}?${params.toString()}`;
 }
 

@@ -96,7 +96,7 @@ router.get("/hotmart/user/oauth-url", requireAuth, async (req, res): Promise<voi
     "utf8",
   ).toString("base64url");
 
-  const url = getHotmartAuthorizationUrl(config.clientId, HOTMART_REDIRECT_URI, state, "all");
+  const url = getHotmartAuthorizationUrl(config.clientId, HOTMART_REDIRECT_URI, state);
   req.log.info({ clerkUserId }, "hotmart: oauth-url generated");
   res.json({ url });
 });
