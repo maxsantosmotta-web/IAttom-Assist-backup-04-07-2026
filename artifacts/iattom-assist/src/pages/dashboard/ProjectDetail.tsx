@@ -402,28 +402,11 @@ export function ProjectDetail() {
   const [imagesLoadDone, setImagesLoadDone] = useState(false);
   const [syncingImages, setSyncingImages] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ img: ImageEntry; idx: number } | null>(null);
-  const [adModalOpen, setAdModalOpen] = useState(false);
-  const [adPhase, setAdPhase] = useState<"pick" | "prepare">("pick");
-  const [adPlatform, setAdPlatform] = useState<string | null>(null);
   const [confirmTrashOpen, setConfirmTrashOpen] = useState(false);
-
-  // ML review form state
-  const [mlTitle, setMlTitle] = useState("");
-  const [mlPrice, setMlPrice] = useState("");
-  const [mlQty, setMlQty] = useState("1");
-  const [mlCondition, setMlCondition] = useState<"new" | "used">("new");
-  const [mlCategoryId, setMlCategoryId] = useState("");
-  const [mlCategoryName, setMlCategoryName] = useState("");
-  const [mlSuggestions, setMlSuggestions] = useState<Array<{ category_id: string; category_name: string }>>([]);
-  const [mlCategoryLoading, setMlCategoryLoading] = useState(false);
-  const [mlPublishing, setMlPublishing] = useState(false);
-  const [mlResult, setMlResult] = useState<{ id: string; permalink: string } | null>(null);
-  const [mlError, setMlError] = useState("");
-  // ML connection status (checked when entering ML prepare phase)
-  const [mlStatusChecking, setMlStatusChecking] = useState(false);
-  const [mlIsConnected, setMlIsConnected] = useState<boolean | null>(null);
-  // Platform context carried from platform pages via sessionStorage
+  // Platform context (from sessionStorage) + inline continue state
   const [adContextPlatform, setAdContextPlatform] = useState<string | null>(null);
+  const [adContinueLoading, setAdContinueLoading] = useState(false);
+  const [adContinueError, setAdContinueError] = useState("");
 
   // Read ad_platform_context from sessionStorage on mount (set by platform pages when user clicks "Criar anuncio")
   useEffect(() => {
@@ -538,192 +521,67 @@ export function ProjectDetail() {
     });
   }, [item, toast]);
 
-  // ── ML connection status check when entering ML prepare phase ────────────────
-  useEffect(() => {
-    if (adPhase !== "prepare" || adPlatform !== "mercado_livre") return;
-    setMlIsConnected(null);
-    setMlStatusChecking(true);
-    let cancelled = false;
-    async function checkML() {
-      try {
+  // ── Continuar: validate connection (ML only) then navigate to platform page ──
+  const handleContinue = useCallback(async () => {
+    if (!adContextPlatform || !item || item === "not_found") return;
+    setAdContinueLoading(true);
+    setAdContinueError("");
+
+    const PLATFORM_ROUTES: Record<string, string> = {
+      mercado_livre: "/dashboard/mercadolivre",
+      shopee:        "/dashboard/shopee",
+      tiktok:        "/dashboard/tiktok",
+      hotmart:       "/dashboard/hotmart",
+      kiwify:        "/dashboard/kiwify",
+      facebook:      "/dashboard/facebook",
+      instagram:     "/dashboard/instagram",
+    };
+
+    try {
+      const savedItem = item as SavedItem;
+
+      // Extract suggested price from briefing for the platform page to pre-fill
+      let suggestedPrice = "";
+      if (savedItem.data) {
+        try {
+          const p = JSON.parse(savedItem.data) as ParsedData;
+          const raw = p.briefing?.["price"] ?? p.briefing?.["preco"] ?? p.briefing?.["valor"] ?? "";
+          if (raw) suggestedPrice = String(raw);
+        } catch { /* noop */ }
+      }
+
+      // For Mercado Livre: validate connection before navigating
+      if (adContextPlatform === "mercado_livre") {
         const token = await getToken();
         if (!token) {
-          if (!cancelled) { setMlIsConnected(false); setMlStatusChecking(false); }
+          setAdContinueError("Sessao expirada. Faca login novamente.");
           return;
         }
         const r = await fetch("/api/me/ml/status", { headers: { Authorization: `Bearer ${token}` } });
         const data = await r.json() as { connected?: boolean };
-        if (!cancelled) setMlIsConnected(!!data.connected);
-      } catch {
-        if (!cancelled) setMlIsConnected(false);
-      } finally {
-        if (!cancelled) setMlStatusChecking(false);
+        if (!data.connected) {
+          setAdContinueError("Conecte sua conta Mercado Livre antes de criar o anuncio.");
+          return;
+        }
       }
+
+      // Write project context to sessionStorage for the platform page to read
+      sessionStorage.removeItem("ad_platform_context");
+      sessionStorage.setItem("ad_project_context", JSON.stringify({
+        projectId:     savedItem.id,
+        projectTitle:  savedItem.title,
+        projectType:   savedItem.type,
+        suggestedPrice,
+        platform:      adContextPlatform,
+      }));
+
+      navigate(PLATFORM_ROUTES[adContextPlatform] ?? "/dashboard");
+    } catch {
+      setAdContinueError("Erro inesperado. Tente novamente.");
+    } finally {
+      setAdContinueLoading(false);
     }
-    void checkML();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adPhase, adPlatform]);
-
-  // ── ML form: pre-fill + category suggest when user picks Mercado Livre ────────
-  useEffect(() => {
-    if (adPhase !== "prepare" || adPlatform !== "mercado_livre") return;
-    if (!item || item === "not_found") return;
-
-    const savedItem = item as SavedItem;
-
-    // Pre-fill title: prefer result.headline, fallback to project title
-    let titleVal = savedItem.title;
-    if (savedItem.data) {
-      try {
-        const p = JSON.parse(savedItem.data) as ParsedData;
-        const headline = (p.result as Record<string, unknown>)?.["headline"];
-        if (typeof headline === "string" && headline) titleVal = headline;
-      } catch { /* noop */ }
-    }
-    setMlTitle(titleVal);
-
-    // Pre-fill price from briefing if user entered it
-    let priceVal = "";
-    if (savedItem.data) {
-      try {
-        const p = JSON.parse(savedItem.data) as ParsedData;
-        const raw = p.briefing?.["price"] ?? p.briefing?.["preco"] ?? p.briefing?.["valor"] ?? "";
-        if (raw) priceVal = String(raw);
-      } catch { /* noop */ }
-    }
-    setMlPrice(priceVal);
-    setMlQty("1");
-    setMlCondition("new");
-    setMlCategoryId("");
-    setMlCategoryName("");
-    setMlSuggestions([]);
-
-    async function fetchCategories() {
-      setMlCategoryLoading(true);
-      try {
-        const token = await getToken();
-        if (!token) return;
-        const r = await fetch(
-          `/api/me/ml/category-suggest?q=${encodeURIComponent(titleVal.slice(0, 80))}`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        const data = await r.json() as { suggestions?: Array<{ category_id: string; category_name: string }> };
-        if (data?.suggestions?.length) {
-          setMlSuggestions(data.suggestions);
-          setMlCategoryId(data.suggestions[0]!.category_id);
-          setMlCategoryName(data.suggestions[0]!.category_name);
-        }
-      } catch { /* noop — user can fill manually */ } finally {
-        setMlCategoryLoading(false);
-      }
-    }
-    void fetchCategories();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adPhase, adPlatform]);
-
-  const handleMLContinue = useCallback(() => {
-    // ── Validações ──────────────────────────────────────────────
-    if (!mlTitle.trim()) {
-      toast({ description: "Informe o titulo do anuncio.", variant: "destructive" });
-      return;
-    }
-    const priceNum = parseFloat(mlPrice.replace(",", "."));
-    if (!mlPrice || isNaN(priceNum) || priceNum <= 0) {
-      toast({ description: "Informe um preco valido (maior que zero).", variant: "destructive" });
-      return;
-    }
-    const qtyNum = parseInt(mlQty, 10);
-    if (!mlQty || isNaN(qtyNum) || qtyNum < 1) {
-      toast({ description: "Quantidade deve ser pelo menos 1.", variant: "destructive" });
-      return;
-    }
-    if (!mlCategoryId.trim()) {
-      toast({ description: "Selecione ou informe o codigo da categoria.", variant: "destructive" });
-      return;
-    }
-
-    async function publish() {
-      setMlPublishing(true);
-      setMlError("");
-
-      try {
-        const token = await getToken();
-        if (!token) throw new Error("Sessao expirada. Faca login novamente.");
-
-        // ── 1. Upload de imagens ──────────────────────────────
-        const savedItem = item as SavedItem;
-        let uploadImages = idbImages;
-        if (uploadImages.length === 0 && savedItem.data) {
-          try {
-            const p = JSON.parse(savedItem.data) as ParsedData;
-            uploadImages = extractImages(savedItem.type, p);
-          } catch { /* noop */ }
-        }
-
-        const pictures: Array<{ source: string }> = [];
-        for (const img of uploadImages) {
-          const upRes = await fetch("/api/me/ml/upload-picture", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ base64: img.base64 }),
-          });
-          const upData = await upRes.json() as { ok?: boolean; url?: string; error?: string };
-          if (!upData.ok || !upData.url) {
-            throw new Error(upData.error ?? "Falha ao enviar imagem para o Mercado Livre.");
-          }
-          pictures.push({ source: upData.url });
-        }
-
-        // ── 2. Copy/descricao do projeto (opcional) ───────────
-        let description: string | undefined;
-        if (savedItem.data) {
-          try {
-            const p = JSON.parse(savedItem.data) as ParsedData;
-            const r = p.result as Record<string, unknown> | null;
-            if (r) {
-              const copy = r["copy"] as Record<string, string> | undefined;
-              const raw = copy?.["facebook"] ?? copy?.["instagram"] ?? (r["subheadline"] as string | undefined) ?? "";
-              if (raw) description = raw;
-            }
-          } catch { /* noop */ }
-        }
-
-        // ── 3. Criar anuncio ──────────────────────────────────
-        const payload: Record<string, unknown> = {
-          title: mlTitle.trim(),
-          price: priceNum,
-          available_quantity: qtyNum,
-          category_id: mlCategoryId.trim(),
-          condition: mlCondition,
-          listing_type_id: "bronze",
-          ...(pictures.length > 0 && { pictures }),
-          ...(description && { description }),
-        };
-
-        const res = await fetch("/api/me/ml/create-listing", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json() as { ok?: boolean; id?: string; permalink?: string; error?: string };
-
-        if (!data.ok || !data.permalink) {
-          throw new Error(data.error ?? "Falha ao criar anuncio no Mercado Livre.");
-        }
-
-        setMlResult({ id: data.id ?? "", permalink: data.permalink });
-        toast({ description: "Anuncio criado com sucesso no Mercado Livre." });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Erro inesperado. Tente novamente.";
-        setMlError(msg);
-      } finally {
-        setMlPublishing(false);
-      }
-    }
-
-    void publish();
-  }, [mlTitle, mlPrice, mlQty, mlCategoryId, mlCondition, idbImages, item, getToken, toast]);
+  }, [adContextPlatform, item, getToken, navigate]);
 
   if (item === null) {
     return (
@@ -840,32 +698,48 @@ export function ProjectDetail() {
             {allCopied ? <Check className="w-3 h-3 mr-1.5 text-emerald-400" /> : <Copy className="w-3 h-3 mr-1.5" />}
             {allCopied ? "Copiado" : "Copiar tudo"}
           </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              if (adContextPlatform) {
-                // Context from a platform page: skip pick phase, go directly to prepare
-                sessionStorage.removeItem("ad_platform_context");
-                setAdPlatform(adContextPlatform);
-                setAdContextPlatform(null);
-                setAdPhase("prepare");
-                setMlResult(null);
-                setMlError("");
-                setAdModalOpen(true);
-              } else {
-                setAdPhase("pick");
-                setAdPlatform(null);
-                setMlResult(null);
-                setMlError("");
-                setAdModalOpen(true);
-              }
-            }}
-            className="h-7 px-3 text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/30"
-          >
-            <Megaphone className="w-3 h-3 mr-1.5" />
-            {adContextPlatform ? "Continuar" : "Criar anuncio"}
-          </Button>
+          {adContextPlatform && (
+            <Button
+              size="sm"
+              onClick={() => { void handleContinue(); }}
+              disabled={adContinueLoading}
+              className="h-7 px-3 text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/30 disabled:opacity-50"
+            >
+              {adContinueLoading
+                ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Verificando...</>
+                : <><Megaphone className="w-3 h-3 mr-1.5" />Continuar</>}
+            </Button>
+          )}
         </div>
+        {adContinueError && (
+          <div className="rounded-xl bg-amber-500/[0.08] border border-amber-500/20 px-3 py-2.5 flex items-start gap-2.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+            <div className="flex-1 space-y-2">
+              <p className="text-xs text-amber-300 leading-relaxed">{adContinueError}</p>
+              {adContextPlatform && (
+                <Button
+                  size="sm"
+                  className="h-6 px-2.5 text-[11px] bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
+                  onClick={() => {
+                    const routes: Record<string, string> = {
+                      mercado_livre: "/dashboard/mercadolivre",
+                      shopee:        "/dashboard/shopee",
+                      tiktok:        "/dashboard/tiktok",
+                      hotmart:       "/dashboard/hotmart",
+                      kiwify:        "/dashboard/kiwify",
+                      facebook:      "/dashboard/facebook",
+                      instagram:     "/dashboard/instagram",
+                    };
+                    navigate(routes[adContextPlatform] ?? "/dashboard");
+                  }}
+                >
+                  <ExternalLink className="w-3 h-3 mr-1" />
+                  Ir para {platformLabels[adContextPlatform] ?? adContextPlatform}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Written content */}
@@ -943,338 +817,6 @@ export function ProjectDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Modal: criar anuncio ─────────────────────────────── */}
-      <Dialog open={adModalOpen} onOpenChange={(open) => { if (!open) { setAdModalOpen(false); setAdPhase("pick"); setAdPlatform(null); setMlIsConnected(null); setMlStatusChecking(false); } }}>
-        <DialogContent className="bg-[#0f0f0f] border-white/[0.10] text-white max-w-md shadow-depth-lg animate-scale-in">
-          {adPhase === "pick" ? (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-white text-base flex items-center gap-2">
-                  <Megaphone className="w-4 h-4 text-primary" />
-                  Criar anuncio — escolha a plataforma
-                </DialogTitle>
-              </DialogHeader>
-              <p className="text-xs text-zinc-500">Selecione onde deseja publicar este projeto como anuncio.</p>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                {AD_PLATFORMS.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => { setAdPlatform(p.id); setAdPhase("prepare"); }}
-                    className="px-4 py-3 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-primary/[0.06] hover:border-primary/20 text-sm text-zinc-300 hover:text-white transition-all duration-200 text-left font-medium"
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : adPlatform === "mercado_livre" ? (
-            /* ── ML prepare phase ───────────────────────── */
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-white text-base flex items-center gap-2">
-                  <Megaphone className="w-4 h-4 text-primary" />
-                  Revisao para Mercado Livre
-                </DialogTitle>
-              </DialogHeader>
-
-              {mlStatusChecking ? (
-                /* ── Verificando conexao ──────────────────────── */
-                <div className="flex items-center justify-center gap-3 py-10">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary/60" />
-                  <span className="text-sm text-zinc-500">Verificando conexao com Mercado Livre...</span>
-                </div>
-              ) : mlIsConnected === false ? (
-                /* ── Nao conectado ────────────────────────────── */
-                <div className="space-y-4 py-2">
-                  <div className="rounded-xl bg-amber-500/[0.08] border border-amber-500/20 px-4 py-3 flex items-start gap-3">
-                    <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-300 mb-1">Conta nao conectada</p>
-                      <p className="text-xs text-zinc-400 leading-relaxed">
-                        Conecte sua conta do Mercado Livre antes de criar um anuncio. Voce sera redirecionado para a pagina de integracao.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : mlResult ? (
-                /* ── Sucesso ──────────────────────────────────── */
-                <div className="space-y-4 py-2">
-                  <div className="flex flex-col items-center text-center gap-3 py-6">
-                    <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                      <Check className="w-6 h-6 text-emerald-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-white mb-1">Anuncio criado com sucesso</p>
-                      <p className="text-xs text-zinc-500">Seu produto ja esta ativo no Mercado Livre.</p>
-                    </div>
-                  </div>
-                  <a
-                    href={mlResult.permalink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Ver anuncio no Mercado Livre
-                  </a>
-                </div>
-              ) : (
-              /* ── Formulario de revisao ────────────────────── */
-              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-0.5">
-                {/* Projeto origem */}
-                <div className="rounded-xl bg-primary/[0.06] border border-primary/20 px-3 py-2.5">
-                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-0.5">Projeto</p>
-                  <p className="text-xs font-medium text-zinc-200 truncate">{(item as SavedItem).title}</p>
-                </div>
-
-                {/* Titulo */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Titulo do anuncio</label>
-                  <input
-                    type="text"
-                    value={mlTitle}
-                    onChange={(e) => setMlTitle(e.target.value)}
-                    maxLength={60}
-                    placeholder="Titulo do anuncio"
-                    className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/40 transition-colors"
-                  />
-                  <p className="text-[10px] text-zinc-600 text-right">{mlTitle.length}/60</p>
-                </div>
-
-                {/* Preco + Quantidade */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Preco (BRL) *</label>
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      value={mlPrice}
-                      onChange={(e) => setMlPrice(e.target.value)}
-                      placeholder="0,00"
-                      className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/40 transition-colors"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Quantidade</label>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={mlQty}
-                      onChange={(e) => setMlQty(e.target.value)}
-                      className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/40 transition-colors"
-                    />
-                  </div>
-                </div>
-
-                {/* Categoria */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Categoria</label>
-                  {mlCategoryLoading ? (
-                    <div className="flex items-center gap-2 py-1.5">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-primary/60" />
-                      <span className="text-xs text-zinc-500">Buscando categorias...</span>
-                    </div>
-                  ) : mlSuggestions.length > 0 ? (
-                    <select
-                      value={mlCategoryId}
-                      onChange={(e) => {
-                        setMlCategoryId(e.target.value);
-                        const found = mlSuggestions.find((s) => s.category_id === e.target.value);
-                        setMlCategoryName(found?.category_name ?? "");
-                      }}
-                      className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/40 transition-colors"
-                    >
-                      {mlSuggestions.map((s) => (
-                        <option key={s.category_id} value={s.category_id} className="bg-[#0a0a0a]">
-                          {s.category_name} ({s.category_id})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <>
-                      <input
-                        type="text"
-                        value={mlCategoryId}
-                        onChange={(e) => { setMlCategoryId(e.target.value); setMlCategoryName(""); }}
-                        placeholder="Ex: MLB1276"
-                        className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/40 transition-colors"
-                      />
-                      <p className="text-[10px] text-zinc-600">Sugestao automatica indisponivel. Insira o codigo da categoria manualmente.</p>
-                    </>
-                  )}
-                </div>
-
-                {/* Condicao */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Condicao</label>
-                  <div className="flex gap-2">
-                    {(["new", "used"] as const).map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setMlCondition(c)}
-                        className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-all duration-200 ${
-                          mlCondition === c
-                            ? "bg-primary/10 border-primary/30 text-primary"
-                            : "bg-white/[0.03] border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
-                        }`}
-                      >
-                        {c === "new" ? "Novo" : "Usado"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Imagens */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Imagens</label>
-                  {images.length > 0 ? (
-                    <div className="flex gap-2 overflow-x-auto pb-0.5">
-                      {images.slice(0, 4).map((img, i) => (
-                        <img
-                          key={i}
-                          src={`data:image/png;base64,${img.base64}`}
-                          alt={img.label}
-                          className="w-14 h-14 rounded-lg object-cover border border-white/[0.08] shrink-0"
-                        />
-                      ))}
-                      {images.length > 4 && (
-                        <div className="w-14 h-14 rounded-lg border border-white/[0.08] bg-white/[0.03] flex items-center justify-center shrink-0">
-                          <span className="text-[10px] text-zinc-500">+{images.length - 4}</span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-zinc-500 bg-white/[0.02] border border-white/[0.06] rounded-lg px-3 py-2">
-                      Este projeto nao possui imagem salva. O anuncio sera criado sem imagem na proxima etapa.
-                    </p>
-                  )}
-                </div>
-
-                {/* Copy do projeto (se existir) */}
-                {(() => {
-                  if (!parsed) return null;
-                  const r = parsed.result as Record<string, unknown> | null;
-                  if (!r) return null;
-                  const copy = r["copy"] as Record<string, string> | undefined;
-                  const desc = copy?.["facebook"] ?? copy?.["instagram"] ?? (r["subheadline"] as string | undefined) ?? "";
-                  if (!desc) return null;
-                  return (
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Copy do projeto</label>
-                      <p className="text-xs text-zinc-400 bg-[#0a0a0a] border border-white/[0.06] rounded-lg px-3 py-2 line-clamp-3 leading-relaxed">{desc}</p>
-                    </div>
-                  );
-                })()}
-
-                {/* Erro de publicacao */}
-                {mlError && (
-                  <div className="rounded-xl bg-red-500/[0.08] border border-red-500/20 px-3 py-2.5">
-                    <p className="text-xs text-red-400 leading-relaxed">{mlError}</p>
-                  </div>
-                )}
-              </div>
-              )}
-
-              <DialogFooter className="gap-2 mt-2">
-                {mlStatusChecking ? null : mlIsConnected === false ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-white/10 text-zinc-400 hover:text-white"
-                      onClick={() => { setAdModalOpen(false); setAdPhase("pick"); setAdPlatform(null); }}
-                    >
-                      Fechar
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
-                      onClick={() => { setAdModalOpen(false); setAdPhase("pick"); setAdPlatform(null); navigate("/dashboard/mercadolivre"); }}
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                      Conectar conta
-                    </Button>
-                  </>
-                ) : mlResult ? (
-                  <Button
-                    size="sm"
-                    className="bg-white/[0.05] text-zinc-300 border border-white/[0.08] hover:bg-white/[0.09] w-full"
-                    onClick={() => { setAdModalOpen(false); setAdPhase("pick"); setAdPlatform(null); setMlResult(null); setMlError(""); }}
-                  >
-                    Fechar
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-white/10 text-zinc-400 hover:text-white"
-                      onClick={() => setAdPhase("pick")}
-                      disabled={mlPublishing}
-                    >
-                      Voltar
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 disabled:opacity-50"
-                      onClick={handleMLContinue}
-                      disabled={mlPublishing}
-                    >
-                      {mlPublishing ? (
-                        <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Criando anuncio...</>
-                      ) : "Continuar"}
-                    </Button>
-                  </>
-                )}
-              </DialogFooter>
-            </>
-          ) : (
-            /* ── Placeholder para outras plataformas (inalterado) ── */
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-white text-base flex items-center gap-2">
-                  <Megaphone className="w-4 h-4 text-primary" />
-                  Publicacao assistida — {AD_PLATFORMS.find(p => p.id === adPlatform)?.label}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="rounded-xl bg-primary/[0.06] border border-primary/20 px-4 py-3 space-y-1">
-                  <p className="text-[11px] text-zinc-500 uppercase tracking-widest">Projeto selecionado</p>
-                  <p className="text-sm font-medium text-zinc-200">{(item as SavedItem).title}</p>
-                  <p className="text-xs text-zinc-500">{typeConfig[(item as SavedItem).type]?.label ?? ""}</p>
-                </div>
-                <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-3 space-y-2">
-                  <p className="text-[11px] text-zinc-500 uppercase tracking-widest">Proxima etapa</p>
-                  <p className="text-sm text-zinc-300 leading-relaxed">
-                    A publicacao assistida no <span className="text-primary font-medium">{AD_PLATFORMS.find(p => p.id === adPlatform)?.label}</span> esta sendo preparada. Na proxima etapa, voce podera revisar o material, ajustar o formato para a plataforma e publicar diretamente.
-                  </p>
-                </div>
-                <p className="text-xs text-zinc-600 leading-relaxed">Nenhuma publicacao foi feita ainda. Tudo sera revisado antes de ir ao ar.</p>
-              </div>
-              <DialogFooter className="gap-2 mt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/10 text-zinc-400 hover:text-white"
-                  onClick={() => setAdPhase("pick")}
-                >
-                  Voltar
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
-                  onClick={() => { setAdModalOpen(false); setAdPhase("pick"); setAdPlatform(null); toast({ description: "Publicacao assistida registrada. Disponivel na proxima etapa." }); }}
-                >
-                  Entendido
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* ── Modal: confirm trash ─────────────────────────────── */}
       <Dialog open={confirmTrashOpen} onOpenChange={(open) => { if (!open) setConfirmTrashOpen(false); }}>
