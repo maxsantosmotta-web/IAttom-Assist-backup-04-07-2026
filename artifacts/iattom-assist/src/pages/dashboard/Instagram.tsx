@@ -184,8 +184,7 @@ export function Instagram() {
   };
 
   const handleCriarAnuncio = () => {
-    sessionStorage.setItem("ad_platform_context", JSON.stringify({ platform: "instagram" }));
-    window.location.href = `${BASE}/dashboard/projects`;
+    window.open("https://business.facebook.com/", "_blank", "noopener,noreferrer");
   };
 
   const isConnected = igAccounts.length > 0;

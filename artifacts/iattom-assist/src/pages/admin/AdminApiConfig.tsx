@@ -375,6 +375,20 @@ export function AdminApiConfig() {
     return "bg-amber-400";
   };
 
+  const getStatusBadge = (stId: IntegrationId, configured?: boolean) => {
+    if (!configured) return null;
+    const st = statuses.find(s => s.id === stId);
+    if (st?.tokenExpired) return <Badge className="bg-red-500/15 text-red-400 border-red-500/25 text-[10px]">Token expirado</Badge>;
+    if (st?.isActive) return <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Conectado</Badge>;
+    return <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/25 text-[10px]">Configurado</Badge>;
+  };
+
+  const tiktokStatusBadge = () => {
+    if (!configs?.tiktok.configured) return null;
+    if (configs.tiktok.isActive) return <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Conectado</Badge>;
+    return <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/25 text-[10px]">Configurado</Badge>;
+  };
+
   return (
     <div className="p-6 space-y-6 max-w-4xl">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
@@ -447,7 +461,7 @@ export function AdminApiConfig() {
                     <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
                       <ShoppingBag className="w-4 h-4 text-orange-400" />
                       Shopee
-                      {configs?.shopee.configured && <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Configurado</Badge>}
+                      {getStatusBadge("shopee", configs?.shopee.configured)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -481,15 +495,32 @@ export function AdminApiConfig() {
                     <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
                       <ShoppingCart className="w-4 h-4 text-amber-400" />
                       Mercado Livre
-                      {configs?.ml.configured && <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Configurado</Badge>}
+                      {getStatusBadge("ml", configs?.ml.configured)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <CallbackBox url={mlForm.redirectUri || `${origin}${BASE}/api/ml/oauth-callback`} label="Redirect URI / Callback — cadastre no Mercado Livre Developers" />
-                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15">
-                      <Info className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                      <p className="text-[11px] text-emerald-300/80">Mercado Livre já aparece conectado. Altere credenciais apenas se necessário — isso não reinicia tokens existentes.</p>
-                    </div>
+                    {configs?.ml.configured && (() => {
+                      const st = statuses.find(s => s.id === "ml");
+                      if (st?.isActive && !st.tokenExpired) return (
+                        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15">
+                          <Info className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                          <p className="text-[11px] text-emerald-300/80">Conexao OAuth ativa. Altere as credenciais apenas se necessario — isso nao reinicia tokens existentes.</p>
+                        </div>
+                      );
+                      if (st?.tokenExpired) return (
+                        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-500/5 border border-red-500/15">
+                          <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                          <p className="text-[11px] text-red-300/80">Token OAuth expirado. O usuario precisa reconectar a conta no painel do usuario.</p>
+                        </div>
+                      );
+                      return (
+                        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/15">
+                          <Info className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                          <p className="text-[11px] text-amber-300/80">Credenciais de app configuradas. Sem conexao OAuth ativa — o usuario ainda nao conectou a conta no painel do usuario.</p>
+                        </div>
+                      );
+                    })()}
                     <div className="grid sm:grid-cols-2 gap-4">
                       <PlainInput label="Client ID (App ID)" name="appId" value={mlForm.appId}
                         onChange={v => setMlForm(f => ({ ...f, appId: v }))} placeholder="Ex: 1234567890" />
@@ -520,7 +551,7 @@ export function AdminApiConfig() {
                     <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
                       <Flame className="w-4 h-4 text-red-400" />
                       Hotmart
-                      {configs?.hotmart.configured && <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Configurado</Badge>}
+                      {getStatusBadge("hotmart", configs?.hotmart.configured)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -558,7 +589,7 @@ export function AdminApiConfig() {
                     <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
                       <Zap className="w-4 h-4 text-violet-400" />
                       Kiwify
-                      {configs?.kiwify.configured && <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Configurado</Badge>}
+                      {getStatusBadge("kiwify", configs?.kiwify.configured)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -593,7 +624,7 @@ export function AdminApiConfig() {
                     <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
                       <Instagram className="w-4 h-4 text-pink-400" />
                       Instagram
-                      {configs?.meta.configured && <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Configurado</Badge>}
+                      {getStatusBadge("meta", configs?.meta.configured)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -635,7 +666,7 @@ export function AdminApiConfig() {
                     <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
                       <FacebookIcon className="w-4 h-4 text-blue-400" />
                       Facebook
-                      {configs?.meta.configured && <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Configurado</Badge>}
+                      {getStatusBadge("meta", configs?.meta.configured)}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -677,7 +708,7 @@ export function AdminApiConfig() {
                     <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
                       <Video className="w-4 h-4 text-cyan-400" />
                       TikTok
-                      {configs?.tiktok.configured && <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 text-[10px]">Configurado</Badge>}
+                      {tiktokStatusBadge()}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">

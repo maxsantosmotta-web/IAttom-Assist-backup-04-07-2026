@@ -292,8 +292,7 @@ function AbaMinhaContaLoja({ connected, onConnect }: { connected: boolean; onCon
   };
 
   const handleCriarAnuncio = () => {
-    sessionStorage.setItem("ad_platform_context", JSON.stringify({ platform: "shopee" }));
-    window.location.href = `${BASE}/dashboard/projects`;
+    window.open("https://seller.shopee.com.br/portal/product/add", "_blank", "noopener,noreferrer");
   };
 
   return (

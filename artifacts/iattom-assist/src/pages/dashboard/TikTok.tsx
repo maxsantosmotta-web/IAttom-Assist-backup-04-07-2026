@@ -169,8 +169,7 @@ export function TikTok() {
   };
 
   const handleCriarAnuncio = () => {
-    sessionStorage.setItem("ad_platform_context", JSON.stringify({ platform: "tiktok" }));
-    window.location.href = `${BASE}/dashboard/projects`;
+    window.open("https://ads.tiktok.com/", "_blank", "noopener,noreferrer");
   };
 
   const isConnected = status?.connected ?? false;

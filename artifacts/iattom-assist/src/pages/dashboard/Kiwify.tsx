@@ -102,8 +102,7 @@ export function Kiwify() {
   };
 
   const handleCriarAnuncio = () => {
-    sessionStorage.setItem("ad_platform_context", JSON.stringify({ platform: "kiwify" }));
-    window.location.href = `${BASE}/dashboard/projects`;
+    window.open("https://app.kiwify.com.br/", "_blank", "noopener,noreferrer");
   };
 
   return (
