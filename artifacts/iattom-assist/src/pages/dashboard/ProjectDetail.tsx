@@ -528,7 +528,7 @@ export function ProjectDetail() {
     setAdContinueError("");
 
     const PLATFORM_ROUTES: Record<string, string> = {
-      mercado_livre: "/dashboard/mercadolivre",
+      mercado_livre: "/dashboard/mercado-livre",
       shopee:        "/dashboard/shopee",
       tiktok:        "/dashboard/tiktok",
       hotmart:       "/dashboard/hotmart",
@@ -722,7 +722,7 @@ export function ProjectDetail() {
                   className="h-6 px-2.5 text-[11px] bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
                   onClick={() => {
                     const routes: Record<string, string> = {
-                      mercado_livre: "/dashboard/mercadolivre",
+                      mercado_livre: "/dashboard/mercado-livre",
                       shopee:        "/dashboard/shopee",
                       tiktok:        "/dashboard/tiktok",
                       hotmart:       "/dashboard/hotmart",
