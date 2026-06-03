@@ -101,6 +101,11 @@ export function Kiwify() {
     window.location.href = `${BASE}/dashboard/create-content`;
   };
 
+  const handleCriarAnuncio = () => {
+    sessionStorage.setItem("ad_platform_context", JSON.stringify({ platform: "kiwify" }));
+    window.location.href = `${BASE}/dashboard/projects`;
+  };
+
   return (
     <div className="space-y-6">
       {modal && (
@@ -239,6 +244,15 @@ export function Kiwify() {
                 >
                   <ClipboardList className="w-3 h-3 mr-1.5" />
                   Criar conteúdo
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCriarAnuncio}
+                  className="w-full border-primary/30 text-primary hover:bg-primary/10 h-8 text-xs"
+                >
+                  <Megaphone className="w-3 h-3 mr-1.5" />
+                  Criar anúncio
                 </Button>
               </div>
             </CardContent>

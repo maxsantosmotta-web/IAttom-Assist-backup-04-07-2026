@@ -181,6 +181,11 @@ export function Facebook() {
     );
   };
 
+  const handleCriarAnuncio = () => {
+    sessionStorage.setItem("ad_platform_context", JSON.stringify({ platform: "facebook" }));
+    window.location.href = `${BASE}/dashboard/projects`;
+  };
+
   const isConnected = pages.length > 0;
   const fbEvents = events.filter(e => e.platform !== "instagram");
   const primaryPage = pages[0];
@@ -384,6 +389,15 @@ export function Facebook() {
                 >
                   <ExternalLink className="w-3 h-3 mr-1.5" />
                   Criar Conteúdo
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCriarAnuncio}
+                  className="w-full border-primary/30 text-primary hover:bg-primary/10 h-8 text-xs"
+                >
+                  <Megaphone className="w-3 h-3 mr-1.5" />
+                  Criar anúncio
                 </Button>
               </div>
             </CardContent>

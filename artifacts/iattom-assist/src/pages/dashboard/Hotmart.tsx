@@ -1,14 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Flame, X, Info, AlertCircle,
   Megaphone, ClipboardList, Link2,
   CheckCircle2, BarChart2, Package, TrendingUp,
+  Loader2, LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+interface HotmartStatus {
+  connected?: boolean;
+  isActive?: boolean;
+  [key: string]: unknown;
+}
 
 function InformativeModal({
   title,
@@ -65,11 +73,17 @@ function InformativeModal({
 }
 
 export function Hotmart() {
+  const { toast } = useToast();
+
   const [modal, setModal] = useState<{
     title: string;
     description: string;
     action?: { label: string; onClick: () => void };
   } | null>(null);
+
+  const [isConnected, setIsConnected] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const showInfo = (
     title: string,
@@ -77,11 +91,46 @@ export function Hotmart() {
     action?: { label: string; onClick: () => void },
   ) => setModal({ title, description, action });
 
+  const loadStatus = useCallback(async () => {
+    setStatusLoading(true);
+    try {
+      const res = await fetch(`${BASE}/api/hotmart/user/integration-status`, { credentials: "include" });
+      if (!res.ok) { setIsConnected(false); return; }
+      const data = (await res.json()) as HotmartStatus;
+      setIsConnected(!!(data.connected || data.isActive));
+    } catch {
+      setIsConnected(false);
+    } finally {
+      setStatusLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadStatus();
+  }, [loadStatus]);
+
   const handleConnect = () => {
     showInfo(
       "Conectar Hotmart",
       "A conexão com Hotmart estará disponível em breve. Após ativar, você poderá acessar produtos, campanhas e vendas diretamente aqui.",
     );
+  };
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      const res = await fetch(`${BASE}/api/hotmart/user/disconnect`, { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error("Falha ao desconectar.");
+      setIsConnected(false);
+      toast({ description: "Conta Hotmart desconectada." });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        description: err instanceof Error ? err.message : "Falha ao desconectar.",
+      });
+    } finally {
+      setDisconnecting(false);
+    }
   };
 
   const handleAnalytics = () => {
@@ -99,6 +148,11 @@ export function Hotmart() {
   const handleCriarConteudo = () => {
     sessionStorage.setItem("content_platform_context", JSON.stringify({ platform: "hotmart" }));
     window.location.href = `${BASE}/dashboard/create-content`;
+  };
+
+  const handleCriarAnuncio = () => {
+    sessionStorage.setItem("ad_platform_context", JSON.stringify({ platform: "hotmart" }));
+    window.location.href = `${BASE}/dashboard/projects`;
   };
 
   return (
@@ -126,12 +180,21 @@ export function Hotmart() {
             </div>
           </div>
           <Button
-            onClick={handleConnect}
-            className="bg-orange-500 hover:bg-orange-400 text-white font-semibold"
+            onClick={isConnected ? undefined : handleConnect}
+            disabled={isConnected || statusLoading}
+            className={
+              isConnected
+                ? "bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 cursor-default font-semibold"
+                : "bg-orange-500 hover:bg-orange-400 text-white font-semibold"
+            }
             size="sm"
           >
-            <Link2 className="w-3.5 h-3.5 mr-2" />
-            Conectar Hotmart
+            {statusLoading
+              ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+              : isConnected
+                ? <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                : <Link2 className="w-3.5 h-3.5 mr-2" />}
+            {statusLoading ? "Verificando..." : isConnected ? "Conta conectada" : "Conectar Hotmart"}
           </Button>
         </div>
 
@@ -139,22 +202,47 @@ export function Hotmart() {
         <Card className="bg-[#111111] border-white/[0.06] mb-5">
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-3">
-              <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0" />
+              {statusLoading ? (
+                <Loader2 className="w-4 h-4 text-muted-foreground shrink-0 animate-spin" />
+              ) : isConnected ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0" />
+              )}
               <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Conta Hotmart não conectada</p>
+                <p className="text-sm text-muted-foreground">
+                  {statusLoading ? "Verificando conexão..." : isConnected ? "Conta Hotmart conectada" : "Conta Hotmart não conectada"}
+                </p>
                 <p className="text-xs text-muted-foreground/60 mt-0.5">
-                  Conecte sua conta para acessar produtos, campanhas e vendas.
+                  {isConnected
+                    ? "Sua conta está ativa e sincronizada."
+                    : "Conecte sua conta para acessar produtos, campanhas e vendas."}
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleConnect}
-                className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10 ml-auto shrink-0"
-              >
-                <Link2 className="w-3 h-3 mr-1.5" />
-                Conectar
-              </Button>
+              {!statusLoading && isConnected ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => void handleDisconnect()}
+                  disabled={disconnecting}
+                  className="text-red-400/70 hover:text-red-400 h-8 text-xs gap-1.5 ml-auto shrink-0"
+                >
+                  {disconnecting
+                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                    : <LogOut className="w-3 h-3" />}
+                  Desconectar
+                </Button>
+              ) : !statusLoading ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleConnect}
+                  className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10 ml-auto shrink-0"
+                >
+                  <Link2 className="w-3 h-3 mr-1.5" />
+                  Conectar
+                </Button>
+              ) : null}
             </div>
           </CardContent>
         </Card>
@@ -240,6 +328,15 @@ export function Hotmart() {
                   <ClipboardList className="w-3 h-3 mr-1.5" />
                   Criar conteúdo
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCriarAnuncio}
+                  className="w-full border-primary/30 text-primary hover:bg-primary/10 h-8 text-xs"
+                >
+                  <Megaphone className="w-3 h-3 mr-1.5" />
+                  Criar anúncio
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -260,43 +357,30 @@ export function Hotmart() {
             <CardContent className="space-y-3">
               <div className="space-y-2 py-2">
                 {[
-                  {
-                    icon: CheckCircle2,
-                    label: "Conexão",
-                    value: "Aguardando",
-                    ok: false,
-                  },
-                  {
-                    icon: Package,
-                    label: "Produtos conectados",
-                    value: "—",
-                    ok: false,
-                  },
-                  {
-                    icon: BarChart2,
-                    label: "Eventos recebidos",
-                    value: "—",
-                    ok: false,
-                  },
+                  { icon: CheckCircle2, label: "Conexão",             value: isConnected ? "Ativa" : "Aguardando", ok: isConnected },
+                  { icon: Package,      label: "Produtos conectados", value: "—",                                  ok: false },
+                  { icon: BarChart2,    label: "Eventos recebidos",   value: "—",                                  ok: false },
                 ].map(({ icon: Icon, label, value, ok }) => (
                   <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
                     <div className="flex items-center gap-2">
                       <Icon className={`w-3.5 h-3.5 ${ok ? "text-emerald-400" : "text-muted-foreground"}`} />
                       <span className="text-xs text-muted-foreground">{label}</span>
                     </div>
-                    <span className="text-xs font-medium text-white">{value}</span>
+                    <span className={`text-xs font-medium ${ok ? "text-emerald-400" : "text-white"}`}>{value}</span>
                   </div>
                 ))}
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleConnect}
-                className="w-full border-orange-500/30 text-orange-400 hover:bg-orange-500/10 h-8 text-xs"
-              >
-                <Link2 className="w-3 h-3 mr-1.5" />
-                Conectar conta
-              </Button>
+              {!isConnected && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleConnect}
+                  className="w-full border-orange-500/30 text-orange-400 hover:bg-orange-500/10 h-8 text-xs"
+                >
+                  <Link2 className="w-3 h-3 mr-1.5" />
+                  Conectar conta
+                </Button>
+              )}
             </CardContent>
           </Card>
 

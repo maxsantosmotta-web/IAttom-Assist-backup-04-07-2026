@@ -168,6 +168,11 @@ export function TikTok() {
     );
   };
 
+  const handleCriarAnuncio = () => {
+    sessionStorage.setItem("ad_platform_context", JSON.stringify({ platform: "tiktok" }));
+    window.location.href = `${BASE}/dashboard/projects`;
+  };
+
   const isConnected = status?.connected ?? false;
 
   return (
@@ -365,6 +370,15 @@ export function TikTok() {
                 >
                   <ExternalLink className="w-3 h-3 mr-1.5" />
                   Publicar vídeos
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCriarAnuncio}
+                  className="w-full border-primary/30 text-primary hover:bg-primary/10 h-8 text-xs"
+                >
+                  <Megaphone className="w-3 h-3 mr-1.5" />
+                  Criar anúncio
                 </Button>
               </div>
             </CardContent>
