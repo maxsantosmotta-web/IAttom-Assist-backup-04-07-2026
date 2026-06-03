@@ -156,7 +156,6 @@ export function AdminMercadoLivre() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">Monitoramento ativo</Badge>
             <Button size="sm" variant="outline"
               onClick={() => void handleRefreshAll()}
               disabled={refreshing || loadingUserConns}
