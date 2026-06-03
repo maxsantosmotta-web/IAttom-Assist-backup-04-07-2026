@@ -103,12 +103,25 @@ router.get("/hotmart/user/oauth-url", requireAuth, async (req, res): Promise<voi
 
 // ─── PUBLIC: OAuth callback — receives code from Hotmart ─────────────────────
 router.get("/hotmart/oauth/callback", async (req, res): Promise<void> => {
-  const code = req.query["code"] as string | undefined;
-  const stateRaw = req.query["state"] as string | undefined;
+  const code             = req.query["code"]              as string | undefined;
+  const stateRaw         = req.query["state"]             as string | undefined;
+  const hotmartError     = req.query["error"]             as string | undefined;
+  const hotmartErrorDesc = req.query["error_description"] as string | undefined;
+  const hotmartErrorUri  = req.query["error_uri"]         as string | undefined;
   const dashboard = "https://iattomassist.com.br/dashboard/hotmart";
 
   if (!code || !stateRaw) {
-    req.log.warn({ hasCode: !!code, hasState: !!stateRaw }, "hotmart: oauth callback — missing params");
+    req.log.warn(
+      {
+        hasCode: !!code,
+        hasState: !!stateRaw,
+        hotmartError:            hotmartError            ?? null,
+        hotmartErrorDescription: hotmartErrorDesc        ?? null,
+        hotmartErrorUri:         hotmartErrorUri         ?? null,
+        queryKeys:               Object.keys(req.query),
+      },
+      "hotmart: oauth callback — missing params (hotmart error response)",
+    );
     res.redirect(`${dashboard}?hotmart_error=missing_params`);
     return;
   }
