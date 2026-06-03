@@ -565,8 +565,9 @@ export function ProjectDetail() {
         }
       }
 
-      // Write project context to sessionStorage for the platform page to read
-      sessionStorage.removeItem("ad_platform_context");
+      // Write project context to sessionStorage for the platform page to read.
+      // NOTE: ad_platform_context is intentionally NOT removed here — keeping it
+      // allows the Continuar button to reappear if the user navigates back.
       sessionStorage.setItem("ad_project_context", JSON.stringify({
         projectId:     savedItem.id,
         projectTitle:  savedItem.title,

@@ -239,17 +239,42 @@ export function MercadoLivreCreateAd() {
         return;
       }
 
-      // 2. Build payload — send only fields that are filled
+      // 2. Fetch valid listing types and pick the best one
+      const ltUrl = `${BASE}/api/me/ml/listing-types${categoriaId ? `?category_id=${encodeURIComponent(categoriaId)}` : ""}`;
+      const ltRes  = await fetch(ltUrl, { credentials: "include" });
+      const ltData = await ltRes.json() as { ok?: boolean; listing_type_id?: string | null; error?: string };
+
+      if (!ltRes.ok) {
+        setModal({
+          title: "Erro ao consultar tipos de anuncio",
+          description: ltData.error ?? "Nao foi possivel obter os tipos de anuncio validos para esta categoria.",
+          variant: "error",
+        });
+        return;
+      }
+
+      const listingTypeId = ltData.listing_type_id;
+      if (!listingTypeId) {
+        setModal({
+          title: "Categoria sem tipo de anuncio",
+          description: "Nao foram encontrados tipos de anuncio validos para esta categoria. Tente selecionar uma categoria diferente.",
+          variant: "error",
+        });
+        return;
+      }
+
+      // 3. Build payload
       const payload: Record<string, unknown> = {
         title:              titulo.trim(),
         price:              Number(preco),
         available_quantity: Math.max(1, parseInt(quantidade, 10) || 1),
         condition:          condicao,
+        listing_type_id:    listingTypeId,
       };
       if (categoriaId) payload["category_id"] = categoriaId;
       if (descricao.trim()) payload["description"] = descricao.trim();
 
-      // 3. Call backend
+      // 4. Call backend
       const res = await fetch(`${BASE}/api/me/ml/create-listing`, {
         method:      "POST",
         credentials: "include",

@@ -230,7 +230,7 @@ router.post("/me/ml/create-listing", requireAuth, async (req, res): Promise<void
       price:              body.price               ?? 10,
       currency_id:        "BRL",
       available_quantity: qty,
-      listing_type_id:    body.listing_type_id     ?? "bronze",
+      listing_type_id:    body.listing_type_id     ?? "free",
       condition:          body.condition           ?? "new",
       // If caller supplies description, forward it to ML API
       ...(body.description && { description: body.description }),
@@ -464,6 +464,60 @@ router.get("/me/ml/category-suggest", requireAuth, async (req, res): Promise<voi
   } catch (err) {
     req.log.error({ err }, "me/ml/category-suggest: failed");
     res.status(500).json({ error: err instanceof Error ? err.message : "Falha ao consultar categorias" });
+  }
+});
+
+// ─── GET /me/ml/listing-types — valid listing types for a category ────────────
+// Usage: GET /me/ml/listing-types?category_id=<optional>
+// Returns: { ok, listing_type_id: string | null, available: [{ id, name }] }
+// The frontend uses this to pick the best valid listing_type_id before calling create-listing.
+router.get("/me/ml/listing-types", requireAuth, async (req, res): Promise<void> => {
+  const categoryId = (req.query["category_id"] as string | undefined)?.trim() ?? "";
+  const { clerkUserId } = req as AuthenticatedRequest;
+  const conn = await getUserConnection(clerkUserId);
+
+  const authHeader: Record<string, string> = conn
+    ? { Authorization: `Bearer ${conn.accessToken}` }
+    : {};
+
+  const url = categoryId
+    ? `https://api.mercadolibre.com/categories/${encodeURIComponent(categoryId)}/listing_types`
+    : `https://api.mercadolibre.com/sites/MLB/listing_types`;
+
+  try {
+    interface MLListingType {
+      id?:              string;
+      name?:            string;
+      listing_type_id?: string;
+    }
+
+    const mlRes = await fetch(url, { headers: authHeader });
+
+    if (!mlRes.ok) {
+      req.log.warn({ status: mlRes.status, categoryId }, "me/ml/listing-types: ML returned error");
+      res.status(mlRes.status >= 400 && mlRes.status < 500 ? 422 : 502).json({
+        error: `ML API ${mlRes.status}`,
+      });
+      return;
+    }
+
+    const raw = await mlRes.json() as MLListingType[];
+    const available = Array.isArray(raw)
+      ? raw
+          .map((t) => ({ id: t.id ?? t.listing_type_id ?? "", name: t.name ?? t.id ?? "" }))
+          .filter((t) => !!t.id)
+      : [];
+
+    // Pick best type in priority order
+    const PRIORITY = ["gold_special", "gold_pro", "free"];
+    const ids = available.map((t) => t.id);
+    const best = PRIORITY.find((p) => ids.includes(p)) ?? available[0]?.id ?? null;
+
+    req.log.info({ categoryId, best, count: available.length }, "me/ml/listing-types: ok");
+    res.json({ ok: true, listing_type_id: best, available });
+  } catch (err) {
+    req.log.error({ err }, "me/ml/listing-types: failed");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Falha ao consultar tipos de anuncio" });
   }
 });
 
