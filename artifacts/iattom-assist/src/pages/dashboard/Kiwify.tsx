@@ -124,7 +124,12 @@ export function Kiwify() {
   };
 
   const handleCriarAnuncio = () => {
-    window.open("https://app.kiwify.com.br/", "_blank", "noopener,noreferrer");
+    sessionStorage.setItem("iattom_campaign_prefill", JSON.stringify({
+      product:  "",
+      goal:     "Criar anúncio para produto Kiwify",
+      platform: "kiwify",
+    }));
+    window.location.href = `${BASE}/dashboard/create-campaign`;
   };
 
   // ── Derived ──────────────────────────────────────────────────────────────────
