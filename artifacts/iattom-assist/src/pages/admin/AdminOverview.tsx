@@ -133,7 +133,7 @@ export function AdminOverview() {
 
       <motion.div
         variants={containerVariants} initial="hidden" animate="show"
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        className={`grid grid-cols-2 lg:grid-cols-4 gap-4 transition-opacity duration-150 ${isRefreshing && !statsLoading ? "opacity-50 pointer-events-none" : ""}`}
       >
         {statCards.map((card) => {
           const Icon = card.icon;
@@ -158,7 +158,7 @@ export function AdminOverview() {
         })}
       </motion.div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className={`grid lg:grid-cols-3 gap-6 transition-opacity duration-150 ${isRefreshing && !analyticsLoading ? "opacity-50 pointer-events-none" : ""}`}>
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}

@@ -155,7 +155,7 @@ export function DashboardHome() {
       </motion.div>
 
       {/* Stats */}
-      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className={`grid grid-cols-2 md:grid-cols-4 gap-3 transition-opacity duration-150 ${summaryFetching && !summaryLoading ? "opacity-50 pointer-events-none" : ""}`}>
         {statCards.map((stat) => (
           <motion.div key={stat.label} variants={itemVariants}>
             <StatCard {...stat} loading={summaryLoading} />

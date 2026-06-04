@@ -340,6 +340,9 @@ export function Billing() {
         </Button>
       </div>
 
+      {/* ── Content (dimmed during refetch) ────────────────────────────── */}
+      <div className={`space-y-8 transition-opacity duration-150 ${isBillingFetching && !isLoading ? "opacity-50 pointer-events-none" : ""}`}>
+
       {/* ── Current Plan Status ────────────────────────────────────────── */}
       {subLoading ? (
         <div className="rounded-xl border border-white/10 bg-[#111111] p-5 h-24 skeleton-shimmer" />
@@ -709,6 +712,7 @@ export function Billing() {
       </p>
 
       <PlanComparisonModal open={showComparison} onClose={() => setShowComparison(false)} highlightPlan="pro" />
+      </div>
     </div>
   );
 }

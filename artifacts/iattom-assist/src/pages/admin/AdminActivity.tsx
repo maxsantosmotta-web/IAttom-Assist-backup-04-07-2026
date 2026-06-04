@@ -78,7 +78,10 @@ export function AdminActivity() {
         </div>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }}
+        className={`transition-opacity duration-150 ${isFetching && !isLoading ? "opacity-50 pointer-events-none" : ""}`}
+      >
         <Card className="bg-[#111111] border-white/5 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

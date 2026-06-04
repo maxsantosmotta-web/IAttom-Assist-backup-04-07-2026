@@ -178,6 +178,7 @@ export function Projects() {
       </motion.div>
 
       {/* Lista */}
+      <div className={`transition-opacity duration-150 ${isRefreshing ? "opacity-50 pointer-events-none" : ""}`}>
       {filteredItems.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.38 }}
@@ -251,6 +252,7 @@ export function Projects() {
           })}
         </motion.div>
       )}
+      </div>
 
       {/* Confirm: enviar para lixeira global */}
       <Dialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}>

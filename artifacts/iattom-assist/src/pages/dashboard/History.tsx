@@ -98,6 +98,7 @@ export function History() {
         </div>
       </motion.div>
 
+      <div className={`transition-opacity duration-150 ${isFetching && !isLoading ? "opacity-50 pointer-events-none" : ""}`}>
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -159,6 +160,7 @@ export function History() {
           </div>
         </motion.div>
       )}
+      </div>
     </div>
   );
 }
