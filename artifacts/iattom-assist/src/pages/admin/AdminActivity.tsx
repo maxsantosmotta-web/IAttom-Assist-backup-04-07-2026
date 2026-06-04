@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useListAdminActivity } from "@workspace/api-client-react";
+import { translateAction, translateModule } from "@/lib/eventTranslations";
 
 const moduleColors: Record<string, string> = {
   campaign: "text-amber-400 bg-amber-400/10 border-amber-400/20",
@@ -108,11 +109,11 @@ export function AdminActivity() {
                         className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
                       >
                         <td className="px-5 py-3">
-                          <p className="text-white text-sm font-medium">{item.action}</p>
+                          <p className="text-white text-sm font-medium">{translateAction(item.action)}</p>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant="outline" className={`text-[10px] capitalize ${colorClass}`}>
-                            {item.module.replace("_", " ")}
+                          <Badge variant="outline" className={`text-[10px] ${colorClass}`}>
+                            {translateModule(item.module)}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">

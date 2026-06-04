@@ -8,6 +8,7 @@ import {
   Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { useGetAdminStats, useGetAdminAnalytics, useListAdminActivity } from "@workspace/api-client-react";
+import { translateAction, translateModule } from "@/lib/eventTranslations";
 
 const GOLD = "#C9A84C";
 const GOLD_LIGHT = "#E8C96A";
@@ -236,10 +237,10 @@ export function AdminOverview() {
                   return (
                     <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/5">
                       <Badge variant="outline" className={`text-[10px] shrink-0 ${colorClass}`}>
-                        {item.module.replace("_", " ")}
+                        {translateModule(item.module)}
                       </Badge>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white truncate">{item.action}</p>
+                        <p className="text-sm text-white truncate">{translateAction(item.action)}</p>
                         <p className="text-xs text-muted-foreground truncate">
                           {item.userEmail ?? "Usuário desconhecido"}{item.projectName ? ` · ${item.projectName}` : ""}
                         </p>
