@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, BarChart2, PieChart as PieIcon, Zap, Users, DollarSign, Activity, AlertTriangle, GitBranch } from "lucide-react";
+import { TrendingUp, BarChart2, PieChart as PieIcon, Zap, Users, DollarSign, Activity, AlertTriangle, GitBranch, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import { useGetAdminAnalytics } from "@workspace/api-client-react";
 import { useAuth } from "@clerk/react";
+import { Button } from "@/components/ui/button";
 
 const GOLD = "#C9A84C";
 const PURPLE = "#a78bfa";
@@ -120,10 +121,11 @@ function StatTile({ label, value, sub, icon: Icon, color }: { label: string; val
 }
 
 export function AdminAnalytics() {
-  const { data: analytics, isLoading } = useGetAdminAnalytics();
+  const { data: analytics, isLoading, refetch: refetchAnalytics } = useGetAdminAnalytics();
   const { getToken } = useAuth();
   const [growthStats, setGrowthStats] = useState<GrowthStats | null>(null);
   const [growthLoading, setGrowthLoading] = useState(true);
+  const [growthTick, setGrowthTick] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -137,7 +139,7 @@ export function AdminAnalytics() {
         setGrowthLoading(false);
       }
     })();
-  }, []);
+  }, [growthTick, getToken]);
 
   const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({
     ...f,
@@ -172,8 +174,16 @@ export function AdminAnalytics() {
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <h2 className="text-2xl font-bold text-white mb-1">Análises</h2>
-        <p className="text-muted-foreground text-sm">Crescimento, receita, ativação e análise de cancelamentos.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Análises</h2>
+            <p className="text-muted-foreground text-sm">Crescimento, receita, ativação e análise de cancelamentos.</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => { void refetchAnalytics(); setGrowthTick((t) => t + 1); }} disabled={isLoading || growthLoading} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+            <RefreshCw className={`w-3.5 h-3.5 ${(isLoading || growthLoading) ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+        </div>
       </motion.div>
 
       {/* Revenue & Growth KPIs */}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  BookMarked, Copy, Trash2, Plus, Search, Check, X,
+  BookMarked, Copy, Trash2, Plus, Search, Check, X, RefreshCw,
   Sparkles, FileText, Megaphone, CheckCircle, Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -117,13 +117,25 @@ export function SavedPrompts() {
           <h2 className="text-2xl font-black tracking-tight text-white">Prompts Salvos</h2>
           <p className="text-sm text-zinc-500">Sua biblioteca pessoal de prompts em todos os módulos.</p>
         </div>
-        <Button
-          onClick={() => setCreating(true)}
-          size="sm"
-          className="bg-primary text-black hover:bg-primary/90 font-bold text-xs shrink-0 h-8"
-        >
-          <Plus className="w-3.5 h-3.5 mr-1.5" /> Novo Prompt
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void fetchPrompts()}
+            disabled={loading}
+            className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 h-8"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+          <Button
+            onClick={() => setCreating(true)}
+            size="sm"
+            className="bg-primary text-black hover:bg-primary/90 font-bold text-xs h-8"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" /> Novo Prompt
+          </Button>
+        </div>
       </motion.div>
 
       {/* Create Form */}

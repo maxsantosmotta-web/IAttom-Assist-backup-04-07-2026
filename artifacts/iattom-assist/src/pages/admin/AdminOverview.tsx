@@ -9,6 +9,8 @@ import {
 } from "recharts";
 import { useGetAdminStats, useGetAdminAnalytics, useListAdminActivity } from "@workspace/api-client-react";
 import { translateAction, translateModule } from "@/lib/eventTranslations";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Loader2 } from "lucide-react";
 
 const GOLD = "#C9A84C";
 const GOLD_LIGHT = "#E8C96A";
@@ -56,9 +58,11 @@ const itemVariants = {
 };
 
 export function AdminOverview() {
-  const { data: stats, isLoading: statsLoading } = useGetAdminStats();
-  const { data: analytics, isLoading: analyticsLoading } = useGetAdminAnalytics();
-  const { data: activity, isLoading: activityLoading } = useListAdminActivity({ limit: 6 });
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useGetAdminStats();
+  const { data: analytics, isLoading: analyticsLoading, refetch: refetchAnalytics } = useGetAdminAnalytics();
+  const { data: activity, isLoading: activityLoading, refetch: refetchActivity } = useListAdminActivity({ limit: 6 });
+  const isRefreshing = statsLoading || analyticsLoading || activityLoading;
+  const handleRefresh = () => { void refetchStats(); void refetchAnalytics(); void refetchActivity(); };
 
   const mrr = ((stats?.planBreakdown.pro ?? 0) * 79) + ((stats?.planBreakdown.business ?? 0) * 199) + ((stats?.planBreakdown.agency ?? 0) * 499);
 
@@ -107,9 +111,17 @@ export function AdminOverview() {
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Painel Administrativo</p>
-        <h2 className="text-2xl font-bold text-white mb-1">Visão Geral da Plataforma</h2>
-        <p className="text-muted-foreground text-sm">Monitoramento em tempo real da plataforma, usuários e assinaturas.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Painel Administrativo</p>
+            <h2 className="text-2xl font-bold text-white mb-1">Visão Geral da Plataforma</h2>
+            <p className="text-muted-foreground text-sm">Monitoramento em tempo real da plataforma, usuários e assinaturas.</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={handleRefresh} disabled={isRefreshing} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+        </div>
       </motion.div>
 
       <motion.div

@@ -4,9 +4,10 @@ import {
   Search, CheckCircle, Megaphone, FileText, Sparkles, Video,
   ArrowRight, TrendingUp, Layers, Zap, Clock, FolderOpen,
   Trophy, BarChart2, BookMarked,
-  Award,
+  Award, RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useGetDashboardSummary,
@@ -79,7 +80,7 @@ const ACHIEVEMENTS = [
 ];
 
 export function DashboardHome() {
-  const { data: summary, isLoading: summaryLoading } = useGetDashboardSummary();
+  const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useGetDashboardSummary();
   const { data: historyData } = useListHistory(
     { limit: 10 },
     { query: { queryKey: getListHistoryQueryKey({ limit: 10 }), retry: false, staleTime: 60_000 } },
@@ -143,6 +144,10 @@ export function DashboardHome() {
             <Link href="/dashboard/billing" className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors">
               Gerenciar plano
             </Link>
+            <button onClick={() => void refetchSummary()} disabled={summaryLoading} className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors flex items-center gap-1">
+              <RefreshCw className={`w-3 h-3 ${summaryLoading ? "animate-spin" : ""}`} />
+              Atualizar
+            </button>
           </div>
         )}
       </motion.div>

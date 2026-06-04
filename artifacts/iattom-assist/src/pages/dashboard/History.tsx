@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { Clock, Search, Megaphone, FileText, Sparkles, Video, CheckCircle, FolderOpen } from "lucide-react";
+import { Clock, Search, Megaphone, FileText, Sparkles, Video, CheckCircle, FolderOpen, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { useListHistory, getListHistoryQueryKey } from "@workspace/api-client-react";
 import { translateAction } from "@/lib/eventTranslations";
+import { Button } from "@/components/ui/button";
 
 const moduleIcons: Record<string, React.ElementType> = {
   campaign: Megaphone,
@@ -56,7 +57,7 @@ const itemVariants = {
 };
 
 export function History() {
-  const { data: history, isLoading } = useListHistory(
+  const { data: history, isLoading, refetch } = useListHistory(
     { limit: 50 },
     { query: { queryKey: getListHistoryQueryKey({ limit: 50 }) } }
   );
@@ -71,9 +72,17 @@ export function History() {
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Registro de Atividades</p>
-        <h2 className="text-2xl font-bold text-white mb-1">Atividades</h2>
-        <p className="text-muted-foreground text-sm">Histórico completo de todas as ações realizadas no seu espaço de trabalho.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Registro de Atividades</p>
+            <h2 className="text-2xl font-bold text-white mb-1">Atividades</h2>
+            <p className="text-muted-foreground text-sm">Histórico completo de todas as ações realizadas no seu espaço de trabalho.</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => void refetch()} disabled={isLoading} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+        </div>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>

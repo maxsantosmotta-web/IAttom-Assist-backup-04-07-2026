@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
-import { Zap, TrendingUp } from "lucide-react";
+import { Zap, TrendingUp, RefreshCw } from "lucide-react";
 import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,11 +60,11 @@ const planColors: Record<string, string> = {
 
 export function Credits() {
   const [, navigate] = useLocation();
-  const { data: balance, isLoading: balanceLoading } = useGetCreditsBalance({
+  const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useGetCreditsBalance({
     query: { queryKey: getGetCreditsBalanceQueryKey(), staleTime: 0 },
   });
 
-  const { data: txData, isLoading: txLoading } = useListCreditTransactions(
+  const { data: txData, isLoading: txLoading, refetch: refetchTx } = useListCreditTransactions(
     {},
     { query: { queryKey: getListCreditTransactionsQueryKey() } },
   );
@@ -84,11 +85,19 @@ export function Credits() {
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Créditos e Uso</p>
-        <h2 className="text-2xl font-bold text-white mb-1">Créditos</h2>
-        <p className="text-muted-foreground text-sm">
-          Acompanhe seu saldo e histórico de uso dos créditos.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Créditos e Uso</p>
+            <h2 className="text-2xl font-bold text-white mb-1">Créditos</h2>
+            <p className="text-muted-foreground text-sm">
+              Acompanhe seu saldo e histórico de uso dos créditos.
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => { void refetchBalance(); void refetchTx(); }} disabled={balanceLoading || txLoading} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+            <RefreshCw className={`w-3.5 h-3.5 ${(balanceLoading || txLoading) ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+        </div>
       </motion.div>
 
       <motion.div

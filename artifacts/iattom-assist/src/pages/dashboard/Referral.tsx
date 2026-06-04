@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Gift, Copy, Check, Users, Zap, ArrowRight, ExternalLink, AlertCircle } from "lucide-react";
+import { Gift, Copy, Check, Users, Zap, ArrowRight, ExternalLink, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,7 @@ export function Referral() {
   const { getToken } = useAuth();
   const [data, setData] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshTick, setRefreshTick] = useState(0);
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [applyCode, setApplyCode] = useState("");
@@ -46,7 +47,7 @@ export function Referral() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [refreshTick, getToken]);
 
   const copyLink = async () => {
     if (!data) return;
@@ -98,14 +99,22 @@ export function Referral() {
   return (
     <div className="space-y-8 max-w-4xl">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-        <div className="flex items-center gap-2 mb-1">
-          <Gift className="w-4 h-4 text-primary" />
-          <p className="text-xs text-primary uppercase tracking-widest font-semibold">Indicações</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Gift className="w-4 h-4 text-primary" />
+              <p className="text-xs text-primary uppercase tracking-widest font-semibold">Indicações</p>
+            </div>
+            <h1 className="text-2xl font-bold text-white">Indique e Ganhe</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Indique amigos e ambos ganham créditos quando eles entram.
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setRefreshTick((t) => t + 1)} disabled={loading} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
         </div>
-        <h1 className="text-2xl font-bold text-white">Indique e Ganhe</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Indique amigos e ambos ganham créditos quando eles entram.
-        </p>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

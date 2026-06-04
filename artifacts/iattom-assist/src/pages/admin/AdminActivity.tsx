@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Activity, Search, Clock, User } from "lucide-react";
+import { Activity, Search, Clock, User, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useListAdminActivity } from "@workspace/api-client-react";
+import { Button } from "@/components/ui/button";
 import { translateAction, translateModule } from "@/lib/eventTranslations";
 
 const moduleColors: Record<string, string> = {
@@ -28,7 +29,7 @@ function timeAgo(date: string | Date) {
 
 export function AdminActivity() {
   const [search, setSearch] = useState("");
-  const { data: activity, isLoading } = useListAdminActivity({ limit: 100 });
+  const { data: activity, isLoading, refetch } = useListAdminActivity({ limit: 100 });
 
   const filtered = (activity ?? []).filter((item) => {
     const q = search.toLowerCase();
@@ -43,9 +44,17 @@ export function AdminActivity() {
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Monitoramento</p>
-        <h2 className="text-2xl font-bold text-white mb-1">Atividade da Plataforma</h2>
-        <p className="text-muted-foreground text-sm">Todas as ações dos usuários em todos os espaços de trabalho — feed em tempo real.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Monitoramento</p>
+            <h2 className="text-2xl font-bold text-white mb-1">Atividade da Plataforma</h2>
+            <p className="text-muted-foreground text-sm">Todas as ações dos usuários em todos os espaços de trabalho — feed em tempo real.</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => void refetch()} disabled={isLoading} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+        </div>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>

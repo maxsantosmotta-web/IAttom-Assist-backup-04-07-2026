@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BarChart2, Zap, Clock, TrendingUp, Award, Search, CheckCircle, Megaphone, FileText, Sparkles, Video } from "lucide-react";
+import { BarChart2, Zap, Clock, TrendingUp, Award, Search, CheckCircle, Megaphone, FileText, Sparkles, Video, RefreshCw } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 interface AnalyticsData {
   activityByModule: { module: string; count: number }[];
@@ -42,6 +43,7 @@ export function Analytics() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -49,7 +51,7 @@ export function Analytics() {
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [days]);
+  }, [days, refreshTick]);
 
   const totalAiRuns = data?.activityByModule.reduce((s, m) => s + m.count, 0) ?? 0;
   const totalCredits = data?.creditsSpent.reduce((s, m) => s + m.spent, 0) ?? 0;
@@ -78,18 +80,24 @@ export function Analytics() {
           <h2 className="text-2xl font-black tracking-tight text-white">Seus Dados</h2>
           <p className="text-sm text-zinc-500">Uso e desempenho no seu espaço de trabalho</p>
         </div>
-        <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.07] rounded-xl p-1">
-          {DAYS_OPTIONS.map((d) => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all duration-150 ${
-                days === d ? "bg-primary/20 text-primary" : "text-zinc-600 hover:text-zinc-300"
-              }`}
-            >
-              {d}d
-            </button>
-          ))}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.07] rounded-xl p-1">
+            {DAYS_OPTIONS.map((d) => (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all duration-150 ${
+                  days === d ? "bg-primary/20 text-primary" : "text-zinc-600 hover:text-zinc-300"
+                }`}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setRefreshTick((t) => t + 1)} disabled={loading} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
         </div>
       </motion.div>
 
