@@ -18,7 +18,11 @@ router.get("/history", requireAuth, async (req, res): Promise<void> => {
     .orderBy(desc(historyTable.createdAt))
     .limit(limit);
 
-  res.json(ListHistoryResponse.parse(items));
+  res.json(ListHistoryResponse.parse(items.map((item) => ({
+    ...item,
+    projectId: item.projectId ?? undefined,
+    projectName: item.projectName ?? undefined,
+  }))));
 });
 
 export default router;

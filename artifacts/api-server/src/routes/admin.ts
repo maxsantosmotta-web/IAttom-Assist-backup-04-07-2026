@@ -154,9 +154,9 @@ router.get("/admin/activity", requireAdmin, async (req, res): Promise<void> => {
     id: item.id,
     action: item.action,
     module: item.module,
-    projectName: item.projectName,
-    userEmail: item.userEmail,
-    userName: item.userName,
+    projectName: item.projectName ?? undefined,
+    userEmail: item.userEmail ?? undefined,
+    userName: item.userName ?? undefined,
     createdAt: item.createdAt,
   })));
 });
