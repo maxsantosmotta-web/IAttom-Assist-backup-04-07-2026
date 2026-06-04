@@ -159,7 +159,7 @@ export function AdminHotmart() {
         <Card className="bg-white/3 border-white/8">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Usuários</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Usuários Conectados</p>
               <Users className="w-3.5 h-3.5 text-primary shrink-0" />
             </div>
             <p className="text-2xl font-bold text-white">{totalActive}</p>
@@ -170,7 +170,7 @@ export function AdminHotmart() {
         <Card className="bg-white/3 border-white/8">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Conexões</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Conexões Ativas</p>
               <UserCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             </div>
             <p className="text-2xl font-bold text-white">{totalActive}</p>
@@ -181,7 +181,7 @@ export function AdminHotmart() {
         <Card className="bg-white/3 border-white/8">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Expirando</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Tokens Expirando</p>
               <Timer className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             </div>
             <p className="text-2xl font-bold text-white">{expiringCount}</p>
@@ -192,7 +192,7 @@ export function AdminHotmart() {
         <Card className="bg-white/3 border-white/8">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Atualizado</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Última Atualização</p>
               <Clock className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
             </div>
             <p className="text-sm font-semibold text-white">
