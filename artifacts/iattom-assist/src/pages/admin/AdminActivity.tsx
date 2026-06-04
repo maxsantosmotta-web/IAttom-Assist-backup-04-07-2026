@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useListAdminActivity } from "@workspace/api-client-react";
+import { useListAdminActivity, getListAdminActivityQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { translateAction, translateModule, translateDemoName } from "@/lib/eventTranslations";
 
@@ -29,7 +29,10 @@ function timeAgo(date: string | Date) {
 
 export function AdminActivity() {
   const [search, setSearch] = useState("");
-  const { data: activity, isLoading, isFetching, refetch } = useListAdminActivity({ limit: 100 });
+  const { data: activity, isLoading, isFetching, refetch } = useListAdminActivity(
+    { limit: 100 },
+    { query: { queryKey: getListAdminActivityQueryKey({ limit: 100 }), staleTime: 0 } },
+  );
 
   const filtered = (activity ?? []).filter((item) => {
     const q = search.toLowerCase();

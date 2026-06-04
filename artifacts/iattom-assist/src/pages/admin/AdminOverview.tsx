@@ -7,7 +7,7 @@ import {
   AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-import { useGetAdminStats, useGetAdminAnalytics, useListAdminActivity } from "@workspace/api-client-react";
+import { useGetAdminStats, useGetAdminAnalytics, useListAdminActivity, getGetAdminStatsQueryKey, getGetAdminAnalyticsQueryKey, getListAdminActivityQueryKey } from "@workspace/api-client-react";
 import { translateAction, translateModule, translateDemoName } from "@/lib/eventTranslations";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Loader2 } from "lucide-react";
@@ -58,9 +58,16 @@ const itemVariants = {
 };
 
 export function AdminOverview() {
-  const { data: stats, isLoading: statsLoading, isFetching: fetchingStats, refetch: refetchStats } = useGetAdminStats();
-  const { data: analytics, isLoading: analyticsLoading, isFetching: fetchingAnalytics, refetch: refetchAnalytics } = useGetAdminAnalytics();
-  const { data: activity, isLoading: activityLoading, isFetching: fetchingActivity, refetch: refetchActivity } = useListAdminActivity({ limit: 6 });
+  const { data: stats, isLoading: statsLoading, isFetching: fetchingStats, refetch: refetchStats } = useGetAdminStats(
+    { query: { queryKey: getGetAdminStatsQueryKey(), staleTime: 0 } },
+  );
+  const { data: analytics, isLoading: analyticsLoading, isFetching: fetchingAnalytics, refetch: refetchAnalytics } = useGetAdminAnalytics(
+    { query: { queryKey: getGetAdminAnalyticsQueryKey(), staleTime: 0 } },
+  );
+  const { data: activity, isLoading: activityLoading, isFetching: fetchingActivity, refetch: refetchActivity } = useListAdminActivity(
+    { limit: 6 },
+    { query: { queryKey: getListAdminActivityQueryKey({ limit: 6 }), staleTime: 0 } },
+  );
   const isRefreshing = fetchingStats || fetchingAnalytics || fetchingActivity;
   const handleRefresh = () => { void refetchStats(); void refetchAnalytics(); void refetchActivity(); };
 

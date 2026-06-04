@@ -59,7 +59,7 @@ const itemVariants = {
 export function History() {
   const { data: history, isLoading, isFetching, refetch } = useListHistory(
     { limit: 50 },
-    { query: { queryKey: getListHistoryQueryKey({ limit: 50 }) } }
+    { query: { queryKey: getListHistoryQueryKey({ limit: 50 }), staleTime: 0 } },
   );
   const [search, setSearch] = useState("");
 

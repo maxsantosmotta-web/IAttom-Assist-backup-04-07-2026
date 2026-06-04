@@ -83,7 +83,7 @@ export function DashboardHome() {
   const { data: summary, isLoading: summaryLoading, isFetching: summaryFetching, refetch: refetchSummary } = useGetDashboardSummary();
   const { data: historyData } = useListHistory(
     { limit: 10 },
-    { query: { queryKey: getListHistoryQueryKey({ limit: 10 }), retry: false, staleTime: 60_000 } },
+    { query: { queryKey: getListHistoryQueryKey({ limit: 10 }), retry: false, staleTime: 0 } },
   );
   const { user, isLoaded } = useUser();
   const { planName, credits, balance } = useUserAccess();

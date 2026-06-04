@@ -239,10 +239,10 @@ export function Billing() {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
   const { data: plans = [], isLoading: plansLoading, isFetching: fetchingPlans, refetch: refetchPlans } = useGetStripePlans({
-    query: { queryKey: getGetStripePlansQueryKey(), retry: false, staleTime: 60_000 },
+    query: { queryKey: getGetStripePlansQueryKey(), retry: false, staleTime: 0 },
   });
   const { data: subscription, isLoading: subLoading, isFetching: fetchingSub, refetch: refetchSub } = useGetStripeSubscription({
-    query: { queryKey: getGetStripeSubscriptionQueryKey(), retry: false, staleTime: 30_000 },
+    query: { queryKey: getGetStripeSubscriptionQueryKey(), retry: false, staleTime: 0 },
   });
   const { data: me, isFetching: fetchingMe, refetch: refetchMe } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 0 } });
   const { data: creditsData, isFetching: fetchingCredits, refetch: refetchCredits } = useGetCreditsBalance({
