@@ -17,6 +17,7 @@ export type HelpIntent =
   | "COMPARE_OPTIONS"
   | "GROW_BUSINESS"
   | "PLATFORM_USAGE"
+  | "INTEGRATION_PURPOSE"
   | "UNKNOWN";
 
 interface IntentSignals {
@@ -34,6 +35,7 @@ interface IntentSignals {
  */
 const INTENT_PRIORITY: HelpIntent[] = [
   "COMPARE_OPTIONS",
+  "INTEGRATION_PURPOSE",   // above DIGITAL/PHYSICAL so "para que serve hotmart" wins correctly
   "START_FROM_ZERO",
   "MONETIZE_KNOWLEDGE",
   "DIGITAL_PRODUCT",
@@ -62,6 +64,49 @@ const SIGNALS: Record<Exclude<HelpIntent, "UNKNOWN">, IntentSignals> = {
       "qual vale mais", "vale mais",
     ],
     words: ["versus", " vs "],
+    threshold: 2,
+  },
+
+  // ─── INTEGRATION_PURPOSE ─────────────────────────────────────────────────
+  // User wants to understand WHY an integration exists — its purpose, benefit,
+  // and how it helps them in practice. NOT a technical configuration question.
+  INTEGRATION_PURPOSE: {
+    phrases: [
+      // Finalidade/utilidade
+      "para que serve", "pra que serve",
+      "qual a finalidade", "qual é a finalidade",
+      "qual a utilidade", "qual é a utilidade",
+      "qual o propósito", "qual é o propósito",
+      // Por que conectar / por que existe
+      "por que conectar", "porque conectar",
+      "pra que conectar", "para que conectar",
+      "por que existe", "pra que existe", "para que existe",
+      "por que essa plataforma", "porque essa plataforma",
+      "por que tem essa", "porque tem essa",
+      "para que é essa", "pra que é essa",
+      // O que ganho / o que muda
+      "o que eu ganho", "o que ganho com",
+      "o que muda se eu conectar", "o que muda se conectar",
+      "o que muda com",
+      // Vantagem/benefício
+      "qual a vantagem dessa", "qual a vantagem de",
+      "qual o benefício", "qual é o benefício",
+      "quais os benefícios", "quais são os benefícios",
+      "vantagem de ter", "vantagem de conectar",
+      "que vantagem",
+      // Como me ajuda
+      "como me ajuda", "como essa plataforma me ajuda",
+      "como o iattom usa", "como o iattom ajuda",
+      // "dentro do iattom" (highly specific — signals a purpose question)
+      "dentro do iattom", "dentro da plataforma",
+      "funciona dentro", "funciona no iattom",
+      "no iattom serve", "no iattom funciona",
+      "serve dentro", "serve no iattom",
+      // "pra que serve essa conexão"
+      "pra que serve essa", "para que serve essa",
+      "o que faz dentro", "o que serve",
+    ],
+    words: ["finalidade", "utilidade", "benefício"],
     threshold: 2,
   },
 

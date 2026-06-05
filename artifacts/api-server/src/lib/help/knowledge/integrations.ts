@@ -1,5 +1,15 @@
 import type { KnowledgeEntry } from "./index.js";
 
+/**
+ * Integration knowledge entries.
+ *
+ * Content rule: explain PURPOSE and BENEFIT for the end-user first.
+ * Technical details (OAuth, webhook, roadmap, route) are omitted here —
+ * the INTEGRATION_PURPOSE system-prompt overlay handles the filter when
+ * the user asks about purpose. If the user explicitly asks about technical
+ * configuration, the general system prompt governs that response.
+ */
+
 export const integrations: KnowledgeEntry[] = [
   {
     id: "integration-mercado-livre",
@@ -7,31 +17,28 @@ export const integrations: KnowledgeEntry[] = [
     topic: "Mercado Livre",
     keywords: [
       "mercado livre",
-      "mercado livre integração",
       "meli",
       "ml integração",
       "vender no mercado livre",
       "integração mercado livre",
-      "plataforma mercado livre",
       "marketplace mercado livre",
       "para que serve mercado livre",
       "finalidade mercado livre",
-      "como funciona mercado livre iattom",
+      "como funciona mercado livre",
+      "o que o mercado livre faz",
+      "mercado livre dentro do iattom",
+      "anunciar no mercado livre",
     ],
     status: "active",
-    content: `Conectar o Mercado Livre ao IAttom serve para encurtar o caminho entre o produto e o anúncio publicado.
-Com o contexto da sua loja — nome do produto, categoria, público-alvo — o IAttom gera os materiais prontos para você usar sem trabalho manual repetitivo.
+    content: `O Mercado Livre dentro do IAttom existe para encurtar o caminho entre ter um produto e publicar um anúncio estruturado no marketplace.
 
-Principais usos práticos:
-- Criar descrições de produto otimizadas para conversão.
-- Criar anúncios e textos de venda para os produtos do Mercado Livre.
-- Criar campanhas de divulgação e conteúdo para atrair compradores.
-- Gerar imagens criativas e materiais de marketing com o contexto do produto.
+A ideia é simples: você já tem um produto ou uma ideia de produto. O IAttom usa o contexto do Mercado Livre — tipo de produto, público-alvo, plataforma — para ajudar você a sair da fase de preparação mais rápido e com menos retrabalho.
 
-A vantagem de ter a integração conectada: os módulos de Criar Campanha, Criar Conteúdo e Criar Imagem recebem automaticamente o contexto do Mercado Livre — produto, plataforma, público — para que a IA gere resultados mais precisos e prontos para usar.
+Onde se encaixa no seu processo:
+Escolher produto → preparar a oferta e o anúncio → publicar no Mercado Livre.
 
-[Configuração técnica, apenas se você precisar]: webhook disponível para cópia e configuração. OAuth real (login direto com sua conta Mercado Livre) está no roadmap e ainda não está disponível.`,
-    relatedTopics: ["create-campaign", "roadmap-oauth"],
+O IAttom atua principalmente na etapa de preparação: estrutura do anúncio, argumentos de venda, descrição do produto e materiais de divulgação para atrair compradores no marketplace.`,
+    relatedTopics: ["create-campaign", "journey-physical-product"],
   },
   {
     id: "integration-shopee",
@@ -40,29 +47,25 @@ A vantagem de ter a integração conectada: os módulos de Criar Campanha, Criar
     keywords: [
       "shopee",
       "integração shopee",
-      "plataforma shopee",
       "loja shopee",
       "vender na shopee",
-      "shopee integração",
-      "shopee loja",
       "para que serve shopee",
       "finalidade shopee",
-      "como funciona shopee iattom",
+      "como funciona shopee",
+      "o que a shopee faz",
+      "shopee dentro do iattom",
+      "anunciar na shopee",
     ],
     status: "active",
-    content: `Conectar a Shopee ao IAttom serve para encurtar o caminho entre o produto e o anúncio publicado.
-Com o contexto da sua loja — produto, nicho, público-alvo — o IAttom gera os materiais de venda prontos para usar sem repetição manual.
+    content: `A Shopee dentro do IAttom existe para encurtar o caminho entre ter um produto e publicar um anúncio estruturado no marketplace.
 
-Principais usos práticos:
-- Criar descrições de produto e anúncios otimizados para a Shopee.
-- Criar campanhas de divulgação e conteúdo para atrair compradores.
-- Gerar imagens criativas e materiais de marketing com o contexto do produto.
-- Criar textos de oferta, comparativo de preços e argumentos de venda.
+Você já tem um produto ou ideia de produto. O IAttom usa o contexto da Shopee — tipo de produto, público, plataforma — para ajudar você a preparar o anúncio, a descrição e o material de venda mais rápido.
 
-A vantagem de ter a integração conectada: os módulos de Criar Campanha, Criar Conteúdo e Criar Imagem recebem o contexto da Shopee automaticamente — produto, plataforma, público — para resultados mais precisos e prontos para publicar.
+Onde se encaixa no seu processo:
+Escolher produto → preparar a oferta e o anúncio → publicar na Shopee.
 
-[Configuração técnica, apenas se você precisar]: webhook disponível para cópia e configuração. OAuth real (login direto com sua conta Shopee) está no roadmap e ainda não está disponível.`,
-    relatedTopics: ["create-campaign", "roadmap-oauth"],
+O IAttom atua na etapa de preparação: textos de venda, descrição do produto, argumentos de conversão e materiais para atrair compradores no marketplace.`,
+    relatedTopics: ["create-campaign", "journey-physical-product"],
   },
   {
     id: "integration-tiktok",
@@ -72,29 +75,26 @@ A vantagem de ter a integração conectada: os módulos de Criar Campanha, Criar
       "tiktok",
       "tik tok",
       "integração tiktok",
-      "plataforma tiktok",
       "tiktok shop",
       "vídeo tiktok",
       "vender no tiktok",
-      "tiktok integração",
       "para que serve tiktok",
       "finalidade tiktok",
-      "como funciona tiktok iattom",
+      "como funciona tiktok",
+      "o que o tiktok faz",
+      "tiktok dentro do iattom",
+      "conteúdo tiktok",
     ],
     status: "active",
-    content: `Conectar o TikTok ao IAttom serve para acelerar a criação de conteúdo, scripts de vídeo e campanhas para atrair compradores.
-Com o contexto da sua conta — produto, audiência, objetivo — o IAttom gera os materiais criativos prontos para publicar.
+    content: `O TikTok dentro do IAttom existe para acelerar a criação de conteúdos e anúncios voltados para atrair compradores.
 
-Principais usos práticos:
-- Criar scripts de vídeo para o TikTok (orgânico e TikTok Ads).
-- Criar conteúdos de divulgação e copywriting para vídeos de venda.
-- Criar campanhas e criativos com o contexto da plataforma pré-preenchido.
-- Gerar ideias de conteúdo para atrair audiência e compradores.
+Em vez de começar do zero a cada vídeo ou campanha, você usa o IAttom com o contexto do TikTok — produto, audiência, objetivo — para preparar scripts, textos e materiais criativos com mais velocidade.
 
-A vantagem de ter a integração conectada: os módulos de Scripts de Vídeo e Criar Campanha recebem o contexto do TikTok automaticamente — produto, plataforma, público — para resultados mais específicos e aplicáveis.
+Onde se encaixa no seu processo:
+Definir produto → preparar conteúdo e anúncio → divulgar no TikTok para atrair compradores.
 
-[Configuração técnica, apenas se você precisar]: webhook disponível para cópia e configuração. OAuth real está no roadmap e ainda não está disponível.`,
-    relatedTopics: ["create-campaign", "video-scripts", "roadmap-oauth"],
+O IAttom atua na etapa de preparação: scripts de vídeo, textos de divulgação, copy de campanha e ideias de conteúdo orientadas a gerar venda.`,
+    relatedTopics: ["create-campaign", "video-scripts"],
   },
   {
     id: "integration-hotmart",
@@ -103,30 +103,26 @@ A vantagem de ter a integração conectada: os módulos de Scripts de Vídeo e C
     keywords: [
       "hotmart",
       "integração hotmart",
-      "plataforma hotmart",
       "produto digital hotmart",
       "curso hotmart",
       "infoproduto hotmart",
       "vender no hotmart",
-      "hotmart integração",
       "para que serve hotmart",
       "finalidade hotmart",
-      "como funciona hotmart iattom",
+      "como funciona hotmart",
+      "o que a hotmart faz",
+      "hotmart dentro do iattom",
     ],
     status: "active",
-    content: `Conectar a Hotmart ao IAttom serve para acelerar a criação de materiais de venda para produtos digitais.
-Com o contexto do seu produto — nome, oferta, público, plataforma — o IAttom gera copywriting, campanhas e conteúdo de lançamento prontos para usar.
+    content: `A Hotmart dentro do IAttom existe para encurtar o caminho entre criar um produto digital e preparar esse produto para venda.
 
-Principais usos práticos:
-- Criar páginas de vendas, textos de oferta e argumentos de conversão para produtos Hotmart.
-- Criar e-mails de lançamento, sequências de nutrição e campanhas de divulgação.
-- Criar conteúdo para redes sociais com foco em vender produtos digitais.
-- Gerar criativos de anúncio com o contexto do produto já carregado.
+O IAttom não publica diretamente na Hotmart — ele ajuda você a organizar a oferta, o conteúdo e os materiais que você vai levar para a plataforma. A ideia é chegar na Hotmart com mais pronto, menos retrabalho e uma estrutura de venda mais clara.
 
-A vantagem de ter a integração conectada: os módulos de Criar Campanha e Criar Conteúdo recebem o contexto da Hotmart automaticamente — produto, nicho, público — reduzindo trabalho manual repetitivo.
+Onde se encaixa no seu processo:
+Criar produto digital → preparar oferta, copy e materiais de venda → levar para a Hotmart.
 
-[Configuração técnica, apenas se você precisar]: webhook disponível para cópia e configuração. OAuth real está no roadmap e ainda não está disponível.`,
-    relatedTopics: ["create-campaign", "roadmap-oauth"],
+O IAttom atua na etapa de preparação: estrutura da oferta, texto de venda, materiais de lançamento e conteúdo para divulgar o produto digital.`,
+    relatedTopics: ["create-campaign", "journey-digital-product"],
   },
   {
     id: "integration-kiwify",
@@ -135,29 +131,24 @@ A vantagem de ter a integração conectada: os módulos de Criar Campanha e Cria
     keywords: [
       "kiwify",
       "integração kiwify",
-      "plataforma kiwify",
       "produto digital kiwify",
       "vender no kiwify",
-      "kiwify integração",
-      "kiwify loja",
       "para que serve kiwify",
       "finalidade kiwify",
-      "como funciona kiwify iattom",
+      "como funciona kiwify",
+      "o que a kiwify faz",
+      "kiwify dentro do iattom",
     ],
     status: "active",
-    content: `Conectar a Kiwify ao IAttom serve para acelerar a criação de materiais de venda para produtos digitais.
-Com o contexto do seu produto — nome, oferta, público, plataforma — o IAttom gera copywriting, campanhas e conteúdo de lançamento prontos para usar.
+    content: `A Kiwify dentro do IAttom existe para encurtar o caminho entre criar um produto digital e preparar esse produto para venda.
 
-Principais usos práticos:
-- Criar páginas de vendas, textos de oferta e argumentos de conversão para produtos Kiwify.
-- Criar e-mails de lançamento, sequências de nutrição e campanhas de divulgação.
-- Criar conteúdo para redes sociais com foco em vender produtos digitais.
-- Gerar criativos de anúncio com o contexto do produto já carregado.
+O IAttom não publica diretamente na Kiwify — ele ajuda você a organizar a oferta, o conteúdo e os materiais que você vai levar para a plataforma. A ideia é chegar na Kiwify com mais pronto e uma estrutura de venda mais clara.
 
-A vantagem de ter a integração conectada: os módulos de Criar Campanha e Criar Conteúdo recebem o contexto da Kiwify automaticamente — produto, nicho, público — reduzindo trabalho manual repetitivo.
+Onde se encaixa no seu processo:
+Criar produto digital → preparar oferta, copy e materiais de venda → levar para a Kiwify.
 
-[Configuração técnica, apenas se você precisar]: webhook disponível para cópia e configuração. OAuth real está no roadmap e ainda não está disponível.`,
-    relatedTopics: ["create-campaign", "roadmap-oauth"],
+O IAttom atua na etapa de preparação: estrutura da oferta, texto de venda, materiais de lançamento e conteúdo para divulgar o produto digital.`,
+    relatedTopics: ["create-campaign", "journey-digital-product"],
   },
   {
     id: "integration-facebook",
@@ -168,29 +159,27 @@ A vantagem de ter a integração conectada: os módulos de Criar Campanha e Cria
       "fb",
       "meta",
       "integração facebook",
-      "plataforma facebook",
       "facebook ads",
       "facebook business",
       "anúncio facebook",
       "campanha facebook",
       "para que serve facebook",
       "finalidade facebook",
-      "como funciona facebook iattom",
+      "como funciona facebook",
+      "o que o facebook faz",
+      "facebook dentro do iattom",
+      "conectar facebook",
     ],
     status: "active",
-    content: `Conectar o Facebook ao IAttom serve para acelerar a criação de campanhas, anúncios e conteúdos para atrair compradores.
-Com o contexto da sua página ou campanha — produto, público, objetivo — o IAttom gera o criativo, o texto do anúncio e a campanha completa prontos para usar.
+    content: `O Facebook dentro do IAttom existe para acelerar a criação de campanhas, anúncios e conteúdos voltados para atrair compradores.
 
-Principais usos práticos:
-- Criar textos de anúncio e copy de conversão para Facebook Ads.
-- Criar campanhas completas com segmentação, argumentos de venda e criativos.
-- Criar conteúdos orgânicos para a página com foco em engajamento e atração.
-- Gerar imagens criativas e materiais de marketing com o contexto da campanha.
+Com o contexto da sua campanha ou produto — público-alvo, objetivo, plataforma — o IAttom ajuda você a preparar o texto do anúncio, o criativo e a estrutura da campanha com mais velocidade e menos retrabalho.
 
-A vantagem de ter a integração conectada: os módulos de Criar Campanha e Criar Imagem recebem o contexto do Facebook automaticamente — produto, público, plataforma — para resultados mais direcionados.
+Onde se encaixa no seu processo:
+Definir produto e público → preparar anúncio e campanha → divulgar no Facebook para atrair compradores.
 
-[Configuração técnica, apenas se você precisar]: OAuth real (login com conta Facebook Business) está no roadmap e ainda não está disponível.`,
-    relatedTopics: ["create-campaign", "roadmap-oauth"],
+O IAttom atua na etapa de preparação: copy de anúncio, estrutura de campanha, texto de oferta e materiais de apoio para Facebook e Facebook Ads.`,
+    relatedTopics: ["create-campaign"],
   },
   {
     id: "integration-instagram",
@@ -201,7 +190,6 @@ A vantagem de ter a integração conectada: os módulos de Criar Campanha e Cria
       "insta",
       "ig",
       "integração instagram",
-      "plataforma instagram",
       "reels",
       "stories",
       "feed instagram",
@@ -209,21 +197,20 @@ A vantagem de ter a integração conectada: os módulos de Criar Campanha e Cria
       "campanha instagram",
       "para que serve instagram",
       "finalidade instagram",
-      "como funciona instagram iattom",
+      "como funciona instagram",
+      "o que o instagram faz",
+      "instagram dentro do iattom",
+      "conectar instagram",
     ],
     status: "active",
-    content: `Conectar o Instagram ao IAttom serve para acelerar a criação de conteúdos, criativos e campanhas para engajamento e atração de compradores.
-Com o contexto do seu perfil — produto, nicho, público — o IAttom gera legendas, textos de stories, scripts de reels e materiais prontos para publicar.
+    content: `O Instagram dentro do IAttom existe para acelerar a criação de conteúdos e anúncios voltados para engajamento e atração de compradores.
 
-Principais usos práticos:
-- Criar legendas, textos de stories e roteiros de reels com foco em conversão.
-- Criar campanhas de divulgação e conteúdo de atração para o Instagram.
-- Gerar imagens criativas, criativos de anúncio e materiais de feed.
-- Criar conteúdo de lançamento de produto ou serviço com o contexto da plataforma.
+Com o contexto do seu perfil e produto — nicho, público, objetivo — o IAttom ajuda você a preparar legendas, textos de stories, roteiros de reels e materiais criativos com mais velocidade.
 
-A vantagem de ter a integração conectada: os módulos de Criar Campanha, Criar Conteúdo e Criar Imagem recebem o contexto do Instagram automaticamente — produto, nicho, público — para resultados mais específicos e prontos para publicar.
+Onde se encaixa no seu processo:
+Definir produto e conteúdo → preparar materiais de divulgação → publicar no Instagram para atrair compradores.
 
-[Configuração técnica, apenas se você precisar]: OAuth real está no roadmap e ainda não está disponível.`,
-    relatedTopics: ["create-campaign", "create-content", "roadmap-oauth"],
+O IAttom atua na etapa de preparação: legendas, textos de stories, roteiros de reels, copy de anúncio e conteúdo para atrair e converter compradores pelo Instagram.`,
+    relatedTopics: ["create-campaign", "create-content"],
   },
 ];

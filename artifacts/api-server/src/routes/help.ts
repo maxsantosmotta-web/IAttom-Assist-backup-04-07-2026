@@ -231,6 +231,34 @@ Histórico recente:
 ${recentHistory}`;
 }
 
+// ── INTEGRATION_PURPOSE prompt — benefit-first, zero technical jargon ────────
+function buildIntegrationPurposePrompt(context: string): string {
+  return `${SYSTEM_PROMPT}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INSTRUÇÃO ATIVA — FINALIDADE DE INTEGRAÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+O usuário está perguntando a FINALIDADE, o BENEFÍCIO ou o OBJETIVO de uma integração.
+
+RESPONDA explicando:
+- Por que essa integração existe dentro do IAttom.
+- Qual o benefício prático: o IAttom encurta o caminho entre ter uma ideia/produto e preparar o material para publicar, anunciar ou divulgar na plataforma externa.
+- Onde se encaixa no fluxo do usuário: encontrar produto → validar → preparar oferta/anúncio → publicar/divulgar.
+- Linguagem simples, orientada ao resultado. Sem jargão técnico.
+
+PROIBIDO NESTA RESPOSTA (só mencionar se o usuário perguntar diretamente sobre configuração):
+- OAuth, autenticação, login com conta externa, credenciais
+- Webhook, endpoint, callback, token, API
+- Roadmap, disponível em breve, ainda não disponível
+- Rota /dashboard/..., nome de módulo interno (Criar Campanha, Criar Conteúdo, Gerador Criativo)
+- Status técnico da integração, integração indisponível
+- Lista técnica de funcionalidades
+- Qualquer sigla ou framework inventado (MITS, MITs, MIT, etc.)
+
+CONTEXTO DO IATTOM ASSIST:
+${context}`;
+}
+
 function buildRefusalLoopOverridePrompt(history: HistoryMessage[]): string {
   const recentHistory = history
     .slice(-4)
@@ -279,7 +307,7 @@ router.post("/help/chat", requireAuth, async (req, res): Promise<void> => {
       .slice(-1)[0]?.content ?? "";
 
   // ── Retrieval ──────────────────────────────────────────────────────────────
-  let { context: relevantContext, outOfScope } = getRelevantContext(
+  let { context: relevantContext, outOfScope, intent } = getRelevantContext(
     message,
     conversationHistory
   );
@@ -311,6 +339,9 @@ router.post("/help/chat", requireAuth, async (req, res): Promise<void> => {
   } else if (isRefusalLoop) {
     // Correção 3C: explicit override — do NOT repeat the refusal
     systemWithContext = buildRefusalLoopOverridePrompt(conversationHistory);
+  } else if (intent === "INTEGRATION_PURPOSE" && !outOfScope && relevantContext) {
+    // Benefit-first response — technical details explicitly suppressed
+    systemWithContext = buildIntegrationPurposePrompt(relevantContext);
   } else if (outOfScope) {
     systemWithContext = OUT_OF_SCOPE_INSTRUCTION;
   } else if (relevantContext) {

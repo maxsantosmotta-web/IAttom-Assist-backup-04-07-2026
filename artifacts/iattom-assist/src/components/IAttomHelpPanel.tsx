@@ -21,7 +21,7 @@ function getGreeting(name: string): Message {
   };
 }
 
-type SyncStatus = "idle" | "syncing" | "done";
+type SyncStatus = "idle" | "syncing" | "done" | "error";
 
 interface IAttomHelpPanelProps {
   open: boolean;
@@ -44,6 +44,7 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
   const [input,         setInput]         = useState("");
   const [loading,       setLoading]       = useState(false);
   const [syncStatus,    setSyncStatus]    = useState<SyncStatus>("idle");
+  const [syncDoneLabel, setSyncDoneLabel] = useState("Atualizado agora");
   const [confirmClear,  setConfirmClear]  = useState(false);
 
   const messagesEndRef     = useRef<HTMLDivElement>(null);
@@ -76,13 +77,14 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
   }, []);
 
   // ── loadHistory — STABLE (empty deps, uses refs) ───────────────────────────
+  // Returns true on API success, false on network/server error.
   const loadHistory = useCallback(
-    (showGreetingIfEmpty: boolean, skipIfIdentical = false) => {
+    (showGreetingIfEmpty: boolean, skipIfIdentical = false): Promise<boolean> => {
       return fetch(`${BASE_URL}/api/help/history`, { credentials: "include" })
         .then((r) =>
           r.ok
             ? (r.json() as Promise<{ id: number; role: string; content: string }[]>)
-            : null
+            : Promise.reject(new Error(`HTTP ${r.status}`))
         )
         .then((data) => {
           if (data && data.length > 0) {
@@ -91,7 +93,7 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
               const isSame =
                 data.length === curr.length &&
                 data.every((item, i) => String(item.id) === curr[i]?.id);
-              if (isSame) return;
+              if (isSame) return true;
             }
             setMessages(
               data.map((m) => ({
@@ -103,9 +105,11 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
           } else if (showGreetingIfEmpty) {
             setMessages([getGreeting(firstNameRef.current)]);
           }
+          return true;
         })
         .catch(() => {
           if (showGreetingIfEmpty) setMessages([getGreeting(firstNameRef.current)]);
+          return false;
         });
     },
     []
@@ -135,18 +139,26 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
     el.style.height = Math.min(el.scrollHeight, 112) + "px";
   };
 
-  // ── Sincronizar — awaits pending save, then refreshes with clear feedback ──
+  // ── Sincronizar — awaits pending save, calls real API, shows real feedback ──
+  // "Sincronizando..." while request is in flight.
+  // "Atualizado às HH:mm" on success (real API response, not a fake timeout).
+  // "Erro ao sincronizar" if the GET /api/help/history call fails.
   const syncHistory = useCallback(async () => {
     if (syncStatus !== "idle" || loading || !historyLoaded) return;
     await pendingSaveRef.current;
     setSyncStatus("syncing");
-    try {
-      await loadHistory(false, true);
+    const success = await loadHistory(false, true);
+    if (success) {
+      const now = new Date();
+      const hhmm = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      setSyncDoneLabel(`Atualizado às ${hhmm}`);
       setSyncStatus("done");
       if (syncDoneTimerRef.current) clearTimeout(syncDoneTimerRef.current);
-      syncDoneTimerRef.current = setTimeout(() => setSyncStatus("idle"), 1600);
-    } catch {
-      setSyncStatus("idle");
+      syncDoneTimerRef.current = setTimeout(() => setSyncStatus("idle"), 2200);
+    } else {
+      setSyncStatus("error");
+      if (syncDoneTimerRef.current) clearTimeout(syncDoneTimerRef.current);
+      syncDoneTimerRef.current = setTimeout(() => setSyncStatus("idle"), 2500);
     }
   }, [syncStatus, loading, historyLoaded, loadHistory]);
 
@@ -281,12 +293,14 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
   // Subtitle shown below the panel title — shows sync status feedback
   const subtitleText =
     syncStatus === "syncing" ? "Sincronizando..." :
-    syncStatus === "done"    ? "Atualizado" :
+    syncStatus === "done"    ? syncDoneLabel :
+    syncStatus === "error"   ? "Erro ao sincronizar" :
     "Assistente IAttom Assist";
 
   const subtitleColor =
     syncStatus === "syncing" ? "text-zinc-400" :
     syncStatus === "done"    ? "text-primary/70" :
+    syncStatus === "error"   ? "text-red-400/80" :
     "text-zinc-600";
 
   return (

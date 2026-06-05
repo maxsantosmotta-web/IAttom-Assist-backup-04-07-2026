@@ -70,6 +70,9 @@ const INTENT_ENTRY_MAP: Partial<Record<HelpIntent, string[]>> = {
     "video-scripts",
   ],
   COMPARE_OPTIONS: [],
+  INTEGRATION_PURPOSE: [
+    "platform-overview", // IAttom context; specific integration arrives via keyword scoring
+  ],
   GROW_BUSINESS: [
     "journey-grow-business",
     "create-campaign",
@@ -148,6 +151,7 @@ function isDomainQuery(text: string): boolean {
 export interface RetrievalResult {
   context: string;
   outOfScope: boolean;
+  intent: HelpIntent;
 }
 
 /**
@@ -237,9 +241,10 @@ export function getRelevantContext(
       return {
         context: fallback.map(formatEntry).join("\n\n---\n\n"),
         outOfScope: false,
+        intent,
       };
     }
-    return { context: "", outOfScope: true };
+    return { context: "", outOfScope: true, intent };
   }
 
   // ── Layer 4: Related topic expansion ────────────────────────────────────
@@ -270,5 +275,6 @@ export function getRelevantContext(
   return {
     context: topEntries.map(formatEntry).join("\n\n---\n\n"),
     outOfScope: false,
+    intent,
   };
 }
