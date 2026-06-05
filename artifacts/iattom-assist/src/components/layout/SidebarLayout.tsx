@@ -5,7 +5,7 @@ import {
   LogOut, ChevronDown, ShieldCheck, Zap, CreditCard,
   Command, BarChart2, BookMarked, Gift, Trash2,
   ShoppingCart, ShoppingBag, Music2,
-  Flame, Layers, Instagram, Facebook,
+  Flame, Layers, Instagram, Facebook, HelpCircle,
 } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { useState, useEffect, useCallback } from "react";
@@ -28,6 +28,7 @@ import { Logo } from "@/components/ui/Logo";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NotificationsPanel } from "@/components/NotificationsPanel";
+import { IAttomHelpPanel } from "@/components/IAttomHelpPanel";
 
 const navItems = [
   { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
@@ -61,6 +62,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const { user, isLoaded, isSignedIn } = useUser();
   const { signOut } = useClerk();
   const qc = useQueryClient();
@@ -198,6 +200,31 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
+
+        {/* IAttom Help */}
+        <div className="pt-3 mt-2 border-t border-white/[0.06]">
+          <p className="px-3 pb-2 text-[9px] font-black tracking-widest text-zinc-700 uppercase">
+            Suporte
+          </p>
+          <button
+            onClick={() => setHelpOpen(true)}
+            className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium group overflow-hidden transition-colors duration-150 ${
+              helpOpen
+                ? "text-primary"
+                : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
+            }`}
+          >
+            {helpOpen && (
+              <motion.div
+                layoutId="nav-active-pill"
+                className="absolute inset-0 rounded-xl bg-primary/[0.10]"
+                transition={{ type: "spring", stiffness: 420, damping: 38 }}
+              />
+            )}
+            <HelpCircle className={`w-4 h-4 shrink-0 relative z-10 transition-colors duration-150 ${helpOpen ? "text-primary" : ""}`} />
+            <span className="flex-1 text-left text-[13px] relative z-10">IAttom Help</span>
+          </button>
+        </div>
 
         {isAdmin && (
           <div className="pt-3 mt-2 border-t border-white/[0.06]">
@@ -419,6 +446,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
 
       <FeedbackModal />
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
+      <IAttomHelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }
