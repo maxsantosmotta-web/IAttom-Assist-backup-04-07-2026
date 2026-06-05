@@ -5,13 +5,22 @@ export const integrations: KnowledgeEntry[] = [
     id: "integration-mercado-livre",
     category: "integrations",
     topic: "Mercado Livre",
-    keywords: ["mercado livre", "ml", "marketplace", "meli"],
+    keywords: [
+      "mercado livre",
+      "mercado livre integração",
+      "meli",
+      "ml integração",
+      "vender no mercado livre",
+      "integração mercado livre",
+      "plataforma mercado livre",
+      "marketplace mercado livre",
+    ],
     status: "active",
-    content: `O módulo Mercado Livre exibe o status da integração, métricas de produtos e vendas.
-Possui botões funcionais para ações como criar campanha com contexto da plataforma pré-preenchido.
-Webhook disponível para exibição e cópia.
+    content: `O Mercado Livre dentro do IAttom permite acompanhar métricas, visualizar o status da integração e criar campanhas utilizando o contexto da plataforma — sem precisar sair da ferramenta.
+Botão "Criar Campanha" disponível com dados da plataforma pré-preenchidos.
+Webhook disponível para configuração e cópia.
 Limitação atual: isolamento completo de dados por usuário está registrado como pendência no roadmap.
-OAuth real (login com conta Mercado Livre) está no roadmap e ainda não está disponível.
+OAuth real (login com sua conta Mercado Livre) está no roadmap e ainda não está disponível.
 Rota: /dashboard/mercado-livre`,
     relatedTopics: ["create-campaign", "roadmap-oauth"],
   },
@@ -19,12 +28,20 @@ Rota: /dashboard/mercado-livre`,
     id: "integration-shopee",
     category: "integrations",
     topic: "Shopee",
-    keywords: ["shopee", "marketplace shopee"],
+    keywords: [
+      "shopee",
+      "integração shopee",
+      "plataforma shopee",
+      "loja shopee",
+      "vender na shopee",
+      "shopee integração",
+      "shopee loja",
+    ],
     status: "active",
-    content: `O módulo Shopee exibe status da integração, métricas, produtos e vendas.
-Possui botão "Criar Campanha" com contexto da plataforma pré-preenchido automaticamente.
-Webhook disponível para exibição e cópia.
-OAuth real (login com conta Shopee) está no roadmap e ainda não está disponível.
+    content: `O Shopee dentro do IAttom permite acompanhar métricas, visualizar o status da integração e criar campanhas com o contexto da plataforma pré-preenchido.
+Botão "Criar Campanha" disponível com dados da Shopee já carregados.
+Webhook disponível para configuração e cópia.
+OAuth real (login com sua conta Shopee) está no roadmap e ainda não está disponível.
 Rota: /dashboard/shopee`,
     relatedTopics: ["create-campaign", "roadmap-oauth"],
   },
@@ -32,10 +49,19 @@ Rota: /dashboard/shopee`,
     id: "integration-tiktok",
     category: "integrations",
     topic: "TikTok",
-    keywords: ["tiktok", "tik tok", "vídeo curto", "short video"],
+    keywords: [
+      "tiktok",
+      "tik tok",
+      "integração tiktok",
+      "plataforma tiktok",
+      "tiktok shop",
+      "vídeo tiktok",
+      "vender no tiktok",
+      "tiktok integração",
+    ],
     status: "active",
-    content: `O módulo TikTok exibe status da integração, KPIs, posts e eventos.
-Possui botão "Criar Campanha" com contexto TikTok pré-preenchido.
+    content: `O TikTok dentro do IAttom permite acompanhar KPIs, visualizar posts e eventos da integração.
+Botão "Criar Campanha" disponível com contexto TikTok pré-preenchido.
 Webhook disponível.
 OAuth real está no roadmap e ainda não está disponível.
 Rota: /dashboard/tiktok`,
@@ -45,10 +71,19 @@ Rota: /dashboard/tiktok`,
     id: "integration-hotmart",
     category: "integrations",
     topic: "Hotmart",
-    keywords: ["hotmart", "produto digital", "infoproduto", "curso online", "hotmart producer"],
+    keywords: [
+      "hotmart",
+      "integração hotmart",
+      "plataforma hotmart",
+      "produto digital hotmart",
+      "curso hotmart",
+      "infoproduto hotmart",
+      "vender no hotmart",
+      "hotmart integração",
+    ],
     status: "active",
-    content: `O módulo Hotmart exibe status da integração, produtos digitais e métricas de vendas.
-Possui botão "Criar Campanha" com contexto Hotmart pré-preenchido.
+    content: `O Hotmart dentro do IAttom permite acompanhar produtos digitais, métricas de vendas e status da integração.
+Botão "Criar Campanha" disponível com contexto Hotmart pré-preenchido.
 Webhook disponível.
 OAuth real está no roadmap e ainda não está disponível.
 Rota: /dashboard/hotmart`,
@@ -58,10 +93,18 @@ Rota: /dashboard/hotmart`,
     id: "integration-kiwify",
     category: "integrations",
     topic: "Kiwify",
-    keywords: ["kiwify", "produto digital kiwify", "infoproduto kiwify"],
+    keywords: [
+      "kiwify",
+      "integração kiwify",
+      "plataforma kiwify",
+      "produto digital kiwify",
+      "vender no kiwify",
+      "kiwify integração",
+      "kiwify loja",
+    ],
     status: "active",
-    content: `O módulo Kiwify exibe status da integração, produtos e métricas.
-Possui botão "Criar Campanha" com contexto Kiwify pré-preenchido.
+    content: `O Kiwify dentro do IAttom permite acompanhar produtos, métricas e status da integração.
+Botão "Criar Campanha" disponível com contexto Kiwify pré-preenchido.
 Webhook disponível.
 OAuth real está no roadmap e ainda não está disponível.
 Rota: /dashboard/kiwify`,
@@ -71,10 +114,20 @@ Rota: /dashboard/kiwify`,
     id: "integration-facebook",
     category: "integrations",
     topic: "Facebook",
-    keywords: ["facebook", "fb", "meta", "facebook ads", "facebook business"],
+    keywords: [
+      "facebook",
+      "fb",
+      "meta",
+      "integração facebook",
+      "plataforma facebook",
+      "facebook ads",
+      "facebook business",
+      "anúncio facebook",
+      "campanha facebook",
+    ],
     status: "active",
-    content: `O módulo Facebook exibe status da integração e métricas de campanha.
-Possui botão "Criar Campanha" com contexto Facebook pré-preenchido.
+    content: `O Facebook dentro do IAttom permite acompanhar métricas de campanha e status da integração.
+Botão "Criar Campanha" disponível com contexto Facebook pré-preenchido.
 OAuth real (login com conta Facebook Business) está no roadmap e ainda não está disponível.
 Rota: /dashboard/facebook`,
     relatedTopics: ["create-campaign", "roadmap-oauth"],
@@ -83,10 +136,21 @@ Rota: /dashboard/facebook`,
     id: "integration-instagram",
     category: "integrations",
     topic: "Instagram",
-    keywords: ["instagram", "insta", "ig", "reels", "stories instagram"],
+    keywords: [
+      "instagram",
+      "insta",
+      "ig",
+      "integração instagram",
+      "plataforma instagram",
+      "reels",
+      "stories",
+      "feed instagram",
+      "anúncio instagram",
+      "campanha instagram",
+    ],
     status: "active",
-    content: `O módulo Instagram exibe status da integração, posts e métricas de engajamento.
-Possui botão "Criar Campanha" com contexto Instagram pré-preenchido.
+    content: `O Instagram dentro do IAttom permite acompanhar posts, métricas de engajamento e status da integração.
+Botão "Criar Campanha" disponível com contexto Instagram pré-preenchido.
 OAuth real está no roadmap e ainda não está disponível.
 Rota: /dashboard/instagram`,
     relatedTopics: ["create-campaign", "create-content", "roadmap-oauth"],

@@ -5,20 +5,58 @@ export const roadmap: KnowledgeEntry[] = [
     id: "roadmap-oauth",
     category: "roadmap",
     topic: "OAuth real para integrações",
-    keywords: ["oauth", "login integração", "conectar conta", "autenticação", "conta real", "integração real"],
+    keywords: [
+      "oauth",
+      "login com conta",
+      "login com minha conta",
+      "conta própria",
+      "conectar minha conta",
+      "conectar conta",
+      "autenticar",
+      "login integração",
+      "autenticação real",
+      "quando vai ter login",
+      "integração real",
+      "conta do shopee",
+      "conta do mercado livre",
+      "conta do tiktok",
+      "conta do hotmart",
+      "conta do kiwify",
+      "conta do facebook",
+      "conta do instagram",
+    ],
     status: "future",
     content: `O login com conta real (OAuth) para todas as plataformas integradas está no roadmap aprovado e será disponibilizado em versão futura.
 
 Plataformas previstas: Mercado Livre, Shopee, TikTok, Hotmart, Kiwify, Facebook, Instagram, WhatsApp.
 
-Atualmente, as integrações funcionam via webhook e configuração manual — o OAuth direto ainda não está disponível.`,
+Atualmente as integrações funcionam via webhook e configuração manual — o OAuth direto ainda não está disponível.`,
     relatedTopics: ["integration-mercado-livre", "integration-shopee", "integration-tiktok"],
   },
   {
     id: "roadmap-approved-features",
     category: "roadmap",
     topic: "Funcionalidades aprovadas e em desenvolvimento",
-    keywords: ["roadmap", "futuro", "próxima versão", "em breve", "vai ter", "quando vai", "publicação", "anúncio", "biblioteca"],
+    keywords: [
+      "roadmap",
+      "futuro",
+      "próxima versão",
+      "em breve",
+      "vai ter",
+      "quando vai ter",
+      "o que vai ter",
+      "próximas funcionalidades",
+      "funcionalidades futuras",
+      "publicação",
+      "publicação assistida",
+      "publicação automática",
+      "criar anúncio",
+      "anúncio",
+      "biblioteca",
+      "biblioteca de conteúdo",
+      "salvar campanha",
+      "salvar imagem",
+    ],
     status: "future",
     content: `As seguintes funcionalidades estão oficialmente no roadmap aprovado e serão disponibilizadas em versões futuras:
 
@@ -35,7 +73,21 @@ Atualmente, as integrações funcionam via webhook e configuração manual — o
     id: "roadmap-unavailable",
     category: "roadmap",
     topic: "Funcionalidades não disponíveis e sem previsão",
-    keywords: ["não existe", "não tem", "não disponível", "quando vai ter", "edição de vídeo", "canva", "crm", "chatbot", "importar contatos"],
+    keywords: [
+      "não existe",
+      "não tem",
+      "não disponível",
+      "edição de vídeo",
+      "cortar vídeo",
+      "timeline de vídeo",
+      "canva",
+      "adobe",
+      "crm",
+      "chatbot",
+      "importar contatos",
+      "base de contatos",
+      "ferramenta externa",
+    ],
     status: "unavailable",
     content: `As seguintes funcionalidades não existem no IAttom Assist e não possuem previsão de lançamento:
 
@@ -49,7 +101,14 @@ Atualmente, as integrações funcionam via webhook e configuração manual — o
     id: "roadmap-admin-panel",
     category: "roadmap",
     topic: "Painel administrativo",
-    keywords: ["admin", "painel admin", "administrador", "painel administrativo", "acesso admin"],
+    keywords: [
+      "admin",
+      "painel admin",
+      "administrador",
+      "painel administrativo",
+      "acesso admin",
+      "área administrativa",
+    ],
     status: "active",
     content: `O IAttom Assist possui um painel administrativo exclusivo para a equipe interna da plataforma.
 Usuários comuns não têm acesso ao painel admin.
@@ -60,7 +119,16 @@ Nenhuma operação manual é executada na conta do usuário a partir do painel a
     id: "roadmap-iattom-help",
     category: "roadmap",
     topic: "Evolução do IAttom Help",
-    keywords: ["iattom help", "assistente", "ajuda", "suporte", "chat suporte", "base de conhecimento", "diagnóstico", "análise de print"],
+    keywords: [
+      "iattom help",
+      "assistente",
+      "chat suporte",
+      "base de conhecimento",
+      "diagnóstico",
+      "análise de print",
+      "diagnóstico visual",
+      "evolução do assistente",
+    ],
     status: "future",
     content: `O IAttom Help está em evolução contínua. Capacidades futuras registradas no roadmap:
 
@@ -75,7 +143,17 @@ Atualmente disponível: chat em linguagem natural com base de conhecimento ofici
     id: "roadmap-video-evolution",
     category: "roadmap",
     topic: "Evolução de vídeo",
-    keywords: ["vídeo", "campanha com vídeo", "geração de vídeo", "roteiro avançado", "cena", "legenda", "vídeo por plataforma"],
+    keywords: [
+      "vídeo avançado",
+      "campanha com vídeo",
+      "geração de vídeo",
+      "roteiro avançado",
+      "cena",
+      "legenda vídeo",
+      "vídeo por plataforma",
+      "vídeo para tiktok",
+      "vídeo para reels",
+    ],
     status: "future",
     content: `A evolução de geração de vídeo está no roadmap aprovado com as seguintes capacidades futuras:
 
@@ -90,21 +168,45 @@ Atualmente disponível: Scripts de Vídeo (roteiros em texto) e Gerador Criativo
     id: "roadmap-platform-intelligence",
     category: "roadmap",
     topic: "Inteligência por plataforma",
-    keywords: ["inteligência por plataforma", "prompts específicos", "estratégia por plataforma", "especialização", "menos genérico"],
+    keywords: [
+      "inteligência por plataforma",
+      "prompts específicos",
+      "estratégia por plataforma",
+      "especialização",
+      "menos genérico",
+      "específico para shopee",
+      "específico para tiktok",
+      "específico para mercado livre",
+    ],
     status: "future",
     content: `A especialização da IA por plataforma está no roadmap aprovado:
 
 - Prompts especializados e estruturas de conteúdo menos genéricas para cada plataforma.
 - Estratégias específicas para: Mercado Livre, Shopee, Hotmart, Kiwify, TikTok, Facebook e Instagram.
 
-Atualmente, os módulos centrais (Criar Campanha, Criar Conteúdo, etc.) já aceitam contexto de plataforma via prefill. A especialização profunda por canal chegará em versão futura.`,
+Atualmente, os módulos centrais já aceitam contexto de plataforma via prefill. A especialização profunda por canal chegará em versão futura.`,
     relatedTopics: ["create-campaign", "create-content"],
   },
   {
     id: "roadmap-strategic-intelligence",
     category: "roadmap",
     topic: "Evolução estratégica do IAttom",
-    keywords: ["análise de negócio", "funil", "afiliados", "ebook", "curso", "renda extra", "oportunidade", "análise de instagram", "estratégia avançada"],
+    keywords: [
+      "análise de negócio",
+      "diagnóstico de negócio",
+      "funil",
+      "funil de vendas",
+      "afiliados",
+      "ebook",
+      "criar ebook",
+      "curso",
+      "criar curso",
+      "renda extra",
+      "oportunidade",
+      "análise de instagram",
+      "analisar instagram",
+      "estratégia avançada",
+    ],
     status: "future",
     content: `A evolução estratégica do IAttom está no roadmap aprovado com as seguintes capacidades futuras:
 

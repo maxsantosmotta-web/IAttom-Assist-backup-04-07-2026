@@ -50,29 +50,51 @@ export interface HistoryMessage {
   content: string;
 }
 
+const COMPARISON_RE =
+  /diferen[cç]a|vs\b|versus|comparar|compara[cç][aã]o|qual (é )?melhor|entre .+ e |x /i;
+
 /**
- * Returns a formatted context string with the most relevant knowledge entries
- * for the given query and recent conversation history.
- * Max 3 primary entries + up to 1 related entry.
+ * Returns a formatted context string with the most relevant knowledge entries.
+ *
+ * Retrieval strategy (Etapa 3):
+ * - Query carries 3× weight vs history (current question always wins)
+ * - Only USER messages from history are used for scoring (avoids pollution from
+ *   long assistant responses)
+ * - Limit: 4 primary entries normally; 5 for comparison queries
+ * - Up to 1 related topic appended after primary entries
  */
 export function getRelevantContext(
   query: string,
   history: HistoryMessage[]
 ): string {
-  // Combine query with recent history for richer keyword extraction
-  const recentHistory = history.slice(-4).map((m) => m.content);
-  const searchText = [query, ...recentHistory].join(" ").toLowerCase();
+  const queryText = query.toLowerCase();
 
-  // Score all entries
+  // Only user turns — assistant responses are verbose and pollute the score
+  const historyText = history
+    .filter((m) => m.role === "user")
+    .slice(-3)
+    .map((m) => m.content)
+    .join(" ")
+    .toLowerCase();
+
+  const isComparison = COMPARISON_RE.test(query);
+
+  // Score: query = 3× priority, history = 1× support
   const scored = ALL_ENTRIES
-    .map((entry) => ({ entry, score: scoreEntry(entry, searchText) }))
+    .map((entry) => {
+      const queryScore = scoreEntry(entry, queryText) * 3;
+      const histScore = scoreEntry(entry, historyText);
+      const total = queryScore + histScore;
+      return { entry, score: total };
+    })
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score);
 
-  // Take top 3 primary entries
-  const topEntries = scored.slice(0, 3).map(({ entry }) => entry);
+  // Comparison queries get an extra slot so both sides land in context
+  const primaryLimit = isComparison ? 5 : 4;
+  const topEntries = scored.slice(0, primaryLimit).map(({ entry }) => entry);
 
-  // Resolve related topics (add up to 1 related entry not already included)
+  // Resolve up to 1 related topic not already included
   const includedIds = new Set(topEntries.map((e) => e.id));
   const relatedIds = topEntries.flatMap((e) => e.relatedTopics ?? []);
 
