@@ -142,6 +142,8 @@ const DOMAIN_KEYWORDS = [
   // Platform concepts
   "crédito", "plano",
   "projeto", "salvar",
+  // Consultant / orientation triggers — catch advisory queries without explicit product/action
+  "conectar", "sócio", "caminho", "errado", "deveria", "lugar",
 ];
 
 function isDomainQuery(text: string): boolean {
