@@ -25,10 +25,10 @@ export function HelpPage() {
             Suporte
           </p>
           <h1 className="text-4xl font-bold text-white mb-4">
-            IAttom Help
+            Centro de Suporte &amp; FAQ
           </h1>
           <p className="text-zinc-400 text-sm">
-            Central de ajuda e perguntas frequentes
+            Central oficial de ajuda, perguntas frequentes e informações institucionais do IAttom Assist.
           </p>
         </div>
 
@@ -61,6 +61,38 @@ export function HelpPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-white mb-4 pb-3 border-b border-white/5">
+              Créditos e planos
+            </h2>
+            <div className="space-y-4">
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-zinc-200 mb-2">Como funcionam os créditos?</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  Cada recurso da plataforma consome uma quantidade de créditos: descoberta de produtos (5 cr), validação (5 cr), campanha (10 cr), conteúdo (8 cr), criativo (15 cr) e script de vídeo (10 cr). Os créditos renovam automaticamente todo mês.
+                </p>
+              </div>
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-zinc-200 mb-2">O que acontece quando os créditos acabam?</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  Quando os créditos se esgotam, as funcionalidades ficam pausadas até a renovação mensal. Você pode fazer upgrade a qualquer momento para obter mais créditos imediatamente.
+                </p>
+              </div>
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-zinc-200 mb-2">Os créditos acumulam entre os meses?</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  Não. Os créditos reiniciam no primeiro dia de cada ciclo de cobrança. Créditos bônus de indicação, no entanto, são permanentes e não expiram.
+                </p>
+              </div>
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-zinc-200 mb-2">Qual plano é recomendado para quem está começando?</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  O plano COMPLETO oferece o melhor custo-benefício — 500 créditos/mês, acesso completo a todos os módulos e suporte prioritário. É a escolha de 8 em cada 10 usuários ativos.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-white mb-4 pb-3 border-b border-white/5">
               Integrações de plataforma
             </h2>
             <div className="space-y-4">
@@ -81,13 +113,19 @@ export function HelpPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-white mb-4 pb-3 border-b border-white/5">
-              Planos e cobrança
+              Assinatura e cancelamento
             </h2>
             <div className="space-y-4">
               <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
-                <h3 className="text-sm font-semibold text-zinc-200 mb-2">Como cancelar minha assinatura?</h3>
+                <h3 className="text-sm font-semibold text-zinc-200 mb-2">Posso cancelar a qualquer momento?</h3>
                 <p className="text-sm text-zinc-400 leading-relaxed">
-                  Você pode cancelar sua assinatura a qualquer momento pelo painel em Configurações &gt; Faturamento. O acesso permanece ativo até o fim do período pago.
+                  Sim. O cancelamento pode ser feito a qualquer momento pelo portal de faturamento. Você mantém acesso ao plano até o fim do período já pago — nenhuma cobrança adicional é feita.
+                </p>
+              </div>
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-zinc-200 mb-2">Como funciona o sistema de indicações?</h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  Ao indicar um amigo que se cadastrar, você ganha 50 créditos bônus. O amigo indicado recebe 25 créditos de boas-vindas. Não há limite de indicações.
                 </p>
               </div>
               <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">

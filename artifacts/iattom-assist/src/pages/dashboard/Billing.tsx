@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import {
   Crown, Check, Zap, ExternalLink, AlertTriangle, RefreshCw,
-  CreditCard, Gift, TrendingUp, Star, Lock, ChevronDown, ChevronUp,
+  CreditCard, Gift, TrendingUp, Star, Lock,
   Sparkles, Building2, Rocket, CircleSlash, ShoppingCart, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -156,55 +156,6 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("pt-BR", { year: "numeric", month: "short", day: "numeric" });
-}
-
-/* ─── FAQ ────────────────────────────────────────────────────────────── */
-const FAQ_ITEMS = [
-  {
-    q: "Como funcionam os créditos?",
-    a: "Cada recurso da plataforma consome uma quantidade de créditos: descoberta de produtos (5 cr), validação (5 cr), campanha (10 cr), conteúdo (8 cr), criativo (15 cr) e script de vídeo (10 cr). Os créditos renovam automaticamente todo mês.",
-  },
-  {
-    q: "Posso cancelar a qualquer momento?",
-    a: "Sim. O cancelamento pode ser feito a qualquer momento pelo portal de faturamento. Você mantém acesso ao plano até o fim do período já pago — nenhuma cobrança adicional é feita.",
-  },
-  {
-    q: "O que acontece quando os créditos acabam?",
-    a: "Quando os créditos se esgotam, as funcionalidades ficam pausadas até a renovação mensal. Você pode fazer upgrade a qualquer momento para obter mais créditos imediatamente.",
-  },
-  {
-    q: "Os créditos acumulam entre os meses?",
-    a: "Não. Os créditos reiniciam no primeiro dia de cada ciclo de cobrança. Créditos bônus de indicação, no entanto, são permanentes e não expiram.",
-  },
-  {
-    q: "Como funciona o sistema de indicações?",
-    a: "Ao indicar um amigo que se cadastrar, você ganha 50 créditos bônus. O amigo indicado recebe 25 créditos de boas-vindas. Não há limite de indicações.",
-  },
-  {
-    q: "Qual plano é recomendado para quem está começando?",
-    a: "O plano COMPLETO oferece o melhor custo-benefício — 500 créditos/mês, acesso completo a todos os módulos e suporte prioritário. É a escolha de 8 em cada 10 usuários ativos.",
-  },
-];
-
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-b border-white/[0.06] last:border-0">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-4 py-4 text-left group"
-      >
-        <span className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">{q}</span>
-        {open
-          ? <ChevronUp className="w-4 h-4 text-zinc-500 shrink-0" />
-          : <ChevronDown className="w-4 h-4 text-zinc-500 shrink-0" />
-        }
-      </button>
-      {open && (
-        <p className="text-sm text-zinc-500 leading-relaxed pb-4 pr-6">{a}</p>
-      )}
-    </div>
-  );
 }
 
 /* ─── billing toggle ─────────────────────────────────────────────────── */
@@ -693,18 +644,6 @@ export function Billing() {
           </Link>
         </div>
       )}
-
-      {/* ── FAQ ───────────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-white/[0.07] bg-[#111111] p-6">
-        <div className="flex items-center gap-2 mb-1">
-          <TrendingUp className="w-3.5 h-3.5 text-primary" />
-          <p className="text-xs text-primary uppercase tracking-widest font-semibold">Perguntas Frequentes</p>
-        </div>
-        <p className="text-xs text-zinc-600 mb-5">Tudo que você precisa saber antes de escolher seu plano.</p>
-        {FAQ_ITEMS.map((item) => (
-          <FaqItem key={item.q} q={item.q} a={item.a} />
-        ))}
-      </div>
 
       {/* ── Bottom note ───────────────────────────────────────────────── */}
       <p className="text-xs text-zinc-600">
