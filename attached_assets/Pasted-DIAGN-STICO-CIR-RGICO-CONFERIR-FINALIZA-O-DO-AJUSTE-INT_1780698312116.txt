@@ -1,0 +1,83 @@
+DIAGNÓSTICO CIRÚRGICO — CONFERIR FINALIZAÇÃO DO AJUSTE INTEGRATION_PURPOSE
+
+NÃO ALTERAR CÓDIGO.
+NÃO EXECUTAR CORREÇÕES AINDA.
+APENAS VERIFICAR E REPORTAR.
+
+CONTEXTO:
+O último relatório veio incompleto/truncado. Foi possível confirmar apenas:
+
+1. Botão Sincronizar com retorno real da API.
+2. Criação da intenção INTEGRATION_PURPOSE.
+
+Mas não ficou comprovado se os demais blocos foram concluídos.
+
+VERIFICAR:
+
+1. A intenção INTEGRATION_PURPOSE foi integrada ao retrieval?
+   Confirmar se perguntas como:
+
+- Qual a finalidade da Hotmart dentro do IAttom?
+- Para que serve Mercado Livre no IAttom?
+- Por que conectar Instagram?
+- O que eu ganho conectando Shopee?
+  realmente caem nessa intenção.
+
+2. O mapeamento de entidade foi feito?
+   Confirmar se o sistema separa:
+
+- intenção: finalidade/benefício/utilidade;
+- entidade: Hotmart, Kiwify, Mercado Livre, Shopee, Instagram, Facebook, TikTok.
+
+3. A resposta das integrações foi ajustada para benefício do usuário?
+   Confirmar se a resposta principal fala de:
+
+- encurtar caminho;
+- reduzir trabalho manual;
+- preparar produto/anúncio/conteúdo;
+- acelerar publicação/divulgação.
+
+4. Foram removidos das respostas comuns:
+
+- OAuth;
+- webhook;
+- roadmap;
+- endpoint;
+- rota;
+- API;
+- status técnico;
+  quando o usuário não perguntar especificamente sobre isso?
+
+5. Foi corrigida a linguagem de módulos/botões?
+   Confirmar se o Help parou de priorizar:
+
+- Criar Campanha;
+- Criar Conteúdo;
+- Gerador Criativo;
+- Scripts;
+  e passou a falar primeiro em:
+- criar anúncio/produto;
+- preparar produto;
+- preparar anúncio;
+- publicar;
+- divulgar;
+- vender.
+
+6. A regra contra MITS/MITs/MIT continua aplicada?
+   Confirmar se o Help evita siglas/frameworks inventados e usa linguagem simples.
+
+7. Testar internamente:
+
+- Qual a finalidade da Hotmart dentro do IAttom?
+- Como funciona Mercado Livre dentro do IAttom?
+- Por que conectar Instagram no IAttom?
+- Para que serve Shopee na plataforma?
+- Como organizo minhas tarefas para vender mais?
+
+ENTREGAR RELATÓRIO:
+
+- o que foi realmente implementado;
+- o que não foi implementado;
+- arquivos onde cada ajuste está;
+- resultado dos testes;
+- se precisa de correção complementar.
