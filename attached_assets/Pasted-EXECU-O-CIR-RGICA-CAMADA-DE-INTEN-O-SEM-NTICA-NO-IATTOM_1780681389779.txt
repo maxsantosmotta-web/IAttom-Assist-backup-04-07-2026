@@ -1,0 +1,286 @@
+EXECUÇÃO CIRÚRGICA — CAMADA DE INTENÇÃO SEMÂNTICA NO IATTOM HELP
+
+OBJETIVO:
+
+Evoluir o IAttom Help para reduzir dependência de keyword matching e aproximar o comportamento de uma inteligência contextual real.
+
+O problema atual é que o sistema ainda depende demais de palavras exatas. Isso faz o Help exigir novas keywords sempre que o usuário pergunta de forma diferente.
+
+A correção agora NÃO é adicionar mais keywords uma por uma.
+
+A correção é criar uma camada de intenção semântica antes do retrieval final.
+
+NÃO recriar o IAttom Help.
+NÃO alterar layout.
+NÃO mexer no FAQ público.
+NÃO alterar integrações.
+NÃO mexer nos módulos operacionais.
+NÃO criar respostas fixas.
+NÃO criar lógica do tipo “se perguntar X, responder Y”.
+NÃO remover a base atual.
+NÃO remover as jornadas atuais.
+
+ESCOPO:
+
+Criar uma camada intermediária que entenda a intenção do usuário e use essa intenção para puxar o contexto correto.
+
+Fluxo desejado:
+
+Pergunta do usuário
+↓
+Classificação semântica de intenção
+↓
+Mapeamento para jornadas/contextos corretos
+↓
+Retrieval atual como apoio/fallback
+↓
+LLM gera resposta natural
+
+INTENÇÕES MÍNIMAS A MAPEAR:
+
+1. COMEÇAR DO ZERO
+
+Exemplos equivalentes:
+
+- Estou começando do zero.
+- Não sei por onde começar.
+- Estou perdido.
+- Quero começar.
+- Não tenho experiência.
+- Qual primeiro passo?
+- Preciso de uma direção.
+
+Deve puxar contexto de onboarding, visão geral da plataforma e caminhos iniciais.
+
+2. MONETIZAR CONHECIMENTO
+
+Exemplos equivalentes:
+
+- Tenho conhecimento e quero vender.
+- Tenho experiência.
+- Sou bom em uma coisa.
+- Quero ensinar o que sei.
+- Como transformar conhecimento em produto?
+- Tenho uma habilidade.
+- As pessoas me pedem ajuda.
+- Quero empacotar minha experiência.
+
+Deve puxar contexto de produto digital, curso, eBook, conteúdo, scripts, campanha e projetos salvos.
+
+3. CRIAR PRODUTO DIGITAL
+
+Exemplos equivalentes:
+
+- Quero lançar algo digital.
+- Quero criar um infoproduto.
+- Quero vender um curso.
+- Quero criar um eBook.
+- Quero vender pela Hotmart.
+- Quero vender pela Kiwify.
+- Quero transformar uma ideia em produto.
+
+Deve puxar contexto de Hotmart, Kiwify, Criar Conteúdo, Criar Campanha, Scripts, Criar Imagem e Projetos Salvos.
+
+4. VENDER PRODUTO FÍSICO
+
+Exemplos equivalentes:
+
+- Quero vender na Shopee.
+- Quero vender no Mercado Livre.
+- Quero revender produtos.
+- Quero trabalhar com marketplace.
+- Quero encontrar produto para vender.
+- Quero vender mercadorias.
+- Quero loja online.
+
+Deve puxar contexto de Buscar Produto, Validar Produto, Shopee, Mercado Livre, Criar Campanha, Criar Imagem e Projetos Salvos.
+
+5. CRIAR CAMPANHA / VENDER MAIS
+
+Exemplos equivalentes:
+
+- Quero vender mais.
+- Quero criar um anúncio.
+- Quero uma campanha completa.
+- Quero melhorar minhas vendas.
+- Quero divulgar meu produto.
+- Quero atrair clientes.
+- Quero melhorar minha copy.
+
+Deve puxar contexto de Criar Campanha, Criar Conteúdo, Criar Imagem, Scripts e canais de venda.
+
+6. ESCOLHER CAMINHO / COMPARAR OPÇÕES
+
+Exemplos equivalentes:
+
+- Mercado Livre ou Shopee?
+- Hotmart ou Kiwify?
+- Qual canal faz mais sentido?
+- Qual é melhor?
+- Onde devo vender?
+- O que vale mais a pena?
+- Qual caminho escolher?
+
+Deve puxar os contextos das opções comparadas e responder com comparação prática, recomendação e próximo passo.
+
+7. FORA DO ESCOPO
+
+Exemplos:
+
+- Como jogar no Tigrinho?
+- Receita de bolo.
+- Futebol.
+- Assuntos aleatórios sem relação com negócios, vendas, marketing, produtividade, conteúdo, campanhas, produtos digitais, marketplaces, automações ou uso do IAttom.
+
+Deve responder:
+
+“Esse assunto não faz parte do foco do IAttom Assist. Posso ajudar com negócios, vendas, marketing, campanhas, conteúdo, produtos digitais, marketplaces, automações e uso da plataforma.”
+
+IMPLEMENTAÇÃO ESPERADA:
+
+1. Criar função de classificação semântica simples e local.
+
+Nome sugerido:
+
+classifyHelpIntent(query: string): HelpIntent
+
+Ela deve analisar a pergunta por significado aproximado, grupos de termos e intenção, não apenas por uma keyword isolada.
+
+2. Criar tipo/enum de intenções.
+
+Sugestão:
+
+- START_FROM_ZERO
+- MONETIZE_KNOWLEDGE
+- DIGITAL_PRODUCT
+- PHYSICAL_PRODUCT
+- CREATE_CAMPAIGN
+- COMPARE_OPTIONS
+- GROW_BUSINESS
+- PLATFORM_USAGE
+- OUT_OF_SCOPE
+- UNKNOWN
+
+3. Mapear cada intenção para entradas relevantes.
+
+Exemplo:
+
+MONETIZE_KNOWLEDGE deve priorizar:
+
+- journey-digital-product
+- journey-course
+- journey-ebook
+- create-content
+- create-campaign
+- scripts
+- creative-generator
+
+4. Integrar a intenção ao retrieval atual.
+
+A camada semântica deve complementar o retrieval atual.
+
+Ordem desejada:
+
+- tentar classificar intenção;
+- injetar entradas prioritárias da intenção;
+- somar com resultados do retrieval atual;
+- remover duplicados;
+- manter ranking coerente;
+- enviar contexto final ao LLM.
+
+5. Evitar falso positivo por palavra genérica.
+
+Palavras soltas como:
+
+- produto
+- vender
+- negócio
+- criar
+
+não podem sozinhas decidir a jornada.
+
+Elas podem ajudar, mas a intenção deve considerar o conjunto da frase.
+
+6. Manter fallback técnico contra resposta vazia.
+
+Não remover a proteção de zero chunks já criada.
+
+7. Manter linguagem conversacional.
+
+Não reintroduzir:
+
+- Intenção:
+- Propósito:
+- Resultado esperado:
+- Créditos relevantes;
+- links internos automáticos;
+- linguagem de FAQ;
+- linguagem de relatório.
+
+TESTES OBRIGATÓRIOS COM PERGUNTAS NOVAS:
+
+Testar por intenção, não por pergunta exata.
+
+COMEÇAR DO ZERO:
+
+- Estou perdido e quero começar.
+- Se eu estivesse começando hoje, o que faria?
+- Não tenho experiência, mas quero vender.
+
+MONETIZAR CONHECIMENTO:
+
+- Sou bom em uma coisa, como ganho dinheiro com isso?
+- Tenho 10 anos de experiência em vendas, o que posso criar?
+- As pessoas me pedem ajuda sobre um assunto. Como monetizo isso?
+
+PRODUTO DIGITAL:
+
+- Quero lançar algo online.
+- Tenho uma ideia de conteúdo pago.
+- Quero vender algo sem estoque.
+
+PRODUTO FÍSICO:
+
+- Quero trabalhar com marketplace.
+- Quero achar mercadorias para revender.
+- Penso em vender na Shopee, por onde começo?
+
+CAMPANHA/VENDAS:
+
+- Quero divulgar melhor meu produto.
+- Minhas vendas estão fracas.
+- Preciso de uma campanha que convença.
+
+COMPARAÇÃO:
+
+- Qual canal faz mais sentido para mim?
+- Vale mais Hotmart ou Kiwify?
+- Marketplace ou produto digital?
+
+FORA DO ESCOPO:
+
+- Como jogar no Tigrinho?
+- Me ensina uma receita de bolo.
+- Quem ganhou o jogo ontem?
+
+VALIDAR:
+
+- nenhuma resposta vazia;
+- nenhuma dependência de pergunta exata;
+- nenhuma resposta com tom de FAQ;
+- nenhuma exposição de intenção interna;
+- perguntas parecidas devem cair no mesmo raciocínio;
+- contexto correto deve ser puxado pela intenção;
+- retrieval antigo deve continuar funcionando como apoio.
+
+ENTREGAR RELATÓRIO FINAL INFORMANDO:
+
+- arquivos criados;
+- arquivos alterados;
+- intenções criadas;
+- como a classificação semântica funciona;
+- como ela se integra ao retrieval atual;
+- quais entradas cada intenção prioriza;
+- resultado dos testes por grupo de intenção;
+- se houve redução real da dependência de keywords;
+- classificação final do IAttom Help após essa etapa.
