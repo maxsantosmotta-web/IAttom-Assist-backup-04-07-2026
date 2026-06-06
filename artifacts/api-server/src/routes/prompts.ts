@@ -134,6 +134,32 @@ PROMPT: escreva o prompt completo aqui`;
   }
 });
 
+const UpdatePromptBody = z.object({
+  title: z.string().min(1).max(120),
+  prompt: z.string().min(1).max(4000),
+});
+
+router.put("/prompts/:id", requireAuth, async (req, res): Promise<void> => {
+  const { clerkUserId } = req as AuthenticatedRequest;
+  const id = parseInt(req.params.id as string, 10);
+  const parsed = UpdatePromptBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input" });
+    return;
+  }
+  const { title, prompt } = parsed.data;
+  const [updated] = await db
+    .update(savedPromptsTable)
+    .set({ title, prompt })
+    .where(and(eq(savedPromptsTable.id, id), eq(savedPromptsTable.clerkUserId, clerkUserId)))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  res.json(updated);
+});
+
 router.delete("/prompts/:id", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const id = parseInt(req.params.id as string, 10);
