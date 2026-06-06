@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Trash2, RotateCcw, RefreshCw, Loader2,
-  Megaphone, FileText, Sparkles, Video, Search, AlertTriangle, BookMarked,
+  Megaphone, FileText, Sparkles, Video, Search, AlertTriangle, BookMarked, Clock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +35,16 @@ interface PromptTrashItem {
   expiresAt: string | null;
 }
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+interface ActivityTrashItem {
+  id: number;
+  action: string;
+  module: string;
+  projectName: string | null;
+  deletedAt: string;
+  expiresAt: string | null;
+}
+
+const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -51,8 +60,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 // ── Unified item ─────────────────────────────────────────────────
-type UnifiedKind = "project" | "integration" | "prompt";
-type FilterCategory = "all" | "campaign" | "content" | "creative" | "video_script" | "integration" | "prompt";
+type UnifiedKind = "project" | "integration" | "prompt" | "activity";
+type FilterCategory = "all" | "campaign" | "content" | "creative" | "video_script" | "integration" | "prompt" | "activity";
 
 interface UnifiedItem {
   uid: string;
@@ -61,13 +70,14 @@ interface UnifiedItem {
   category: FilterCategory;
   deletedAt: string;
   expiresAt?: string;
-  badge: string;               // CSS classes
+  badge: string;
   icon: React.ElementType;
-  label: string;               // category label
-  subLabel?: string;           // platform or extra info
+  label: string;
+  subLabel?: string;
   rawProject?: TrashedItem;
   rawIntegration?: TrashItemData;
   rawPrompt?: PromptTrashItem;
+  rawActivity?: ActivityTrashItem;
 }
 
 // ── Config maps ──────────────────────────────────────────────────
@@ -90,13 +100,18 @@ const TYPE_LABELS: Record<string, string> = {
   campaign: "Campanha", event: "Evento",
 };
 
-// ── Prompt config ─────────────────────────────────────────────────
 const PROMPT_MODULE_LABEL: Record<string, string> = {
   Imagem: "Imagem", Vídeo: "Vídeo", Copy: "Copy", Anúncio: "Anúncio",
   Marketplace: "Marketplace", Pesquisa: "Pesquisa", Estratégia: "Estratégia",
   Automação: "Automação", Personalizado: "Personalizado",
   creative: "Imagem", video_script: "Vídeo", campaign: "Anúncio",
   content: "Conteúdo", product_discovery: "Pesquisa",
+};
+
+const ACTIVITY_MODULE_LABEL: Record<string, string> = {
+  campaign: "Campanha", content: "Conteúdo", creative: "Criativo",
+  video_script: "Script", product_discovery: "Produto",
+  product_validation: "Validação", marketing: "Marketing",
 };
 
 const FILTER_LABELS: { key: FilterCategory; label: string }[] = [
@@ -106,6 +121,7 @@ const FILTER_LABELS: { key: FilterCategory; label: string }[] = [
   { key: "creative",     label: "Criativos"   },
   { key: "video_script", label: "Scripts"     },
   { key: "prompt",       label: "Prompts"     },
+  { key: "activity",     label: "Atividades"  },
   { key: "integration",  label: "Integrações" },
 ];
 
@@ -141,6 +157,23 @@ function toUnifiedPrompt(p: PromptTrashItem): UnifiedItem {
   };
 }
 
+function toUnifiedActivity(a: ActivityTrashItem): UnifiedItem {
+  const modLabel = ACTIVITY_MODULE_LABEL[a.module] ?? a.module.replace(/_/g, " ");
+  return {
+    uid: `activity_${a.id}`,
+    kind: "activity",
+    displayName: a.action,
+    category: "activity",
+    deletedAt: a.deletedAt,
+    expiresAt: a.expiresAt ?? new Date(new Date(a.deletedAt).getTime() + 48 * 3600000).toISOString(),
+    badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+    icon: Clock,
+    label: modLabel,
+    subLabel: a.projectName ?? undefined,
+    rawActivity: a,
+  };
+}
+
 function toUnifiedInt(i: TrashItemData): UnifiedItem {
   return {
     uid: `int_${i.id}`,
@@ -170,10 +203,10 @@ export function Trash() {
   const [integrationItems, setIntegrationItems] = useState<TrashItemData[]>([]);
   const [projectItems, setProjectItems]         = useState<TrashedItem[]>([]);
   const [promptItems, setPromptItems]           = useState<PromptTrashItem[]>([]);
+  const [activityItems, setActivityItems]       = useState<ActivityTrashItem[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [filter, setFilter]                     = useState<FilterCategory>("all");
 
-  // Confirm-delete state — uid identifies which item
   const [confirmUid, setConfirmUid]             = useState<string | null>(null);
   const [actionUid, setActionUid]               = useState<string | null>(null);
 
@@ -187,7 +220,6 @@ export function Trash() {
   };
 
   const loadProjects = async () => {
-    // Purge expired local assets (images) — does not affect what the lixeira shows
     const expired = purgeExpired();
     for (const id of expired) void deleteProjectAssets(id).catch(() => {});
     try {
@@ -202,7 +234,6 @@ export function Trash() {
           })) as TrashedItem[],
       );
     } catch {
-      // API offline — show empty list; do NOT fall back to localStorage
       setProjectItems([]);
     }
   };
@@ -214,22 +245,30 @@ export function Trash() {
     } catch { setPromptItems([]); }
   };
 
+  const loadActivities = async () => {
+    try {
+      const data = await apiFetch<ActivityTrashItem[]>("/api/history/trash");
+      setActivityItems(data);
+    } catch { setActivityItems([]); }
+  };
+
   useEffect(() => {
     void loadIntegrations();
     void loadProjects();
     void loadPrompts();
+    void loadActivities();
   }, []);
 
   // ── Unified list ────────────────────────────────────────────────
   const all: UnifiedItem[] = [
     ...projectItems.map(toUnified),
     ...promptItems.map(toUnifiedPrompt),
+    ...activityItems.map(toUnifiedActivity),
     ...integrationItems.map(toUnifiedInt),
   ].sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());
 
   const filtered = filter === "all" ? all : all.filter(i => i.category === filter);
 
-  // Counts per filter
   const counts: Record<FilterCategory, number> = {
     all:          all.length,
     campaign:     all.filter(i => i.category === "campaign").length,
@@ -237,6 +276,7 @@ export function Trash() {
     creative:     all.filter(i => i.category === "creative").length,
     video_script: all.filter(i => i.category === "video_script").length,
     prompt:       all.filter(i => i.category === "prompt").length,
+    activity:     all.filter(i => i.category === "activity").length,
     integration:  all.filter(i => i.category === "integration").length,
   };
 
@@ -252,6 +292,10 @@ export function Trash() {
         await apiFetch<{ ok: boolean }>(`/api/prompts/${item.rawPrompt.id}/restore`, { method: "POST" });
         void loadPrompts();
         toast({ description: `"${item.displayName}" restaurado para Prompts Salvos.` });
+      } else if (item.kind === "activity" && item.rawActivity) {
+        await apiFetch<{ ok: boolean }>(`/api/history/${item.rawActivity.id}/restore`, { method: "POST" });
+        void loadActivities();
+        toast({ description: "Atividade restaurada para o Histórico." });
       } else if (item.kind === "integration" && item.rawIntegration) {
         const result = await apiFetch<{ ok: boolean; platformLabel?: string }>(
           `/api/me/trash/${item.rawIntegration.id}/restore`, { method: "POST" },
@@ -279,6 +323,10 @@ export function Trash() {
         await apiFetch<{ ok: boolean }>(`/api/prompts/${item.rawPrompt.id}/permanent`, { method: "DELETE" });
         void loadPrompts();
         toast({ description: `"${item.displayName}" excluído definitivamente.` });
+      } else if (item.kind === "activity" && item.rawActivity) {
+        await apiFetch<{ ok: boolean }>(`/api/history/${item.rawActivity.id}/permanent`, { method: "DELETE" });
+        void loadActivities();
+        toast({ description: "Atividade excluída definitivamente." });
       } else if (item.kind === "integration" && item.rawIntegration) {
         await apiFetch(`/api/me/trash/${item.rawIntegration.id}`, { method: "DELETE" });
         setIntegrationItems(prev => prev.filter(i => i.id !== item.rawIntegration!.id));
@@ -314,7 +362,6 @@ export function Trash() {
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center gap-2 justify-between">
-            {/* Filtros horizontais */}
             <div className="flex flex-wrap items-center gap-1.5">
               {FILTER_LABELS.filter(f => f.key === "all" || counts[f.key] > 0).map(({ key, label }) => (
                 <button
@@ -333,7 +380,12 @@ export function Trash() {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => { void loadIntegrations(); void loadProjects(); void loadPrompts(); }}
+              onClick={() => {
+                void loadIntegrations();
+                void loadProjects();
+                void loadPrompts();
+                void loadActivities();
+              }}
               disabled={loading}
               className="h-7 px-2.5 text-zinc-500 hover:text-white gap-1.5 text-xs"
             >
@@ -422,7 +474,7 @@ export function Trash() {
       <div className="bg-primary/5 border border-primary/15 rounded-lg p-4 space-y-1.5">
         <p className="text-xs font-medium text-primary">Sobre a Lixeira</p>
         <p className="text-[11px] text-zinc-500">
-          Projetos e Prompts são excluídos definitivamente após 48h. Itens de integração ficam ocultos nas listas principais mesmo após sincronização.
+          Projetos, Prompts e Atividades são excluídos definitivamente após 48h. Itens de integração ficam ocultos nas listas principais mesmo após sincronização.
           Restaurar devolve o item ao módulo de origem.
         </p>
       </div>
@@ -438,7 +490,7 @@ export function Trash() {
               <button
                 onClick={() => setConfirmUid(null)}
                 disabled={actionUid === confirmItem.uid}
-                className="px-4 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/8 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-50"
               >
                 Cancelar
               </button>

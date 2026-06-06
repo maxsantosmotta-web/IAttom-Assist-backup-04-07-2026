@@ -74,14 +74,14 @@ export function Analytics() {
       {/* Header */}
       <motion.div
         variants={fadeUp} initial="hidden" animate="show" transition={{ duration: 0.4 }}
-        className="flex items-start justify-between gap-4"
+        className="space-y-3"
       >
-        <div className="space-y-1">
-          <h2 className="text-2xl font-black tracking-tight text-white">Seus Dados</h2>
-          <p className="text-sm text-zinc-500">Uso e desempenho no seu espaço de trabalho</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.07] rounded-xl p-1">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-black tracking-tight text-white">Seus Dados</h2>
+            <p className="text-sm text-zinc-500">Uso e desempenho no seu espaço de trabalho</p>
+          </div>
+          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.07] rounded-xl p-1 shrink-0">
             {DAYS_OPTIONS.map((d) => (
               <button
                 key={d}
@@ -94,6 +94,8 @@ export function Analytics() {
               </button>
             ))}
           </div>
+        </div>
+        <div className="flex justify-end">
           <Button size="sm" variant="outline" onClick={() => setRefreshTick((t) => t + 1)} disabled={loading} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             Atualizar

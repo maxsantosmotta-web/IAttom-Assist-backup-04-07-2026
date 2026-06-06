@@ -13,6 +13,8 @@ export const historyTable = pgTable("history", {
   }),
   projectName: text("project_name"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"),
+  expiresAt: timestamp("expires_at"),
 });
 
 export const insertHistorySchema = createInsertSchema(historyTable).omit({

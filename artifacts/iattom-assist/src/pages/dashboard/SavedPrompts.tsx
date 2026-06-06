@@ -271,16 +271,7 @@ export function SavedPrompts() {
           <h2 className="text-2xl font-black tracking-tight text-white">Prompts Salvos</h2>
           <p className="text-sm text-zinc-500">Sua biblioteca pessoal de prompts prontos para uso.</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm" variant="outline"
-            onClick={() => void fetchPrompts()}
-            disabled={loading}
-            className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 h-8"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
+        <div className="shrink-0">
           <Button
             onClick={() => setCreating(true)}
             size="sm"
@@ -414,7 +405,7 @@ export function SavedPrompts() {
         )}
       </AnimatePresence>
 
-      {/* ── Search bar only ──────────────────────────────────────────── */}
+      {/* ── Search bar + Atualizar ───────────────────────────────────── */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600 pointer-events-none" />
@@ -433,6 +424,15 @@ export function SavedPrompts() {
             </button>
           )}
         </div>
+        <Button
+          size="sm" variant="outline"
+          onClick={() => void fetchPrompts()}
+          disabled={loading}
+          className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 h-8 shrink-0"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          Atualizar
+        </Button>
         {!loading && (
           <span className="text-[10px] text-zinc-700 shrink-0">
             {filtered.length} prompt{filtered.length !== 1 ? "s" : ""}
