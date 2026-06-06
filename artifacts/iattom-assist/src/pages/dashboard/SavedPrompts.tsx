@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookMarked, Copy, Trash2, Plus, Search, Check, X, RefreshCw,
-  Sparkles, FileText, Megaphone, CheckCircle, Video, Wand2,
+  Sparkles, FileText, Megaphone, CheckCircle, Video, Wand2, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,65 @@ const MODULE_META: Record<string, { label: string; color: string; icon: React.El
   video_script: { label: "Script de Vídeo", color: "text-rose-400 bg-rose-400/10 border-rose-400/20", icon: Video },
 };
 
+interface ObjectiveOption {
+  label: string;
+  objective: string;
+  module: string;
+}
+
+const OBJECTIVE_OPTIONS: ObjectiveOption[] = [
+  {
+    label: "Encontrar produtos para vender",
+    objective: "Identificar produtos com alta demanda, margem de lucro viável e baixa concorrência para vender online",
+    module: "product_discovery",
+  },
+  {
+    label: "Validar se um produto vale a pena",
+    objective: "Analisar se o produto tem demanda real, concorrência saudável, margem de lucro e público-alvo definido",
+    module: "product_validation",
+  },
+  {
+    label: "Criar campanha de venda",
+    objective: "Criar campanha de vendas completa com ângulos, copies, audiência e estratégia de tráfego pago",
+    module: "campaign",
+  },
+  {
+    label: "Criar conteúdo para redes sociais",
+    objective: "Criar conteúdo engajante para redes sociais que gere autoridade, tráfego orgânico e conversão",
+    module: "content",
+  },
+  {
+    label: "Criar imagem/anúncio visual",
+    objective: "Criar descrição detalhada para imagem publicitária premium com foco em conversão, visual atraente e benefícios principais do produto",
+    module: "creative",
+  },
+  {
+    label: "Criar script de vídeo",
+    objective: "Criar roteiro completo de vídeo de vendas com gancho forte, desenvolvimento, prova social e chamada para ação",
+    module: "video_script",
+  },
+  {
+    label: "Criar descrição para marketplace",
+    objective: "Criar descrição persuasiva para marketplace com título otimizado, benefícios, especificações e palavras-chave de busca",
+    module: "content",
+  },
+  {
+    label: "Criar copy de anúncio",
+    objective: "Criar copy de anúncio de alta conversão com headline impactante, benefícios claros, objeções respondidas e CTA forte",
+    module: "campaign",
+  },
+  {
+    label: "Criar ideias de posts",
+    objective: "Criar lista de ideias de posts originais e relevantes para construir audiência e autoridade no nicho",
+    module: "content",
+  },
+  {
+    label: "Criar estratégia de venda",
+    objective: "Criar estratégia de vendas completa com posicionamento, canais, funil, precificação e diferenciação competitiva",
+    module: "campaign",
+  },
+];
+
 const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
 
 type CreateMode = "manual" | "guided";
@@ -50,7 +109,7 @@ export function SavedPrompts() {
   const [createMode, setCreateMode] = useState<CreateMode>("guided");
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  // shared fields (used by both modes)
+  // shared fields
   const [newTitle, setNewTitle] = useState("");
   const [newPrompt, setNewPrompt] = useState("");
   const [newModule, setNewModule] = useState("product_discovery");
@@ -58,7 +117,7 @@ export function SavedPrompts() {
 
   // guided-mode fields
   const [guidedProduct, setGuidedProduct] = useState("");
-  const [guidedObjective, setGuidedObjective] = useState("");
+  const [selectedObjective, setSelectedObjective] = useState<ObjectiveOption | null>(null);
   const [guidedObservations, setGuidedObservations] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
@@ -69,13 +128,13 @@ export function SavedPrompts() {
     setLoading(true);
     try {
       const res = await fetch("/api/prompts");
-      if (res.ok) setPrompts(await res.json());
+      if (res.ok) setPrompts(await res.json() as SavedPrompt[]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchPrompts(); }, []);
+  useEffect(() => { void fetchPrompts(); }, []);
 
   const filtered = prompts.filter((p) => {
     const matchModule = filter === "all" || p.module === filter;
@@ -89,7 +148,7 @@ export function SavedPrompts() {
     setNewPrompt("");
     setNewModule("product_discovery");
     setGuidedProduct("");
-    setGuidedObjective("");
+    setSelectedObjective(null);
     setGuidedObservations("");
     setGenerated(false);
   };
@@ -99,6 +158,11 @@ export function SavedPrompts() {
     setNewTitle("");
     setNewPrompt("");
     setGenerated(false);
+  };
+
+  const handleObjectiveSelect = (opt: ObjectiveOption) => {
+    setSelectedObjective(opt);
+    setNewModule(opt.module);
   };
 
   const copyPrompt = (p: SavedPrompt) => {
@@ -116,7 +180,7 @@ export function SavedPrompts() {
   };
 
   const generatePrompt = async () => {
-    if (!guidedProduct.trim() || !guidedObjective.trim()) return;
+    if (!guidedProduct.trim() || !selectedObjective) return;
     setGenerating(true);
     setGenerated(false);
     try {
@@ -125,21 +189,22 @@ export function SavedPrompts() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           product: guidedProduct.trim(),
-          objective: guidedObjective.trim(),
+          objective: selectedObjective.objective,
           module: newModule,
           observations: guidedObservations.trim() || undefined,
         }),
       });
-      if (res.ok) {
-        const data = await res.json() as { title: string; prompt: string };
+      const data = await res.json() as { title?: string; prompt?: string; error?: string };
+      if (res.ok && data.title && data.prompt) {
         setNewTitle(data.title);
         setNewPrompt(data.prompt);
         setGenerated(true);
         toast({ description: "Prompt gerado. Revise e salve." });
       } else {
-        const err = await res.json().catch(() => ({})) as { error?: string };
-        toast({ description: err.error ?? "Erro ao gerar prompt. Tente novamente.", variant: "destructive" });
+        toast({ description: data.error ?? "Erro ao gerar prompt. Tente novamente.", variant: "destructive" });
       }
+    } catch {
+      toast({ description: "Erro de conexão. Tente novamente.", variant: "destructive" });
     } finally {
       setGenerating(false);
     }
@@ -165,7 +230,7 @@ export function SavedPrompts() {
     }
   };
 
-  const canGenerate = guidedProduct.trim().length > 0 && guidedObjective.trim().length > 0;
+  const canGenerate = guidedProduct.trim().length > 0 && selectedObjective !== null;
   const canSave = newTitle.trim().length > 0 && newPrompt.trim().length > 0;
 
   return (
@@ -211,7 +276,7 @@ export function SavedPrompts() {
             className="overflow-hidden"
           >
             <div className="bg-[#0f0f0f] border border-primary/20 rounded-2xl p-5 space-y-4">
-              {/* Form header + close */}
+              {/* Form header */}
               <div className="flex items-center justify-between">
                 <p className="text-sm font-bold text-white">Novo Prompt</p>
                 <button onClick={resetCreateForm} className="text-zinc-600 hover:text-zinc-400 transition-colors">
@@ -224,9 +289,7 @@ export function SavedPrompts() {
                 <button
                   onClick={() => switchMode("guided")}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${
-                    createMode === "guided"
-                      ? "bg-primary text-black"
-                      : "text-zinc-500 hover:text-zinc-300"
+                    createMode === "guided" ? "bg-primary text-black" : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
                   <Wand2 className="w-3 h-3" />
@@ -235,9 +298,7 @@ export function SavedPrompts() {
                 <button
                   onClick={() => switchMode("manual")}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${
-                    createMode === "manual"
-                      ? "bg-primary text-black"
-                      : "text-zinc-500 hover:text-zinc-300"
+                    createMode === "manual" ? "bg-primary text-black" : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
                   <FileText className="w-3 h-3" />
@@ -245,82 +306,108 @@ export function SavedPrompts() {
                 </button>
               </div>
 
-              {/* Module selector — shared */}
-              <div className="flex items-center gap-2">
-                <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold shrink-0">Módulo</label>
-                <select
-                  value={newModule}
-                  onChange={(e) => setNewModule(e.target.value)}
-                  className="flex-1 h-8 text-xs rounded-lg bg-[#111111] border border-white/[0.08] text-zinc-300 px-3 outline-none"
-                >
-                  {MODULE_OPTIONS.filter((m) => m.value !== "all").map((m) => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-              </div>
-
               {/* GUIDED MODE */}
               {createMode === "guided" && (
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key="guided"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="space-y-3"
-                  >
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Produto / Nicho</label>
-                        <Input
-                          value={guidedProduct}
-                          onChange={(e) => setGuidedProduct(e.target.value)}
-                          placeholder="Ex: suplementos fitness, curso de inglês..."
-                          className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-9 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Objetivo</label>
-                        <Input
-                          value={guidedObjective}
-                          onChange={(e) => setGuidedObjective(e.target.value)}
-                          placeholder="Ex: encontrar produtos com alta demanda..."
-                          className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-9 text-xs"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">
-                        Observações <span className="text-zinc-700 normal-case tracking-normal">(opcional)</span>
-                      </label>
-                      <Input
-                        value={guidedObservations}
-                        onChange={(e) => setGuidedObservations(e.target.value)}
-                        placeholder="Ex: público iniciante, sem investimento inicial..."
-                        className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-9 text-xs"
-                      />
-                    </div>
-
-                    <Button
-                      onClick={() => void generatePrompt()}
-                      disabled={!canGenerate || generating}
-                      size="sm"
-                      className="bg-primary text-black hover:bg-primary/90 font-bold text-xs h-9 w-full gap-2"
+                <motion.div
+                  key="guided"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.15 }}
+                  className="space-y-4"
+                >
+                  {/* Step 1: Module */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">
+                      1. Módulo de destino
+                    </label>
+                    <select
+                      value={newModule}
+                      onChange={(e) => setNewModule(e.target.value)}
+                      className="w-full h-9 text-xs rounded-lg bg-[#111111] border border-white/[0.08] text-zinc-300 px-3 outline-none"
                     >
-                      <Wand2 className={`w-3.5 h-3.5 ${generating ? "animate-spin" : ""}`} />
-                      {generating ? "Gerando prompt..." : "Gerar Prompt"}
-                    </Button>
+                      {MODULE_OPTIONS.filter((m) => m.value !== "all").map((m) => (
+                        <option key={m.value} value={m.value}>{m.label}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                    {/* Generated result — editable before save */}
+                  {/* Step 2: Product */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">
+                      2. Produto / Nicho
+                    </label>
+                    <Input
+                      value={guidedProduct}
+                      onChange={(e) => setGuidedProduct(e.target.value)}
+                      placeholder="Ex: suplementos fitness, curso de inglês, Scooter X11..."
+                      className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-9 text-xs"
+                    />
+                  </div>
+
+                  {/* Step 3: Objective selector */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">
+                      3. O que você quer criar?
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={selectedObjective?.label ?? ""}
+                        onChange={(e) => {
+                          const opt = OBJECTIVE_OPTIONS.find((o) => o.label === e.target.value) ?? null;
+                          if (opt) handleObjectiveSelect(opt);
+                        }}
+                        className="w-full h-9 text-xs rounded-lg bg-[#111111] border border-white/[0.08] text-zinc-300 px-3 pr-8 outline-none appearance-none"
+                      >
+                        <option value="" disabled>Selecione o objetivo...</option>
+                        {OBJECTIVE_OPTIONS.map((opt) => (
+                          <option key={opt.label} value={opt.label}>{opt.label}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600 pointer-events-none" />
+                    </div>
+                    {selectedObjective && (
+                      <p className="text-[10px] text-zinc-700 leading-relaxed px-1">
+                        Módulo ajustado para: <span className="text-zinc-500">{MODULE_OPTIONS.find((m) => m.value === newModule)?.label}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Observations (optional) */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">
+                      Observações <span className="text-zinc-700 normal-case tracking-normal font-normal">(opcional)</span>
+                    </label>
+                    <Input
+                      value={guidedObservations}
+                      onChange={(e) => setGuidedObservations(e.target.value)}
+                      placeholder="Ex: público iniciante, sem investimento inicial, tom descontraído..."
+                      className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-9 text-xs"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={() => void generatePrompt()}
+                    disabled={!canGenerate || generating}
+                    size="sm"
+                    className="bg-primary text-black hover:bg-primary/90 font-bold text-xs h-9 w-full gap-2 disabled:opacity-40"
+                  >
+                    <Wand2 className={`w-3.5 h-3.5 ${generating ? "animate-spin" : ""}`} />
+                    {generating ? "Gerando prompt..." : "Gerar Prompt"}
+                  </Button>
+
+                  {/* Generated result — editable before save */}
+                  <AnimatePresence>
                     {generated && (
                       <motion.div
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="space-y-3 pt-2 border-t border-white/[0.06]"
+                        className="space-y-3 pt-3 border-t border-white/[0.06]"
                       >
-                        <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Prompt gerado — revise e salve</p>
+                        <p className="text-[10px] text-primary font-bold uppercase tracking-widest">
+                          Prompt gerado — revise e salve
+                        </p>
                         <div className="space-y-1.5">
                           <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Título</label>
                           <Input
@@ -359,45 +446,51 @@ export function SavedPrompts() {
                         </div>
                       </motion.div>
                     )}
-                  </motion.div>
-                </AnimatePresence>
+                  </AnimatePresence>
+                </motion.div>
               )}
 
               {/* MANUAL MODE */}
               {createMode === "manual" && (
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key="manual"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="space-y-3"
-                  >
-                    <Input
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      placeholder="Título do prompt..."
-                      className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-9"
-                    />
-                    <Textarea
-                      value={newPrompt}
-                      onChange={(e) => setNewPrompt(e.target.value)}
-                      placeholder="Cole seu prompt aqui..."
-                      className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-28 resize-none text-sm"
-                    />
-                    <div className="flex justify-end">
-                      <Button
-                        onClick={() => void savePrompt()}
-                        disabled={!canSave || saving}
-                        size="sm"
-                        className="bg-primary text-black hover:bg-primary/90 font-bold text-xs h-9 px-4"
-                      >
-                        {saving ? "Salvando..." : "Salvar Prompt"}
-                      </Button>
-                    </div>
-                  </motion.div>
-                </AnimatePresence>
+                <motion.div
+                  key="manual"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.15 }}
+                  className="space-y-3"
+                >
+                  <Input
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="Título do prompt..."
+                    className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-9"
+                  />
+                  <Textarea
+                    value={newPrompt}
+                    onChange={(e) => setNewPrompt(e.target.value)}
+                    placeholder="Cole seu prompt aqui..."
+                    className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 h-28 resize-none text-sm"
+                  />
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={newModule}
+                      onChange={(e) => setNewModule(e.target.value)}
+                      className="flex-1 h-9 text-xs rounded-lg bg-[#111111] border border-white/[0.08] text-zinc-300 px-3 outline-none"
+                    >
+                      {MODULE_OPTIONS.filter((m) => m.value !== "all").map((m) => (
+                        <option key={m.value} value={m.value}>{m.label}</option>
+                      ))}
+                    </select>
+                    <Button
+                      onClick={() => void savePrompt()}
+                      disabled={!canSave || saving}
+                      size="sm"
+                      className="bg-primary text-black hover:bg-primary/90 font-bold text-xs h-9 px-4"
+                    >
+                      {saving ? "Salvando..." : "Salvar Prompt"}
+                    </Button>
+                  </div>
+                </motion.div>
               )}
             </div>
           </motion.div>
