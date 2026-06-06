@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { useListAdminActivity, getListAdminActivityQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { translateAction, translateModule } from "@/lib/eventTranslations";
+import { translateModule } from "@/lib/eventTranslations";
 
 /* ─── constants ─────────────────────────────────────────────────── */
 const MODULE_COLORS: Record<string, string> = {
@@ -34,6 +34,29 @@ function shortDay(iso: string) {
   const d = new Date(`${iso}T12:00:00`);
   const month = d.toLocaleString("pt-BR", { month: "short" }).replace(".", "");
   return `${dd}/${month}`;
+}
+
+/**
+ * Normalizes a raw action string to a canonical PT-BR category.
+ * Strips project-name suffixes (everything after ":") before matching.
+ */
+function normalizeAction(action: string): string {
+  const base = action.split(":")[0].trim();
+  if (/campaign.*creat|creat.*campaign|campanha.*cria/i.test(base))  return "Campanhas Criadas";
+  if (/campaign.*refin|block.*refin|bloco/i.test(base))              return "Blocos Refinados";
+  if (/content.*creat|creat.*content|content.*gen|gen.*content|conteúdo/i.test(base)) return "Conteúdos Criados";
+  if (/script.*creat|script.*gen|video.?script/i.test(base))         return "Scripts Gerados";
+  if (/creative.*gen|gen.*creative|criativo/i.test(base))            return "Criativos Gerados";
+  if (/creat.*project|project.*creat|projeto.*cri/i.test(base))      return "Projetos Criados";
+  if (/updat.*project|project.*updat|projeto.*atualiz/i.test(base))  return "Projetos Atualizados";
+  if (/complet.*project|project.*complet|projeto.*conclu/i.test(base)) return "Projetos Concluídos";
+  if (/validat|validação/i.test(base))                               return "Validações Executadas";
+  if (/discover|descoberta/i.test(base))                             return "Descobertas Executadas";
+  if (/marketing/i.test(base))                                       return "Marketing Gerado";
+  if (/prompt/i.test(base))                                          return "Prompts Criados";
+  if (/delet|exclu/i.test(base))                                     return "Itens Excluídos";
+  if (/restor|restaur/i.test(base))                                  return "Itens Restaurados";
+  return base.length > 0 ? base : action;
 }
 
 /* ─── tooltip ───────────────────────────────────────────────────── */
@@ -96,29 +119,30 @@ export function AdminActivity() {
     }
     const dailyChart = days14.map((k) => ({ date: shortDay(k), count: dailyMap[k] }));
 
-    /* by module */
-    const modMap: Record<string, number> = {};
-    for (const it of items) modMap[it.module] = (modMap[it.module] ?? 0) + 1;
+    /* by module — normalize key to lowercase to prevent "campaign" vs "Campaign" splits */
+    const modMap: Record<string, { count: number; rawKey: string }> = {};
+    for (const it of items) {
+      const k = it.module.toLowerCase();
+      if (!modMap[k]) modMap[k] = { count: 0, rawKey: it.module };
+      modMap[k].count++;
+    }
     const moduleChart = Object.entries(modMap)
-      .sort((a, b) => b[1] - a[1]).slice(0, 8)
-      .map(([mod, count], i) => ({
-        name: translateModule(mod), count,
-        fill: MODULE_COLORS[mod] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+      .sort((a, b) => b[1].count - a[1].count).slice(0, 8)
+      .map(([k, { count, rawKey }], i) => ({
+        name: translateModule(rawKey),
+        count,
+        fill: MODULE_COLORS[k] ?? MODULE_COLORS[rawKey] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
       }));
 
-    /* by action type */
+    /* by action type — normalize to canonical categories to prevent per-project-name splits */
     const actionMap: Record<string, number> = {};
     for (const it of items) {
-      const label = translateAction(it.action);
+      const label = normalizeAction(it.action);
       actionMap[label] = (actionMap[label] ?? 0) + 1;
     }
     const actionChart = Object.entries(actionMap)
-      .sort((a, b) => b[1] - a[1]).slice(0, 8)
-      .map(([name, count], i) => ({
-        name: name.length > 18 ? name.slice(0, 16) + "…" : name,
-        count,
-        fill: FALLBACK_COLORS[i % FALLBACK_COLORS.length],
-      }));
+      .sort((a, b) => b[1] - a[1]).slice(0, 9)
+      .map(([name, count], i) => ({ name, count, fill: FALLBACK_COLORS[i % FALLBACK_COLORS.length] }));
 
     return { kpis: { today, week, month, avgDaily }, dailyChart, moduleChart, actionChart };
   }, [items]);
@@ -257,20 +281,19 @@ export function AdminActivity() {
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
                 <Zap className="w-4 h-4 text-primary" />
                 Atividade por Tipo de Ação
-                <span className="text-[10px] text-zinc-600 font-normal ml-auto">top 8 · últimos 100 eventos</span>
+                <span className="text-[10px] text-zinc-600 font-normal ml-auto">top 9 · últimos 100 eventos</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={actionChart} margin={{ top: 4, right: 16, left: -10, bottom: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} angle={-35} textAnchor="end" interval={0} />
-                  <YAxis tick={{ fontSize: 10, fill: "#52525b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <ResponsiveContainer width="100%" height={Math.max(200, actionChart.length * 36)}>
+                <BarChart data={actionChart} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: "#52525b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={140} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Ocorrências" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="count" name="Ocorrências" radius={[0, 4, 4, 0]}>
                     {actionChart.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                   </Bar>
-                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 10, color: "#71717a", paddingTop: 8 }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

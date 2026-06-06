@@ -17,7 +17,28 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@clerk/react";
 import { Button } from "@/components/ui/button";
-import { translateAction } from "@/lib/eventTranslations";
+/**
+ * Normalizes a raw action string to a canonical PT-BR category.
+ * Strips project-name suffixes (after ":") before pattern-matching.
+ */
+function normalizeAction(action: string): string {
+  const base = action.split(":")[0].trim();
+  if (/campaign.*creat|creat.*campaign|campanha.*cria/i.test(base))  return "Campanhas Criadas";
+  if (/campaign.*refin|block.*refin|bloco/i.test(base))              return "Blocos Refinados";
+  if (/content.*creat|creat.*content|content.*gen|gen.*content|conteúdo/i.test(base)) return "Conteúdos Criados";
+  if (/script.*creat|script.*gen|video.?script/i.test(base))         return "Scripts Gerados";
+  if (/creative.*gen|gen.*creative|criativo/i.test(base))            return "Criativos Gerados";
+  if (/creat.*project|project.*creat|projeto.*cri/i.test(base))      return "Projetos Criados";
+  if (/updat.*project|project.*updat|projeto.*atualiz/i.test(base))  return "Projetos Atualizados";
+  if (/complet.*project|project.*complet|projeto.*conclu/i.test(base)) return "Projetos Concluídos";
+  if (/validat|validação/i.test(base))                               return "Validações Executadas";
+  if (/discover|descoberta/i.test(base))                             return "Descobertas Executadas";
+  if (/marketing/i.test(base))                                       return "Marketing Gerado";
+  if (/prompt/i.test(base))                                          return "Prompts Criados";
+  if (/delet|exclu/i.test(base))                                     return "Itens Excluídos";
+  if (/restor|restaur/i.test(base))                                  return "Itens Restaurados";
+  return base.length > 0 ? base : action;
+}
 
 /* ─── palette ────────────────────────────────────────────────────── */
 const GOLD    = "#C9A84C";
@@ -195,14 +216,14 @@ export function AdminOverview() {
     const items = activity ?? [];
     const actionMap: Record<string, number> = {};
     for (const it of items) {
-      const label = translateAction(it.action);
+      const label = normalizeAction(it.action);
       actionMap[label] = (actionMap[label] ?? 0) + 1;
     }
     return Object.entries(actionMap)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
+      .slice(0, 9)
       .map(([name, count], i) => ({
-        name: name.length > 16 ? name.slice(0, 14) + "…" : name,
+        name,
         count,
         fill: FALLBACK_COLORS[i % FALLBACK_COLORS.length],
       }));
@@ -515,11 +536,11 @@ export function AdminOverview() {
                   <p className="text-xs text-muted-foreground">Sem atividade recente registrada.</p>
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={Math.max(200, actionChart.length * 30)}>
-                  <BarChart data={actionChart} layout="vertical" margin={{ top: 0, right: 40, left: 8, bottom: 0 }}>
+                <ResponsiveContainer width="100%" height={Math.max(200, actionChart.length * 36)}>
+                  <BarChart data={actionChart} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
                     <XAxis type="number" tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={90} />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={140} />
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="count" name="Ocorrências" radius={[0, 4, 4, 0]}>
                       {actionChart.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
