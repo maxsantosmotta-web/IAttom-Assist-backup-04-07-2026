@@ -1,0 +1,387 @@
+AJUSTE CIRÚRGICO — LIXEIRA PARA PROMPTS SALVOS + MAPEAMENTO DE EXCLUSÕES + POLIMENTO VISUAL DO MODAL + CORREÇÃO DO BOTÃO ATUALIZAR (ADM)
+
+NÃO MEXER NA GERAÇÃO DE PROMPTS.
+
+NÃO MEXER NO BACKEND OPENAI.
+
+NÃO REFAZER O MÓDULO PROMPTS SALVOS.
+
+NÃO ALTERAR O FLUXO DE COPIAR JÁ AJUSTADO.
+
+NÃO ALTERAR OUTROS MÓDULOS NESTA ETAPA.
+
+EXCEÇÃO AUTORIZADA:
+
+Pode alterar exclusivamente o botão "Atualizar" do módulo Usuários ADM descrito na Parte 8.
+
+OBJETIVO
+
+Aplicar no módulo Prompts Salvos o mesmo padrão de exclusão já validado em Projetos Salvos:
+
+Excluir
+→ mover para Lixeira
+→ permitir Restaurar
+→ permitir Excluir permanentemente
+→ exclusão automática após 48h
+
+IMPORTANTE
+
+NÃO transformar isso em regra global cega para todo o IAttom Assist.
+
+A lógica de Lixeira deve ser aplicada apenas a módulos que armazenam ativos persistentes do usuário.
+
+Exemplos onde faz sentido futuramente:
+
+- Projetos Salvos
+- Prompts Salvos
+- Campanhas Salvas
+- Scripts Salvos
+- Conteúdos Salvos
+- Criativos/Imagens Salvas
+- Biblioteca/Workspace
+
+Exemplos onde NÃO aplicar:
+
+- IAttom Help
+- Configurações
+- Integrações
+- Analytics
+- Billing
+- Auth/Login
+- Logs técnicos
+
+━━━━━━━━━━━━━━━━━━━━━━
+PARTE 1 — DIAGNÓSTICO DA LIXEIRA EXISTENTE
+━━━━━━━━━━━━━━━━━━━━━━
+
+Antes de alterar Prompts Salvos:
+
+1. Localizar como a Lixeira de Projetos Salvos funciona hoje.
+
+2. Identificar:
+
+- tabela/campo usado para soft delete;
+- campo de data de exclusão;
+- prazo de 48h;
+- rota de restaurar;
+- rota de exclusão permanente;
+- componente visual da Lixeira;
+- lógica de limpeza automática após 48h, se já existir.
+
+3. Reutilizar o padrão existente sempre que possível.
+
+IMPORTANTE:
+
+Se a Lixeira de Projetos Salvos já possuir:
+
+- tabela;
+- rotas;
+- componente visual;
+- lógica de restauração;
+- lógica de exclusão permanente;
+- limpeza automática;
+
+reutilizar a mesma arquitetura.
+
+Evitar criar:
+
+- nova tabela de lixeira;
+- nova página de lixeira;
+- novo sistema paralelo.
+
+Priorizar extensão da arquitetura existente.
+
+NÃO criar uma arquitetura paralela se a arquitetura de Projetos Salvos puder ser reutilizada/adaptada.
+
+━━━━━━━━━━━━━━━━━━━━━━
+PARTE 2 — APLICAR LIXEIRA EM PROMPTS SALVOS
+━━━━━━━━━━━━━━━━━━━━━━
+
+No módulo Prompts Salvos:
+
+1. Ao clicar em Excluir:
+
+- manter confirmação;
+- se confirmado, NÃO excluir definitivamente;
+- mover para Lixeira.
+
+2. A exclusão deve virar soft delete.
+
+3. O prompt excluído deve sair da lista principal.
+
+4. O prompt excluído deve aparecer na Lixeira.
+
+5. Na Lixeira, permitir:
+
+- Restaurar;
+- Excluir permanentemente.
+
+6. Restaurar:
+
+- remove o estado de lixeira;
+- volta o prompt para a lista principal.
+
+7. Excluir permanentemente:
+
+- remove definitivamente do banco;
+- pedir confirmação antes, se esse for o padrão de Projetos Salvos.
+
+8. Após 48h:
+
+- excluir permanentemente de forma automática, seguindo o mesmo padrão de Projetos Salvos.
+
+━━━━━━━━━━━━━━━━━━━━━━
+PARTE 3 — ROTAS / BACKEND
+━━━━━━━━━━━━━━━━━━━━━━
+
+Se Prompts Salvos ainda usa DELETE direto:
+
+- alterar DELETE atual para mover para Lixeira;
+- criar ou reutilizar endpoint para restaurar;
+- criar ou reutilizar endpoint para exclusão permanente.
+
+Manter isolamento por usuário autenticado.
+
+Nenhum usuário pode visualizar, restaurar ou excluir prompt de outro usuário.
+
+━━━━━━━━━━━━━━━━━━━━━━
+PARTE 4 — UI / FRONTEND
+━━━━━━━━━━━━━━━━━━━━━━
+
+Na lista principal de Prompts Salvos:
+
+- Excluir deve mover para Lixeira;
+- item removido da lista principal após confirmação.
+
+Na Lixeira:
+
+- exibir prompts excluídos;
+- mostrar indicação de prazo de 48h, se esse padrão já existir na UI de Projetos Salvos;
+- botão Restaurar;
+- botão Excluir permanentemente.
+
+Manter visual consistente com a Lixeira de Projetos Salvos.
+
+Não criar experiência visual diferente sem necessidade.
+
+━━━━━━━━━━━━━━━━━━━━━━
+PARTE 5 — MAPEAMENTO DE OUTROS MÓDULOS
+━━━━━━━━━━━━━━━━━━━━━━
+
+APENAS DIAGNOSTICAR.
+
+NÃO CORRIGIR OUTROS MÓDULOS AGORA.
+
+Mapear quais módulos armazenam ativos persistentes do usuário e ainda fazem exclusão definitiva direta.
+
+Entregar relatório com:
+
+- módulo;
+- arquivo;
+- tipo de ativo salvo;
+- como exclui hoje;
+- se já tem lixeira;
+- recomendação futura.
+
+Não alterar nenhum desses módulos nesta etapa.
+
+━━━━━━━━━━━━━━━━━━━━━━
+PARTE 6 — VALIDAÇÃO DA LIXEIRA
+━━━━━━━━━━━━━━━━━━━━━━
+
+Testar fluxo completo em Prompts Salvos:
+
+1. Criar ou usar um prompt existente.
+2. Clicar Excluir.
+3. Confirmar.
+4. Verificar se saiu da lista principal.
+5. Abrir Lixeira.
+6. Verificar se aparece na Lixeira.
+7. Restaurar.
+8. Verificar se voltou para lista principal.
+9. Excluir novamente.
+10. Na Lixeira, Excluir permanentemente.
+11. Verificar se sumiu definitivamente.
+12. Confirmar que busca/lista principal continuam funcionando.
+
+━━━━━━━━━━━━━━━━━━━━━━
+PARTE 7 — POLIMENTO VISUAL DO MODAL DE PROMPTS
+━━━━━━━━━━━━━━━━━━━━━━
+
+NÃO ALTERAR GERAÇÃO.
+
+NÃO ALTERAR OPENAI.
+
+NÃO ALTERAR BANCO.
+
+NÃO ALTERAR SALVAMENTO.
+
+NÃO ALTERAR A LÓGICA DOS BOTÕES.
+
+Corrigir apenas o layout visual do modal de visualização dos Prompts.
+
+PROBLEMA
+
+Após a remoção do botão "Copiar Tudo", o rodapé do modal continua utilizando a distribuição visual antiga preparada para 4 ações.
+
+Resultado:
+
+- espaço vazio entre os botões;
+- desalinhamento visual;
+- aparência de layout inacabado;
+- sensação de que um botão foi removido sem reorganização da interface.
+
+AJUSTE
+
+Manter apenas:
+
+- Copiar
+- Editar
+- Excluir
+
+Distribuição visual:
+
+- mesma largura para os 3 botões;
+- mesma altura para os 3 botões;
+- mesmo padding;
+- mesmo alinhamento vertical;
+- mesmo espaçamento entre eles;
+- centralizados horizontalmente;
+- sem espaços mortos.
+
+Layout desejado:
+
+Copiar | Editar | Excluir
+
+Cada botão ocupando aproximadamente 33% da largura disponível.
+
+Garantir comportamento responsivo para:
+
+- Desktop
+- Tablet
+- Mobile
+
+NÃO alterar:
+
+- botão Copiar;
+- botão Editar;
+- botão Excluir;
+- badge de tipo;
+- cores dos tipos;
+- comportamento do modal.
+
+Ajustar exclusivamente:
+
+- alinhamento;
+- largura;
+- distribuição horizontal;
+- responsividade.
+
+Nenhuma alteração funcional deve ocorrer nesta parte.
+
+VALIDAÇÃO VISUAL
+
+Abrir modal de:
+
+- Prompt curto
+- Prompt médio
+- Prompt longo
+
+Confirmar que:
+
+- não existe espaço vazio entre as ações;
+- os botões ficam alinhados;
+- os 3 possuem largura consistente;
+- o visual permanece premium.
+
+━━━━━━━━━━━━━━━━━━━━━━
+PARTE 8 — CORREÇÃO DO BOTÃO ATUALIZAR (ADM)
+━━━━━━━━━━━━━━━━━━━━━━
+
+IMPORTANTE
+
+NÃO APENAS DIAGNOSTICAR.
+
+CORRIGIR NESTA ETAPA.
+
+PROBLEMA
+
+O botão "Atualizar" do módulo Usuários no painel ADM não está clicável ou não está executando a ação esperada.
+
+OBJETIVO
+
+Garantir que o botão Atualizar do módulo Usuários ADM execute uma ação real.
+
+VERIFICAR
+
+1. O botão possui onClick ativo?
+2. O botão está desabilitado por alguma condição incorreta?
+3. Existe handler associado?
+4. Existe função de refresh?
+5. Existe chamada de API?
+6. Existe erro de renderização?
+7. Existe sobreposição de elemento bloqueando o clique?
+8. Existe estado de loading travado?
+9. Existe problema de permissões?
+10. Existe erro de tipagem ou binding?
+
+CORRIGIR
+
+Se houver problema:
+
+- conectar o botão ao handler correto;
+- restaurar a ação de atualização;
+- corrigir estado disabled incorreto;
+- corrigir loading travado;
+- corrigir bloqueio visual;
+- corrigir qualquer erro que impeça o clique.
+
+RESULTADO ESPERADO
+
+Ao clicar em "Atualizar":
+
+- executar ação real;
+- recarregar os dados da tela;
+- atualizar a listagem de usuários;
+- atualizar métricas exibidas;
+- atualizar informações vindas da API;
+- exibir feedback visual adequado durante a atualização.
+
+VALIDAÇÃO
+
+1. Abrir módulo Usuários ADM.
+2. Clicar Atualizar.
+3. Confirmar que o clique funciona.
+4. Confirmar que os dados são recarregados.
+5. Confirmar ausência de erros no console.
+6. Confirmar funcionamento em desktop e mobile.
+
+━━━━━━━━━━━━━━━━━━━━━━
+RELATÓRIO FINAL OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━━━━
+
+Entregar:
+
+1. Como funciona hoje a Lixeira de Projetos Salvos.
+2. O que foi reaproveitado.
+3. Arquivos alterados.
+4. Campos/tabelas alterados, se houver.
+5. Rotas criadas/alteradas.
+6. Confirmação de isolamento por usuário.
+7. Resultado do typecheck.
+8. Resultado dos testes do fluxo:
+   - Excluir
+   - Lixeira
+   - Restaurar
+   - Excluir permanentemente
+9. Lista de outros módulos que ainda precisam de Lixeira futuramente.
+10. Resultado do ajuste visual do modal.
+11. Confirmação de que Copiar, Editar e Excluir ficaram centralizados e distribuídos corretamente.
+12. Confirmação de funcionamento em mobile.
+13. Confirmação de que não existem mais espaços mortos no rodapé do modal.
+14. Arquivo(s) envolvidos no botão Atualizar do módulo Usuários ADM.
+15. Problema encontrado.
+16. Correção aplicada.
+17. Confirmação de funcionamento após teste.
+
+Rodar typecheck ao final e reiniciar servidor.

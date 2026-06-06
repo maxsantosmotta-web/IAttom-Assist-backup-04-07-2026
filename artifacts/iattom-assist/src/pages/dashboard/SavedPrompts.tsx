@@ -151,7 +151,7 @@ export function SavedPrompts() {
     setPrompts((prev) => prev.filter((p) => p.id !== id));
     if (viewPrompt?.id === id) setViewPrompt(null);
     await fetch(`/api/prompts/${id}`, { method: "DELETE" });
-    toast({ description: "Prompt excluído" });
+    toast({ description: "Prompt movido para a Lixeira" });
   };
 
   const cancelDelete = () => setConfirmDeleteId(null);
@@ -688,21 +688,21 @@ export function SavedPrompts() {
                   <>
                     <button
                       onClick={modalCopyOnly}
-                      className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-primary/10 border border-white/[0.07] hover:border-primary/30"
+                      className="flex flex-1 items-center justify-center gap-1.5 text-xs text-zinc-400 hover:text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-primary/10 border border-white/[0.07] hover:border-primary/30"
                     >
                       {modalCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                       {modalCopied ? "Copiado" : "Copiar"}
                     </button>
                     <button
                       onClick={startEdit}
-                      className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/[0.05] border border-white/[0.07]"
+                      className="flex flex-1 items-center justify-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/[0.05] border border-white/[0.07]"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                       Editar
                     </button>
                     <button
                       onClick={() => requestDelete(viewPrompt.id)}
-                      className="flex items-center gap-1.5 text-xs text-zinc-600 hover:text-red-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-400/10 border border-white/[0.07] hover:border-red-400/20 ml-auto"
+                      className="flex flex-1 items-center justify-center gap-1.5 text-xs text-zinc-600 hover:text-red-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-400/10 border border-white/[0.07] hover:border-red-400/20"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       Excluir

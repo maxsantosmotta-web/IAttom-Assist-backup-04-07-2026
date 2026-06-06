@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull, isNotNull, lt } from "drizzle-orm";
 import { db, savedPromptsTable } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -7,19 +7,29 @@ import { z } from "zod/v4";
 
 const router: IRouter = Router();
 
+const TRASH_TTL_MS = 48 * 60 * 60 * 1000;
+
 const CreatePromptBody = z.object({
   title: z.string().min(1).max(120),
   prompt: z.string().min(1).max(4000),
   module: z.string().min(1),
 });
 
+// ── GET /prompts — only active (not in trash) ─────────────────────────────────
 router.get("/prompts", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const module = req.query.module as string | undefined;
 
   const conditions = module
-    ? and(eq(savedPromptsTable.clerkUserId, clerkUserId), eq(savedPromptsTable.module, module))
-    : eq(savedPromptsTable.clerkUserId, clerkUserId);
+    ? and(
+        eq(savedPromptsTable.clerkUserId, clerkUserId),
+        eq(savedPromptsTable.module, module),
+        isNull(savedPromptsTable.deletedAt),
+      )
+    : and(
+        eq(savedPromptsTable.clerkUserId, clerkUserId),
+        isNull(savedPromptsTable.deletedAt),
+      );
 
   const items = await db
     .select()
@@ -31,6 +41,37 @@ router.get("/prompts", requireAuth, async (req, res): Promise<void> => {
   res.json(items);
 });
 
+// ── GET /prompts/trash — items in trash (purges expired first) ────────────────
+router.get("/prompts/trash", requireAuth, async (req, res): Promise<void> => {
+  const { clerkUserId } = req as AuthenticatedRequest;
+  const now = new Date();
+
+  await db
+    .delete(savedPromptsTable)
+    .where(
+      and(
+        eq(savedPromptsTable.clerkUserId, clerkUserId),
+        isNotNull(savedPromptsTable.expiresAt),
+        lt(savedPromptsTable.expiresAt, now),
+      ),
+    );
+
+  const items = await db
+    .select()
+    .from(savedPromptsTable)
+    .where(
+      and(
+        eq(savedPromptsTable.clerkUserId, clerkUserId),
+        isNotNull(savedPromptsTable.deletedAt),
+      ),
+    )
+    .orderBy(desc(savedPromptsTable.deletedAt))
+    .limit(200);
+
+  res.json(items);
+});
+
+// ── POST /prompts ─────────────────────────────────────────────────────────────
 router.post("/prompts", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = CreatePromptBody.safeParse(req.body);
@@ -160,7 +201,32 @@ router.put("/prompts/:id", requireAuth, async (req, res): Promise<void> => {
   res.json(updated);
 });
 
+// ── DELETE /prompts/:id — soft delete (move to trash, 48h TTL) ────────────────
 router.delete("/prompts/:id", requireAuth, async (req, res): Promise<void> => {
+  const { clerkUserId } = req as AuthenticatedRequest;
+  const id = parseInt(req.params.id as string, 10);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + TRASH_TTL_MS);
+  await db
+    .update(savedPromptsTable)
+    .set({ deletedAt: now, expiresAt })
+    .where(and(eq(savedPromptsTable.id, id), eq(savedPromptsTable.clerkUserId, clerkUserId)));
+  res.json({ ok: true });
+});
+
+// ── POST /prompts/:id/restore — restore from trash ────────────────────────────
+router.post("/prompts/:id/restore", requireAuth, async (req, res): Promise<void> => {
+  const { clerkUserId } = req as AuthenticatedRequest;
+  const id = parseInt(req.params.id as string, 10);
+  await db
+    .update(savedPromptsTable)
+    .set({ deletedAt: null, expiresAt: null })
+    .where(and(eq(savedPromptsTable.id, id), eq(savedPromptsTable.clerkUserId, clerkUserId)));
+  res.json({ ok: true });
+});
+
+// ── DELETE /prompts/:id/permanent — permanent delete ──────────────────────────
+router.delete("/prompts/:id/permanent", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const id = parseInt(req.params.id as string, 10);
   await db

@@ -8,6 +8,8 @@ export const savedPromptsTable = pgTable("saved_prompts", {
   module: text("module").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"),
+  expiresAt: timestamp("expires_at"),
 });
 
 export type SavedPrompt = typeof savedPromptsTable.$inferSelect;
