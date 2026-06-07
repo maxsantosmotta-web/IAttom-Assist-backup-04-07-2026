@@ -127,7 +127,9 @@ export function Projects() {
     setDeletingId(id);
     try {
       await trashItem(id);
-      setSavedItems(prev => prev.filter(i => i.id !== id));
+      const updated = savedItems.filter(i => i.id !== id);
+      setSavedItems(updated);
+      try { localStorage.setItem("iattom_saved_items_v1", JSON.stringify(updated)); } catch { /* noop */ }
       setConfirmDeleteId(null);
       toast({ description: "Projeto enviado para a lixeira. Acesse a Lixeira para restaurar." });
     } catch {
