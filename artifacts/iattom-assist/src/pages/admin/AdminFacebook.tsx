@@ -141,13 +141,13 @@ export function AdminFacebook() {
         ))}
       </div>
 
-      {/* ─── Páginas Conectadas ──────────────────────────────────── */}
+      {/* ─── Monitoramento da Plataforma ─────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-zinc-500" />
-              Páginas Conectadas
+              <Activity className="w-4 h-4 text-zinc-500" />
+              Monitoramento da Plataforma
               {!loadingPages && pages.length > 0 && (
                 <span className="text-[11px] font-normal text-zinc-500">
                   ({pages.length} {pages.length === 1 ? "página" : "páginas"})

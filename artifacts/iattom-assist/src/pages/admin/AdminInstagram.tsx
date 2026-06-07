@@ -144,13 +144,13 @@ export function AdminInstagram() {
         ))}
       </div>
 
-      {/* ─── Contas do Instagram ──────────────────────────────────── */}
+      {/* ─── Monitoramento da Plataforma ─────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <Instagram className="w-4 h-4 text-zinc-500" />
-              Contas do Instagram
+              <Activity className="w-4 h-4 text-zinc-500" />
+              Monitoramento da Plataforma
               {!loadingAccounts && accounts.length > 0 && (
                 <span className="text-[11px] font-normal text-zinc-500">
                   ({accounts.length} {accounts.length === 1 ? "conta" : "contas"})

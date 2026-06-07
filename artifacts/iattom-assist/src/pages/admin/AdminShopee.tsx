@@ -124,13 +124,13 @@ export function AdminShopee() {
         ))}
       </div>
 
-      {/* ─── Eventos Recebidos ──────────────────────────────────── */}
+      {/* ─── Monitoramento da Plataforma ─────────────────────────── */}
       <Card className="bg-white/3 border-white/8">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <Package className="w-4 h-4 text-zinc-500" />
-              Eventos Recebidos
+              <Activity className="w-4 h-4 text-zinc-500" />
+              Monitoramento da Plataforma
               {!loadingEvents && events.length > 0 && (
                 <span className="text-[11px] font-normal text-zinc-500">
                   ({events.length} {events.length === 1 ? "evento" : "eventos"})

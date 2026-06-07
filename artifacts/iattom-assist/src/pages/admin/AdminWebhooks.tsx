@@ -18,7 +18,7 @@ interface WebhookEvent {
   receivedAt: string | null;
 }
 
-type PlatformFilter = "all" | "kiwify" | "hotmart" | "shopee" | "facebook" | "instagram";
+type PlatformFilter = "all" | "kiwify" | "hotmart" | "shopee" | "facebook" | "instagram" | "mercadolivre";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -42,45 +42,50 @@ const fmtDate = (d: string | null | undefined) =>
     : "—";
 
 const PLATFORM_BADGE: Record<string, string> = {
-  kiwify:   "text-violet-400 bg-violet-500/15 border-violet-500/30",
-  hotmart:  "text-red-400 bg-red-500/15 border-red-500/30",
-  shopee:   "text-orange-400 bg-orange-500/15 border-orange-500/30",
-  facebook: "text-blue-400 bg-blue-500/15 border-blue-500/30",
-  instagram:"text-pink-400 bg-pink-500/15 border-pink-500/30",
+  kiwify:       "text-violet-400 bg-violet-500/15 border-violet-500/30",
+  hotmart:      "text-red-400 bg-red-500/15 border-red-500/30",
+  shopee:       "text-orange-400 bg-orange-500/15 border-orange-500/30",
+  facebook:     "text-blue-400 bg-blue-500/15 border-blue-500/30",
+  instagram:    "text-pink-400 bg-pink-500/15 border-pink-500/30",
+  mercadolivre: "text-yellow-400 bg-yellow-500/15 border-yellow-500/30",
 };
 
 const PLATFORM_DOT: Record<string, string> = {
-  kiwify:   "bg-violet-500/10 border-violet-500/15",
-  hotmart:  "bg-red-500/10 border-red-500/15",
-  shopee:   "bg-orange-500/10 border-orange-500/15",
-  facebook: "bg-blue-500/10 border-blue-500/15",
-  instagram:"bg-pink-500/10 border-pink-500/15",
+  kiwify:       "bg-violet-500/10 border-violet-500/15",
+  hotmart:      "bg-red-500/10 border-red-500/15",
+  shopee:       "bg-orange-500/10 border-orange-500/15",
+  facebook:     "bg-blue-500/10 border-blue-500/15",
+  instagram:    "bg-pink-500/10 border-pink-500/15",
+  mercadolivre: "bg-yellow-500/10 border-yellow-500/15",
 };
 
 const PLATFORM_ICON_COLOR: Record<string, string> = {
-  kiwify:   "text-violet-400/60",
-  hotmart:  "text-red-400/60",
-  shopee:   "text-orange-400/60",
-  facebook: "text-blue-400/60",
-  instagram:"text-pink-400/60",
+  kiwify:       "text-violet-400/60",
+  hotmart:      "text-red-400/60",
+  shopee:       "text-orange-400/60",
+  facebook:     "text-blue-400/60",
+  instagram:    "text-pink-400/60",
+  mercadolivre: "text-yellow-400/60",
 };
 
 // ─── Raw event types ──────────────────────────────────────────────────────────
 
-interface KiwifyRaw   { id: number; eventType: string | null; orderId: string | null; buyerEmail: string | null; buyerName: string | null; value: string | null; receivedAt: string | null }
-interface HotmartRaw  { id: number; eventType: string | null; buyerEmail: string | null; buyerName: string | null; value: string | null; receivedAt: string | null }
-interface ShopeeRaw   { id: number; eventType: string | null; shopId: string | null; receivedAt: string | null }
-interface MetaRaw     { id: number; platform: string | null; eventType: string | null; objectId: string | null; receivedAt: string | null }
+interface KiwifyRaw       { id: number; eventType: string | null; orderId: string | null; buyerEmail: string | null; buyerName: string | null; value: string | null; receivedAt: string | null }
+interface HotmartRaw      { id: number; eventType: string | null; buyerEmail: string | null; buyerName: string | null; value: string | null; receivedAt: string | null }
+interface ShopeeRaw       { id: number; eventType: string | null; shopId: string | null; receivedAt: string | null }
+interface MetaRaw         { id: number; platform: string | null; eventType: string | null; objectId: string | null; receivedAt: string | null }
+interface MercadoLivreRaw { id: number; topic: string | null; resource: string | null; userId: string | null; receivedAt: string | null }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const FILTER_OPTIONS: { key: PlatformFilter; label: string }[] = [
-  { key: "all",       label: "Todos"     },
-  { key: "kiwify",    label: "Kiwify"    },
-  { key: "hotmart",   label: "Hotmart"   },
-  { key: "shopee",    label: "Shopee"    },
-  { key: "facebook",  label: "Facebook"  },
-  { key: "instagram", label: "Instagram" },
+  { key: "all",          label: "Todos"         },
+  { key: "kiwify",       label: "Kiwify"        },
+  { key: "hotmart",      label: "Hotmart"       },
+  { key: "shopee",       label: "Shopee"        },
+  { key: "facebook",     label: "Facebook"      },
+  { key: "instagram",    label: "Instagram"     },
+  { key: "mercadolivre", label: "Mercado Livre" },
 ];
 
 export function AdminWebhooks() {
@@ -93,11 +98,12 @@ export function AdminWebhooks() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [kRes, hRes, sRes, mRes] = await Promise.allSettled([
+      const [kRes, hRes, sRes, mRes, mlRes] = await Promise.allSettled([
         apiFetch<KiwifyRaw[]>("/api/kiwify/events"),
         apiFetch<HotmartRaw[]>("/api/hotmart/events"),
         apiFetch<ShopeeRaw[]>("/api/shopee/events"),
         apiFetch<MetaRaw[]>("/api/meta/events"),
+        apiFetch<MercadoLivreRaw[]>("/api/ml/events"),
       ]);
 
       const merged: WebhookEvent[] = [];
@@ -149,6 +155,19 @@ export function AdminWebhooks() {
             eventType: e.eventType,
             label: e.objectId ? `Object ${e.objectId}` : `Evento #${e.id}`,
             detail: null,
+            receivedAt: e.receivedAt,
+          });
+        }
+      }
+
+      if (mlRes.status === "fulfilled") {
+        for (const e of mlRes.value) {
+          merged.push({
+            id: `ml-${e.id}`,
+            platform: "mercadolivre",
+            eventType: e.topic,
+            label: e.resource ?? `Evento #${e.id}`,
+            detail: e.userId ? `User ${e.userId}` : null,
             receivedAt: e.receivedAt,
           });
         }
