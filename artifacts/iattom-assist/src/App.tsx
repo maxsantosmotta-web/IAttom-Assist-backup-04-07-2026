@@ -336,6 +336,18 @@ function ClerkQueryInvalidator() {
   return null;
 }
 
+const BLOCKED_MSG = "Acesso bloqueado. Entre em contato com o suporte.";
+
+const clerkLocalization = {
+  ...ptBR,
+  unstable__errors: {
+    ...(ptBR.unstable__errors ?? {}),
+    banned_user: BLOCKED_MSG,
+    user_locked: BLOCKED_MSG,
+    not_allowed_access: BLOCKED_MSG,
+  },
+};
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
@@ -348,7 +360,7 @@ function ClerkProviderWithRoutes() {
       signUpUrl={`${basePath}/sign-up`}
       signInFallbackRedirectUrl={`${window.location.origin}${basePath}/dashboard`}
       signUpFallbackRedirectUrl={`${window.location.origin}${basePath}/dashboard`}
-      localization={ptBR}
+      localization={clerkLocalization}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >

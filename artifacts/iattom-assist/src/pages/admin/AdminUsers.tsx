@@ -276,11 +276,11 @@ export function AdminUsers() {
         </div>
         <div className="flex justify-end mt-2">
           <Button
-            size="sm" variant="ghost"
+            size="sm" variant="outline"
             onClick={() => void downloadCsv("/api/admin/export/users", `usuarios_${new Date().toISOString().slice(0,10)}.csv`)}
-            className="text-zinc-600 hover:text-zinc-300 hover:bg-white/5 gap-1.5 text-xs h-7 px-2"
+            className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5"
           >
-            <Download className="w-3 h-3" />
+            <Download className="w-3.5 h-3.5" />
             Exportar CSV
           </Button>
         </div>
