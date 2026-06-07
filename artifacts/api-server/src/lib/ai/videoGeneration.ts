@@ -120,7 +120,7 @@ ${refinedCtx.userEnhancement}
 REGRA FINAL: "${prompt}" é o protagonista absoluto. O roteiro não pode desviar para outro assunto.
 Retorne apenas o texto da fala em português do Brasil.`;
 
-  const response = await openai.chat.completions.create(
+  const stream = await openai.chat.completions.create(
     {
       model: "gpt-5-mini",
       max_completion_tokens: 300,
@@ -128,14 +128,19 @@ Retorne apenas o texto da fala em português do Brasil.`;
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      stream: false,
+      stream: true,
     },
     { signal },
   );
 
-  const script = response.choices[0]?.message?.content?.trim() ?? "";
-  if (!script) throw new Error("Não foi possível gerar o roteiro interno.");
-  return script;
+  let script = "";
+  for await (const chunk of stream) {
+    const content = chunk.choices[0]?.delta?.content;
+    if (content) script += content;
+  }
+
+  if (!script.trim()) throw new Error("Não foi possível gerar o roteiro interno.");
+  return script.trim();
 }
 
 // ─── Mock ────────────────────────────────────────────────────────────────────
