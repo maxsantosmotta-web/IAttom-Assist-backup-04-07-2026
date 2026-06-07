@@ -276,19 +276,24 @@ export async function streamVideoGeneration(
       res.end();
       return;
     }
+    const rawMsg = err instanceof Error ? err.message : String(err);
     logger.error(
       {
         errName: err instanceof Error ? err.name : typeof err,
-        errMsg: err instanceof Error ? err.message : String(err),
+        errMsg: rawMsg,
         errStack: err instanceof Error ? err.stack?.slice(0, 400) : undefined,
       },
-      "[videoGeneration:diag] pipeline error",
+      "[videoGeneration] pipeline error",
     );
-    const msg =
-      err instanceof Error
-        ? err.message
-        : "Erro inesperado na geração de vídeo. Seus créditos serão devolvidos automaticamente.";
-    sendSSEError(res, msg);
+    // Exibir mensagem limpa ao usuário — não expor JSON cru de APIs externas
+    const userMsg = rawMsg.startsWith("Não foi possível")
+      ? rawMsg
+      : rawMsg.startsWith("Tempo esgotado")
+      ? rawMsg
+      : rawMsg.startsWith("Configuração de avatar")
+      ? rawMsg
+      : "Não foi possível gerar o vídeo. Seus créditos serão devolvidos automaticamente.";
+    sendSSEError(res, userMsg);
     return;
   }
 
