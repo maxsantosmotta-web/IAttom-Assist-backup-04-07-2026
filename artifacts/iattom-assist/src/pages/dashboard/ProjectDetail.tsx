@@ -131,10 +131,8 @@ function CampaignContent({ result, creatives }: { result: CampaignResult; creati
         <div className="mt-6 space-y-3">
           <SectionTitle>Criativos da Campanha</SectionTitle>
           {creatives.concepts.map((c, i) => (
-            <div key={c.id ?? i} className="rounded-xl border border-white/[0.06] bg-[#0d0d0d] p-4 space-y-3">
+            <div key={c.id ?? i} className="rounded-xl border border-white/[0.06] bg-[#0d0d0d] p-4">
               <p className="text-xs font-semibold text-zinc-400">Criativo {i + 1} — {c.label}</p>
-              <TextBlock label="Headline" value={c.copyHook} />
-              <TextBlock label="CTA" value={c.cta} />
             </div>
           ))}
         </div>
@@ -161,10 +159,8 @@ function CreativeContent({ result }: { result: CreativeIdeasResult }) {
   return (
     <div className="space-y-3">
       {result.concepts?.map((c, i) => (
-        <div key={c.id ?? i} className="rounded-xl border border-white/[0.06] bg-[#0d0d0d] p-4 space-y-3">
+        <div key={c.id ?? i} className="rounded-xl border border-white/[0.06] bg-[#0d0d0d] p-4">
           <p className="text-xs font-semibold text-zinc-400">Criativo {i + 1} — {c.label}</p>
-          <TextBlock label="Headline" value={c.copyHook} />
-          <TextBlock label="CTA" value={c.cta} />
         </div>
       ))}
     </div>

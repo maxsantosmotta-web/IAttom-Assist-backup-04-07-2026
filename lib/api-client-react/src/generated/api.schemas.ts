@@ -185,7 +185,8 @@ export const UseCreditsBodyFeature = {
   product_validation: "product_validation",
   campaign: "campaign",
   content: "content",
-  creative: "creative",
+  creativeImage1: "creativeImage1",
+  creativeImage2: "creativeImage2",
   video_script: "video_script",
 } as const;
 
@@ -426,13 +427,29 @@ export interface AiCreateContentBody {
   additionalContext?: string;
 }
 
+export type AiCreativeIdeasBodyQuantity =
+  (typeof AiCreativeIdeasBodyQuantity)[keyof typeof AiCreativeIdeasBodyQuantity];
+
+export const AiCreativeIdeasBodyQuantity = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+} as const;
+
+export type AiCreativeIdeasBodyFormat =
+  (typeof AiCreativeIdeasBodyFormat)[keyof typeof AiCreativeIdeasBodyFormat];
+
+export const AiCreativeIdeasBodyFormat = {
+  feed: "feed",
+  story: "story",
+  banner: "banner",
+  profile: "profile",
+  marketplace: "marketplace",
+} as const;
+
 export interface AiCreativeIdeasBody {
   prompt: string;
-  style?: string;
-  product?: string;
-  targetAudience?: string;
-  platform?: string;
-  referenceImageBase64?: string;
+  quantity?: AiCreativeIdeasBodyQuantity;
+  format?: AiCreativeIdeasBodyFormat;
 }
 
 export interface AiVideoScriptBody {

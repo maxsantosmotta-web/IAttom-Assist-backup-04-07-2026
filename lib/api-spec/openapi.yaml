@@ -837,7 +837,7 @@ components:
       properties:
         feature:
           type: string
-          enum: [product_discovery, product_validation, campaign, content, creative, video_script]
+          enum: [product_discovery, product_validation, campaign, content, creativeImage1, creativeImage2, video_script]
       required:
         - feature
 
@@ -1240,16 +1240,12 @@ components:
       properties:
         prompt:
           type: string
-        style:
+        quantity:
+          type: integer
+          enum: [1, 2]
+        format:
           type: string
-        product:
-          type: string
-        targetAudience:
-          type: string
-        platform:
-          type: string
-        referenceImageBase64:
-          type: string
+          enum: [feed, story, banner, profile, marketplace]
       required:
         - prompt
 

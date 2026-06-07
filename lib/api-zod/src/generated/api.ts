@@ -267,7 +267,8 @@ export const UseCreditsBody = zod.object({
     "product_validation",
     "campaign",
     "content",
-    "creative",
+    "creativeImage1",
+    "creativeImage2",
     "video_script",
   ]),
 });
@@ -340,11 +341,10 @@ export const AiCreateContentBody = zod.object({
  */
 export const AiCreativeIdeasBody = zod.object({
   prompt: zod.string(),
-  style: zod.string().optional(),
-  product: zod.string().optional(),
-  targetAudience: zod.string().optional(),
-  platform: zod.string().optional(),
-  referenceImageBase64: zod.string().optional(),
+  quantity: zod.union([zod.literal(1), zod.literal(2)]).optional(),
+  format: zod
+    .enum(["feed", "story", "banner", "profile", "marketplace"])
+    .optional(),
 });
 
 /**

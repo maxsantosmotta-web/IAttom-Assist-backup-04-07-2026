@@ -7,19 +7,14 @@ import { logger } from "../logger.js";
 
 interface CreativeIdeasInput {
   prompt: string;
-  style?: string;
-  product?: string;
-  targetAudience?: string;
-  formatPack?: string;
-  platform?: string;
+  quantity?: number;
+  format?: string;
 }
 
 export interface CreativeConcept {
   id: number;
   label: string;
   format: string;
-  copyHook: string;
-  cta: string;
   imagePrompt: string;
   imageBase64?: string;
 }
@@ -31,46 +26,78 @@ export interface CreativeIdeasResult {
 
 type ImageSize = "1024x1024" | "1536x1024" | "1024x1536" | "auto";
 
-function mapFormatToSize(format: string): ImageSize {
-  const f = format.toLowerCase();
-  if (f.includes("9:16") || f.includes("story") || f.includes("reels") || f.includes("1536")) {
-    return "1024x1536";
-  }
-  if (f.includes("16:9") || f.includes("banner") || f.includes("landscape") || f.includes("1536x1024")) {
-    return "1536x1024";
-  }
-  return "1024x1024";
-}
-
-const FORMAT_PACKS: Record<string, string[]> = {
-  social:  ["1:1 quadrado", "1:1 quadrado", "9:16 story", "16:9 banner"],
-  stories: ["9:16 story",   "9:16 story",   "9:16 story", "9:16 story"],
-  ads:     ["16:9 banner",  "16:9 banner",  "1:1 quadrado", "1:1 quadrado"],
+const FORMAT_SIZES: Record<string, ImageSize> = {
+  feed:        "1024x1024",
+  story:       "1024x1536",
+  banner:      "1536x1024",
+  profile:     "1024x1024",
+  marketplace: "1024x1024",
 };
 
-const PLATFORM_IMAGE_PRESETS: Record<string, string[]> = {
-  mercado_livre: ["1:1 quadrado", "1:1 quadrado variação"],
-  shopee:        ["1:1 quadrado", "16:9 banner"],
-  instagram:     ["1:1 feed", "9:16 story"],
-  facebook:      ["1:1 feed", "16:9 banner"],
-  tiktok:        ["9:16 vertical", "9:16 vertical variação"],
-  hotmart:       ["1:1 thumb/feed", "16:9 banner"],
-  kiwify:        ["1:1 thumb/feed", "1:1 thumb/feed variação"],
-  whatsapp:      ["1:1 feed", "9:16 status"],
+const FORMAT_LABELS: Record<string, string> = {
+  feed:        "Feed",
+  story:       "Story / Reels",
+  banner:      "Banner",
+  profile:     "Perfil",
+  marketplace: "Marketplace",
 };
 
-function getFormatPack(formatPack?: string, platform?: string): string[] {
-  if (platform && PLATFORM_IMAGE_PRESETS[platform]) return PLATFORM_IMAGE_PRESETS[platform];
-  if (formatPack && FORMAT_PACKS[formatPack]) return FORMAT_PACKS[formatPack];
-  return FORMAT_PACKS.social;
+const FORMAT_DIMENSIONS: Record<string, string> = {
+  feed:        "1:1 quadrado",
+  story:       "9:16 vertical",
+  banner:      "16:9 horizontal",
+  profile:     "1:1 quadrado",
+  marketplace: "1:1 quadrado",
+};
+
+function getImageSize(format?: string): ImageSize {
+  if (!format) return "1024x1024";
+  return FORMAT_SIZES[format] ?? "1024x1024";
 }
 
-function enrichImagePrompt(basePrompt: string, productName: string, visualAnchor: string, style?: string, format?: string): string {
-  const anchorPrefix = visualAnchor ? `CAMPAIGN VISUAL ANCHOR — apply consistently across all images: ${visualAnchor}. ` : "";
+function getFormatLabel(format?: string, index?: number, total?: number): string {
+  const base = format ? (FORMAT_LABELS[format] ?? "Imagem") : "Imagem";
+  if (total && total > 1 && index !== undefined) {
+    return `${base} ${index + 1}`;
+  }
+  return base;
+}
+
+function enrichImagePrompt(
+  basePrompt: string,
+  productName: string,
+  visualAnchor: string,
+  format?: string,
+): string {
+  const anchorPrefix = visualAnchor
+    ? `CAMPAIGN VISUAL ANCHOR — apply consistently: ${visualAnchor}. `
+    : "";
   const productAnchor = `${productName} — exact product as specified by user, preserve real product appearance, proportions and category`;
-  const styleSuffix = style ? ` Visual style: ${style}.` : "";
-  const formatSuffix = format ? ` Ad format: ${format}.` : "";
-  return `${anchorPrefix}${productAnchor}. ${basePrompt}${styleSuffix}${formatSuffix}`;
+  const dim = format ? FORMAT_DIMENSIONS[format] : undefined;
+  const formatSuffix = dim ? ` Ad format: ${dim}.` : "";
+  return `${anchorPrefix}${productAnchor}. ${basePrompt}${formatSuffix}`;
+}
+
+interface LLMConceptRaw {
+  id?: number;
+  imagePrompt?: string;
+}
+
+interface LLMOutputRaw {
+  concepts?: LLMConceptRaw[];
+  visualAnchor?: string;
+}
+
+function safeParseJson(raw: string): LLMOutputRaw | null {
+  if (!raw?.trim()) return null;
+  try { return JSON.parse(raw.trim()) as LLMOutputRaw; } catch { /* try next */ }
+  const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  try { return JSON.parse(cleaned) as LLMOutputRaw; } catch { /* try next */ }
+  const cs = cleaned.indexOf("{"); const ce = cleaned.lastIndexOf("}");
+  if (cs !== -1 && ce !== -1 && ce > cs) {
+    try { return JSON.parse(cleaned.slice(cs, ce + 1)) as LLMOutputRaw; } catch { /* noop */ }
+  }
+  return null;
 }
 
 export async function streamCreativeIdeas(
@@ -82,87 +109,67 @@ export async function streamCreativeIdeas(
   setupSSE(res);
   sendSSE(res, { type: "start" });
 
-  const productName = params.product?.trim() || params.prompt.trim();
+  const productName = params.prompt.trim();
+  const numConcepts = params.quantity === 1 ? 1 : 2;
+  const format = params.format ?? "feed";
+  const formatLabel = FORMAT_LABELS[format] ?? "Feed";
+  const formatDim = FORMAT_DIMENSIONS[format] ?? "1:1 quadrado";
+
   if (process.env.NODE_ENV !== "production") {
-    logger.info({ productName }, "[creativeIdeas] productName resolved");
+    logger.info({ productName, numConcepts, format }, "[creativeIdeas] generating");
   }
 
-  const formats = getFormatPack(params.formatPack, params.platform);
-  const numConcepts = formats.length;
-  const formatInstruction = `Os ${numConcepts} conceitos devem usar exatamente estes formatos, nesta ordem: ${formats.map((f, i) => `conceito ${i + 1}: "${f}"`).join(", ")}.`;
+  const compositionRule =
+    format === "story"
+      ? "Composição vertical 9:16 — produto em destaque central, espaço superior e inferior limpos."
+      : format === "banner"
+      ? "Composição horizontal 16:9 — produto à esquerda ou centralizado, espaço amplo para layout de anúncio."
+      : "Composição quadrada 1:1 — produto centralizado, fundo clean ou lifestyle contextual.";
 
-  const systemPrompt = `Você é um diretor criativo de nível mundial para publicidade digital. Gera imagens e textos visuais prontos para publicação.
+  const variationRule =
+    numConcepts > 1
+      ? `\nREGRA DE VARIAÇÃO: As ${numConcepts} imagens devem ser composições DISTINTAS do mesmo produto — variações de ângulo, cenário ou contexto de uso. Mesma paleta visual e estilo.`
+      : "";
 
-REGRA ABSOLUTA DE FIDELIDADE AO PRODUTO: O produto informado pelo usuário é a referência central e obrigatória. NÃO substitua por categoria genérica, versão aproximada ou produto parecido. Se houver modelo, código, nome comercial ou nome específico, mantenha esse exato nome. Prioridade: fidelidade ao produto > estilo visual > criatividade.
+  const systemPrompt = `Você é um diretor de criação visual de nível mundial para publicidade digital.
 
-REGRA OBRIGATÓRIA DE IDIOMA: copyHook e cta SEMPRE em português brasileiro. imagePrompt SEMPRE em inglês.
+FORMATO: ${formatLabel} (${formatDim})
+QUANTIDADE: ${numConcepts} ${numConcepts === 1 ? "imagem" : "imagens"}
 
-REGRA DE FORMATOS OBRIGATÓRIA: O campo "format" de cada conceito deve conter EXATAMENTE um destes valores:
-- "1:1 quadrado"
-- "9:16 story"
-- "16:9 banner"
-Nunca use outros valores.
+REGRA ABSOLUTA DE FIDELIDADE AO PRODUTO: O produto informado é a referência central e obrigatória. NÃO substitua por versão genérica ou produto parecido. Preserve o nome exato, aparência, proporções e categoria.
 
-Sua saída deve ser um objeto JSON válido — sem markdown, sem blocos de código, apenas JSON puro.
+REGRA DE IDIOMA: imagePrompt SEMPRE em inglês.
 
-Retorne exatamente esta estrutura:
+REGRA DE COMPOSIÇÃO: ${compositionRule}${variationRule}
+
+REGRA DE QUALIDADE OBRIGATÓRIA: photorealistic, commercial photography quality, cinematic lighting, soft shadows and highlights, clear visual hierarchy, modern clean composition, professional depth of field, premium advertising aesthetic, high-end magazine quality, no text overlays, no logos, no watermarks, ready-to-publish ad quality, aspirational mood, natural anatomy if people appear.
+
+Retorne APENAS JSON puro sem markdown:
 {
   "concepts": [
     {
       "id": number (1-${numConcepts}),
-      "label": string (nome curto do criativo em PT-BR, ex: "Feed Principal", "Story", "Banner"),
-      "format": string (OBRIGATÓRIO: usar exatamente "1:1 quadrado", "9:16 story" ou "16:9 banner"),
-      "copyHook": string (headline/gancho de atenção, máx. 80 chars, em PT-BR),
-      "cta": string (texto de chamada para ação, máx. 40 chars, em PT-BR),
-      "imagePrompt": string (prompt detalhado para geração de imagem IA — SEMPRE em inglês. REGRA CRÍTICA: Preserve características físicas reconhecíveis do produto: formato, proporção, cor típica, componentes principais. Use o nome exato do produto. OBRIGATÓRIO para qualidade premium: photorealistic, commercial photography quality, cinematic lighting with soft shadows and highlights, clear visual hierarchy, modern and clean composition, professional depth of field, premium advertising aesthetic, product centered and well-composed, high-end magazine quality, clean background or contextual lifestyle setting, natural human anatomy if people appear, no extra fingers, no deformities, no text overlays, no logos, no watermarks, ready-to-publish ad quality, aspirational mood)
+      "imagePrompt": string (prompt detalhado em inglês — mínimo 60 palavras. Inclua: nome exato do produto, características físicas, iluminação, ângulo, cenário, mood, estilo fotográfico, composição)
     }
   ],
-  "visualAnchor": string (âncora visual interna — em inglês: produto exato + paleta dominante 2-3 cores hex + estilo visual + iluminação. Ex: "HydroElite bottle, dominant colors #1a1a2e and #C9A84C gold, photorealistic lifestyle style, soft cinematic side lighting")
-}
+  "visualAnchor": string (âncora visual interna — produto exato + paleta dominante 2-3 cores hex + estilo visual + iluminação, em inglês)
+}`;
 
-REGRA DE PACOTE VISUAL COESO:
-As ${numConcepts} imagens devem pertencer à MESMA CAMPANHA VISUAL. Defina a âncora visual no campo "visualAnchor" com produto exato + paleta + estilo + iluminação. Todos os imagePrompts devem começar referenciando essa âncora. Variações permitidas: ângulo, enquadramento, cenário. Variações proibidas: categoria do produto, paleta dominante, estilo visual, iluminação central.
+  const userPrompt = `PRODUTO: "${productName}"
 
-Crie ${numConcepts} conceitos criativos distintos prontos para publicação imediata.`;
+Gere ${numConcepts} criativo${numConcepts === 1 ? "" : "s"} visual${numConcepts === 1 ? "" : "is"} premium para este produto no formato ${formatLabel} (${formatDim}).
 
-  const userPrompt = `PRODUTO CENTRAL (referência obrigatória): "${productName}"
-
-Gere ${numConcepts} criativos visuais premium para este produto.
-Briefing: "${params.prompt}"
-${params.style ? `Estilo visual: ${params.style}` : ""}
-${params.targetAudience ? `Público-alvo: ${params.targetAudience}` : ""}
-
-${formatInstruction}
-
-INSTRUÇÃO OBRIGATÓRIA PARA imagePrompt: Inicie SEMPRE com o nome exato "${productName}". Descreva as características físicas prováveis deste produto. O nome "${productName}" deve aparecer na primeira frase do imagePrompt.
-
-Responda copyHook e cta integralmente em português brasileiro.`;
-
-  function safeParseCreativeJson(raw: string): { success: true; data: CreativeIdeasResult } | { success: false; error: string } {
-    if (!raw?.trim()) return { success: false, error: "A IA retornou uma resposta vazia." };
-    try { return { success: true, data: JSON.parse(raw.trim()) as CreativeIdeasResult }; } catch { /* try next */ }
-    const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-    try { return { success: true, data: JSON.parse(cleaned) as CreativeIdeasResult }; } catch { /* try next */ }
-    const cs = cleaned.indexOf("{"); const ce = cleaned.lastIndexOf("}");
-    if (cs !== -1 && ce !== -1 && ce > cs) {
-      try { return { success: true, data: JSON.parse(cleaned.slice(cs, ce + 1)) as CreativeIdeasResult }; } catch { /* try next */ }
-    }
-    const rs = raw.indexOf("{"); const re = raw.lastIndexOf("}");
-    if (rs !== -1 && re !== -1 && re > rs) {
-      try { return { success: true, data: JSON.parse(raw.slice(rs, re + 1)) as CreativeIdeasResult }; } catch { /* try next */ }
-    }
-    return { success: false, error: "A resposta da IA veio incompleta. Seus créditos serão devolvidos automaticamente." };
-  }
+INSTRUÇÃO: O imagePrompt deve iniciar com o nome exato "${productName}". Descreva características físicas prováveis do produto. Garanta composição ideal para ${formatDim}.`;
 
   try {
-    let textResult: CreativeIdeasResult | null = null;
-    let lastTextError = "";
+    let llmOutput: LLMOutputRaw | null = null;
+    let lastError = "";
 
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const response = await openai.chat.completions.create({
           model: "gpt-5-mini",
-          max_completion_tokens: 4096,
+          max_completion_tokens: 2048,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
@@ -171,29 +178,30 @@ Responda copyHook e cta integralmente em português brasileiro.`;
           stream: false,
         }, { signal });
         const raw = response.choices[0]?.message?.content ?? "";
-        const parsed = safeParseCreativeJson(raw);
-        if (parsed.success) {
-          textResult = parsed.data;
-          break;
-        }
-        lastTextError = parsed.error;
+        llmOutput = safeParseJson(raw);
+        if (llmOutput?.concepts?.length) break;
+        lastError = "Resposta inválida da IA";
       } catch (err) {
-        lastTextError = err instanceof Error ? err.message : "Erro interno na geração de conceitos";
+        lastError = err instanceof Error ? err.message : "Erro interno na geração";
       }
       if (attempt === 0) await new Promise((r) => setTimeout(r, 900));
     }
 
-    if (!textResult) {
-      sendSSEError(res, `${lastTextError} Tente novamente em instantes.`);
+    if (!llmOutput?.concepts?.length) {
+      sendSSEError(res, `${lastError}. Seus créditos serão devolvidos automaticamente. Tente novamente em instantes.`);
       return;
     }
 
-    const visualAnchor = textResult.visualAnchor?.trim() ?? "";
+    const visualAnchor = llmOutput.visualAnchor?.trim() ?? "";
 
-    const enrichedConcepts = textResult.concepts.map((concept) => ({
-      ...concept,
-      imagePrompt: enrichImagePrompt(concept.imagePrompt, productName, visualAnchor, params.style, concept.format),
-    }));
+    const enrichedConcepts: CreativeConcept[] = llmOutput.concepts
+      .slice(0, numConcepts)
+      .map((c, i) => ({
+        id: c.id ?? i + 1,
+        label: getFormatLabel(format, i, numConcepts),
+        format,
+        imagePrompt: enrichImagePrompt(c.imagePrompt ?? productName, productName, visualAnchor, format),
+      }));
 
     if (process.env.NODE_ENV !== "production") {
       enrichedConcepts.forEach((c, i) => {
@@ -203,18 +211,17 @@ Responda copyHook e cta integralmente em português brasileiro.`;
 
     const imageResults = await Promise.allSettled(
       enrichedConcepts.map((concept) =>
-        generateImageBuffer(concept.imagePrompt, mapFormatToSize(concept.format), signal),
+        generateImageBuffer(concept.imagePrompt, getImageSize(concept.format), signal),
       ),
     );
 
     const hasAtLeastOneImage = imageResults.some((r) => r.status === "fulfilled");
-
     if (!hasAtLeastOneImage) {
       sendSSEError(res, "Não foi possível gerar as imagens desta vez. Seus créditos serão devolvidos automaticamente. Tente novamente.");
       return;
     }
 
-    const conceptsWithImages = enrichedConcepts.map((concept, i) => {
+    const conceptsWithImages: CreativeConcept[] = enrichedConcepts.map((concept, i) => {
       const imgResult = imageResults[i];
       return {
         ...concept,
@@ -226,12 +233,16 @@ Responda copyHook e cta integralmente em português brasileiro.`;
     });
 
     const finalResult: CreativeIdeasResult = {
-      ...textResult,
+      visualAnchor,
       concepts: conceptsWithImages,
     };
 
     sendSSE(res, { type: "result", data: finalResult });
-    await logAiUsage({ clerkUserId, action: `Criativos gerados: ${params.prompt.slice(0, 50)}`, module: "creative" });
+    await logAiUsage({
+      clerkUserId,
+      action: `Criativo gerado: ${productName.slice(0, 50)} (${numConcepts}x ${formatLabel})`,
+      module: "creative",
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erro inesperado na geração. Seus créditos serão devolvidos automaticamente.";
     sendSSEError(res, msg);

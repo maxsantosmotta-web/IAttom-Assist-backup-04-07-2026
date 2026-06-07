@@ -63,8 +63,6 @@ export interface CreativeConcept {
   id: number;
   label: string;
   format: string;
-  copyHook: string;
-  cta: string;
   imagePrompt: string;
   imageBase64?: string;
 }

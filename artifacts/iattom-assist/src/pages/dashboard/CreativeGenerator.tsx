@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, Copy, RefreshCw, AlertCircle, Monitor, Smartphone, Image, Save } from "lucide-react";
+import { Sparkles, Loader2, RefreshCw, AlertCircle, Image, Save } from "lucide-react";
 import { useGetCreditsBalance, getGetCreditsBalanceQueryKey } from "@workspace/api-client-react";
 import { saveProjectAssets } from "@/lib/assetStorage";
 import { useSavedItems } from "@/hooks/useSavedItems";
-import { getEffectiveProductType, detectIncompatibility, INCOMPATIBILITY_MESSAGES } from "@/lib/productPlatformCompatibility";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,50 +12,26 @@ import { useToast } from "@/hooks/use-toast";
 import { CreditsGate } from "@/components/CreditsGate";
 import { useAiStream } from "@/hooks/useAiStream";
 import type { CreativeIdeasResult, CreativeConcept } from "@/types/ai";
+import type { FeatureKey } from "@/lib/credits";
 
-const formatIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  "1:1 quadrado": Monitor,
-  "9:16 story": Smartphone,
-  "16:9 banner": Monitor,
-  "1080x1080 square": Monitor,
-  "9:16 story (legacy)": Smartphone,
-  default: Image,
-};
+type FormatKey = "feed" | "story" | "banner" | "profile" | "marketplace";
 
-const gradients = [
-  "from-primary/30 to-amber-900/20",
-  "from-blue-900/30 to-purple-900/20",
-  "from-emerald-900/30 to-teal-900/20",
-  "from-rose-900/30 to-orange-900/20",
+const FORMAT_OPTIONS: { value: FormatKey; label: string; ratio: string }[] = [
+  { value: "feed",        label: "Feed",        ratio: "1:1"  },
+  { value: "story",       label: "Story",        ratio: "9:16" },
+  { value: "banner",      label: "Banner",       ratio: "16:9" },
+  { value: "profile",     label: "Perfil",       ratio: "1:1"  },
+  { value: "marketplace", label: "Marketplace",  ratio: "1:1"  },
 ];
 
-const PLATFORM_OPTIONS = [
-  { value: "instagram",     label: "Vender no Instagram",     formats: ["1:1 feed", "9:16 story"] },
-  { value: "tiktok",        label: "Vender no TikTok",        formats: ["9:16 vertical", "9:16 variação"] },
-  { value: "facebook",      label: "Vender no Facebook",      formats: ["1:1 feed", "16:9 banner"] },
-  { value: "shopee",        label: "Vender na Shopee",        formats: ["1:1 quadrado", "16:9 banner"] },
-  { value: "mercado_livre", label: "Vender no Mercado Livre", formats: ["1:1 quadrado", "1:1 variação"] },
-  { value: "hotmart",       label: "Vender na Hotmart",       formats: ["1:1 thumb", "16:9 banner"] },
-  { value: "kiwify",        label: "Vender na Kiwify",        formats: ["1:1 thumb", "1:1 variação"] },
-] as const;
-
 function formatToAspectClass(format: string): string {
-  const f = format.toLowerCase();
-  if (f.includes("9:16") || f.includes("story") || f.includes("vertical") || f.includes("reels") || f.includes("status")) return "aspect-[9/16]";
-  if (f.includes("16:9") || f.includes("banner") || f.includes("landscape")) return "aspect-[16/9]";
+  if (format === "story") return "aspect-[9/16]";
+  if (format === "banner") return "aspect-[16/9]";
   return "aspect-square";
 }
 
 function ConceptCard({ concept, index }: { concept: CreativeConcept; index: number }) {
-  const { toast } = useToast();
-  const FormatIcon = formatIcons[concept.format] ?? formatIcons.default;
-  const aspectClass = formatToAspectClass(concept.format);
-
-  const copyAll = () => {
-    const text = `${concept.copyHook}\n\nCTA: ${concept.cta}`;
-    navigator.clipboard.writeText(text);
-    toast({ description: "Criativo copiado" });
-  };
+  const aspectClass = formatToAspectClass(concept.format ?? "feed");
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.08 }}>
@@ -70,27 +45,12 @@ function ConceptCard({ concept, index }: { concept: CreativeConcept; index: numb
             />
           </div>
         ) : (
-          <div className={`w-full ${aspectClass} bg-gradient-to-br ${gradients[index % gradients.length]} flex items-center justify-center`}>
-            <FormatIcon className="w-8 h-8 text-white/20" />
+          <div className={`w-full ${aspectClass} bg-gradient-to-br from-white/[0.03] to-transparent flex items-center justify-center`}>
+            <Image className="w-8 h-8 text-white/20" />
           </div>
         )}
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-xs font-semibold text-primary uppercase tracking-widest">{concept.label}</p>
-            <button onClick={copyAll} className="text-muted-foreground hover:text-white transition-colors shrink-0">
-              <Copy className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div>
-            <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">Headline</p>
-            <p className="text-sm font-semibold text-white leading-snug">{concept.copyHook}</p>
-          </div>
-
-          <div>
-            <p className="text-xs text-white/40 uppercase tracking-wider mb-0.5">CTA</p>
-            <p className="text-xs text-primary font-semibold">{concept.cta}</p>
-          </div>
+        <CardContent className="p-3">
+          <p className="text-xs font-semibold text-primary uppercase tracking-widest">{concept.label}</p>
         </CardContent>
       </Card>
     </motion.div>
@@ -99,9 +59,11 @@ function ConceptCard({ concept, index }: { concept: CreativeConcept; index: numb
 
 export function CreativeGenerator() {
   const [prompt, setPrompt] = useState("");
-  const [style, setStyle] = useState("");
-  const [targetAudience, setTargetAudience] = useState("");
-  const [platform, setPlatform] = useState("");
+  const [quantity, setQuantity] = useState<1 | 2>(1);
+  const [format, setFormat] = useState<FormatKey | "">("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [restoredResult, setRestoredResult] = useState<CreativeIdeasResult | null>(null);
+
   const { status, result, error, generate, reset } = useAiStream<CreativeIdeasResult>();
   const { toast } = useToast();
   const { saveItem, saveItemAssets } = useSavedItems();
@@ -110,13 +72,15 @@ export function CreativeGenerator() {
   });
 
   const refundCalledRef = useRef(false);
+  const chargedFeatureRef = useRef<FeatureKey>("creativeImage1");
+
   useEffect(() => {
     if (status === "error" && !refundCalledRef.current) {
       refundCalledRef.current = true;
       fetch("/api/credits/refund", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ feature: "creative" }),
+        body: JSON.stringify({ feature: chargedFeatureRef.current }),
         credentials: "include",
       }).catch(() => {});
     }
@@ -125,70 +89,71 @@ export function CreativeGenerator() {
     }
   }, [status]);
 
+  // Prefill a partir do módulo Campanha
   useEffect(() => {
     const saved = sessionStorage.getItem("iattom_creative_prefill");
     if (saved) {
       try {
-        const d = JSON.parse(saved) as { prompt?: string; targetAudience?: string; style?: string };
+        const d = JSON.parse(saved) as { prompt?: string };
         if (d.prompt) setPrompt(d.prompt);
-        if (d.targetAudience) setTargetAudience(d.targetAudience);
-        if (d.style) setStyle(d.style);
       } catch { /* ignore */ }
       sessionStorage.removeItem("iattom_creative_prefill");
     }
   }, []);
 
-  const [restoredResult, setRestoredResult] = useState<CreativeIdeasResult | null>(null);
-  const isRestoredMode = !!restoredResult && status === "idle";
-  const activeResult = result ?? restoredResult;
-
+  // Restaurar de Projetos Salvos
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("iattom_restore_creative_v1");
       if (!raw) return;
       sessionStorage.removeItem("iattom_restore_creative_v1");
-      const saved = JSON.parse(raw) as { briefing?: { prompt?: string; style?: string; targetAudience?: string; formatPack?: string }; result?: CreativeIdeasResult };
+      const saved = JSON.parse(raw) as {
+        briefing?: { prompt?: string; format?: string; quantity?: number };
+        result?: unknown;
+      };
       if (saved.briefing?.prompt) setPrompt(saved.briefing.prompt);
-      if (saved.briefing?.style) setStyle(saved.briefing.style);
-      if (saved.briefing?.targetAudience) setTargetAudience(saved.briefing.targetAudience);
-      if (saved.briefing?.formatPack) setPlatform("");
-      if (saved.result) setRestoredResult(saved.result);
-    } catch {}
+      const savedFormat = saved.briefing?.format;
+      if (savedFormat && FORMAT_OPTIONS.some((f) => f.value === savedFormat)) {
+        setFormat(savedFormat as FormatKey);
+      }
+      if (saved.briefing?.quantity === 1) setQuantity(1);
+      else if (saved.briefing?.quantity === 2) setQuantity(2);
+      if (saved.result) setRestoredResult(saved.result as CreativeIdeasResult);
+    } catch { /* ignore */ }
   }, []);
 
   const isGenerating = status === "generating";
   const isDone = status === "done";
   const isError = status === "error";
+  const isRestoredMode = !!restoredResult && status === "idle";
+  const activeResult = result ?? restoredResult;
 
-  const incompatibility = useMemo(
-    () => detectIncompatibility(getEffectiveProductType(prompt, null), platform),
-    [prompt, platform],
-  );
+  const featureKey: FeatureKey = quantity === 1 ? "creativeImage1" : "creativeImage2";
 
   const runGenerate = (charge: () => void) => {
+    chargedFeatureRef.current = featureKey;
     generate("/api/ai/creative-ideas", {
       prompt,
-      style: style || undefined,
-      targetAudience: targetAudience || undefined,
-      platform: platform || undefined,
+      quantity,
+      format: format || undefined,
     }).then((res) => {
       if (res !== null) charge();
     });
   };
 
-  const [isSaving, setIsSaving] = useState(false);
-
   const handleSave = async () => {
     if (!activeResult || isSaving) return;
     setIsSaving(true);
 
-    const lines: string[] = [];
-    activeResult.concepts?.forEach((c: CreativeConcept, i: number) => {
-      lines.push(`CRIATIVO ${i + 1}: ${c.label}`);
-      if (c.copyHook) lines.push(`Headline: ${c.copyHook}`);
-      if (c.cta) lines.push(`CTA: ${c.cta}`);
-    });
-    const content = lines.join("\n");
+    const formatOpt = FORMAT_OPTIONS.find((f) => f.value === format);
+    const formatLabel = formatOpt?.label ?? "Imagem";
+
+    const content = [
+      `Tipo: Imagem`,
+      `Quantidade: ${quantity} ${quantity === 1 ? "imagem" : "imagens"}`,
+      `Formato: ${formatLabel}`,
+      `Prompt: ${prompt.trim()}`,
+    ].join(" | ");
 
     const resultWithoutImages: CreativeIdeasResult = {
       ...activeResult,
@@ -196,119 +161,167 @@ export function CreativeGenerator() {
     };
 
     const data = JSON.stringify({
-      briefing: { prompt: prompt.trim(), style, targetAudience, platform },
+      type: "image",
+      quantity,
+      format,
+      prompt: prompt.trim(),
       result: resultWithoutImages,
     });
 
-    const imageAssets = (activeResult.concepts ?? [])
-      .map((c, i) => c.imageBase64
-        ? { conceptIndex: i, base64: c.imageBase64, label: c.label ?? `Criativo ${i + 1}`, format: c.format ?? "PNG" }
-        : null)
-      .filter((a): a is NonNullable<typeof a> => a !== null);
-
     const projectId = crypto.randomUUID();
-    const title = prompt.trim() || "Criativo gerado";
+    const title = `${formatLabel} — ${prompt.trim().slice(0, 60) || "Criativo"}`;
+    const hasImages = (activeResult.concepts?.some((c) => !!c.imageBase64)) ?? false;
+
     try {
       const raw = localStorage.getItem("iattom_saved_items_v1");
       const existing = raw ? (JSON.parse(raw) as object[]) : [];
-      existing.unshift({ id: projectId, title, type: "creative", content, data, hasImages: imageAssets.length > 0, createdAt: new Date().toISOString() });
+      existing.unshift({
+        id: projectId, title, type: "creative", content, data, hasImages,
+        createdAt: new Date().toISOString(),
+      });
       localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
-    } catch {}
+    } catch { /* ignore */ }
+
+    const imageAssets = (activeResult.concepts ?? [])
+      .map((c, i) => c.imageBase64
+        ? { conceptIndex: i, base64: c.imageBase64, label: c.label ?? `Imagem ${i + 1}`, format: c.format ?? "PNG" }
+        : null)
+      .filter((a): a is NonNullable<typeof a> => a !== null);
 
     if (imageAssets.length > 0) void saveProjectAssets(projectId, imageAssets);
 
     try {
-      await saveItem({ id: projectId, title, type: "creative", content, data, hasImages: imageAssets.length > 0 });
+      await saveItem({ id: projectId, title, type: "creative", content, data, hasImages });
 
       if (imageAssets.length > 0) {
         try {
           await saveItemAssets(projectId, imageAssets);
-          toast({ description: "Projeto salvo com imagens sincronizadas." });
+          toast({ description: "Criativo salvo com imagens sincronizadas." });
         } catch {
           toast({
-            description: "Projeto salvo, mas as imagens não foram sincronizadas. Tente salvar novamente.",
+            description: "Criativo salvo, mas as imagens não foram sincronizadas. Tente salvar novamente.",
             variant: "destructive",
           });
         }
       } else {
-        toast({ description: "Projeto salvo." });
+        toast({ description: "Criativo salvo." });
       }
     } catch {
-      toast({ description: "Erro ao salvar projeto. Tente novamente.", variant: "destructive" });
+      toast({ description: "Erro ao salvar. Tente novamente.", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
+  const loadingAspect =
+    format === "story" ? "aspect-[9/16]" :
+    format === "banner" ? "aspect-[16/9]" :
+    "aspect-square";
+
   return (
     <div className="space-y-8">
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-start justify-between gap-4">
+      {/* Cabeçalho */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex items-start justify-between gap-4"
+      >
         <div>
-          <h2 className="text-2xl font-bold text-white mb-1">Gerador Criativo</h2>
-          <p className="text-muted-foreground text-sm">Gere imagens e conceitos prontos para publicação.</p>
+          <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Módulo Criativo</p>
+          <h2 className="text-2xl font-bold text-white mb-1">Gerador de Imagens</h2>
+          <p className="text-muted-foreground text-sm">Gere imagens prontas para publicação.</p>
         </div>
-        <Button size="sm" variant="outline" onClick={() => void refetchCredits()} disabled={fetchingCredits} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void refetchCredits()}
+          disabled={fetchingCredits}
+          className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1"
+        >
           <RefreshCw className={`w-3.5 h-3.5 ${fetchingCredits ? "animate-spin" : ""}`} />
           Atualizar
         </Button>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
+      {/* Formulário */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
         <Card className="bg-[#111111] border-white/5">
-          <CardContent className="p-6 space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-1.5 md:col-span-2">
-                <Label className="text-sm text-muted-foreground">Gerador de Imagem</Label>
-                <Input placeholder="Ex: Moto premium em rua neon noturna" className="bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm text-muted-foreground">Estilo Visual</Label>
-                <select
-                  value={style}
-                  onChange={(e) => setStyle(e.target.value)}
-                  className="w-full h-9 rounded-md border border-white/10 bg-[#0a0a0a] px-3 py-1 text-sm text-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-0"
-                >
-                  <option value="" disabled>Selecionar estilo</option>
-                  <option value="Photorealistic lifestyle">Lifestyle Fotorrealista</option>
-                  <option value="Minimalist clean">Minimalista e Limpo</option>
-                  <option value="Bold graphic">Arrojado e Gráfico</option>
-                  <option value="Luxury editorial">Editorial de Luxo</option>
-                  <option value="Raw authentic UGC">UGC Autêntico e Bruto</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm text-muted-foreground">Público-alvo (opcional)</Label>
-                <Input placeholder="ex: Entusiastas de fitness 25-35" className="bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50" value={targetAudience} onChange={(e) => setTargetAudience(e.target.value)} />
-              </div>
-            </div>
+          <CardContent className="p-6 space-y-5">
 
-            <div className="space-y-1.5">
-              <label className="text-sm text-muted-foreground">Objetivo da imagem</label>
-              <select
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value)}
-                className="w-full h-9 rounded-md border border-white/10 bg-[#0a0a0a] px-3 py-1 text-sm text-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-0"
-              >
-                <option value="" disabled>Selecionar</option>
-                {PLATFORM_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+            {/* Quantidade */}
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Quantidade de imagens</Label>
+              <div className="flex gap-2">
+                {([1, 2] as const).map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => setQuantity(q)}
+                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      quantity === q
+                        ? "bg-primary/15 text-primary border-primary/30"
+                        : "bg-[#0a0a0a] text-zinc-500 border-white/[0.08] hover:border-white/20 hover:text-zinc-300"
+                    }`}
+                  >
+                    {q === 1 ? "1 imagem" : "2 imagens"}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
-            {incompatibility && (
-              <div className="flex items-start gap-2.5 rounded-lg border border-red-500/30 bg-red-500/[0.07] px-3.5 py-3">
-                <span className="text-red-400 text-sm leading-none mt-0.5">!</span>
-                <p className="text-xs text-red-300/90 leading-relaxed">
-                  {INCOMPATIBILITY_MESSAGES[incompatibility]}
-                </p>
+            {/* Formato */}
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Formato</Label>
+              <div className="grid grid-cols-5 gap-2">
+                {FORMAT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setFormat(opt.value)}
+                    className={`py-2.5 px-1 rounded-lg border text-xs font-medium transition-colors flex flex-col items-center gap-0.5 ${
+                      format === opt.value
+                        ? "bg-primary/15 text-primary border-primary/30"
+                        : "bg-[#0a0a0a] text-zinc-500 border-white/[0.08] hover:border-white/20 hover:text-zinc-300"
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    <span className={`text-[9px] ${format === opt.value ? "text-primary/60" : "text-zinc-700"}`}>{opt.ratio}</span>
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
 
-            <CreditsGate feature="creative" onSuccess={runGenerate} disabled={!prompt.trim() || isGenerating || incompatibility !== null}>
+            {/* Prompt */}
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">O que você quer gerar?</Label>
+              <Input
+                placeholder="Ex: Moto premium em rua neon noturna"
+                className="bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+              />
+            </div>
+
+            {/* Botão de geração */}
+            <CreditsGate
+              feature={featureKey}
+              onSuccess={runGenerate}
+              disabled={!prompt.trim() || !format || isGenerating}
+            >
               {({ trigger, isLoading }) => (
-                <Button onClick={trigger} disabled={isLoading || isGenerating || !prompt.trim() || incompatibility !== null} className="bg-primary text-primary-foreground hover:bg-primary/90 w-full">
-                  {isLoading || isGenerating ? (<><Loader2 className="w-4 h-4 animate-spin mr-2" /> Gerando conceitos...</>) : (<><Sparkles className="w-4 h-4 mr-2" /> Gerar Conceitos Criativos</>)}
+                <Button
+                  onClick={trigger}
+                  disabled={isLoading || isGenerating || !prompt.trim() || !format}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
+                >
+                  {isLoading || isGenerating ? (
+                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Gerando...</>
+                  ) : (
+                    <><Sparkles className="w-4 h-4 mr-2" /> Gerar {quantity === 1 ? "Imagem" : "Imagens"}</>
+                  )}
                 </Button>
               )}
             </CreditsGate>
@@ -316,14 +329,27 @@ export function CreativeGenerator() {
         </Card>
       </motion.div>
 
+      {/* Estados de resultado */}
       <AnimatePresence mode="wait">
         {isGenerating && (
           <motion.div key="generating" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="flex items-center gap-3 text-muted-foreground mb-5">
-              <div className="flex gap-1">{[0, 1, 2].map((i) => (<span key={i} className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />))}</div>
-              <span className="text-sm">Criando conceitos e gerando imagens...</span>
+              <div className="flex gap-1">
+                {[0, 1, 2].map((i) => (
+                  <span key={i} className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                ))}
+              </div>
+              <span className="text-sm">Gerando {quantity === 1 ? "imagem" : "imagens"}...</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => (<div key={i} className="h-64 rounded-lg bg-white/5 border border-white/5 animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />))}</div>
+            <div className={`grid gap-4 ${quantity === 1 ? "grid-cols-1 max-w-sm mx-auto" : "grid-cols-2"}`}>
+              {Array.from({ length: quantity }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`rounded-lg bg-white/5 border border-white/5 animate-pulse ${loadingAspect}`}
+                  style={{ animationDelay: `${i * 0.1}s` }}
+                />
+              ))}
+            </div>
           </motion.div>
         )}
 
@@ -332,15 +358,34 @@ export function CreativeGenerator() {
             <Card className="bg-red-950/20 border-red-500/20">
               <CardContent className="p-5 flex items-center gap-4">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-                <div className="flex-1"><p className="text-sm font-semibold text-red-400">Falha na geração</p><p className="text-xs text-muted-foreground">{error}</p></div>
-                <Button size="sm" variant="outline" onClick={() => { reset(); generate("/api/ai/creative-ideas", { prompt, style: style || undefined, targetAudience: targetAudience || undefined, platform: platform || undefined }); }} className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente</Button>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-400">Falha na geração</p>
+                  <p className="text-xs text-muted-foreground">{error}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    reset();
+                    generate("/api/ai/creative-ideas", { prompt, quantity, format: format || undefined });
+                  }}
+                  className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente
+                </Button>
               </CardContent>
             </Card>
           </motion.div>
         )}
 
         {(isDone || isRestoredMode) && activeResult && (
-          <motion.div key="result" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
+          <motion.div
+            key="result"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
             {isRestoredMode && (
               <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
@@ -349,14 +394,30 @@ export function CreativeGenerator() {
             )}
 
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Conceitos Criativos</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Imagens Geradas</h3>
               <div className="flex items-center gap-3">
-                <button onClick={() => { void handleSave(); }} disabled={isSaving} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">{isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}{isSaving ? "Salvando..." : "Salvar"}</button>
-                <button onClick={() => { reset(); setRestoredResult(null); }} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> Novos conceitos</button>
+                <button
+                  onClick={() => void handleSave()}
+                  disabled={isSaving}
+                  className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                  {isSaving ? "Salvando..." : "Salvar"}
+                </button>
+                <button
+                  onClick={() => { reset(); setRestoredResult(null); }}
+                  className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3 h-3" /> Gerar novamente
+                </button>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${
+              (activeResult.concepts?.length ?? 0) === 1
+                ? "grid-cols-1 max-w-sm mx-auto"
+                : "md:grid-cols-2"
+            }`}>
               {activeResult.concepts?.map((concept: CreativeConcept, i: number) => (
                 <ConceptCard key={concept.id ?? i} concept={concept} index={i} />
               ))}
