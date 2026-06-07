@@ -269,7 +269,7 @@ export function Projects() {
                         </div>
                         <button
                           onClick={() => setConfirmDeleteId(item.id)}
-                          className="text-zinc-700 hover:text-red-400 transition-colors p-1 opacity-0 group-hover:opacity-100 shrink-0"
+                          className="text-zinc-700 hover:text-red-400 transition-colors p-1 opacity-100 shrink-0"
                           title="Mover para lixeira"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
