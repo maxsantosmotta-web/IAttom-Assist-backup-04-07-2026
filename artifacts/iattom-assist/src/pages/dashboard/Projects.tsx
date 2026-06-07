@@ -75,11 +75,19 @@ export function Projects() {
     try {
       const apiItems = await getItems();
       setSavedItems(apiItems as SavedItem[]);
+
       if (apiItems.length > 0) {
+        // Banco tem dados → banco é a fonte da verdade, sincroniza localStorage
         try { localStorage.setItem("iattom_saved_items_v1", JSON.stringify(apiItems)); } catch { /* noop */ }
       } else {
+        // Banco retornou vazio — lê localStorage ANTES de modificá-lo
         const local = readStorage();
+        // Limpa localStorage imediatamente: banco é fonte da verdade, evita re-inserção futura de itens deletados
+        try { localStorage.setItem("iattom_saved_items_v1", JSON.stringify([])); } catch { /* noop */ }
+
         if (local.length > 0) {
+          // Migração one-time: sobe itens locais ao banco
+          // ON CONFLICT DO UPDATE não toca deletedAt → itens já excluídos no banco não ressurgem
           try {
             await Promise.all(
               local.map(item =>
