@@ -29,6 +29,10 @@ localPort = 8081
 externalPort = 80
 
 [[ports]]
+localPort = 8082
+externalPort = 3003
+
+[[ports]]
 localPort = 25638
 externalPort = 3000
 
@@ -41,5 +45,9 @@ channel = "stable-25_05"
 ADMIN_EMAIL = "maxsantosmotta@gmail.com"
 GLOBAL_BETA_MODE = "true"
 VITE_GLOBAL_BETA_MODE = "true"
+HEYGEN_AVATAR_MALE_ID = "d08c85e6cff84d78b6dc41d83a2eccce"
+HEYGEN_AVATAR_FEMALE_ID = "977b1ab85dba4eefb159a6072677effd"
+HEYGEN_VOICE_MALE_ID = "0d0e23e8170446e38b18a7380b2d30a8"
+HEYGEN_VOICE_FEMALE_ID = "0edbc867be6f48c5be8ff8b0fbca0802"
 
 [userenv.production]
