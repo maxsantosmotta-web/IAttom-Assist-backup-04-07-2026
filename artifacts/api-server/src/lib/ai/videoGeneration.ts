@@ -134,10 +134,17 @@ Retorne apenas o texto da fala em português do Brasil.`;
   );
 
   let script = "";
+  let chunkCount = 0;
   for await (const chunk of stream) {
+    chunkCount++;
     const content = chunk.choices[0]?.delta?.content;
     if (content) script += content;
   }
+
+  logger.info(
+    { chunkCount, scriptLength: script.length, scriptPreview: script.slice(0, 80) },
+    "[videoGeneration:diag] script collected",
+  );
 
   if (!script.trim()) throw new Error("Não foi possível gerar o roteiro interno.");
   return script.trim();
@@ -269,6 +276,14 @@ export async function streamVideoGeneration(
       res.end();
       return;
     }
+    logger.error(
+      {
+        errName: err instanceof Error ? err.name : typeof err,
+        errMsg: err instanceof Error ? err.message : String(err),
+        errStack: err instanceof Error ? err.stack?.slice(0, 400) : undefined,
+      },
+      "[videoGeneration:diag] pipeline error",
+    );
     const msg =
       err instanceof Error
         ? err.message
