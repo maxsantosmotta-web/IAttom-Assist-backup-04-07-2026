@@ -67,6 +67,7 @@ const AdminIntegrations = lazy(() => import("@/pages/admin/AdminIntegrations").t
 const AdminTrash = lazy(() => import("@/pages/admin/AdminTrash").then((m) => ({ default: m.AdminTrash })));
 const AdminTikTok = lazy(() => import("@/pages/admin/AdminTikTok").then((m) => ({ default: m.AdminTikTok })));
 const AdminApiConfig = lazy(() => import("@/pages/admin/AdminApiConfig").then((m) => ({ default: m.AdminApiConfig })));
+const AdminHealth = lazy(() => import("@/pages/admin/AdminHealth").then((m) => ({ default: m.AdminHealth })));
 
 function PageLoader() {
   return (
@@ -298,6 +299,7 @@ function ProtectedAdmin() {
                 <Route path="/admin/trash" component={AdminTrash} />
                 <Route path="/admin/tiktok" component={AdminTikTok} />
                 <Route path="/admin/api-config" component={AdminApiConfig} />
+                <Route path="/admin/health" component={AdminHealth} />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>

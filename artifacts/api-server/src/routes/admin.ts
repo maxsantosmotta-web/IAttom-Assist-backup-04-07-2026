@@ -598,6 +598,35 @@ router.get("/admin/subscriptions", requireAdmin, async (req, res): Promise<void>
   res.json({ subscriptions: enriched, total: enriched.length });
 });
 
+// ─── Admin Health Check ────────────────────────────────────────────────────
+router.get("/admin/health", requireAdmin, async (_req, res): Promise<void> => {
+  const checks: { service: string; status: "ok" | "error"; latencyMs?: number; detail?: string }[] = [];
+
+  // DB
+  const dbStart = Date.now();
+  try {
+    await db.execute(sql`SELECT 1`);
+    checks.push({ service: "Banco de Dados", status: "ok", latencyMs: Date.now() - dbStart });
+  } catch {
+    checks.push({ service: "Banco de Dados", status: "error", latencyMs: Date.now() - dbStart, detail: "Conexão falhou" });
+  }
+
+  // OpenAI
+  const hasOpenAI = !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY && process.env.AI_INTEGRATIONS_OPENAI_BASE_URL);
+  checks.push({ service: "OpenAI", status: hasOpenAI ? "ok" : "error", detail: hasOpenAI ? undefined : "Variáveis de ambiente ausentes" });
+
+  // Stripe
+  const hasStripe = !!process.env.STRIPE_SECRET_KEY;
+  checks.push({ service: "Stripe", status: hasStripe ? "ok" : "error", detail: hasStripe ? undefined : "STRIPE_SECRET_KEY não configurado" });
+
+  const allOk = checks.every((c) => c.status === "ok");
+  res.status(allOk ? 200 : 207).json({
+    overall: allOk ? "ok" : "degraded",
+    checkedAt: new Date().toISOString(),
+    checks,
+  });
+});
+
 // ─── CSV Export: Usuários ──────────────────────────────────────────────────
 router.get("/admin/export/users", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db

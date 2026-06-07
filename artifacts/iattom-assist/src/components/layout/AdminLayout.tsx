@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Trash2,
   Music2,
+  MonitorCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ const navItems = [
   { href: "/admin/mercado-livre", label: "Mercado Livre", icon: ShoppingCart },
   { href: "/admin/hotmart", label: "Hotmart", icon: Flame },
   { href: "/admin/kiwify", label: "Kiwify", icon: Zap },
+  { href: "/admin/health", label: "Saúde da Plataforma", icon: MonitorCheck },
   { href: "/admin/trash", label: "Lixeira", icon: Trash2 },
 ];
 
