@@ -22,6 +22,7 @@ import {
   Trash2,
   Music2,
   MonitorCheck,
+  Webhook,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -52,8 +53,9 @@ const navItems = [
   { href: "/admin/mercado-livre", label: "Mercado Livre", icon: ShoppingCart },
   { href: "/admin/hotmart", label: "Hotmart", icon: Flame },
   { href: "/admin/kiwify", label: "Kiwify", icon: Zap },
-  { href: "/admin/health", label: "Saúde da Plataforma", icon: MonitorCheck },
-  { href: "/admin/trash", label: "Lixeira", icon: Trash2 },
+  { href: "/admin/health",    label: "Saúde da Plataforma", icon: MonitorCheck },
+  { href: "/admin/webhooks",  label: "Webhooks",            icon: Webhook      },
+  { href: "/admin/trash",     label: "Lixeira",             icon: Trash2       },
 ];
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");

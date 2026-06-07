@@ -67,7 +67,8 @@ const AdminIntegrations = lazy(() => import("@/pages/admin/AdminIntegrations").t
 const AdminTrash = lazy(() => import("@/pages/admin/AdminTrash").then((m) => ({ default: m.AdminTrash })));
 const AdminTikTok = lazy(() => import("@/pages/admin/AdminTikTok").then((m) => ({ default: m.AdminTikTok })));
 const AdminApiConfig = lazy(() => import("@/pages/admin/AdminApiConfig").then((m) => ({ default: m.AdminApiConfig })));
-const AdminHealth = lazy(() => import("@/pages/admin/AdminHealth").then((m) => ({ default: m.AdminHealth })));
+const AdminHealth    = lazy(() => import("@/pages/admin/AdminHealth").then((m) => ({ default: m.AdminHealth })));
+const AdminWebhooks  = lazy(() => import("@/pages/admin/AdminWebhooks").then((m) => ({ default: m.AdminWebhooks })));
 
 function PageLoader() {
   return (
@@ -300,6 +301,7 @@ function ProtectedAdmin() {
                 <Route path="/admin/tiktok" component={AdminTikTok} />
                 <Route path="/admin/api-config" component={AdminApiConfig} />
                 <Route path="/admin/health" component={AdminHealth} />
+                <Route path="/admin/webhooks" component={AdminWebhooks} />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>
