@@ -72,12 +72,18 @@ router.get("/admin/users", requireAdmin, async (req, res): Promise<void> => {
     db.select({ count: count() }).from(users).where(whereClause),
   ]);
 
+  const clerkIds = allUsers.map((u) => u.clerkId);
+  const clerkUsers = clerkIds.length > 0
+    ? await clerkClient.users.getUserList({ userId: clerkIds, limit: clerkIds.length }).then((r) => r.data)
+    : [];
+  const clerkBannedMap = new Map(clerkUsers.map((cu) => [cu.id, cu.banned ?? false]));
+
   const usersWithCounts = await Promise.all(allUsers.map(async (u) => {
     const [[pc], [ac]] = await Promise.all([
       db.select({ count: count() }).from(projectsTable).where(eq(projectsTable.clerkUserId, u.clerkId)),
       db.select({ count: count() }).from(historyTable).where(eq(historyTable.clerkUserId, u.clerkId)),
     ]);
-    return { ...u, projectCount: pc.count, actionCount: ac.count };
+    return { ...u, projectCount: pc.count, actionCount: ac.count, banned: clerkBannedMap.get(u.clerkId) ?? false };
   }));
 
   res.json(ListAdminUsersResponse.parse({ users: usersWithCounts, total: totalRes.count }));

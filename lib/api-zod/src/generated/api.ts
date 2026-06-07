@@ -403,6 +403,7 @@ export const ListAdminUsersResponse = zod.object({
       projectCount: zod.number(),
       actionCount: zod.number(),
       createdAt: zod.coerce.date(),
+      banned: zod.boolean(),
     }),
   ),
   total: zod.number(),
@@ -432,6 +433,7 @@ export const UpdateAdminUserResponse = zod.object({
   projectCount: zod.number(),
   actionCount: zod.number(),
   createdAt: zod.coerce.date(),
+  banned: zod.boolean(),
 });
 
 /**
@@ -457,6 +459,7 @@ export const AdminAdjustCreditsResponse = zod.object({
   projectCount: zod.number(),
   actionCount: zod.number(),
   createdAt: zod.coerce.date(),
+  banned: zod.boolean(),
 });
 
 /**

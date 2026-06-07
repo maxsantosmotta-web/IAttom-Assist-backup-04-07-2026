@@ -907,6 +907,8 @@ components:
         createdAt:
           type: string
           format: date-time
+        banned:
+          type: boolean
       required:
         - id
         - clerkId
@@ -917,6 +919,7 @@ components:
         - projectCount
         - actionCount
         - createdAt
+        - banned
 
     AdminUserList:
       type: object

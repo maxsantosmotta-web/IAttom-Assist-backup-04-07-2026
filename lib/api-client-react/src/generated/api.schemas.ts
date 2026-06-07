@@ -237,6 +237,7 @@ export interface AdminUser {
   projectCount: number;
   actionCount: number;
   createdAt: string;
+  banned: boolean;
 }
 
 export interface AdminUserList {

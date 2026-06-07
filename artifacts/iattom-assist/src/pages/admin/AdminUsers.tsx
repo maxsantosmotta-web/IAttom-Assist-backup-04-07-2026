@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, Loader2, Users, Edit2, Zap, Plus, Minus, RefreshCw, Eye, Activity, CreditCard, FolderOpen, Download, UserX, UserCheck, ShieldOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,7 @@ type AdminUser = {
   projectCount: number;
   actionCount: number;
   createdAt: string;
+  banned: boolean;
 };
 
 type EditState = {
@@ -150,6 +151,14 @@ export function AdminUsers() {
   const { data, isLoading, isFetching, refetch } = useListAdminUsers(params, {
     query: { queryKey: getListAdminUsersQueryKey(params) },
   });
+
+  // Inicializa bannedIds a partir do campo banned retornado pelo backend (Clerk)
+  useEffect(() => {
+    if (!data?.users) return;
+    setBannedIds(new Set(
+      (data.users as AdminUser[]).filter((u) => u.banned).map((u) => u.id)
+    ));
+  }, [data?.users]);
 
   const [profileUser, setProfileUser] = useState<AdminUser | null>(null);
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
@@ -250,24 +259,30 @@ export function AdminUsers() {
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Gerenciamento</p>
             <h2 className="text-2xl font-bold text-white mb-1">Usuários</h2>
             <p className="text-muted-foreground text-sm">Gerencie todos os usuários cadastrados, planos, funções e créditos.</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0 mt-1">
-            <Button size="sm" variant="outline"
-              onClick={() => void downloadCsv("/api/admin/export/users", `usuarios_${new Date().toISOString().slice(0,10)}.csv`)}
-              className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Exportar CSV
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => void refetch()} disabled={isFetching} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5">
-              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-              Atualizar
-            </Button>
-          </div>
+          <Button
+            size="sm" variant="outline"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+        </div>
+        <div className="flex justify-end mt-2">
+          <Button
+            size="sm" variant="ghost"
+            onClick={() => void downloadCsv("/api/admin/export/users", `usuarios_${new Date().toISOString().slice(0,10)}.csv`)}
+            className="text-zinc-600 hover:text-zinc-300 hover:bg-white/5 gap-1.5 text-xs h-7 px-2"
+          >
+            <Download className="w-3 h-3" />
+            Exportar CSV
+          </Button>
         </div>
       </motion.div>
 
