@@ -593,6 +593,17 @@ export function CreateCampaign() {
     setMode("");
   };
 
+  const handleBack = () => {
+    reset();
+    setCampaignData(null);
+    setRefineInputs({});
+    setRefiningBlock(null);
+    setIsRestored(false);
+    setStep("platform");
+    setGoal("");
+    setMode("");
+  };
+
   const selectPlatform = (platform: PlatformDef) => {
     setGoal(platform.goal);
     setMode(platform.modes[0].value);
@@ -838,12 +849,12 @@ export function CreateCampaign() {
                 <CreditsGate
                   feature="campaign"
                   onSuccess={runGenerate}
-                  disabled={!product.trim() || isGenerating || incompatibility !== null || typeMismatch}
+                  disabled={!product.trim() || isGenerating}
                 >
                   {({ trigger, isLoading }) => (
                     <Button
                       onClick={trigger}
-                      disabled={isLoading || isGenerating || !product.trim() || incompatibility !== null || typeMismatch}
+                      disabled={isLoading || isGenerating || !product.trim()}
                       className="bg-primary text-primary-foreground hover:bg-primary/90 w-full disabled:opacity-40"
                     >
                       {isLoading || isGenerating
@@ -920,6 +931,9 @@ export function CreateCampaign() {
                     )}
                   </div>
                   <div className="flex items-center gap-3 ml-auto">
+                    <button onClick={handleBack} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5">
+                      <ChevronLeft className="w-3 h-3" /> Voltar
+                    </button>
                     <button onClick={handleSave} disabled={isSaving} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 disabled:opacity-50">
                       <Save className="w-3 h-3" /> {isSaving ? "Salvando..." : "Salvar"}
                     </button>

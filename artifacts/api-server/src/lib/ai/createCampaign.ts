@@ -51,20 +51,6 @@ export interface CampaignResult {
   creativeBriefing?: CampaignCreativeBriefing;
 }
 
-const BACKEND_DIGITAL_GOALS = ["Vender na Hotmart", "Vender na Kiwify"];
-const BACKEND_PHYSICAL_KEYWORDS = [
-  "roupa", "camiseta", "tênis", "sapato", "calçado", "bolsa", "mochila",
-  "eletrônico", "celular", "tablet", "garrafa", "utensílio", "cosmético",
-  "perfume", "kit", "aparelho", "dispositivo", "equipamento", "alimento",
-  "suplemento", "vitamina", "remédio", "skincare", "caderno", "agenda",
-  "óculos", "relógio", "acessório", "brinquedo", "produto físico",
-];
-
-function isPhysicalProduct(name: string): boolean {
-  const lower = name.toLowerCase();
-  return BACKEND_PHYSICAL_KEYWORDS.some((k) => lower.includes(k));
-}
-
 function detectGoalPlatform(goal?: string): string {
   if (!goal) return "generic";
   const lower = goal.toLowerCase();
@@ -212,17 +198,17 @@ function buildPlatformFieldsSpec(platform: string): string {
     {
       "key": "conteudo_produto",
       "label": "Conteúdo do Produto",
-      "value": string — GRUPO B: se o usuário informou os módulos reais, liste-os diretamente. Se não informou, gere uma estrutura de curso inteligente e estratégica baseada no tema, prefixada com "Sugestão da IA — validar antes da publicação:\\n". Ex sem dados reais: "Sugestão da IA — validar antes da publicação:\\n- Módulo 1: Fundamentos\\n- Módulo 2: Prática\\n- Módulo 3: Resultados"
+      "value": string — GRUPO B: se o usuário informou os módulos reais, liste-os diretamente. Se não informou, gere estrutura de curso inteligente baseada no tema, prefixada com "Estrutura Recomendada:\\n". Ex sem dados reais: "Estrutura Recomendada:\\n- Módulo 1: Fundamentos\\n- Módulo 2: Prática\\n- Módulo 3: Resultados"
     },
     {
       "key": "bonus",
-      "label": "Bônus",
-      "value": string — GRUPO B: se o usuário informou os bônus reais, liste-os diretamente. Se não informou, sugira 2 a 3 bônus estratégicos e relevantes para o tema, prefixados com "Sugestão da IA — validar antes da publicação:\\n". Ex: "Sugestão da IA — validar antes da publicação:\\n- Bônus 1: Planilha de acompanhamento\\n- Bônus 2: Comunidade de suporte"
+      "label": "Bônus Recomendados",
+      "value": string — GRUPO B: se o usuário informou os bônus reais, liste-os diretamente. Se não informou, sugira 2 a 3 bônus estratégicos relevantes para o tema, prefixados com "Bônus Recomendados:\\n". Ex: "Bônus Recomendados:\\n- Planilha de acompanhamento\\n- Comunidade de suporte"
     },
     {
       "key": "garantia",
       "label": "Garantia",
-      "value": string — GRUPO A para prazo real; GRUPO B para sugestão operacional. Se o usuário informou o prazo real: use diretamente. Se não informou: escrever "Garantia real não informada pelo usuário.\\nSugestão operacional: utilizar a garantia mínima exigida pela plataforma (7 dias — conforme CDC)."
+      "value": string — GRUPO A: se o usuário informou o prazo real, use diretamente. Se não informou: escrever "Garantia Recomendada: utilizar a garantia mínima exigida pela plataforma (7 dias — conforme CDC)."
     },
     {
       "key": "cta",
@@ -267,17 +253,17 @@ function buildPlatformFieldsSpec(platform: string): string {
     {
       "key": "conteudo_produto",
       "label": "Conteúdo do Produto",
-      "value": string — GRUPO B: se o usuário informou os módulos reais, liste-os diretamente. Se não informou, gere estrutura de curso enxuta e direta baseada no tema, prefixada com "Sugestão da IA — validar antes da publicação:\\n". Ex: "Sugestão da IA — validar antes da publicação:\\n- Módulo 1: Base\\n- Módulo 2: Aplicação\\n- Módulo 3: Escala"
+      "value": string — GRUPO B: se o usuário informou os módulos reais, liste-os diretamente. Se não informou, gere estrutura de curso enxuta e direta baseada no tema, prefixada com "Estrutura Recomendada:\\n". Ex: "Estrutura Recomendada:\\n- Módulo 1: Base\\n- Módulo 2: Aplicação\\n- Módulo 3: Escala"
     },
     {
       "key": "bonus",
-      "label": "Bônus",
-      "value": string — GRUPO B: se o usuário informou os bônus reais, liste-os diretamente. Se não informou, sugira 1 a 2 bônus relevantes e diretos, prefixados com "Sugestão da IA — validar antes da publicação:\\n".
+      "label": "Bônus Recomendados",
+      "value": string — GRUPO B: se o usuário informou os bônus reais, liste-os diretamente. Se não informou, sugira 1 a 2 bônus relevantes e diretos, prefixados com "Bônus Recomendados:\\n".
     },
     {
       "key": "garantia",
       "label": "Garantia",
-      "value": string — GRUPO A para prazo real; GRUPO B para sugestão operacional. Se o usuário informou o prazo real: use diretamente. Se não informou: escrever "Garantia real não informada pelo usuário.\\nSugestão operacional: utilizar a garantia mínima exigida pela plataforma (7 dias — conforme CDC)."
+      "value": string — GRUPO A: se o usuário informou o prazo real, use diretamente. Se não informou: escrever "Garantia Recomendada: utilizar a garantia mínima exigida pela plataforma (7 dias — conforme CDC)."
     },
     {
       "key": "cta",
@@ -311,8 +297,8 @@ function buildPlatformFieldsSpec(platform: string): string {
     },
     {
       "key": "sugestao_criativo",
-      "label": "Sugestão de Criativo",
-      "value": string — sugestão concreta para o visual (foto, vídeo ou carrossel): o que mostrar, ângulo visual, texto sobreposto (se houver), formato ideal para o objetivo. Max 200 chars.
+      "label": "Criativo Recomendado",
+      "value": string — recomendação concreta para o visual (foto, vídeo ou carrossel): o que mostrar, ângulo visual, texto sobreposto (se houver), formato ideal para o objetivo. Max 200 chars.
     }
   ]`;
 
@@ -341,8 +327,8 @@ function buildPlatformFieldsSpec(platform: string): string {
     },
     {
       "key": "sugestao_criativo",
-      "label": "Sugestão de Criativo",
-      "value": string — sugestão concreta para o visual: tipo de conteúdo (Reels, carrossel, foto única), o que mostrar, formato, texto em tela (se houver). Max 200 chars.
+      "label": "Criativo Recomendado",
+      "value": string — recomendação concreta para o visual: tipo de conteúdo (Reels, carrossel, foto única), o que mostrar, formato, texto em tela (se houver). Max 200 chars.
     }
   ]`;
 
@@ -376,8 +362,8 @@ function buildPlatformFieldsSpec(platform: string): string {
     },
     {
       "key": "sugestao_criativo",
-      "label": "Sugestão de Criativo / Vídeo",
-      "value": string — sugestão concreta para o formato e estilo do vídeo: câmera (selfie, estúdio, tela), ritmo de edição, música sugerida (tipo/estilo), texto em tela. Max 200 chars.
+      "label": "Vídeo Recomendado",
+      "value": string — recomendação concreta para o formato e estilo do vídeo: câmera (selfie, estúdio, tela), ritmo de edição, música recomendada (tipo/estilo), texto em tela. Max 200 chars.
     }
   ]`;
 
@@ -580,12 +566,12 @@ GRUPO B — CONTEÚDO ESTRATÉGICO (a IA deve sugerir)
   módulos sugeridos, bônus sugeridos, esteira sugerida, oferta sugerida, palavras-chave,
   sugestão de criativo, perguntas frequentes baseadas no tipo de produto.
   → Gerar sempre com qualidade estratégica máxima.
-  → Quando o campo for uma sugestão estrutural (não dado confirmado pelo usuário),
-     prefixar com: "Sugestão da IA — validar antes da publicação:"
+  → Quando o campo for uma estrutura não confirmada pelo usuário,
+     prefixar com: "Estrutura Recomendada:"
 
-REGRA DE PREFIXAÇÃO PARA SUGESTÕES ESTRUTURAIS:
-  Correto:   "Sugestão da IA — validar antes da publicação:\n- Módulo 1: Fundamentos\n- Módulo 2: ..."
-  Incorreto: "Módulo 1: Fundamentos\nMódulo 2: ..." (sem indicar que é sugestão)
+REGRA DE PREFIXAÇÃO PARA ESTRUTURAS RECOMENDADAS:
+  Correto:   "Estrutura Recomendada:\n- Módulo 1: Fundamentos\n- Módulo 2: ..."
+  Incorreto: "Módulo 1: Fundamentos\nMódulo 2: ..." (sem indicar que é recomendação)
   Esta regra se aplica SOMENTE a campos onde o usuário não forneceu o dado real.
   Se o usuário forneceu o dado, use diretamente sem prefixo.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -765,7 +751,7 @@ function buildPublicationGuide(platform: string, fields: CampaignPlatformField[]
           `Use a Headline "${get("headline")}" no campo de título do anúncio`,
           `Configure a Descrição Curta "${get("descricao_curta")}" no campo de descrição`,
           `Selecione o botão de CTA: "${get("cta")}"`,
-          "Crie o criativo conforme a Sugestão de Criativo gerada",
+          "Crie o criativo conforme o Criativo Recomendado gerado",
           "Configure o público-alvo, orçamento e veiculação",
           "Monitore resultados em Meta Ads Manager → Relatórios",
         ],
@@ -778,7 +764,7 @@ function buildPublicationGuide(platform: string, fields: CampaignPlatformField[]
         url: "https://www.instagram.com",
         steps: [
           "Abra o Instagram → toque em + → Nova publicação ou Reel",
-          "Escolha o formato conforme a Sugestão de Criativo gerada",
+          "Escolha o formato conforme o Criativo Recomendado gerado",
           `Use a Primeira Frase de Impacto: "${get("primeira_frase").slice(0, 90)}"`,
           "Cole a Legenda completa no campo de legenda",
           "Adicione as Hashtags no final da legenda ou no primeiro comentário",
@@ -802,7 +788,7 @@ function buildPublicationGuide(platform: string, fields: CampaignPlatformField[]
           `Cole a Legenda gerada no campo de legenda do vídeo`,
           `Adicione as Hashtags na legenda`,
           `Finalize o vídeo com o CTA: "${get("cta")}"`,
-          "Configure o som conforme a Sugestão de Criativo",
+          "Configure o som conforme o Vídeo Recomendado",
           "Publique e monitore retenção nos primeiros 30 minutos",
         ],
         note: "Publicação Assistida — orientações para publicação manual. Nenhuma ação automática é executada pela plataforma.",
@@ -824,18 +810,6 @@ export async function streamCreateCampaign(
   signal?: AbortSignal,
 ): Promise<void> {
   setupSSE(res);
-
-  if (
-    params.goal &&
-    BACKEND_DIGITAL_GOALS.includes(params.goal) &&
-    isPhysicalProduct(params.product)
-  ) {
-    sendSSEError(
-      res,
-      "Produto físico detectado. Hotmart/Kiwify são plataformas voltadas principalmente para produtos digitais. Altere a plataforma ou selecione Mercado Livre / Shopee para produtos físicos.",
-    );
-    return;
-  }
 
   sendSSE(res, { type: "start" });
 
