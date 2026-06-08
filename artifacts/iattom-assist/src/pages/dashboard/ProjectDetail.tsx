@@ -189,10 +189,18 @@ function VideoProjectCard({
   const formatoLabels: Record<string, string> = { "9:16": "Reels / Stories", "1:1": "Feed", "16:9": "YouTube / Apresentação" };
   const ambienteLabel = (amb: string) => amb.charAt(0).toUpperCase() + amb.slice(1);
 
+  // Aspect ratio CSS — preserva a proporção real do vídeo no player
+  const aspectClass =
+    video.videoFormato === "9:16"
+      ? "aspect-[9/16] max-h-[600px] mx-auto"
+      : video.videoFormato === "1:1"
+      ? "aspect-square max-w-sm mx-auto"
+      : "aspect-video";
+
   return (
     <div className="space-y-4">
       {video.isMock ? (
-        <div className="aspect-video rounded-xl bg-[#0a0a0a] border border-white/[0.06] flex flex-col items-center justify-center gap-3">
+        <div className={`${aspectClass} w-full rounded-xl bg-[#0a0a0a] border border-white/[0.06] flex flex-col items-center justify-center gap-3`}>
           <Video className="w-8 h-8 text-zinc-600" />
           <p className="text-xs text-zinc-500 text-center max-w-xs px-4">
             Vídeo gerado em modo demonstração — URL não disponível
@@ -203,13 +211,13 @@ function VideoProjectCard({
           src={video.videoUrl}
           controls
           playsInline
-          className="w-full aspect-video rounded-xl bg-black"
+          className={`${aspectClass} w-full rounded-xl bg-black`}
         />
       ) : (
-        <div className="aspect-video rounded-xl bg-[#0a0a0a] border border-white/[0.06] flex flex-col items-center justify-center gap-3">
+        <div className={`${aspectClass} w-full rounded-xl bg-[#0a0a0a] border border-white/[0.06] flex flex-col items-center justify-center gap-3`}>
           <Video className="w-8 h-8 text-zinc-600" />
           <p className="text-xs text-zinc-500 text-center max-w-xs px-4">
-            URL do vídeo não disponível — o link pode ter expirado
+            URL do vídeo não disponível
           </p>
         </div>
       )}
@@ -230,20 +238,6 @@ function VideoProjectCard({
 
       {video.prompt && (
         <TextBlock label="Prompt original" value={video.prompt} />
-      )}
-
-      <button
-        onClick={onOpenInGenerator}
-        className="flex items-center gap-2 text-xs text-primary hover:text-primary/80 transition-colors border border-primary/20 hover:border-primary/40 bg-primary/5 hover:bg-primary/10 px-3 py-2 rounded-lg"
-      >
-        <Sparkles className="w-3.5 h-3.5" />
-        Abrir no Gerador Criativo
-      </button>
-
-      {!video.isMock && video.videoUrl && (
-        <p className="text-xs text-amber-500/60">
-          Links de vídeo HeyGen expiram em alguns dias — baixe antes que expire.
-        </p>
       )}
     </div>
   );
@@ -611,6 +605,8 @@ export function ProjectDetail() {
     try { parsed = JSON.parse(item.data) as ParsedData; } catch {}
   }
 
+  const isVideoCreative = item.type === "creative" && parsed?.type === "video";
+
   const inlineImages = parsed ? extractImages(item.type, parsed) : [];
   const images = idbImages.length > 0 ? idbImages : inlineImages;
 
@@ -698,44 +694,51 @@ export function ProjectDetail() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={handleCopyAll}
-            className="h-7 px-3 text-xs bg-white/[0.05] text-zinc-300 border border-white/[0.08] hover:bg-white/[0.09] hover:text-white"
-          >
-            {allCopied ? <Check className="w-3 h-3 mr-1.5 text-emerald-400" /> : <Copy className="w-3 h-3 mr-1.5" />}
-            {allCopied ? "Copiado" : "Copiar tudo"}
-          </Button>
-        </div>
+        {/* Copiar tudo — oculto para projetos de vídeo */}
+        {!isVideoCreative && (
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={handleCopyAll}
+              className="h-7 px-3 text-xs bg-white/[0.05] text-zinc-300 border border-white/[0.08] hover:bg-white/[0.09] hover:text-white"
+            >
+              {allCopied ? <Check className="w-3 h-3 mr-1.5 text-emerald-400" /> : <Copy className="w-3 h-3 mr-1.5" />}
+              {allCopied ? "Copiado" : "Copiar tudo"}
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Written content */}
+      {/* Written content / vídeo */}
       <div>
-        <SectionTitle>Conteúdo escrito</SectionTitle>
+        <SectionTitle>{isVideoCreative ? "Vídeo gerado" : "Conteúdo escrito"}</SectionTitle>
         {renderWrittenContent()}
       </div>
 
-      {/* Images */}
-      <ImagesSection images={images} onPreview={(img, idx) => setPreviewImage({ img, idx })} />
-      {/* Sync button — shown only when project has images but none loaded yet (cross-device case) */}
-      {imagesLoadDone && item.hasImages && images.length === 0 && (
-        <div className="flex justify-center pt-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { void handleSyncImages(); }}
-            disabled={syncingImages}
-            className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 text-xs gap-2"
-          >
-            {syncingImages ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-            {syncingImages ? "Sincronizando..." : "Sincronizar imagens novamente"}
-          </Button>
-        </div>
+      {/* Images — oculto para projetos de vídeo */}
+      {!isVideoCreative && (
+        <>
+          <ImagesSection images={images} onPreview={(img, idx) => setPreviewImage({ img, idx })} />
+          {/* Sync button — shown only when project has images but none loaded yet */}
+          {imagesLoadDone && item.hasImages && images.length === 0 && (
+            <div className="flex justify-center pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { void handleSyncImages(); }}
+                disabled={syncingImages}
+                className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 text-xs gap-2"
+              >
+                {syncingImages ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                {syncingImages ? "Sincronizando..." : "Sincronizar imagens novamente"}
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Tech details */}
-      {(() => {
+      {/* Tech details — oculto para projetos de vídeo */}
+      {!isVideoCreative && (() => {
         const p = parsed;
         if (!p) return null;
         return (

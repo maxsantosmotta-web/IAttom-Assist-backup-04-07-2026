@@ -46,31 +46,64 @@ export interface VideoGenerationResult {
   isMock: boolean;
 }
 
-// ─── Backgrounds por ambiente ────────────────────────────────────────────────
+// ─── Backgrounds reais por ambiente ─────────────────────────────────────────
+//
+// Imagens de fundo via Unsplash CDN (sem autenticação — CDN público).
+// Formato adaptado ao aspect ratio do vídeo para evitar distorção.
+// Fallback: cor sólida escura (#111111) se o ambiente não for mapeado.
 
-const SCENE_BACKGROUNDS: Record<string, string> = {
-  corporativo:  "#1c2333",
-  casa:         "#1f1a1f",
-  loja:         "#2a1f1a",
-  shopping:     "#1a1f2a",
-  restaurante:  "#2a1a0f",
-  rua:          "#0f1f0f",
-  praia:        "#0f1a2a",
-  parque:       "#0f2010",
-  veiculo:      "#1a1a1a",
-  consultorio:  "#1a2020",
-  estudio:      "#111111",
-};
+function resolveBackground(ambiente: string, aspectRatio: string): string {
+  // Dimensões por aspect ratio
+  let w = "1920", h = "1080";
+  if (aspectRatio === "9:16") { w = "1080"; h = "1920"; }
+  if (aspectRatio === "1:1")  { w = "1080"; h = "1080"; }
+
+  const photoIds: Record<string, string> = {
+    corporativo:  "photo-1497366216548-37526070297c", // modern office open space
+    casa:         "photo-1586023492125-27b2c045efd7", // bright modern living room
+    loja:         "photo-1441986300917-64674bd600d8", // retail clothing store interior
+    shopping:     "photo-1555529902-5261145633bf",    // shopping mall concourse
+    restaurante:  "photo-1517248135467-4c7edcad34c4", // restaurant ambient dining
+    rua:          "photo-1477959858617-67f85cf4f1df",  // city street urban bokeh
+    praia:        "photo-1507525428034-b723cf961d3e",  // tropical beach turquoise
+    parque:       "photo-1500534314209-a25ddb2bd429",  // green park pathway trees
+    veiculo:      "photo-1485291571150-772bcfc10da5",  // car interior dashboard
+    consultorio:  "photo-1576091160399-112ba8d25d1d",  // clean medical clinic
+    estudio:      "photo-1478737270239-2f02b77fc618",  // podcast radio studio
+  };
+
+  const photoId = photoIds[ambiente.toLowerCase()];
+  if (!photoId) return "#111111";
+
+  return `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=${w}&h=${h}&q=80`;
+}
+
+// ─── Contexto do ambiente para o roteiro ─────────────────────────────────────
+
+function ambienteContexto(ambiente: string): string {
+  const ctx: Record<string, string> = {
+    corporativo:  "escritório corporativo moderno",
+    casa:         "ambiente doméstico, tom acolhedor e próximo",
+    loja:         "loja física, clima de atendimento e varejo",
+    shopping:     "shopping center, contexto de consumo e movimento",
+    restaurante:  "restaurante, ambiente de gastronomia e hospitalidade",
+    rua:          "ambiente externo urbano, tom dinâmico e real",
+    praia:        "ambiente praiano, clima leve e descontraído",
+    parque:       "espaço ao ar livre, tom tranquilo e saudável",
+    veiculo:      "dentro de um veículo em movimento, tom prático e direto",
+    consultorio:  "consultório profissional, tom técnico e confiável",
+    estudio:      "estúdio de gravação ou podcast, tom especialista",
+  };
+  return ctx[ambiente.toLowerCase()] ?? "ambiente profissional";
+}
+
+// ─── Formato → aspect ratio ──────────────────────────────────────────────────
 
 const FORMATO_TO_ASPECT: Record<string, string> = {
   "9:16": "9:16",
   "1:1":  "1:1",
   "16:9": "16:9",
 };
-
-function resolveBackground(ambiente: string): string {
-  return SCENE_BACKGROUNDS[ambiente.toLowerCase()] ?? "#111111";
-}
 
 // ─── Palavras por segundo (estimativa TTS PT-BR) ──────────────────────────────
 
@@ -81,25 +114,29 @@ function wordsForDuration(seconds: number): { min: number; max: number } {
 
 // ─── Descritores por estilo ──────────────────────────────────────────────────
 
-function estiloDescriptor(
-  estilo: "executivo" | "consultor" | "criador",
-  avatar: "masculino" | "feminino",
-): { tom: string; postura: string } {
+function estiloDescriptor(estilo: "executivo" | "consultor" | "criador"): {
+  tom: string;
+  abertura: string;
+  cta: string;
+} {
   switch (estilo) {
     case "executivo":
       return {
-        tom: "direto e confiante, transmitindo credibilidade profissional",
-        postura: "fala como especialista que apresenta uma solução de valor, com autoridade e clareza",
+        tom: "direto, confiante e profissional — fala com autoridade sem ser arrogante",
+        abertura: "começa com uma afirmação forte ou uma pergunta que gera reflexão imediata",
+        cta: "termina com uma chamada para ação clara e direta",
       };
     case "consultor":
       return {
-        tom: "explicativo e empático, guiando o espectador com clareza",
-        postura: "fala como quem orienta e resolve problemas, com expertise e cuidado",
+        tom: "empático e explicativo — fala como quem orienta e resolve, com calma e clareza",
+        abertura: "abre identificando um problema real que o espectador reconhece na própria vida",
+        cta: "termina convidando a dar o próximo passo, com segurança e sem pressão",
       };
     case "criador":
       return {
-        tom: "próximo e autêntico, com entusiasmo natural e conexão com o público",
-        postura: "fala de forma direta e cativante, como numa conversa real com o espectador",
+        tom: "próximo, autêntico e entusiasmado — fala como numa conversa real com o espectador",
+        abertura: "abre de forma surpreendente, engraçada ou curiosa — algo que faz parar o scroll",
+        cta: "termina de forma natural e animada, sem soar forçado",
       };
   }
   const _: never = estilo;
@@ -107,7 +144,6 @@ function estiloDescriptor(
 }
 
 // ─── Helper: uma tentativa de geração via OpenAI (streaming) ─────────────────
-// Captura delta.content, delta.refusal e finish_reason em cada chunk.
 
 interface ScriptAttemptResult {
   script: string;
@@ -158,33 +194,39 @@ async function buildVideoScript(
 ): Promise<string> {
   const prompt = params.videoPrompt.trim();
   const { min: minWords, max: maxWords } = wordsForDuration(params.videoDuration);
-  const { tom, postura } = estiloDescriptor(params.videoEstilo, params.videoAvatar);
+  const { tom, abertura, cta } = estiloDescriptor(params.videoEstilo);
+  const ambiente = ambienteContexto(params.videoAmbiente);
 
-  // ── Tentativa 1: prompt completo ─────────────────────────────────────────
+  // ── Tentativa 1: prompt completo e contextualizado ───────────────────────
   const systemPrompt = `Você escreve roteiros de vídeos de marketing em português do Brasil.
-Sua única tarefa é escrever o texto que o personagem irá falar no vídeo.
 
-TOM: ${tom}
-POSTURA: ${postura}
-AMBIENTE: ${params.videoAmbiente}
-DURAÇÃO: ${params.videoDuration} segundos (entre ${minWords} e ${maxWords} palavras)
-ESTRUTURA: abertura que prende atenção → apresentação do produto com benefícios reais → chamada para ação
+TAREFA: escrever apenas o texto que o personagem fala. Nada mais. Sem títulos, sem numeração, sem marcações.
 
-REGRAS DE ESCRITA:
-- Frases curtas: máximo de 12 palavras por frase
-- Pausas com vírgulas e pontos — ritmo natural de fala
-- Linguagem acessível, sem termos técnicos desnecessários
-- Voz ativa: "você resolve" não "é possível resolver"
-- Sem listas numeradas — fala contínua e natural
-- Sem menção a câmera, edição, produção ou duração
+ESTILO DO PERSONAGEM:
+Tom: ${tom}
+Como abrir: ${abertura}
+Como fechar: ${cta}
 
-RETORNAR: apenas o texto da fala, em português. Nada mais.`;
+AMBIENTE DO VÍDEO: ${ambiente}
+O personagem está num ${ambiente}. A linguagem e o clima devem combinar com esse contexto.
 
-  const userPrompt = `Produto ou serviço: "${prompt}"
+DURAÇÃO: ${params.videoDuration} segundos → entre ${minWords} e ${maxWords} palavras
+
+REGRAS DE ESCRITA PARA VOZ NATURAL:
+- Frases curtas. Máximo 10 palavras por frase.
+- Pausas com vírgulas e reticências — o personagem respira.
+- Sem listas. Sem bullet points. Fala contínua.
+- Voz ativa. "Você resolve" — nunca "é possível resolver".
+- Linguagem acessível. Sem jargão técnico desnecessário.
+- Sem mencionar câmera, duração, edição, gravação ou roteiro.
+- O personagem não lê um texto — ele fala de verdade.
+
+RETORNAR: somente o texto da fala. Em português. Nada mais.`;
+
+  const userPrompt = `Sobre o que falar: "${prompt}"
 
 Escreva o roteiro de ${params.videoDuration} segundos.
-Entre ${minWords} e ${maxWords} palavras.
-Apenas o texto da fala.`;
+Entre ${minWords} e ${maxWords} palavras. Apenas a fala, sem nenhum outro texto.`;
 
   const attempt1 = await attemptScriptGeneration(
     [
@@ -199,34 +241,33 @@ Apenas o texto da fala.`;
       attempt: 1,
       chunkCount: attempt1.chunkCount,
       scriptLength: attempt1.script.length,
-      scriptPreview: attempt1.script.slice(0, 80),
+      scriptPreview: attempt1.script.slice(0, 100),
       refusal: attempt1.refusal,
       finishReason: attempt1.finishReason,
       estilo: params.videoEstilo,
+      ambiente: params.videoAmbiente,
     },
     "[videoGeneration:diag] tentativa 1 de roteiro",
   );
 
-  if (attempt1.script) {
-    return attempt1.script;
-  }
+  if (attempt1.script) return attempt1.script;
 
-  // Logar a causa do script vazio
+  // Log da causa do script vazio
   if (attempt1.refusal) {
     logger.warn(
       { refusal: attempt1.refusal, finishReason: attempt1.finishReason },
-      "[videoGeneration] recusa detectada na tentativa 1 — iniciando retry simplificado",
+      "[videoGeneration] recusa detectada na tentativa 1 — iniciando retry",
     );
   } else {
     logger.warn(
       { chunkCount: attempt1.chunkCount, finishReason: attempt1.finishReason },
-      "[videoGeneration] roteiro vazio (sem recusa explícita) — iniciando retry simplificado",
+      "[videoGeneration] roteiro vazio sem recusa — iniciando retry",
     );
   }
 
-  // ── Tentativa 2: prompt simplificado (retry) ──────────────────────────────
-  const simpleSystem = `Você escreve roteiros de marketing em português do Brasil. Escreva apenas o texto falado. Nada mais.`;
-  const simpleUser = `Escreva um texto de ${params.videoDuration} segundos sobre: "${prompt}". Entre ${minWords} e ${maxWords} palavras. Apenas a fala, em português do Brasil.`;
+  // ── Tentativa 2: prompt mínimo (retry de segurança) ──────────────────────
+  const simpleSystem = `Escreva roteiros de marketing em português do Brasil. Retorne apenas o texto falado.`;
+  const simpleUser = `Roteiro de ${params.videoDuration} segundos sobre: "${prompt}". Entre ${minWords} e ${maxWords} palavras. Só a fala, em português.`;
 
   const attempt2 = await attemptScriptGeneration(
     [
@@ -241,7 +282,7 @@ Apenas o texto da fala.`;
       attempt: 2,
       chunkCount: attempt2.chunkCount,
       scriptLength: attempt2.script.length,
-      scriptPreview: attempt2.script.slice(0, 80),
+      scriptPreview: attempt2.script.slice(0, 100),
       refusal: attempt2.refusal,
       finishReason: attempt2.finishReason,
     },
@@ -253,13 +294,11 @@ Apenas o texto da fala.`;
     return attempt2.script;
   }
 
-  // Ambas as tentativas falharam
   if (attempt2.refusal) {
     logger.error(
       { refusal1: attempt1.refusal, refusal2: attempt2.refusal },
       "[videoGeneration] recusa em ambas as tentativas",
     );
-    throw new Error("Não foi possível gerar o roteiro. Tente simplificar o prompt.");
   }
 
   throw new Error("Não foi possível gerar o roteiro. Tente simplificar o prompt.");
@@ -313,12 +352,18 @@ export async function streamVideoGeneration(
     return;
   }
 
+  const aspectRatio = FORMATO_TO_ASPECT[params.videoFormato] ?? "16:9";
+  const background = resolveBackground(params.videoAmbiente, aspectRatio);
+
   logger.info(
     {
       videoEstilo: params.videoEstilo,
       videoAvatar: params.videoAvatar,
       videoAmbiente: params.videoAmbiente,
       videoFormato: params.videoFormato,
+      aspectRatio,
+      backgroundType: background.startsWith("#") ? "color" : "image",
+      backgroundUrl: background.startsWith("#") ? background : background.slice(0, 80),
       videoDuration: params.videoDuration,
       heygenConfigured: HEYGEN_CONFIGURED,
     },
@@ -329,7 +374,6 @@ export async function streamVideoGeneration(
     sendSSE(res, { type: "progress", message: "Preparando roteiro..." });
     const script = await buildVideoScript(params, signal);
 
-    // ── Garantia: HeyGen só é chamada com script válido ──────────────────────
     if (!script || script.trim().length === 0) {
       sendSSEError(res, "Não foi possível gerar o roteiro. Tente simplificar o prompt.");
       return;
@@ -362,8 +406,6 @@ export async function streamVideoGeneration(
 
     const avatarId = AVATAR_IDS[params.videoAvatar];
     const voiceId = VOICE_IDS[params.videoAvatar];
-    const background = resolveBackground(params.videoAmbiente);
-    const aspectRatio = FORMATO_TO_ASPECT[params.videoFormato] ?? "16:9";
 
     if (!avatarId || !voiceId) {
       sendSSEError(res, "Configuração de avatar incompleta. Entre em contato com o suporte.");
@@ -371,7 +413,15 @@ export async function streamVideoGeneration(
     }
 
     logger.info(
-      { avatarId, voiceId, aspectRatio, background, estilo: params.videoEstilo, scriptLength: script.length },
+      {
+        avatarId,
+        voiceId,
+        aspectRatio,
+        ambiente: params.videoAmbiente,
+        backgroundType: background.startsWith("#") ? "color" : "image",
+        scriptLength: script.length,
+        scriptPreview: script.slice(0, 80),
+      },
       "[videoGeneration] roteiro válido — enviando para HeyGen",
     );
 
@@ -422,7 +472,7 @@ export async function streamVideoGeneration(
       rawMsg.startsWith("Não foi possível") ||
       rawMsg.startsWith("Tempo esgotado") ||
       rawMsg.startsWith("Configuração de avatar") ||
-      rawMsg.startsWith("O conteúdo excede")
+      rawMsg.startsWith("Erro HeyGen")
         ? rawMsg
         : "Não foi possível gerar o vídeo. Seus créditos serão devolvidos automaticamente.";
     sendSSEError(res, userMsg);

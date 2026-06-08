@@ -10,9 +10,11 @@
  *   HEYGEN_VOICE_MALE_ID     — voice_id PT-BR masculino (GET /v3/voices)
  *   HEYGEN_VOICE_FEMALE_ID   — voice_id PT-BR feminino  (GET /v3/voices)
  *
- * Avatar IDs fixos (confirmados via GET /v3/avatars/looks para esta conta):
- *   Marcus (masculino): b45f91a7e4264416b4f4ec9b48f2a16e
- *   Maya   (feminino):  74dd6e182f0d415ab740c1097d49304b
+ * Avatar IDs (looks):
+ *   Usa HEYGEN_AVATAR_MALE_ID / HEYGEN_AVATAR_FEMALE_ID quando disponíveis.
+ *   Fallback interno para looks landscape de Marcus/Maya se não configurados.
+ *   Para 9:16 REAL sem letterbox: configurar looks portrait no dashboard HeyGen
+ *   e definir HEYGEN_AVATAR_MALE_ID / HEYGEN_AVATAR_FEMALE_ID com esses IDs.
  */
 
 import { logger } from "./logger.js";
@@ -24,11 +26,18 @@ export const HEYGEN_CONFIGURED =
   !!process.env.HEYGEN_VOICE_MALE_ID &&
   !!process.env.HEYGEN_VOICE_FEMALE_ID;
 
-// IDs fixos — confirmados via GET /v3/avatars/looks para esta conta HeyGen.
-// Temporário até HEYGEN_AVATAR_MALE_ID / HEYGEN_AVATAR_FEMALE_ID serem resolvidos.
+// IDs de look para o avatar.
+// Prioridade: env vars configuradas pelo admin → fallbacks landscape.
+// IMPORTANTE: para 9:16 sem letterbox, os env vars devem apontar para looks
+// portrait (ou landscape com auto-crop ativado no dashboard HeyGen).
+const FALLBACK_AVATAR_IDS: Record<"masculino" | "feminino", string> = {
+  masculino: "b45f91a7e4264416b4f4ec9b48f2a16e", // Marcus — landscape, avatar_iv
+  feminino:  "74dd6e182f0d415ab740c1097d49304b", // Maya   — landscape, avatar_iv
+};
+
 export const AVATAR_IDS: Record<"masculino" | "feminino", string> = {
-  masculino: "b45f91a7e4264416b4f4ec9b48f2a16e", // Marcus — Man, landscape, avatar_iv
-  feminino:  "74dd6e182f0d415ab740c1097d49304b", // Maya — Woman, landscape, avatar_iv
+  masculino: process.env.HEYGEN_AVATAR_MALE_ID   || FALLBACK_AVATAR_IDS.masculino,
+  feminino:  process.env.HEYGEN_AVATAR_FEMALE_ID || FALLBACK_AVATAR_IDS.feminino,
 };
 
 export const VOICE_IDS: Record<"masculino" | "feminino", string> = {
@@ -71,23 +80,31 @@ function extractHeygenError(body: Record<string, unknown>): string {
 //
 // Estrutura confirmada pela documentação oficial HeyGen v3:
 //   - background: { type: "color", value: "#hex" } para cor sólida
-//   - background: { type: "image", url: "..." } para imagem
-//   - aspect_ratio: "16:9"
+//   - background: { type: "image", url: "..." }     para imagem de fundo
+//   - aspect_ratio: "16:9" | "9:16" | "1:1"
 //   - resolution: "1080p"
 //   - engine omitido → usa Avatar IV por padrão (compatível com avatares stock)
 //   - Avatar V exige Digital Twin — não usar com avatares de biblioteca
+//
+// NOTA sobre 9:16: O letterbox (barras pretas laterais) ocorre quando o look
+// do avatar é landscape e o aspect_ratio é 9:16. A solução definitiva é usar
+// looks portrait (configurados em HEYGEN_AVATAR_MALE_ID/FEMALE_ID).
+// Enquanto não configurados, o HeyGen centraliza o avatar e preenche o fundo.
 
 export async function generateVideo(payload: HeyGenVideoPayload): Promise<{ videoId: string }> {
   const apiKey = process.env.HEYGEN_API_KEY!;
 
   const isColor = payload.background.startsWith("#");
+  const aspectRatio = payload.aspectRatio ?? "16:9";
+  const usingEnvAvatarMale   = !!(process.env.HEYGEN_AVATAR_MALE_ID);
+  const usingEnvAvatarFemale = !!(process.env.HEYGEN_AVATAR_FEMALE_ID);
 
   const body: Record<string, unknown> = {
     type: "avatar",
     avatar_id: payload.avatarId,
     script: payload.script,
     voice_id: payload.voiceId,
-    aspect_ratio: payload.aspectRatio ?? "16:9",
+    aspect_ratio: aspectRatio,
     resolution: "1080p",
     background: isColor
       ? { type: "color", value: payload.background }
@@ -99,9 +116,14 @@ export async function generateVideo(payload: HeyGenVideoPayload): Promise<{ vide
       avatarId: payload.avatarId,
       voiceId: payload.voiceId,
       scriptLength: payload.script.length,
-      background: isColor ? "color" : "image",
+      scriptPreview: payload.script.slice(0, 60),
+      aspectRatio,
+      backgroundType: isColor ? "color" : "image",
+      backgroundValue: payload.background.slice(0, 80),
+      usingEnvAvatarMale,
+      usingEnvAvatarFemale,
     },
-    "[heygenClient] enviando requisição de geração",
+    "[heygenClient] payload completo enviado para HeyGen v3/videos",
   );
 
   const res = await fetch(`${HEYGEN_BASE_URL}/v3/videos`, {
@@ -139,7 +161,7 @@ export async function generateVideo(payload: HeyGenVideoPayload): Promise<{ vide
     throw new Error("HeyGen não retornou um video_id válido.");
   }
 
-  logger.info({ videoId }, "[heygenClient] vídeo criado com sucesso");
+  logger.info({ videoId, aspectRatio }, "[heygenClient] vídeo criado com sucesso");
   return { videoId };
 }
 
@@ -167,10 +189,21 @@ export async function getVideoStatus(videoId: string): Promise<HeyGenVideoStatus
       failure_message?: string;
       failure_code?: string;
       error?: string;
+      width?: number;
+      height?: number;
     };
   };
 
   const d = data.data ?? {};
+
+  // Log dimensões reais quando disponíveis (útil para diagnóstico de letterbox)
+  if (d.status === "completed" && (d.width ?? d.height)) {
+    logger.info(
+      { videoId, width: d.width, height: d.height, videoUrl: d.video_url?.slice(0, 80) },
+      "[heygenClient] dimensões reais do vídeo gerado",
+    );
+  }
+
   return {
     status: (d.status ?? "pending") as HeyGenVideoStatus["status"],
     videoUrl: d.video_url,
