@@ -97,15 +97,19 @@ export function inferProductType(text: string): "físico" | "digital" | null {
 export function getEffectiveProductType(
   productText: string,
   selectedType: string | null,
-): "físico" | "digital" {
+): "físico" | "digital" | null {
+  // Not enough data — placeholder or empty input never triggers a warning
+  if (productText.trim().length < 3 && !selectedType) return null;
+
   const inferred = inferProductType(productText);
   if (inferred !== null) return inferred;
 
   const type = selectedType?.toLowerCase().trim() ?? "";
   if (type === "digital" || type === "serviço") return "digital";
+  if (type === "físico") return "físico";
 
-  // Unknown, "Físico", or nothing selected → preventive physical default
-  return "físico";
+  // Text too short or ambiguous + no selection → insufficient data, no warning
+  return null;
 }
 
 export type IncompatibilityType = "physical_on_digital" | "digital_on_physical" | null;
