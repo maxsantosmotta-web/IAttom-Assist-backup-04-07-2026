@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap, Save, ExternalLink } from "lucide-react";
+import { Megaphone, Target, Globe, Loader2, Copy, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Zap, Save, ExternalLink, FileText } from "lucide-react";
 import { useGetCreditsBalance, getGetCreditsBalanceQueryKey } from "@workspace/api-client-react";
 import { getEffectiveProductType, detectIncompatibility, INCOMPATIBILITY_MESSAGES, detectProductTypeMismatch, PRODUCT_TYPE_MISMATCH_MESSAGE } from "@/lib/productPlatformCompatibility";
 import { useSavedItems } from "@/hooks/useSavedItems";
@@ -11,10 +11,26 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { CreditsGate } from "@/components/CreditsGate";
 import { useAiStream } from "@/hooks/useAiStream";
-import type { CampaignResult } from "@/types/ai";
+import type { CampaignResult, CampaignPlatformField, CampaignCreativeBriefing } from "@/types/ai";
+
+const BRIEFING_LABELS: Record<string, string> = {
+  produto: "Produto",
+  objetivo: "Objetivo",
+  plataforma: "Plataforma",
+  publico: "Público-alvo",
+  promessa: "Promessa de Valor",
+  dor: "Dor Principal",
+  beneficio: "Benefício Principal",
+  tom: "Tom de Voz",
+  cta: "CTA Principal",
+  restricoes: "Restrições",
+};
 
 function isCampaignComplete(r: CampaignResult | null): r is CampaignResult {
   if (!r) return false;
+  if (r.platformFields && r.platformFields.length > 0) {
+    return r.platformFields.some((f) => f.value?.trim());
+  }
   if (!r.headline?.trim()) return false;
   if (!r.audience?.trim()) return false;
   if (!Array.isArray(r.channels) || r.channels.length === 0) return false;
@@ -27,6 +43,10 @@ function isCampaignComplete(r: CampaignResult | null): r is CampaignResult {
 }
 
 function getBlockContent(data: CampaignResult, blockId: string): string {
+  if (blockId.startsWith("platformField.")) {
+    const key = blockId.replace("platformField.", "");
+    return data.platformFields?.find((f) => f.key === key)?.value ?? "";
+  }
   if (blockId.startsWith("copy.")) {
     const platform = blockId.replace("copy.", "");
     return (data.copy as Record<string, string>)[platform] ?? "";
@@ -44,6 +64,13 @@ function getBlockContent(data: CampaignResult, blockId: string): string {
 
 function applyRefinedContent(prev: CampaignResult | null, blockId: string, content: string): CampaignResult | null {
   if (!prev) return prev;
+  if (blockId.startsWith("platformField.")) {
+    const key = blockId.replace("platformField.", "");
+    return {
+      ...prev,
+      platformFields: prev.platformFields?.map((f) => f.key === key ? { ...f, value: content } : f),
+    };
+  }
   if (blockId.startsWith("copy.")) {
     const platform = blockId.replace("copy.", "");
     return { ...prev, copy: { ...prev.copy, [platform]: content } };
@@ -73,7 +100,7 @@ function RefineBar({ blockId: _blockId, value, onChange, onRefine, isRefining, d
     <div className="mt-2 flex gap-2 items-center">
       <input
         className="flex-1 text-xs bg-[#0a0a0a] border border-white/10 rounded px-2.5 py-1.5 text-white placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/40 disabled:opacity-50"
-        placeholder="Instrução de refinamento para este bloco..."
+        placeholder="Instrução de refinamento para este campo..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && !isRefining && !disabled && value.trim()) onRefine(); }}
@@ -87,6 +114,112 @@ function RefineBar({ blockId: _blockId, value, onChange, onRefine, isRefining, d
         {isRefining ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
         Refinar
       </button>
+    </div>
+  );
+}
+
+function PlatformFieldBlock({
+  field,
+  refineInput,
+  onRefineChange,
+  onRefine,
+  isRefining,
+  disabled,
+}: {
+  field: CampaignPlatformField;
+  refineInput: string;
+  onRefineChange: (v: string) => void;
+  onRefine: () => void;
+  isRefining: boolean;
+  disabled: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const { toast } = useToast();
+  const preview = field.value.slice(0, 160);
+  const hasMore = field.value.length > 160;
+
+  return (
+    <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-primary">{field.label}</p>
+        <button
+          onClick={() => {
+            void navigator.clipboard.writeText(field.value);
+            toast({ description: `${field.label} copiado` });
+          }}
+          className="text-muted-foreground hover:text-white transition-colors"
+        >
+          <Copy className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+        {expanded ? field.value : preview}
+        {hasMore && !expanded && "..."}
+      </p>
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-xs text-primary/60 hover:text-primary mt-1.5 flex items-center gap-1"
+        >
+          {expanded ? <><ChevronUp className="w-3 h-3" /> Menos</> : <><ChevronDown className="w-3 h-3" /> Ver mais</>}
+        </button>
+      )}
+      <RefineBar
+        blockId={`platformField.${field.key}`}
+        value={refineInput}
+        onChange={onRefineChange}
+        onRefine={onRefine}
+        isRefining={isRefining}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
+function CreativeBriefingBlock({ briefing }: { briefing: CampaignCreativeBriefing }) {
+  const [expanded, setExpanded] = useState(false);
+  const { toast } = useToast();
+
+  const entries = Object.entries(briefing).filter(([, v]) => v?.trim());
+
+  const copyAll = () => {
+    const text = entries.map(([k, v]) => `${BRIEFING_LABELS[k] ?? k}: ${v}`).join("\n");
+    void navigator.clipboard.writeText(text);
+    toast({ description: "Briefing copiado" });
+  };
+
+  return (
+    <div className="border border-white/5 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Briefing Criativo</p>
+        </div>
+        {expanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+      </button>
+      {expanded && (
+        <div className="border-t border-white/5 px-4 pb-4 pt-3 space-y-3">
+          <div className="flex justify-end">
+            <button
+              onClick={copyAll}
+              className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1"
+            >
+              <Copy className="w-3 h-3" /> Copiar tudo
+            </button>
+          </div>
+          <div className="grid md:grid-cols-2 gap-2">
+            {entries.map(([key, value]) => (
+              <div key={key} className="bg-[#0a0a0a] rounded p-2.5">
+                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest mb-0.5">{BRIEFING_LABELS[key] ?? key}</p>
+                <p className="text-xs text-zinc-300 leading-snug">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -164,9 +297,10 @@ interface PlatformGuide {
 
 function getPlatformGuide(goal: string, data: CampaignResult): PlatformGuide | null {
   const g = goal.toLowerCase();
-  const headline = data.headline ?? "";
-  const cta = data.cta ?? "";
-  const copy = data.copy as Record<string, string>;
+  const headline = data.platformFields?.find((f) => f.key === "headline")?.value ?? data.headline ?? "";
+  const cta = data.platformFields?.find((f) => f.key === "cta")?.value ?? data.cta ?? "";
+  const hook = data.platformFields?.find((f) => f.key === "hook")?.value ?? "";
+  const legenda = data.platformFields?.find((f) => f.key === "legenda")?.value ?? "";
 
   if (g.includes("hotmart")) {
     return {
@@ -177,7 +311,7 @@ function getPlatformGuide(goal: string, data: CampaignResult): PlatformGuide | n
         "Vá em Meus Produtos e selecione o produto desta campanha",
         `Em Marketing > Páginas, crie uma nova página com a manchete: "${headline}"`,
         `Defina o botão de compra com o CTA: "${cta}"`,
-        "Copie os textos de cada plataforma abaixo para os canais correspondentes",
+        "Copie os textos de cada campo acima para os canais correspondentes",
         "Em Afiliados > Programa de Afiliados, ative o link de afiliado para ampliar alcance",
         "Acompanhe as conversões em Relatórios > Vendas após publicar",
       ],
@@ -249,9 +383,9 @@ function getPlatformGuide(goal: string, data: CampaignResult): PlatformGuide | n
       name: "TikTok",
       url: "https://www.tiktok.com",
       steps: [
-        "Abra o TikTok e grave um vídeo usando o hook nos primeiros 2 segundos",
+        `Abra o TikTok e grave um vídeo usando o hook nos primeiros 2 segundos: "${hook.slice(0, 80)}"`,
         "Adicione legendas na tela com o texto principal da campanha",
-        `No caption use: "${(copy.legenda ?? copy.hook ?? headline).slice(0, 100)}"`,
+        `No caption use o texto da Legenda do Vídeo copiado acima`,
         `Finalize em voz com o CTA: "${cta}"`,
         "Poste entre 18h e 21h para maior alcance orgânico",
       ],
@@ -264,9 +398,9 @@ function getPlatformGuide(goal: string, data: CampaignResult): PlatformGuide | n
       url: "https://www.facebook.com",
       steps: [
         "Acesse o Facebook e vá em Criar Publicação",
-        "Cole o copy de Facebook desta campanha na publicação",
-        `Use a manchete "${headline}" no início do texto`,
-        `Finalize com o CTA: "${cta}"`,
+        "Cole o Texto Principal desta campanha na publicação",
+        `A Headline "${headline}" será usada ao criar um anúncio no Meta Ads Manager`,
+        `Finalize com o Botão CTA: "${cta}"`,
         "Publique na sua página ou grupo de maior alcance",
         "Acompanhe engajamento em Insights da Página",
       ],
@@ -279,15 +413,17 @@ function getPlatformGuide(goal: string, data: CampaignResult): PlatformGuide | n
       url: "https://web.whatsapp.com",
       steps: [
         "Abra o WhatsApp Business ou WhatsApp Web",
-        "Use a abordagem inicial desta campanha como primeira mensagem",
+        "Use a Abordagem Inicial desta campanha como primeira mensagem",
         "Envie para seus contatos mais quentes primeiro",
-        "Aguarde resposta antes de enviar a mensagem de acompanhamento",
+        "Aguarde resposta antes de enviar a Mensagem de Valor",
         `Use o CTA "${cta}" para avançar na conversa`,
         "Salve os contatos que responderam em uma lista específica para follow-up",
       ],
       note: "Publicação Assistida — orientações para publicação manual. Nenhuma ação automática é executada pela plataforma.",
     };
   }
+
+  void legenda;
   return null;
 }
 
@@ -433,7 +569,7 @@ export function CreateCampaign() {
       setRefineInputs((prev) => ({ ...prev, [blockId]: "" }));
     } catch (err) {
       toast({
-        description: err instanceof Error ? err.message : "Erro ao refinar bloco",
+        description: err instanceof Error ? err.message : "Erro ao refinar campo",
         variant: "destructive",
       });
     } finally {
@@ -448,24 +584,45 @@ export function CreateCampaign() {
       : campaignData.headline;
     const platform = detectedPlatform;
     const lines: string[] = [];
-    lines.push(`CAMPANHA: ${campaignData.headline}`);
-    if (campaignData.subheadline) lines.push(`Subheadline: ${campaignData.subheadline}`);
-    if (campaignData.cta) lines.push(`CTA: ${campaignData.cta}`);
-    lines.push(`\nPÚBLICO: ${campaignData.audience}`);
-    if (campaignData.channels?.length) lines.push(`CANAIS: ${campaignData.channels.join(", ")}`);
-    lines.push(`ORÇAMENTO: ${campaignData.budget}`);
-    if (campaignData.uniqueAngle) lines.push(`\nÂNGULO ÚNICO: ${campaignData.uniqueAngle}`);
-    if (campaignData.keyMessages?.length) {
-      lines.push(`\nMENSAGENS-CHAVE:`);
-      campaignData.keyMessages.forEach((m, i) => lines.push(`  ${i + 1}. ${m}`));
-    }
-    if (campaignData.copy && typeof campaignData.copy === "object") {
-      lines.push(`\nCOPY:`);
-      Object.entries(campaignData.copy as Record<string, string>).forEach(([p, c]) => {
-        lines.push(`\n[${p.toUpperCase()}]\n${c}`);
+
+    if (campaignData.platformFields && campaignData.platformFields.length > 0) {
+      lines.push(`CAMPANHA — ${goal || product.trim()}`);
+      if (product.trim()) lines.push(`Produto: ${product.trim()}`);
+      lines.push("");
+      campaignData.platformFields.forEach((f) => {
+        lines.push(`${f.label.toUpperCase()}:`);
+        lines.push(f.value);
+        lines.push("");
       });
+      if (campaignData.creativeBriefing) {
+        lines.push("=== BRIEFING CRIATIVO ===");
+        const b = campaignData.creativeBriefing;
+        if (b.promessa) lines.push(`Promessa: ${b.promessa}`);
+        if (b.dor) lines.push(`Dor: ${b.dor}`);
+        if (b.publico) lines.push(`Público: ${b.publico}`);
+        if (b.tom) lines.push(`Tom: ${b.tom}`);
+      }
+    } else {
+      lines.push(`CAMPANHA: ${campaignData.headline}`);
+      if (campaignData.subheadline) lines.push(`Subheadline: ${campaignData.subheadline}`);
+      if (campaignData.cta) lines.push(`CTA: ${campaignData.cta}`);
+      lines.push(`\nPÚBLICO: ${campaignData.audience}`);
+      if (campaignData.channels?.length) lines.push(`CANAIS: ${campaignData.channels.join(", ")}`);
+      lines.push(`ORÇAMENTO: ${campaignData.budget}`);
+      if (campaignData.uniqueAngle) lines.push(`\nÂNGULO ÚNICO: ${campaignData.uniqueAngle}`);
+      if (campaignData.keyMessages?.length) {
+        lines.push(`\nMENSAGENS-CHAVE:`);
+        campaignData.keyMessages.forEach((m, i) => lines.push(`  ${i + 1}. ${m}`));
+      }
+      if (campaignData.copy && typeof campaignData.copy === "object") {
+        lines.push(`\nCOPY:`);
+        Object.entries(campaignData.copy as Record<string, string>).forEach(([p, c]) => {
+          lines.push(`\n[${p.toUpperCase()}]\n${c}`);
+        });
+      }
+      if (campaignData.launchTimeline) lines.push(`\nCRONOGRAMA:\n${campaignData.launchTimeline}`);
     }
-    if (campaignData.launchTimeline) lines.push(`\nCRONOGRAMA:\n${campaignData.launchTimeline}`);
+
     const content = lines.join("\n");
     const structuredData = JSON.stringify({
       briefing: { product: product.trim(), goal, mode, audience, productType },
@@ -498,6 +655,7 @@ export function CreateCampaign() {
   };
 
   const showResult = (isDone || isRestored) && isCampaignComplete(campaignData);
+  const hasPlatformFields = !!(campaignData?.platformFields && campaignData.platformFields.length > 0);
 
   return (
     <div className="space-y-8">
@@ -654,7 +812,7 @@ export function CreateCampaign() {
             <Card className="bg-red-950/20 border-red-500/20">
               <CardContent className="p-5 flex items-center gap-4">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-                <div className="flex-1"><p className="text-sm font-semibold text-red-400">Falha na geração</p><p className="text-xs text-muted-foreground mt-0.5">Não foi possível gerar a campanha neste momento. Tente novamente.</p></div>
+                <div className="flex-1"><p className="text-sm font-semibold text-red-400">Falha na geração</p><p className="text-xs text-muted-foreground mt-0.5">{error ?? "Não foi possível gerar a campanha neste momento. Tente novamente."}</p></div>
                 <Button size="sm" variant="outline" onClick={() => { handleReset(); }} className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente</Button>
               </CardContent>
             </Card>
@@ -667,7 +825,9 @@ export function CreateCampaign() {
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <Megaphone className="w-4 h-4 text-primary" />
-                  <CardTitle className="text-base text-white">Estratégia de Campanha</CardTitle>
+                  <CardTitle className="text-base text-white">
+                    {hasPlatformFields ? `Campanha — ${goal}` : "Estratégia de Campanha"}
+                  </CardTitle>
                   <div className="ml-auto flex items-center gap-2">
                     <button
                       onClick={handleSave}
@@ -684,140 +844,173 @@ export function CreateCampaign() {
               </CardHeader>
               <CardContent className="space-y-5">
 
-                {/* Manchete */}
-                <div className="p-4 rounded-lg bg-primary/5 border border-primary/15">
-                  <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Manchete</p>
-                  <p className="text-white font-bold text-lg leading-snug">{campaignData.headline}</p>
-                  <p className="text-muted-foreground text-sm mt-1">{campaignData.subheadline}</p>
-                  {campaignData.cta && <p className="text-primary text-sm font-semibold mt-2">CTA: {campaignData.cta}</p>}
-                  <RefineBar
-                    blockId="headline"
-                    value={refineInputs["headline"] ?? ""}
-                    onChange={(v) => setRefineInput("headline", v)}
-                    onRefine={() => refineBlock("headline")}
-                    isRefining={refiningBlock === "headline"}
-                    disabled={!!refiningBlock && refiningBlock !== "headline"}
-                  />
-                </div>
+                {/* === NOVO: Campos por plataforma em ordem === */}
+                {hasPlatformFields && campaignData.platformFields && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">
+                      Campos da Plataforma — na ordem de publicação
+                    </p>
+                    {campaignData.platformFields.map((field) => {
+                      const blockId = `platformField.${field.key}`;
+                      return (
+                        <PlatformFieldBlock
+                          key={field.key}
+                          field={field}
+                          refineInput={refineInputs[blockId] ?? ""}
+                          onRefineChange={(v) => setRefineInput(blockId, v)}
+                          onRefine={() => refineBlock(blockId)}
+                          isRefining={refiningBlock === blockId}
+                          disabled={!!refiningBlock && refiningBlock !== blockId}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
 
-                {/* Público / Canais / Orçamento */}
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1"><Target className="w-3 h-3" /> Público</p>
-                    <p className="text-sm text-white">{campaignData.audience}</p>
-                    <RefineBar
-                      blockId="audience"
-                      value={refineInputs["audience"] ?? ""}
-                      onChange={(v) => setRefineInput("audience", v)}
-                      onRefine={() => refineBlock("audience")}
-                      isRefining={refiningBlock === "audience"}
-                      disabled={!!refiningBlock && refiningBlock !== "audience"}
-                    />
-                  </div>
-                  <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1"><Globe className="w-3 h-3" /> Canais</p>
-                    <div className="flex flex-wrap gap-1">
-                      {campaignData.channels?.map((c) => (<span key={c} className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{c}</span>))}
-                    </div>
-                  </div>
-                  <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5">Orçamento</p>
-                    <p className="text-sm text-white">{campaignData.budget}</p>
-                    <RefineBar
-                      blockId="budget"
-                      value={refineInputs["budget"] ?? ""}
-                      onChange={(v) => setRefineInput("budget", v)}
-                      onRefine={() => refineBlock("budget")}
-                      isRefining={refiningBlock === "budget"}
-                      disabled={!!refiningBlock && refiningBlock !== "budget"}
-                    />
-                  </div>
-                </div>
+                {/* === Briefing Criativo (colapsável) === */}
+                {hasPlatformFields && campaignData.creativeBriefing && (
+                  <CreativeBriefingBlock briefing={campaignData.creativeBriefing} />
+                )}
 
-                {/* Ângulo Único */}
-                {campaignData.uniqueAngle && (
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
-                    <Zap className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-xs text-primary font-medium mb-0.5">Ângulo Único</p>
-                      <p className="text-xs text-muted-foreground">{campaignData.uniqueAngle}</p>
+                {/* === LEGADO: renderização antiga para campanhas antigas sem platformFields === */}
+                {!hasPlatformFields && (
+                  <>
+                    {/* Manchete */}
+                    <div className="p-4 rounded-lg bg-primary/5 border border-primary/15">
+                      <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Manchete</p>
+                      <p className="text-white font-bold text-lg leading-snug">{campaignData.headline}</p>
+                      <p className="text-muted-foreground text-sm mt-1">{campaignData.subheadline}</p>
+                      {campaignData.cta && <p className="text-primary text-sm font-semibold mt-2">CTA: {campaignData.cta}</p>}
                       <RefineBar
-                        blockId="uniqueAngle"
-                        value={refineInputs["uniqueAngle"] ?? ""}
-                        onChange={(v) => setRefineInput("uniqueAngle", v)}
-                        onRefine={() => refineBlock("uniqueAngle")}
-                        isRefining={refiningBlock === "uniqueAngle"}
-                        disabled={!!refiningBlock && refiningBlock !== "uniqueAngle"}
+                        blockId="headline"
+                        value={refineInputs["headline"] ?? ""}
+                        onChange={(v) => setRefineInput("headline", v)}
+                        onRefine={() => refineBlock("headline")}
+                        isRefining={refiningBlock === "headline"}
+                        disabled={!!refiningBlock && refiningBlock !== "headline"}
                       />
                     </div>
-                  </div>
-                )}
 
-                {/* Copy por Plataforma */}
-                {campaignData.copy && Object.keys(campaignData.copy).length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 font-medium">Copy da Campanha</p>
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {Object.entries(campaignData.copy as Record<string, string>).map(([key, copyText]) => {
-                        const blockId = `copy.${key}`;
-                        return (
-                          <div key={key} className="bg-[#0a0a0a] border border-white/5 rounded-lg p-4">
-                            <CopyBlock label={key} content={copyText} />
-                            <RefineBar
-                              blockId={blockId}
-                              value={refineInputs[blockId] ?? ""}
-                              onChange={(v) => setRefineInput(blockId, v)}
-                              onRefine={() => refineBlock(blockId)}
-                              isRefining={refiningBlock === blockId}
-                              disabled={!!refiningBlock && refiningBlock !== blockId}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Mensagens-chave */}
-                {campaignData.keyMessages?.length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-medium">Mensagens-chave</p>
-                    <div className="space-y-1.5">
-                      {campaignData.keyMessages.map((msg, i) => (
-                        <div key={i} className="flex items-start gap-2 text-sm">
-                          <span className="text-primary font-bold shrink-0 text-xs mt-0.5">{i + 1}</span>
-                          <p className="text-muted-foreground text-xs">{msg}</p>
+                    {/* Público / Canais / Orçamento */}
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1"><Target className="w-3 h-3" /> Público</p>
+                        <p className="text-sm text-white">{campaignData.audience}</p>
+                        <RefineBar
+                          blockId="audience"
+                          value={refineInputs["audience"] ?? ""}
+                          onChange={(v) => setRefineInput("audience", v)}
+                          onRefine={() => refineBlock("audience")}
+                          isRefining={refiningBlock === "audience"}
+                          disabled={!!refiningBlock && refiningBlock !== "audience"}
+                        />
+                      </div>
+                      <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1"><Globe className="w-3 h-3" /> Canais</p>
+                        <div className="flex flex-wrap gap-1">
+                          {campaignData.channels?.map((c) => (<span key={c} className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{c}</span>))}
                         </div>
-                      ))}
+                      </div>
+                      <div className="bg-[#0a0a0a] border border-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5">Orçamento</p>
+                        <p className="text-sm text-white">{campaignData.budget}</p>
+                        <RefineBar
+                          blockId="budget"
+                          value={refineInputs["budget"] ?? ""}
+                          onChange={(v) => setRefineInput("budget", v)}
+                          onRefine={() => refineBlock("budget")}
+                          isRefining={refiningBlock === "budget"}
+                          disabled={!!refiningBlock && refiningBlock !== "budget"}
+                        />
+                      </div>
                     </div>
-                    <RefineBar
-                      blockId="keyMessages"
-                      value={refineInputs["keyMessages"] ?? ""}
-                      onChange={(v) => setRefineInput("keyMessages", v)}
-                      onRefine={() => refineBlock("keyMessages")}
-                      isRefining={refiningBlock === "keyMessages"}
-                      disabled={!!refiningBlock && refiningBlock !== "keyMessages"}
-                    />
-                  </div>
+
+                    {/* Ângulo Único */}
+                    {campaignData.uniqueAngle && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
+                        <Zap className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-xs text-primary font-medium mb-0.5">Ângulo Único</p>
+                          <p className="text-xs text-muted-foreground">{campaignData.uniqueAngle}</p>
+                          <RefineBar
+                            blockId="uniqueAngle"
+                            value={refineInputs["uniqueAngle"] ?? ""}
+                            onChange={(v) => setRefineInput("uniqueAngle", v)}
+                            onRefine={() => refineBlock("uniqueAngle")}
+                            isRefining={refiningBlock === "uniqueAngle"}
+                            disabled={!!refiningBlock && refiningBlock !== "uniqueAngle"}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Copy por Plataforma */}
+                    {campaignData.copy && Object.keys(campaignData.copy).length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 font-medium">Copy da Campanha</p>
+                        <div className="grid md:grid-cols-2 gap-3">
+                          {Object.entries(campaignData.copy as Record<string, string>).map(([key, copyText]) => {
+                            const blockId = `copy.${key}`;
+                            return (
+                              <div key={key} className="bg-[#0a0a0a] border border-white/5 rounded-lg p-4">
+                                <CopyBlock label={key} content={copyText} />
+                                <RefineBar
+                                  blockId={blockId}
+                                  value={refineInputs[blockId] ?? ""}
+                                  onChange={(v) => setRefineInput(blockId, v)}
+                                  onRefine={() => refineBlock(blockId)}
+                                  isRefining={refiningBlock === blockId}
+                                  disabled={!!refiningBlock && refiningBlock !== blockId}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Mensagens-chave */}
+                    {campaignData.keyMessages?.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2 font-medium">Mensagens-chave</p>
+                        <div className="space-y-1.5">
+                          {campaignData.keyMessages.map((msg, i) => (
+                            <div key={i} className="flex items-start gap-2 text-sm">
+                              <span className="text-primary font-bold shrink-0 text-xs mt-0.5">{i + 1}</span>
+                              <p className="text-muted-foreground text-xs">{msg}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <RefineBar
+                          blockId="keyMessages"
+                          value={refineInputs["keyMessages"] ?? ""}
+                          onChange={(v) => setRefineInput("keyMessages", v)}
+                          onRefine={() => refineBlock("keyMessages")}
+                          isRefining={refiningBlock === "keyMessages"}
+                          disabled={!!refiningBlock && refiningBlock !== "keyMessages"}
+                        />
+                      </div>
+                    )}
+
+                    {/* Cronograma */}
+                    {campaignData.launchTimeline && (
+                      <div className="border-t border-white/5 pt-4">
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 font-medium">Cronograma de Lançamento</p>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">{campaignData.launchTimeline}</p>
+                        <RefineBar
+                          blockId="launchTimeline"
+                          value={refineInputs["launchTimeline"] ?? ""}
+                          onChange={(v) => setRefineInput("launchTimeline", v)}
+                          onRefine={() => refineBlock("launchTimeline")}
+                          isRefining={refiningBlock === "launchTimeline"}
+                          disabled={!!refiningBlock && refiningBlock !== "launchTimeline"}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {/* Cronograma */}
-                {campaignData.launchTimeline && (
-                  <div className="border-t border-white/5 pt-4">
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 font-medium">Cronograma de Lançamento</p>
-                    <p className="text-sm text-muted-foreground whitespace-pre-line">{campaignData.launchTimeline}</p>
-                    <RefineBar
-                      blockId="launchTimeline"
-                      value={refineInputs["launchTimeline"] ?? ""}
-                      onChange={(v) => setRefineInput("launchTimeline", v)}
-                      onRefine={() => refineBlock("launchTimeline")}
-                      isRefining={refiningBlock === "launchTimeline"}
-                      disabled={!!refiningBlock && refiningBlock !== "launchTimeline"}
-                    />
-                  </div>
-                )}
-
-                {/* Publicação Assistida */}
+                {/* Publicação Assistida — sempre visível quando há plataforma */}
                 {goal && campaignData && (() => {
                   const guide = getPlatformGuide(goal, campaignData);
                   if (!guide) return null;

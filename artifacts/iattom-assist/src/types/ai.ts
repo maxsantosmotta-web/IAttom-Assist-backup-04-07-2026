@@ -34,6 +34,25 @@ export interface ValidationResult {
   demandTrend: string;
 }
 
+export interface CampaignPlatformField {
+  key: string;
+  label: string;
+  value: string;
+}
+
+export interface CampaignCreativeBriefing {
+  produto: string;
+  objetivo: string;
+  plataforma: string;
+  publico: string;
+  promessa: string;
+  dor: string;
+  beneficio: string;
+  tom: string;
+  cta: string;
+  restricoes: string;
+}
+
 export interface CampaignResult {
   campaignTitle?: string;
   headline: string;
@@ -47,6 +66,9 @@ export interface CampaignResult {
   launchTimeline: string;
   uniqueAngle: string;
   objectionHandling: string;
+  platform?: string;
+  platformFields?: CampaignPlatformField[];
+  creativeBriefing?: CampaignCreativeBriefing;
 }
 
 export interface ContentResult {

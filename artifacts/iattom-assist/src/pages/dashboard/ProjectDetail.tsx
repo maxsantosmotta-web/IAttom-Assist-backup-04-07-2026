@@ -18,6 +18,19 @@ import type {
   VideoGenerationResult,
 } from "@/types/ai";
 
+const BRIEFING_LABELS_PD: Record<string, string> = {
+  produto: "Produto",
+  objetivo: "Objetivo",
+  plataforma: "Plataforma",
+  publico: "Público-alvo",
+  promessa: "Promessa de Valor",
+  dor: "Dor Principal",
+  beneficio: "Benefício Principal",
+  tom: "Tom de Voz",
+  cta: "CTA Principal",
+  restricoes: "Restrições",
+};
+
 /* ─── Parsed data shape ─────────────────────────────────────── */
 interface ParsedData {
   type?: string;
@@ -113,22 +126,84 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 /* ─── Written content by type ───────────────────────────────── */
 function CampaignContent({ result, creatives }: { result: CampaignResult; creatives?: CreativeIdeasResult | null }) {
+  const [briefingExpanded, setBriefingExpanded] = useState(false);
+  const { toast } = useToast();
+  const hasPlatformFields = !!(result.platformFields && result.platformFields.length > 0);
   const copy = result.copy as Record<string, string> | undefined;
+
+  const copyBriefing = () => {
+    if (!result.creativeBriefing) return;
+    const text = Object.entries(result.creativeBriefing)
+      .filter(([, v]) => v?.trim())
+      .map(([k, v]) => `${BRIEFING_LABELS_PD[k] ?? k}: ${v}`)
+      .join("\n");
+    void navigator.clipboard.writeText(text).then(() => {
+      toast({ description: "Briefing copiado." });
+    });
+  };
+
   return (
     <div className="space-y-3">
-      <TextBlock label="Título da Campanha" value={result.headline} />
-      <TextBlock label="Subtítulo" value={result.subheadline} />
-      <TextBlock label="CTA" value={result.cta} />
-      <TextBlock label="Público-alvo" value={result.audience} />
-      {result.channels?.length ? <TextBlock label="Canais" value={result.channels.join(", ")} /> : null}
-      <TextBlock label="Orçamento" value={result.budget} />
-      <TextBlock label="Ângulo Único" value={result.uniqueAngle} />
-      {result.keyMessages?.length ? <TextBlock label="Mensagens-chave" value={result.keyMessages.map((m, i) => `${i + 1}. ${m}`).join("\n")} /> : null}
-      {copy && typeof copy === "object" && Object.entries(copy as Record<string, string>).map(([key, val]) =>
-        val ? <TextBlock key={key} label={`Copy — ${key}`} value={val} /> : null
+      {hasPlatformFields && result.platformFields ? (
+        <>
+          {result.platformFields.map((field) => (
+            <TextBlock key={field.key} label={field.label} value={field.value} />
+          ))}
+
+          {result.creativeBriefing && (() => {
+            const entries = Object.entries(result.creativeBriefing).filter(([, v]) => v?.trim());
+            if (!entries.length) return null;
+            return (
+              <div className="rounded-xl bg-[#0a0a0a] border border-white/[0.06] overflow-hidden">
+                <button
+                  onClick={() => setBriefingExpanded((e) => !e)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Briefing Criativo</p>
+                  {briefingExpanded ? <ChevronUp className="w-3.5 h-3.5 text-zinc-600" /> : <ChevronDown className="w-3.5 h-3.5 text-zinc-600" />}
+                </button>
+                {briefingExpanded && (
+                  <div className="border-t border-white/[0.04] px-4 pb-4 pt-3 space-y-2">
+                    <div className="flex justify-end">
+                      <button
+                        onClick={copyBriefing}
+                        className="flex items-center gap-1 text-[11px] text-zinc-600 hover:text-primary transition-colors"
+                      >
+                        <Copy className="w-3 h-3" /> Copiar tudo
+                      </button>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-2">
+                      {entries.map(([key, value]) => (
+                        <div key={key} className="rounded-lg bg-[#111111] border border-white/[0.04] p-2.5">
+                          <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-0.5">{BRIEFING_LABELS_PD[key] ?? key}</p>
+                          <p className="text-xs text-zinc-300 leading-snug">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </>
+      ) : (
+        <>
+          <TextBlock label="Título da Campanha" value={result.headline} />
+          <TextBlock label="Subtítulo" value={result.subheadline} />
+          <TextBlock label="CTA" value={result.cta} />
+          <TextBlock label="Público-alvo" value={result.audience} />
+          {result.channels?.length ? <TextBlock label="Canais" value={result.channels.join(", ")} /> : null}
+          <TextBlock label="Orçamento" value={result.budget} />
+          <TextBlock label="Ângulo Único" value={result.uniqueAngle} />
+          {result.keyMessages?.length ? <TextBlock label="Mensagens-chave" value={result.keyMessages.map((m, i) => `${i + 1}. ${m}`).join("\n")} /> : null}
+          {copy && typeof copy === "object" && Object.entries(copy as Record<string, string>).map(([key, val]) =>
+            val ? <TextBlock key={key} label={`Copy — ${key}`} value={val} /> : null
+          )}
+          <TextBlock label="Cronograma de Lançamento" value={result.launchTimeline} />
+          <TextBlock label="Tratamento de Objeções" value={result.objectionHandling} />
+        </>
       )}
-      <TextBlock label="Cronograma de Lançamento" value={result.launchTimeline} />
-      <TextBlock label="Tratamento de Objeções" value={result.objectionHandling} />
+
       {creatives?.concepts?.length ? (
         <div className="mt-6 space-y-3">
           <SectionTitle>Criativos da Campanha</SectionTitle>
