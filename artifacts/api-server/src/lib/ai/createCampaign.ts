@@ -198,12 +198,12 @@ function buildPlatformFieldsSpec(platform: string): string {
     {
       "key": "conteudo_produto",
       "label": "Conteúdo do Produto",
-      "value": string — GRUPO B: se o usuário informou os módulos reais, liste-os diretamente. Se não informou, gere estrutura de curso inteligente baseada no tema, prefixada com "Estrutura Recomendada:\\n". Ex sem dados reais: "Estrutura Recomendada:\\n- Módulo 1: Fundamentos\\n- Módulo 2: Prática\\n- Módulo 3: Resultados"
+      "value": string — GRUPO B: se o produto for um curso/treinamento digital e o usuário informou os módulos reais, liste-os. Se não informou os módulos de um curso, gere estrutura baseada no tema, prefixada com "Estrutura Recomendada:\\n". Se o produto for físico, descreva o que está incluído (ex: o que vem na caixa, como é entregue, o que o comprador recebe). Se for serviço ou mentoria, descreva o que é entregue (sessões, materiais, acompanhamento). Nunca gere módulos de curso para produto físico.
     },
     {
       "key": "bonus",
       "label": "Bônus Recomendados",
-      "value": string — GRUPO B: se o usuário informou os bônus reais, liste-os diretamente. Se não informou, sugira 2 a 3 bônus estratégicos relevantes para o tema, prefixados com "Bônus Recomendados:\\n". Ex: "Bônus Recomendados:\\n- Planilha de acompanhamento\\n- Comunidade de suporte"
+      "value": string — GRUPO B: se o usuário informou os bônus reais, liste-os diretamente. Se não informou, sugira 2 a 3 bônus coerentes com a natureza real do produto (não invente bônus de curso para produto físico), prefixados com "Bônus Recomendados:\\n".
     },
     {
       "key": "garantia",
@@ -253,12 +253,12 @@ function buildPlatformFieldsSpec(platform: string): string {
     {
       "key": "conteudo_produto",
       "label": "Conteúdo do Produto",
-      "value": string — GRUPO B: se o usuário informou os módulos reais, liste-os diretamente. Se não informou, gere estrutura de curso enxuta e direta baseada no tema, prefixada com "Estrutura Recomendada:\\n". Ex: "Estrutura Recomendada:\\n- Módulo 1: Base\\n- Módulo 2: Aplicação\\n- Módulo 3: Escala"
+      "value": string — GRUPO B: se o produto for um curso/treinamento digital e o usuário informou os módulos reais, liste-os. Se não informou os módulos de um curso, gere estrutura enxuta e direta baseada no tema, prefixada com "Estrutura Recomendada:\\n". Se o produto for físico, descreva o que é entregue (o que vem na embalagem, como funciona, o que o comprador recebe). Se for serviço, descreva o que é entregue. Nunca gere módulos de curso para produto físico.
     },
     {
       "key": "bonus",
       "label": "Bônus Recomendados",
-      "value": string — GRUPO B: se o usuário informou os bônus reais, liste-os diretamente. Se não informou, sugira 1 a 2 bônus relevantes e diretos, prefixados com "Bônus Recomendados:\\n".
+      "value": string — GRUPO B: se o usuário informou os bônus reais, liste-os diretamente. Se não informou, sugira 1 a 2 bônus coerentes com a natureza real do produto, prefixados com "Bônus Recomendados:\\n".
     },
     {
       "key": "garantia",
@@ -288,7 +288,7 @@ function buildPlatformFieldsSpec(platform: string): string {
     {
       "key": "descricao_curta",
       "label": "Descrição Curta",
-      "value": string — máx 30 chars. Reforço da oferta ou do CTA. Aparece abaixo da headline. Ex: "Acesso imediato garantido", "Entrega em até 3 dias"
+      "value": string — máx 30 chars. Reforço específico ao produto: destaque um atributo real (prazo de entrega, garantia, formato, desconto, exclusividade). NUNCA use frases genéricas como "Garanta a sua hoje" ou "Acesse agora". Seja específico ao produto informado. Ex produto físico: "Frete grátis + garantia de 30 dias". Ex produto digital: "7 dias de garantia — sem risco"
     },
     {
       "key": "cta",
@@ -746,14 +746,14 @@ function buildPublicationGuide(platform: string, fields: CampaignPlatformField[]
         url: "https://www.facebook.com",
         steps: [
           "Acesse sua página no Facebook e clique em Criar publicação",
-          "Cole o Texto Principal no campo de publicação",
-          "Para anúncio: acesse Meta Ads Manager → Criar anúncio",
-          `Use a Headline "${get("headline")}" no campo de título do anúncio`,
-          `Configure a Descrição Curta "${get("descricao_curta")}" no campo de descrição`,
-          `Selecione o botão de CTA: "${get("cta")}"`,
-          "Crie o criativo conforme o Criativo Recomendado gerado",
-          "Configure o público-alvo, orçamento e veiculação",
-          "Monitore resultados em Meta Ads Manager → Relatórios",
+          `Cole o Texto Principal gerado no campo de publicação (inicie com: "${get("texto_principal").slice(0, 60)}...")`,
+          "Para anúncio pago: acesse Meta Ads Manager → Criar anúncio → Escolha o objetivo",
+          `Campo Título do anúncio: "${get("headline")}"`,
+          `Campo Descrição: "${get("descricao_curta")}"`,
+          `Botão de CTA: "${get("cta")}"`,
+          `Criativo: ${get("sugestao_criativo").slice(0, 100)}`,
+          "Configure segmentação de público, orçamento diário e período de veiculação",
+          "Monitore CTR, alcance e conversões em Meta Ads Manager → Relatórios",
         ],
         note: "Publicação Assistida — orientações para publicação manual. Nenhuma ação automática é executada pela plataforma.",
       };
@@ -849,6 +849,9 @@ CLASSIFICAÇÃO OBRIGATÓRIA ANTES DE GERAR:
 - Dados técnicos que o usuário forneceu: extraia SOMENTE do texto acima
 - Dados técnicos que o usuário NÃO forneceu: marcar como "Não informado" — NUNCA inventar
 - Copy, benefícios de uso e posicionamento: pode criar livremente, desde que não invente especificações
+
+NATUREZA DO PRODUTO — REGRA INVIOLÁVEL:
+A plataforma não altera a natureza do produto. Produto físico continua produto físico. Curso continua curso. Mentoria continua mentoria. Comunidade continua comunidade. Assinatura continua assinatura. Adapte o copy e o posicionamento para a plataforma, mas NUNCA converta o produto em outro tipo. Se o produto for físico e a plataforma for Hotmart ou Kiwify, adapte os campos para descrever o produto físico — não gere estrutura de curso.
 
 REGRA ABSOLUTA: Preencha SOMENTE os campos do schema desta plataforma. Não adicione nenhum campo extra.
 Para campos que exigem dados técnicos não fornecidos pelo usuário: escreva "Não informado" — nunca complete com suposições.

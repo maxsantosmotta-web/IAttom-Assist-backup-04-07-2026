@@ -833,16 +833,10 @@ export function CreateCampaign() {
                 </div>
 
                 {/* Alerts */}
-                {incompatibility && (
-                  <div className="flex items-start gap-2.5 rounded-lg border border-red-500/30 bg-red-500/[0.07] px-3.5 py-3">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-red-300/90 leading-relaxed">{INCOMPATIBILITY_MESSAGES[incompatibility]}</p>
-                  </div>
-                )}
-                {typeMismatch && (
-                  <div className="flex items-start gap-2.5 rounded-lg border border-red-500/30 bg-red-500/[0.07] px-3.5 py-3">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-red-300/90 leading-relaxed">{PRODUCT_TYPE_MISMATCH_MESSAGE}</p>
+                {(incompatibility || typeMismatch) && (
+                  <div className="flex items-start gap-2.5 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.05] px-3.5 py-3">
+                    <AlertCircle className="w-4 h-4 text-yellow-400/80 shrink-0 mt-0.5" />
+                    <p className="text-xs text-yellow-200/70 leading-relaxed">Esta combinação pode exigir adaptação de estratégia. A entrega será gerada normalmente.</p>
                   </div>
                 )}
 
@@ -910,7 +904,7 @@ export function CreateCampaign() {
           <motion.div key="result" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="space-y-4">
             <Card className="bg-[#111111] border-primary/20">
               <CardHeader className="pb-3">
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-3">
                   {currentPlatform && (
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
@@ -920,9 +914,11 @@ export function CreateCampaign() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base text-white truncate">
-                      {currentPlatform?.name ?? "Entrega"}
-                      {product.trim() ? ` — ${product.trim()}` : ""}
+                    <CardTitle className="text-base text-white flex items-baseline gap-1 flex-wrap">
+                      <span className="shrink-0">{currentPlatform?.name ?? "Entrega"}</span>
+                      {product.trim() && (
+                        <span className="text-muted-foreground/60 font-normal text-sm truncate min-w-0">— {product.trim()}</span>
+                      )}
                     </CardTitle>
                     {mode && (
                       <p className="text-[11px] text-muted-foreground/50 uppercase tracking-widest">
@@ -930,15 +926,15 @@ export function CreateCampaign() {
                       </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 ml-auto">
-                    <button onClick={handleBack} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5">
-                      <ChevronLeft className="w-3 h-3" /> Voltar
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={handleBack} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1">
+                      <ChevronLeft className="w-3 h-3" /><span className="hidden sm:inline">Voltar</span>
                     </button>
-                    <button onClick={handleSave} disabled={isSaving} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 disabled:opacity-50">
-                      <Save className="w-3 h-3" /> {isSaving ? "Salvando..." : "Salvar"}
+                    <button onClick={handleSave} disabled={isSaving} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 disabled:opacity-50">
+                      <Save className="w-3 h-3" /><span className="hidden sm:inline">{isSaving ? "Salvando..." : "Salvar"}</span>
                     </button>
-                    <button onClick={handleReset} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5">
-                      <RefreshCw className="w-3 h-3" /> Nova entrega
+                    <button onClick={handleReset} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3" /><span className="hidden sm:inline">Nova entrega</span>
                     </button>
                   </div>
                 </div>
