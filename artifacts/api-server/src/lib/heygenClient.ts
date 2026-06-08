@@ -1,8 +1,7 @@
 /**
  * HeyGen API Client — IAttom Assist
  *
- * Engine: Avatar IV (padrão — compatível com avatares stock públicos)
- * Endpoint: v3 (único com suporte a avatares modernos)
+ * Endpoint: POST /v3/videos — payload obrigatório: video_inputs + dimension
  *
  * Modo seguro: HEYGEN_CONFIGURED = false → pipeline opera em mock sem erros.
  *
@@ -11,11 +10,9 @@
  *   HEYGEN_VOICE_MALE_ID     — voice_id PT-BR masculino (GET /v3/voices)
  *   HEYGEN_VOICE_FEMALE_ID   — voice_id PT-BR feminino  (GET /v3/voices)
  *
- * Avatar IDs:
- *   Usa HEYGEN_AVATAR_MALE_ID / HEYGEN_AVATAR_FEMALE_ID quando configurados.
- *   Fallback: biblioteca oficial IAttom (ver OFFICIAL_AVATAR_CATALOG abaixo).
- *   9:16 nativo: Annie e Judith possuem variantes _expressive_ portrait-native.
- *   Os demais avatares em 9:16 usam padding lateral preenchido pelo fundo.
+ * Avatares padrão (confirmados via v2/avatars na conta ativa):
+ *   masculino → Marcus_expressive_2024120201 (Marcus Upper Body)
+ *   feminino  → candace_expressive_20240910  (Candace in Pink Blazer Upper Body)
  */
 
 import { logger } from "./logger.js";
@@ -125,24 +122,20 @@ export function getOfficialAvatarId(
   return fallback?.avatarId ?? OFFICIAL_AVATAR_CATALOG[0].avatarId;
 }
 
-// ─── Mapeamento atual: gênero → avatar_id ────────────────────────────────────
+// ─── Mapeamento: gênero → avatar_id ──────────────────────────────────────────
 //
-// Compatível com videoGeneration.ts que usa AVATAR_IDS[params.videoAvatar].
+// Avatares confirmados via GET /v2/avatars na conta ativa.
+// IDs são do tipo "expressive upper body" — compatíveis com POST /v3/videos.
 //
-// Prioridade:
-//   1. Env var explícita (HEYGEN_AVATAR_MALE_ID / HEYGEN_AVATAR_FEMALE_ID)
-//   2. Avatar executivo da biblioteca oficial (padrão)
-//
-// Padrões oficiais por gênero:
-//   masculino → Armando (Executivo Masculino) — Armando_Suit_Front_public
-//   feminino  → Annie   (Executiva Feminina)  — Annie_expressive_public (9:16 nativo)
+//   masculino → Marcus_expressive_2024120201   (Marcus Upper Body)
+//   feminino  → candace_expressive_20240910    (Candace in Pink Blazer Upper Body)
 
-const DEFAULT_AVATAR_MALE   = "Armando_Suit_Front_public";   // Armando — Executivo Masculino
-const DEFAULT_AVATAR_FEMALE = "Annie_expressive_public";      // Annie   — Executiva Feminina (9:16 nativo)
+const DEFAULT_AVATAR_MALE   = "Marcus_expressive_2024120201";  // Marcus — Upper Body Masculino
+const DEFAULT_AVATAR_FEMALE = "candace_expressive_20240910";   // Candace — Upper Body Feminino
 
 export const AVATAR_IDS: Record<"masculino" | "feminino", string> = {
-  masculino: process.env.HEYGEN_AVATAR_MALE_ID   || DEFAULT_AVATAR_MALE,
-  feminino:  process.env.HEYGEN_AVATAR_FEMALE_ID || DEFAULT_AVATAR_FEMALE,
+  masculino: DEFAULT_AVATAR_MALE,
+  feminino:  DEFAULT_AVATAR_FEMALE,
 };
 
 export const VOICE_IDS: Record<"masculino" | "feminino", string> = {
@@ -181,38 +174,61 @@ function extractHeygenError(body: Record<string, unknown>): string {
   return "Erro desconhecido da API HeyGen.";
 }
 
-// ─── Geração de vídeo (v3 — Avatar IV padrão) ────────────────────────────────
+// ─── Geração de vídeo (POST /v3/videos) ──────────────────────────────────────
 //
-// Estrutura confirmada pela documentação oficial HeyGen v3:
-//   - background: { type: "color", value: "#hex" } para cor sólida
-//   - background: { type: "image", url: "..." }     para imagem de fundo
-//   - aspect_ratio: "16:9" | "9:16" | "1:1"
-//   - resolution: "1080p"
-//   - engine omitido → usa Avatar IV por padrão (compatível com avatares stock)
-//   - Avatar V exige Digital Twin — não usar com avatares da biblioteca pública
+// Formato obrigatório do endpoint /v3/videos:
 //
-// NOTA sobre 9:16:
-//   Annie_expressive_public e Judith_expressive_2024120201 são portrait-native.
-//   Os demais avatares em 9:16 centralizam o personagem com padding de fundo.
+//   {
+//     "video_inputs": [{
+//       "character": { "type": "avatar", "avatar_id": "...", "avatar_style": "normal" },
+//       "voice":     { "type": "text", "input_text": "...", "voice_id": "..." },
+//       "background": { "type": "color", "value": "#hex" }
+//                   | { "type": "image", "url": "..." }
+//     }],
+//     "dimension": { "width": N, "height": N }
+//   }
+//
+// Mapeamento aspect_ratio → dimension:
+//   "16:9"  → 1920 × 1080  (YouTube / Apresentação)
+//   "1:1"   → 1080 × 1080  (Feed)
+//   "9:16"  → 1080 × 1920  (Reels / Stories)
+
+function aspectRatioToDimension(aspectRatio: string): { width: number; height: number } {
+  switch (aspectRatio) {
+    case "9:16": return { width: 1080, height: 1920 };
+    case "1:1":  return { width: 1080, height: 1080 };
+    default:     return { width: 1920, height: 1080 };  // "16:9" padrão
+  }
+}
 
 export async function generateVideo(payload: HeyGenVideoPayload): Promise<{ videoId: string }> {
   const apiKey = process.env.HEYGEN_API_KEY!;
 
-  const isColor = payload.background.startsWith("#");
+  const isColor     = payload.background.startsWith("#");
   const aspectRatio = payload.aspectRatio ?? "16:9";
-  const usingEnvAvatarMale   = !!(process.env.HEYGEN_AVATAR_MALE_ID);
-  const usingEnvAvatarFemale = !!(process.env.HEYGEN_AVATAR_FEMALE_ID);
+  const dimension   = aspectRatioToDimension(aspectRatio);
 
-  const body: Record<string, unknown> = {
-    type: "avatar",
-    avatar_id: payload.avatarId,
-    script: payload.script,
-    voice_id: payload.voiceId,
-    aspect_ratio: aspectRatio,
-    resolution: "1080p",
-    background: isColor
-      ? { type: "color", value: payload.background }
-      : { type: "image", url: payload.background },
+  const background = isColor
+    ? { type: "color", value: payload.background }
+    : { type: "image", url: payload.background };
+
+  const body = {
+    video_inputs: [
+      {
+        character: {
+          type: "avatar",
+          avatar_id: payload.avatarId,
+          avatar_style: "normal",
+        },
+        voice: {
+          type: "text",
+          input_text: payload.script,
+          voice_id: payload.voiceId,
+        },
+        background,
+      },
+    ],
+    dimension,
   };
 
   logger.info(
@@ -222,10 +238,9 @@ export async function generateVideo(payload: HeyGenVideoPayload): Promise<{ vide
       scriptLength: payload.script.length,
       scriptPreview: payload.script.slice(0, 60),
       aspectRatio,
+      dimension,
       backgroundType: isColor ? "color" : "image",
       backgroundValue: payload.background.slice(0, 80),
-      usingEnvAvatarMale,
-      usingEnvAvatarFemale,
     },
     "[heygenClient] payload enviado para HeyGen v3/videos",
   );
