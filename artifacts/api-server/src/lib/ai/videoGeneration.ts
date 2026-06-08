@@ -17,6 +17,7 @@ import { logAiUsage } from "./logger.js";
 import { logger } from "../logger.js";
 import {
   HEYGEN_CONFIGURED,
+  AVATAR_IDS,
   VOICE_IDS,
   getOfficialAvatarId,
   generateVideo,
@@ -411,7 +412,7 @@ export async function streamVideoGeneration(
     // executivo+feminino  → Annie_expressive_public   (9:16 nativo)
     // consultor+feminino  → Imelda_Business_Front_public
     // criador+feminino    → Judith_expressive_2024120201 (9:16 nativo)
-    const avatarId = getOfficialAvatarId(params.videoEstilo, params.videoAvatar);
+    const avatarId = AVATAR_IDS[params.videoAvatar] || getOfficialAvatarId(params.videoEstilo, params.videoAvatar);
     const voiceId = VOICE_IDS[params.videoAvatar];
 
     if (!voiceId) {
