@@ -42,7 +42,7 @@ export async function streamVideoScript(
   sendSSE(res, { type: "start" });
 
   const duration = params.duration ?? "30s";
-  const format = params.format ?? "standard ad";
+  const format = params.format ?? "anúncio padrão";
 
   const systemPrompt = `Você é um roteirista de vídeo de elite especializado em conteúdo viral e anúncios de alta conversão. Cria roteiros que capturam a atenção nos primeiros 3 segundos e geram ação ao final.
 

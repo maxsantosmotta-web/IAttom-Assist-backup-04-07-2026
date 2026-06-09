@@ -409,7 +409,7 @@ export function Instagram() {
                   }}
                   className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
                 >
-                  <ExternalLink className="w-3 h-3 mr-1.5" />
+                  <ClipboardList className="w-3 h-3 mr-1.5" />
                   Criar conteúdo
                 </Button>
                 <Button
@@ -418,7 +418,7 @@ export function Instagram() {
                   onClick={handleCriarAnuncio}
                   className="w-full border-primary/30 text-primary hover:bg-primary/10 h-8 text-xs"
                 >
-                  <Megaphone className="w-3 h-3 mr-1.5" />
+                  <ExternalLink className="w-3 h-3 mr-1.5" />
                   Criar anúncio
                 </Button>
               </div>

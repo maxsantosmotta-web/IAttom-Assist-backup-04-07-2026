@@ -72,7 +72,7 @@ Retorne exatamente esta estrutura:
 
 Retorne 5-6 produtos. Cada recomendação deve ser premium, específica e baseada em dados reais. Todos os textos, incluindo nomes, categorias, descrições e insights, devem estar em português brasileiro.`;
 
-  const userPrompt = `Pesquise produtos vencedores para e-commerce sobre: "${params.query}"
+  const userPrompt = `Pesquise produtos vencedores sobre: "${params.query}"
 ${params.niche ? `Nicho: ${params.niche}` : ""}
 ${params.priceRange ? `Faixa de preço: ${params.priceRange}` : ""}
 ${params.targetMarket ? `Mercado-alvo: ${params.targetMarket}` : ""}

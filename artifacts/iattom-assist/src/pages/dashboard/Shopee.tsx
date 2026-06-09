@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingBag, Loader2,
   Link2, X, Info, AlertCircle, CheckCircle2, RefreshCw,
-  Package, ClipboardList,
+  Package, ClipboardList, ExternalLink,
   Megaphone, BarChart2, WifiOff, LogOut, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -197,7 +197,7 @@ function AbaMinhaContaLoja({ connected, onConnect }: { connected: boolean; onCon
                 onClick={handleCriarAnuncio}
                 className="w-full border-primary/30 text-primary hover:bg-primary/10 h-8 text-xs"
               >
-                <Megaphone className="w-3 h-3 mr-1.5" />
+                <ExternalLink className="w-3 h-3 mr-1.5" />
                 Criar anúncio
               </Button>
             </div>

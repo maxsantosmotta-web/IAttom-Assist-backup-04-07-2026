@@ -30,10 +30,10 @@ export async function streamCreateContent(
   sendSSE(res, { type: "start" });
 
   const toneInstruction = params.tone
-    ? `Tone: ${params.tone}`
-    : "Tone: bold, direct, authoritative — but human";
+    ? `Tom: ${params.tone}`
+    : "Tom: direto, denso e humano — com autoridade sem frieza";
 
-  const systemPrompt = `Você é um copywriter de elite e estrategista de conteúdo para marcas DTC e negócios de e-commerce no Brasil. Cria conteúdo que converte visitantes em compradores, usando storytelling, prova social e gatilhos psicológicos.
+  const systemPrompt = `Você é um copywriter de elite e estrategista de conteúdo para marcas e negócios digitais no Brasil. Cria conteúdo que converte visitantes em compradores, usando storytelling, prova social e gatilhos psicológicos.
 
 REGRA OBRIGATÓRIA DE IDIOMA: Responda SEMPRE em português brasileiro. NUNCA responda em inglês, espanhol ou qualquer outro idioma. Todo o conteúdo — blog, redes sociais, e-mail, SMS e SEO — deve estar integralmente em português brasileiro.
 

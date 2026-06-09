@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   ShoppingCart, X, Info, AlertCircle,
-  Megaphone, ClipboardList, Link2,
+  Megaphone, ClipboardList, Link2, ExternalLink,
   CheckCircle2, BarChart2, Package, TrendingUp,
   Loader2, WifiOff, RefreshCw, LogOut,
 } from "lucide-react";
@@ -424,7 +424,7 @@ export function MercadoLivre() {
                   onClick={handleCriarAnuncio}
                   className="w-full border-primary/30 text-primary hover:bg-primary/10 h-8 text-xs"
                 >
-                  <Megaphone className="w-3 h-3 mr-1.5" />
+                  <ExternalLink className="w-3 h-3 mr-1.5" />
                   Criar anúncio
                 </Button>
               </div>

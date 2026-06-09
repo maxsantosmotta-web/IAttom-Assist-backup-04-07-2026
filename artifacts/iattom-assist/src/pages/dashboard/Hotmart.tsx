@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Flame, X, Info, AlertCircle,
-  Megaphone, ClipboardList, Link2, RefreshCw,
+  Megaphone, ClipboardList, Link2, RefreshCw, ExternalLink,
   CheckCircle2, BarChart2, Package, TrendingUp,
   Loader2, LogOut, ShieldCheck,
 } from "lucide-react";
@@ -449,7 +449,7 @@ export function Hotmart() {
                   onClick={handleCriarAnuncio}
                   className="w-full border-primary/30 text-primary hover:bg-primary/10 h-8 text-xs"
                 >
-                  <Megaphone className="w-3 h-3 mr-1.5" />
+                  <ExternalLink className="w-3 h-3 mr-1.5" />
                   Criar anúncio
                 </Button>
               </div>

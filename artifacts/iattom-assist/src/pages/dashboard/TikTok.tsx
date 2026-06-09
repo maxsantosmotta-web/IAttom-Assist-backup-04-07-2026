@@ -410,7 +410,7 @@ export function TikTok() {
                   onClick={handleCriarAnuncio}
                   className="w-full border-primary/30 text-primary hover:bg-primary/10 h-8 text-xs"
                 >
-                  <Megaphone className="w-3 h-3 mr-1.5" />
+                  <ExternalLink className="w-3 h-3 mr-1.5" />
                   Criar anúncio
                 </Button>
               </div>
