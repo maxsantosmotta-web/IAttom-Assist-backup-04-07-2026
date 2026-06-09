@@ -102,11 +102,13 @@ function VideoResultCard({
   onSave,
   isSaving,
   onReset,
+  saved,
 }: {
   result: VideoGenerationResult;
   onSave: () => void;
   isSaving: boolean;
   onReset: () => void;
+  saved?: boolean;
 }) {
   return (
     <motion.div
@@ -122,11 +124,11 @@ function VideoResultCard({
         <div className="flex items-center gap-3">
           <button
             onClick={onSave}
-            disabled={isSaving}
+            disabled={isSaving || saved}
             className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-            {isSaving ? "Salvando..." : "Salvar"}
+            {isSaving ? "Salvando..." : saved ? "Salvo" : "Salvar"}
           </button>
           <button
             onClick={onReset}
@@ -277,6 +279,7 @@ export function CreativeGenerator() {
     reset: videoReset,
   } = useAiStream<VideoGenerationResult>();
   const [videoIsSaving, setVideoIsSaving] = useState(false);
+  const [videoAutoSaved, setVideoAutoSaved] = useState(false);
   const { toast } = useToast();
   const { saveItem, saveItemAssets, getItems } = useSavedItems();
   const { isFetching: fetchingCredits, refetch: refetchCredits } = useGetCreditsBalance({
@@ -287,6 +290,7 @@ export function CreativeGenerator() {
   const chargedFeatureRef = useRef<FeatureKey>("creativeImage1");
   const videoRefundCalledRef = useRef(false);
   const videoChargedFeatureRef = useRef<FeatureKey>("creativeVideo20");
+  const autoVideoSavedRef = useRef(false);
 
   useEffect(() => {
     if (status === "error" && !refundCalledRef.current) {
@@ -317,6 +321,72 @@ export function CreativeGenerator() {
       videoRefundCalledRef.current = false;
     }
   }, [videoStatus]);
+
+  // Auto-save vídeo ao concluir geração
+  useEffect(() => {
+    if (videoStatus === "idle" || videoStatus === "generating") {
+      autoVideoSavedRef.current = false;
+      if (videoStatus === "idle") setVideoAutoSaved(false);
+      return;
+    }
+    if (
+      videoStatus !== "done" ||
+      !videoResult ||
+      videoResult.isMock ||
+      !videoResult.videoUrl ||
+      autoVideoSavedRef.current
+    ) return;
+
+    autoVideoSavedRef.current = true;
+    const vr = videoResult;
+
+    const content = [
+      `Tipo: Vídeo`,
+      `Estilo: ${estiloLabel(vr.videoEstilo)}`,
+      `Personagem: ${vr.videoAvatar === "masculino" ? "Masculino" : "Feminino"}`,
+      `Ambiente: ${ambienteLabel(vr.videoAmbiente)}`,
+      `Formato: ${formatoLabel(vr.videoFormato ?? "16:9")}`,
+      `Duração: ${vr.durationSeconds}s`,
+      `Prompt: ${vr.prompt}`,
+    ].join(" | ");
+
+    const data = JSON.stringify({
+      type: "video",
+      videoEstilo: vr.videoEstilo,
+      videoAvatar: vr.videoAvatar,
+      videoAmbiente: vr.videoAmbiente,
+      videoFormato: vr.videoFormato ?? "16:9",
+      videoDuration: vr.durationSeconds,
+      prompt: vr.prompt,
+      videoUrl: vr.videoUrl,
+      durationSeconds: vr.durationSeconds,
+      generatedAt: vr.generatedAt,
+      isMock: vr.isMock,
+    });
+
+    const projectId = crypto.randomUUID();
+    const title = `Vídeo ${estiloLabel(vr.videoEstilo)} — ${vr.prompt.slice(0, 50) || "Criativo"}`;
+
+    try {
+      const raw = localStorage.getItem("iattom_saved_items_v1");
+      const existing = raw ? (JSON.parse(raw) as object[]) : [];
+      existing.unshift({
+        id: projectId, title, type: "creative", content, data, hasImages: false,
+        createdAt: new Date().toISOString(),
+      });
+      localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
+    } catch { /* ignore */ }
+
+    saveItem({ id: projectId, title, type: "creative", content, data, hasImages: false })
+      .then(() => {
+        setVideoAutoSaved(true);
+        toast({ description: "Vídeo salvo em Projetos." });
+      })
+      .catch(() => {
+        autoVideoSavedRef.current = false;
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoStatus, videoResult]);
 
   useEffect(() => { setSelectedFormats([]); }, [platform]);
 
@@ -638,6 +708,7 @@ export function CreativeGenerator() {
 
     try {
       await saveItem({ id: projectId, title, type: "creative", content, data, hasImages: false });
+      setVideoAutoSaved(true);
       toast({ description: "Vídeo salvo em Projetos." });
     } catch {
       toast({ description: "Erro ao salvar. Tente novamente.", variant: "destructive" });
@@ -1148,7 +1219,8 @@ export function CreativeGenerator() {
                 result={activeVideoResult}
                 onSave={() => void handleSaveVideo()}
                 isSaving={videoIsSaving}
-                onReset={() => { videoReset(); setRestoredVideoResult(null); }}
+                onReset={() => { videoReset(); setRestoredVideoResult(null); setVideoAutoSaved(false); }}
+                saved={videoAutoSaved}
               />
             </>
           )}

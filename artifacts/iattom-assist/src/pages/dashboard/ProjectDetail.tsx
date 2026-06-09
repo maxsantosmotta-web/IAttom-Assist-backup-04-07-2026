@@ -312,6 +312,21 @@ function VideoProjectCard({
         ))}
       </div>
 
+      {!video.isMock && video.videoUrl && (
+        <div className="flex justify-end">
+          <a
+            href={video.videoUrl}
+            download="iattom-video.mp4"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-primary transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Baixar vídeo
+          </a>
+        </div>
+      )}
+
       {video.prompt && (
         <TextBlock label="Prompt original" value={video.prompt} />
       )}
