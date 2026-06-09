@@ -184,57 +184,48 @@ function dimensionForAspect(aspectRatio: string): { width: number; height: numbe
 
 // ─── Geração de vídeo (POST /v3/videos) ──────────────────────────────────────
 //
-// Payload nested com video_inputs + dimension (formato oficial v3):
+// Payload flat — "type" na raiz, sem video_inputs/character/dimension:
 //
 //   {
-//     "video_inputs": [{
-//       "character": { "type": "avatar", "avatar_id": "...", "avatar_style": "normal" },
-//       "voice":     { "type": "text", "input_text": "...", "voice_id": "..." },
-//       "background": { "type": "color", "value": "#hex" }
-//                   | { "type": "image", "url": "..." }
-//     }],
-//     "dimension": { "width": 1920, "height": 1080 }
+//     "type":         "avatar",
+//     "avatar_id":    "...",
+//     "script":       "...",
+//     "voice_id":     "...",
+//     "aspect_ratio": "16:9" | "9:16" | "1:1",
+//     "resolution":   "1080p",
+//     "background":   { "type": "color", "value": "#hex" }
 //   }
 
 export async function generateVideo(payload: HeyGenVideoPayload): Promise<{ videoId: string }> {
   const apiKey = process.env.HEYGEN_API_KEY!;
 
   const aspectRatio = payload.aspectRatio ?? "16:9";
-  const dimension   = dimensionForAspect(aspectRatio);
+
+  const background = { type: "color", value: "#111111" };
 
   const body = {
-    video_inputs: [
-      {
-        character: {
-          type:         "avatar",
-          avatar_id:    payload.avatarId,
-          avatar_style: "normal",
-        },
-        voice: {
-          type:       "text",
-          input_text: payload.script,
-          voice_id:   payload.voiceId,
-        },
-        background: {
-          type:  "color",
-          value: "#111111",
-        },
-      },
-    ],
-    dimension,
+    type:         "avatar",
+    avatar_id:    payload.avatarId,
+    script:       payload.script,
+    voice_id:     payload.voiceId,
+    aspect_ratio: aspectRatio,
+    resolution:   "1080p",
+    background,
   };
+
+  // Log temporário para diagnóstico
+  console.log("[HEYGEN_FINAL_PAYLOAD]", JSON.stringify(body, null, 2));
 
   logger.info(
     {
       HEYGEN_FINAL_PAYLOAD: {
-        avatar_id:   payload.avatarId,
-        voice_id:    payload.voiceId,
-        dimension,
+        avatar_id:        payload.avatarId,
+        voice_id:         payload.voiceId,
+        aspect_ratio:     aspectRatio,
         background_type:  "color",
         background_value: "#111111",
         script_length:    payload.script.length,
         script_preview:   payload.script.slice(0, 60),
-        aspect_ratio:     aspectRatio,
       },
     },
     "[heygenClient] HEYGEN_FINAL_PAYLOAD enviado para v3/videos",
