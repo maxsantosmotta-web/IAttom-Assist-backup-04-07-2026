@@ -186,7 +186,7 @@ export function TikTok() {
   };
 
   const handleCriarAnuncio = () => {
-    window.open("https://ads.tiktok.com/", "_blank", "noopener,noreferrer");
+    window.open("https://ads.tiktok.com/i18n/", "_blank", "noopener,noreferrer");
   };
 
   const isConnected = status?.connected ?? false;

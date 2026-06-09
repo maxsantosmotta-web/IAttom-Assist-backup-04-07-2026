@@ -189,7 +189,7 @@ export function Facebook() {
   };
 
   const handleCriarAnuncio = () => {
-    window.open("https://www.facebook.com/adsmanager/", "_blank", "noopener,noreferrer");
+    window.open("https://adsmanager.facebook.com/", "_blank", "noopener,noreferrer");
   };
 
   const isConnected = pages.length > 0;

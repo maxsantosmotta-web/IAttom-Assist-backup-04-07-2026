@@ -111,7 +111,7 @@ export function Kiwify() {
   };
 
   const handleCriarAnuncio = () => {
-    window.open("https://app.kiwify.com.br/", "_blank", "noopener,noreferrer");
+    window.open("https://dashboard.kiwify.com/products", "_blank", "noopener,noreferrer");
   };
 
   // ─── Derived UI ────────────────────────────────────────────────────────────
