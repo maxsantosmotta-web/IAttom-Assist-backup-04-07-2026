@@ -273,6 +273,8 @@ export function CreativeGenerator() {
   const [videoSaveProjects, setVideoSaveProjects] = useState<SavedItemRecord[]>([]);
   const [videoLoadingProjects, setVideoLoadingProjects] = useState(false);
   const [refreshFeedback, setRefreshFeedback] = useState(false);
+  const [pendingVideoId, setPendingVideoId] = useState<string | null>(null);
+  const [isCheckingVideoId, setIsCheckingVideoId] = useState(false);
   const { toast } = useToast();
   const { saveItem, saveItemAssets, getItems } = useSavedItems();
   const { isFetching: fetchingCredits, refetch: refetchCredits } = useGetCreditsBalance({
@@ -301,18 +303,49 @@ export function CreativeGenerator() {
 
   useEffect(() => {
     if (videoStatus === "error" && !videoRefundCalledRef.current) {
-      videoRefundCalledRef.current = true;
-      fetch("/api/credits/refund", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ feature: videoChargedFeatureRef.current }),
-        credentials: "include",
-      }).catch(() => {});
+      // Timeout: vídeo foi criado na HeyGen, não deve devolver créditos
+      if (!videoError?.includes("video_id:")) {
+        videoRefundCalledRef.current = true;
+        fetch("/api/credits/refund", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ feature: videoChargedFeatureRef.current }),
+          credentials: "include",
+        }).catch(() => {});
+      }
     }
     if (videoStatus === "idle" || videoStatus === "generating") {
       videoRefundCalledRef.current = false;
     }
-  }, [videoStatus]);
+  }, [videoStatus, videoError]);
+
+  // Detectar timeout e persistir video_id pendente no localStorage
+  useEffect(() => {
+    if (videoStatus === "error" && videoError?.includes("video_id:")) {
+      const match = /video_id:\s*([a-f0-9]+)/i.exec(videoError);
+      if (match?.[1]) {
+        const id = match[1];
+        setPendingVideoId(id);
+        try {
+          localStorage.setItem("iattom_pending_video_v1", JSON.stringify({ videoId: id }));
+        } catch { /* ignore */ }
+      }
+    }
+  }, [videoStatus, videoError]);
+
+  // Restaurar video_id pendente do localStorage ao montar
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("iattom_pending_video_v1");
+      if (raw) {
+        const { videoId } = JSON.parse(raw) as { videoId?: string };
+        if (videoId) {
+          setCreativeType("video");
+          setPendingVideoId(videoId);
+        }
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => { setSelectedFormats([]); }, [platform]);
 
@@ -657,6 +690,49 @@ export function CreativeGenerator() {
       toast({ description: "Erro ao carregar projetos.", variant: "destructive" });
     } finally {
       setVideoLoadingProjects(false);
+    }
+  };
+
+  const checkVideoStatus = async () => {
+    if (!pendingVideoId || isCheckingVideoId) return;
+    setIsCheckingVideoId(true);
+    try {
+      const res = await fetch(`/api/ai/video-status/${pendingVideoId}`, { credentials: "include" });
+      if (!res.ok) {
+        const { error } = await res.json() as { error?: string };
+        toast({ description: error ?? "Erro ao consultar status.", variant: "destructive" });
+        return;
+      }
+      const statusData = await res.json() as { status: string; videoUrl?: string; error?: string };
+
+      if (statusData.status === "completed" && statusData.videoUrl) {
+        const recovered: VideoGenerationResult = {
+          videoUrl: statusData.videoUrl,
+          durationSeconds: 30,
+          videoEstilo,
+          videoAvatar,
+          videoAmbiente,
+          videoFormato,
+          prompt: videoPrompt || "Vídeo recuperado",
+          generatedAt: new Date().toISOString(),
+          isMock: false,
+        };
+        setRestoredVideoResult(recovered);
+        setPendingVideoId(null);
+        videoReset();
+        try { localStorage.removeItem("iattom_pending_video_v1"); } catch { /* ignore */ }
+        toast({ description: "Vídeo recuperado com sucesso." });
+      } else if (statusData.status === "failed") {
+        toast({ description: `Vídeo falhou na HeyGen: ${statusData.error ?? "falha desconhecida"}`, variant: "destructive" });
+        setPendingVideoId(null);
+        try { localStorage.removeItem("iattom_pending_video_v1"); } catch { /* ignore */ }
+      } else {
+        toast({ description: "Vídeo ainda em processamento. Aguarde e tente novamente em alguns minutos." });
+      }
+    } catch {
+      toast({ description: "Erro de conexão ao verificar vídeo.", variant: "destructive" });
+    } finally {
+      setIsCheckingVideoId(false);
     }
   };
 
@@ -1088,7 +1164,7 @@ export function CreativeGenerator() {
             </motion.div>
           )}
 
-          {isVideoError && (
+          {isVideoError && !videoError?.includes("video_id:") && (
             <motion.div key="video-error" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <Card className="bg-red-950/20 border-red-500/20">
                 <CardContent className="p-5 flex items-center gap-4">
@@ -1105,6 +1181,46 @@ export function CreativeGenerator() {
                   >
                     <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Tentar novamente
                   </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {pendingVideoId && !activeVideoResult && (
+            <motion.div key="video-pending" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <Card className="bg-amber-950/20 border-amber-500/20">
+                <CardContent className="p-5 flex items-start gap-4">
+                  <Loader2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-spin" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-amber-400">Vídeo em processamento</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Seu vídeo está sendo processado na HeyGen. Clique em "Verificar" para recuperá-lo quando estiver pronto.
+                    </p>
+                    <p className="text-[10px] text-zinc-600 mt-1.5 font-mono truncate">ID: {pendingVideoId}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      onClick={() => void checkVideoStatus()}
+                      disabled={isCheckingVideoId}
+                      className="bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 text-xs"
+                    >
+                      {isCheckingVideoId
+                        ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> Verificando...</>
+                        : <><RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Verificar</>
+                      }
+                    </Button>
+                    <button
+                      onClick={() => {
+                        setPendingVideoId(null);
+                        videoReset();
+                        try { localStorage.removeItem("iattom_pending_video_v1"); } catch { /* ignore */ }
+                      }}
+                      className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                    >
+                      Descartar
+                    </button>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>

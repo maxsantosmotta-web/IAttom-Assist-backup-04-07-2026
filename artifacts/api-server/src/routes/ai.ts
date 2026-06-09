@@ -18,6 +18,7 @@ import { streamCreateContent } from "../lib/ai/createContent.js";
 import { streamCreativeIdeas } from "../lib/ai/creativeIdeas.js";
 import { streamVideoScript } from "../lib/ai/videoScript.js";
 import { streamVideoGeneration } from "../lib/ai/videoGeneration.js";
+import { getVideoStatus, HEYGEN_CONFIGURED } from "../lib/heygenClient.js";
 import { analyzeReference } from "../lib/ai/analyzeReference.js";
 
 const router: IRouter = Router();
@@ -154,6 +155,25 @@ router.post("/ai/analyze-reference", requireAuth, async (req, res): Promise<void
   } catch (err) {
     req.log.error({ err }, "analyze-reference failed");
     res.status(500).json({ error: "Falha ao analisar imagem" });
+  }
+});
+
+router.get("/ai/video-status/:videoId", requireAuth, async (req, res): Promise<void> => {
+  const videoId = req.params["videoId"] as string;
+  if (!videoId || !videoId.trim()) {
+    res.status(400).json({ error: "video_id inválido" });
+    return;
+  }
+  if (!HEYGEN_CONFIGURED) {
+    res.json({ status: "pending", videoUrl: null, error: null });
+    return;
+  }
+  try {
+    const statusData = await getVideoStatus(videoId.trim());
+    res.json(statusData);
+  } catch (err) {
+    req.log.error({ err, videoId }, "[video-status] erro ao consultar HeyGen");
+    res.status(500).json({ error: "Não foi possível consultar o status do vídeo." });
   }
 });
 
