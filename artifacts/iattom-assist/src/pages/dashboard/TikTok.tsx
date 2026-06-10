@@ -29,6 +29,7 @@ export function TikTok() {
   const [analytics, setAnalytics] = useState<UserAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [contentVisible, setContentVisible] = useState(true);
 
   const loadAnalytics = useCallback(async () => {
     try {
@@ -47,7 +48,10 @@ export function TikTok() {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    setContentVisible(false);
     await loadAnalytics();
+    await new Promise(r => setTimeout(r, 150));
+    setContentVisible(true);
     setIsRefreshing(false);
   }, [loadAnalytics]);
 
@@ -128,136 +132,141 @@ export function TikTok() {
         </Card>
 
         {/* ── Feature Cards ─────────────────────────────────────── */}
-        <div className="grid md:grid-cols-2 gap-4">
+        <motion.div
+          animate={{ opacity: contentVisible ? 1 : 0 }}
+          transition={{ duration: contentVisible ? 0.25 : 0.12 }}
+        >
+          <div className="grid md:grid-cols-2 gap-4">
 
-          {/* Conteúdo */}
-          <Card className="bg-[#111111] border-white/[0.06]">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                  <Video className="w-4 h-4 text-violet-400" />
+            {/* Conteúdo */}
+            <Card className="bg-[#111111] border-white/[0.06]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                    <Video className="w-4 h-4 text-violet-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-semibold text-white">Conteúdo</CardTitle>
+                    <p className="text-xs text-muted-foreground">Conteúdos e publicações</p>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-sm font-semibold text-white">Conteúdo</CardTitle>
-                  <p className="text-xs text-muted-foreground">Conteúdos e publicações</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Monitore sua grade de conteúdo TikTok. Scripts e criativos são criados nos módulos centrais da plataforma.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCriarCampanha}
+                    className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
+                  >
+                    <Megaphone className="w-3 h-3 mr-1.5" />
+                    Criar campanha
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCriarConteudo}
+                    className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
+                  >
+                    <ClipboardList className="w-3 h-3 mr-1.5" />
+                    Criar conteúdo
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleProjetosSalvos}
+                    className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
+                  >
+                    <FolderOpen className="w-3 h-3 mr-1.5" />
+                    Projetos salvos
+                  </Button>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Monitore sua grade de conteúdo TikTok. Scripts e criativos são criados nos módulos centrais da plataforma.
-              </p>
-              <div className="flex flex-col gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCriarCampanha}
-                  className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
-                >
-                  <Megaphone className="w-3 h-3 mr-1.5" />
-                  Criar campanha
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCriarConteudo}
-                  className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
-                >
-                  <ClipboardList className="w-3 h-3 mr-1.5" />
-                  Criar conteúdo
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleProjetosSalvos}
-                  className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
-                >
-                  <FolderOpen className="w-3 h-3 mr-1.5" />
-                  Projetos salvos
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Atividade da conta */}
-          <Card className="bg-[#111111] border-white/[0.06]">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <ClipboardList className="w-4 h-4 text-emerald-400" />
+            {/* Atividade da conta */}
+            <Card className="bg-[#111111] border-white/[0.06]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <ClipboardList className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-semibold text-white">Atividade da conta</CardTitle>
+                    <p className="text-xs text-muted-foreground">Movimentações recentes</p>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-sm font-semibold text-white">Atividade da conta</CardTitle>
-                  <p className="text-xs text-muted-foreground">Movimentações recentes</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1 py-1">
+                  {loading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground py-3">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span className="text-xs">Carregando...</span>
+                    </div>
+                  ) : (
+                    [
+                      { icon: Megaphone,     label: "Criar Campanha", value: getCount(activity, "create-campaign") },
+                      { icon: ClipboardList, label: "Criar Conteúdo", value: getCount(activity, "create-content") },
+                      { icon: Sparkles,      label: "Criar Imagem",   value: getCount(activity, "creative-generator") },
+                    ].map(({ icon: Icon, label, value }) => (
+                      <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">{label}</span>
+                        </div>
+                        <span className="text-xs font-semibold text-white">{value}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1 py-1">
+                <p className="text-[10px] text-muted-foreground/50">Dados dos últimos 30 dias</p>
+              </CardContent>
+            </Card>
+
+            {/* Análise */}
+            <Card className="bg-[#111111] border-white/[0.06] md:col-span-2">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-semibold text-white">Análise</CardTitle>
+                    <p className="text-xs text-muted-foreground">Performance e métricas</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 {loading ? (
-                  <div className="flex items-center gap-2 text-muted-foreground py-3">
+                  <div className="flex items-center gap-2 text-muted-foreground py-2">
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     <span className="text-xs">Carregando...</span>
                   </div>
                 ) : (
-                  [
-                    { icon: Megaphone,     label: "Criar Campanha", value: getCount(activity, "create-campaign") },
-                    { icon: ClipboardList, label: "Criar Conteúdo", value: getCount(activity, "create-content") },
-                    { icon: Sparkles,      label: "Criar Imagem",   value: getCount(activity, "creative-generator") },
-                  ].map(({ icon: Icon, label, value }) => (
-                    <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{label}</span>
+                  <div className="grid grid-cols-3 gap-3 py-1">
+                    {[
+                      { icon: Search,       label: "Buscar Produtos",  value: getCount(activity, "find-products") },
+                      { icon: CheckCircle2, label: "Validar Produto",  value: getCount(activity, "validate-products") },
+                      { icon: TrendingUp,   label: "Scripts de Vídeo", value: getCount(activity, "video-scripts") },
+                    ].map(({ icon: Icon, label, value }) => (
+                      <div key={label} className="p-3 rounded-lg bg-white/5 text-center">
+                        <Icon className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1.5" />
+                        <p className="text-sm font-semibold text-white">{value}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
                       </div>
-                      <span className="text-xs font-semibold text-white">{value}</span>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
-              </div>
-              <p className="text-[10px] text-muted-foreground/50">Dados dos últimos 30 dias</p>
-            </CardContent>
-          </Card>
+                <p className="text-[10px] text-muted-foreground/50">Dados dos últimos 30 dias</p>
+              </CardContent>
+            </Card>
 
-          {/* Análise */}
-          <Card className="bg-[#111111] border-white/[0.06] md:col-span-2">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-cyan-400" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm font-semibold text-white">Análise</CardTitle>
-                  <p className="text-xs text-muted-foreground">Performance e métricas</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {loading ? (
-                <div className="flex items-center gap-2 text-muted-foreground py-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span className="text-xs">Carregando...</span>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-3 py-1">
-                  {[
-                    { icon: Search,       label: "Buscar Produtos",  value: getCount(activity, "find-products") },
-                    { icon: CheckCircle2, label: "Validar Produto",  value: getCount(activity, "validate-products") },
-                    { icon: Video,        label: "Scripts de Vídeo", value: getCount(activity, "video-scripts") },
-                  ].map(({ icon: Icon, label, value }) => (
-                    <div key={label} className="p-3 rounded-lg bg-white/5 text-center">
-                      <Icon className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1.5" />
-                      <p className="text-sm font-semibold text-white">{value}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="text-[10px] text-muted-foreground/50">Dados dos últimos 30 dias</p>
-            </CardContent>
-          </Card>
-
-        </div>
+          </div>
+        </motion.div>
       </motion.div>
     </div>
   );

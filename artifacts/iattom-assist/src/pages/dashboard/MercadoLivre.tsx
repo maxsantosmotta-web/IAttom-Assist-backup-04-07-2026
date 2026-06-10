@@ -1,182 +1,62 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  ShoppingCart, X, Info, AlertCircle,
-  Megaphone, ClipboardList, Link2, ExternalLink,
-  CheckCircle2, BarChart2, Package, TrendingUp,
-  Loader2, WifiOff, RefreshCw, LogOut,
+  ShoppingCart, Loader2, ExternalLink, RefreshCw,
+  Package, Megaphone, ClipboardList, FolderOpen,
+  Sparkles, Search, CheckCircle2, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface MLStatus {
-  connected: boolean;
-  nickname: string | null;
-  tokenExpired: boolean;
-  appConfigured: boolean;
+interface ActivityByModule {
+  module: string;
+  count: number;
 }
 
-type ConnectionState = "loading" | "disconnected" | "connected" | "expired" | "not_configured";
-
-// ─── InformativeModal ─────────────────────────────────────────────────────────
-
-function InformativeModal({
-  title,
-  description,
-  onClose,
-  action,
-}: {
-  title: string;
-  description: string;
-  onClose: () => void;
-  action?: { label: string; onClick: () => void };
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#111111] border border-white/10 rounded-xl w-full max-w-md p-6 space-y-4"
-      >
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Info className="w-4 h-4 text-primary" />
-            </div>
-            <p className="text-sm font-semibold text-white">{title}</p>
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-white transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
-        <div className="flex gap-2">
-          {action && (
-            <Button
-              onClick={() => { action.onClick(); onClose(); }}
-              className="flex-1 bg-primary text-black hover:bg-primary/90 font-semibold"
-            >
-              {action.label}
-            </Button>
-          )}
-          <Button
-            onClick={onClose}
-            variant={action ? "outline" : "default"}
-            className={action
-              ? "border-white/10 text-muted-foreground hover:text-white"
-              : "w-full bg-primary text-black hover:bg-primary/90 font-semibold"}
-          >
-            {action ? "Cancelar" : "Entendido"}
-          </Button>
-        </div>
-      </motion.div>
-    </div>
-  );
+interface UserAnalytics {
+  activityByModule: ActivityByModule[];
+  days: number;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+function getCount(activityByModule: ActivityByModule[], module: string): number {
+  return activityByModule.find(m => m.module === module)?.count ?? 0;
+}
 
 export function MercadoLivre() {
-  const [modal, setModal] = useState<{
-    title: string;
-    description: string;
-    action?: { label: string; onClick: () => void };
-  } | null>(null);
+  const [analytics, setAnalytics] = useState<UserAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [contentVisible, setContentVisible] = useState(true);
 
-  const [connState, setConnState] = useState<ConnectionState>("loading");
-  const [nickname, setNickname] = useState<string | null>(null);
-  const [connectLoading, setConnectLoading] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-
-  // ─── Helpers ───────────────────────────────────────────────────────────────
-
-  const showInfo = (
-    title: string,
-    description: string,
-    action?: { label: string; onClick: () => void },
-  ) => setModal({ title, description, action });
-
-  // ─── Status fetch ──────────────────────────────────────────────────────────
-
-  const fetchStatus = async () => {
-    setConnState("loading");
+  const loadAnalytics = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE}/api/me/ml/status`, { credentials: "include" });
-      if (!res.ok) { setConnState("disconnected"); return; }
-      const data = (await res.json()) as MLStatus;
-      if (!data.appConfigured)        { setConnState("not_configured"); }
-      else if (data.connected && data.tokenExpired) { setConnState("expired"); setNickname(data.nickname); }
-      else if (data.connected)        { setConnState("connected"); setNickname(data.nickname); }
-      else                            { setConnState("disconnected"); }
+      const res = await fetch(`${BASE}/api/analytics/user?days=30`, { credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json() as UserAnalytics;
+      setAnalytics(data);
     } catch {
-      setConnState("disconnected");
+      setAnalytics({ activityByModule: [], days: 30 });
+    } finally {
+      setLoading(false);
     }
-  };
-
-  // ─── On mount: read URL params + fetch status ──────────────────────────────
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const mlConnected = params.get("ml_connected");
-    const mlError = params.get("ml_error");
-    if (mlConnected || mlError) window.history.replaceState({}, "", window.location.pathname);
-    if (mlError) showInfo("Erro na conexão", `Não foi possível conectar ao Mercado Livre. Código: ${mlError}. Tente novamente.`);
-    void fetchStatus();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const handleRefresh = async () => {
+  useEffect(() => { void loadAnalytics(); }, [loadAnalytics]);
+
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await fetchStatus();
+    setContentVisible(false);
+    await loadAnalytics();
+    await new Promise(r => setTimeout(r, 150));
+    setContentVisible(true);
     setIsRefreshing(false);
-  };
-
-  // ─── OAuth connect ─────────────────────────────────────────────────────────
-
-  const handleConnect = async () => {
-    setConnectLoading(true);
-    try {
-      const res = await fetch(`${BASE}/api/me/ml/oauth-url`, { credentials: "include" });
-      if (!res.ok) { showInfo("Erro ao conectar", "Não foi possível iniciar a conexão com Mercado Livre. Verifique se o app está configurado no painel administrativo."); return; }
-      const data = (await res.json()) as { url?: string };
-      if (!data.url) { showInfo("Erro ao conectar", "Não foi possível iniciar a conexão com Mercado Livre. Tente novamente."); return; }
-      window.location.href = data.url;
-    } catch {
-      showInfo("Erro ao conectar", "Não foi possível iniciar a conexão com Mercado Livre. Verifique sua conexão e tente novamente.");
-    } finally {
-      setConnectLoading(false);
-    }
-  };
-
-  // ─── Disconnect ────────────────────────────────────────────────────────────
-
-  const handleDisconnect = async () => {
-    setDisconnecting(true);
-    try {
-      const res = await fetch(`${BASE}/api/me/ml/disconnect`, { method: "POST", credentials: "include" });
-      if (!res.ok) throw new Error("Falha ao desconectar.");
-      setConnState("disconnected");
-      setNickname(null);
-    } catch {
-      showInfo("Erro ao desconectar", "Não foi possível desconectar a conta. Tente novamente.");
-    } finally {
-      setDisconnecting(false);
-    }
-  };
-
-  // ─── Criar Anúncio ─────────────────────────────────────────────────────────
+  }, [loadAnalytics]);
 
   const handleCriarAnuncio = () => {
     window.open("https://www.mercadolivre.com.br/publicar", "_blank", "noopener,noreferrer");
-  };
-
-  const handleAnalytics = () => {
-    showInfo("Análise Mercado Livre", "As métricas de performance estarão disponíveis após a conexão da conta.");
   };
 
   const handleCriarCampanha = () => {
@@ -189,76 +69,14 @@ export function MercadoLivre() {
     window.location.href = `${BASE}/dashboard/create-content`;
   };
 
-  // ─── Derived UI ────────────────────────────────────────────────────────────
+  const handleProjetosSalvos = () => {
+    window.location.href = `${BASE}/dashboard/projects`;
+  };
 
-  const isConnected = connState === "connected";
-  const isExpired   = connState === "expired";
-  const isLoading   = connState === "loading";
-
-  const connectButtonLabel =
-    isExpired   ? "Reconectar conta" :
-    isConnected ? "Conta conectada"  :
-                  "Conectar Mercado Livre";
-
-  const connectButtonIcon =
-    connectLoading ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> :
-    isConnected     ? <CheckCircle2 className="w-3.5 h-3.5 mr-2" />        :
-                      <Link2 className="w-3.5 h-3.5 mr-2" />;
-
-  // ─── Status card ───────────────────────────────────────────────────────────
-
-  type BtnVariant = "connect" | "reconnect" | "disconnect";
-  const statusCard = (() => {
-    if (isLoading) return {
-      icon: <Loader2 className="w-4 h-4 text-muted-foreground shrink-0 animate-spin" />,
-      title: "Verificando conexão...", sub: "Aguarde um momento.",
-      btn: null as null | { label: string; icon: React.ReactNode; variant: BtnVariant },
-    };
-    if (connState === "not_configured") return {
-      icon: <AlertCircle className="w-4 h-4 text-yellow-500/70 shrink-0" />,
-      title: "App Mercado Livre não configurado",
-      sub: "Configure as credenciais no painel administrativo para ativar a conexão.",
-      btn: null,
-    };
-    if (isConnected) return {
-      icon: <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />,
-      title: nickname ? `Conta conectada: ${nickname}` : "Conta Mercado Livre conectada",
-      sub: "Sua conta está ativa. Você pode criar e publicar anúncios.",
-      btn: { label: "Desconectar", icon: <LogOut className="w-3 h-3 mr-1.5" />, variant: "disconnect" as BtnVariant },
-    };
-    if (isExpired) return {
-      icon: <AlertCircle className="w-4 h-4 text-yellow-400 shrink-0" />,
-      title: "Token expirado",
-      sub: "Sua sessão expirou. Reconecte para continuar usando a integração.",
-      btn: { label: "Reconectar", icon: <RefreshCw className="w-3 h-3 mr-1.5" />, variant: "reconnect" as BtnVariant },
-    };
-    return {
-      icon: <WifiOff className="w-4 h-4 text-muted-foreground shrink-0" />,
-      title: "Conta Mercado Livre não conectada",
-      sub: "Conecte sua conta para acessar produtos, campanhas e vendas.",
-      btn: { label: "Conectar", icon: <Link2 className="w-3 h-3 mr-1.5" />, variant: "connect" as BtnVariant },
-    };
-  })();
-
-  const activityRows = [
-    { icon: CheckCircle2, label: "Conexão", value: isLoading ? "…" : isConnected ? "Ativa" : isExpired ? "Expirada" : "Aguardando", ok: isConnected },
-    { icon: Package,      label: "Produtos conectados", value: "—", ok: false },
-    { icon: BarChart2,    label: "Eventos recebidos",   value: "—", ok: false },
-  ];
-
-  // ─── Render ────────────────────────────────────────────────────────────────
+  const activity = analytics?.activityByModule ?? [];
 
   return (
     <div className="space-y-6">
-      {modal && (
-        <InformativeModal
-          title={modal.title}
-          description={modal.description}
-          action={modal.action}
-          onClose={() => setModal(null)}
-        />
-      )}
-
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
 
         {/* ── Header ───────────────────────────────────────────── */}
@@ -277,245 +95,178 @@ export function MercadoLivre() {
               size="sm"
               variant="outline"
               onClick={() => void handleRefresh()}
-              disabled={isRefreshing || connState === "loading"}
-              className="border-white/10 text-zinc-400 hover:text-white gap-1.5 text-xs">
+              disabled={isRefreshing || loading}
+              className="border-white/10 text-zinc-400 hover:text-white gap-1.5 text-xs"
+            >
               {isRefreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               Atualizar
             </Button>
             <Button
-              onClick={isConnected ? undefined : handleConnect}
-              disabled={connectLoading || isConnected || isLoading}
-              className={
-                isConnected
-                  ? "bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 cursor-default font-semibold"
-                  : "bg-amber-500 hover:bg-amber-400 text-black font-semibold"
-              }
+              onClick={handleCriarAnuncio}
+              className="bg-primary hover:bg-primary/90 text-black font-semibold"
               size="sm"
             >
-              {connectButtonIcon}
-              {connectButtonLabel}
+              <ExternalLink className="w-3.5 h-3.5 mr-2" />
+              Criar anúncio
             </Button>
           </div>
         </div>
 
-        {/* ── Status Card ──────────────────────────────────────── */}
+        {/* ── Publicação Assistida ──────────────────────────────── */}
         <Card className="bg-[#111111] border-white/[0.06] mb-5">
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-3">
-              {statusCard.icon}
               <div className="flex-1">
-                <p className="text-sm text-white font-medium">{statusCard.title}</p>
-                <p className="text-xs text-muted-foreground/60 mt-0.5">{statusCard.sub}</p>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="text-sm text-white font-medium">Publicação Assistida</p>
+                  <Badge className="bg-primary/10 border border-primary/20 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                    Acesso externo assistido
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground/70">
+                  Abra o Mercado Livre e publique seus anúncios utilizando os materiais criados no IAttom.
+                </p>
               </div>
-              {statusCard.btn && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={
-                    statusCard.btn.variant === "disconnect"
-                      ? () => void handleDisconnect()
-                      : () => void handleConnect()
-                  }
-                  disabled={statusCard.btn.variant === "disconnect" ? disconnecting : connectLoading}
-                  className={
-                    statusCard.btn.variant === "disconnect"
-                      ? "border-red-500/30 text-red-400 hover:bg-red-500/10 ml-auto shrink-0"
-                      : statusCard.btn.variant === "reconnect"
-                        ? "border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 ml-auto shrink-0"
-                        : "border-amber-500/30 text-amber-400 hover:bg-amber-500/10 ml-auto shrink-0"
-                  }
-                >
-                  {(statusCard.btn.variant === "disconnect" ? disconnecting : connectLoading)
-                    ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                    : statusCard.btn.icon}
-                  {(statusCard.btn.variant === "disconnect" ? disconnecting : connectLoading)
-                    ? "Aguarde..."
-                    : statusCard.btn.label}
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>
 
         {/* ── Feature Cards ─────────────────────────────────────── */}
-        <div className="grid md:grid-cols-2 gap-4">
+        <motion.div
+          animate={{ opacity: contentVisible ? 1 : 0 }}
+          transition={{ duration: contentVisible ? 0.25 : 0.12 }}
+        >
+          <div className="grid md:grid-cols-2 gap-4">
 
-          {/* Anúncios */}
-          <Card className="bg-[#111111] border-white/[0.06]">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Megaphone className="w-4 h-4 text-blue-400" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm font-semibold text-white">Anúncios</CardTitle>
-                  <p className="text-xs text-muted-foreground">Campanhas</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Acompanhe suas campanhas do Mercado Livre. Visualizações, alcance e conversões disponíveis após conexão.
-              </p>
-              <div className="grid grid-cols-3 gap-2 py-1">
-                {[
-                  { icon: BarChart2, label: "Visualizações", value: "—" },
-                  { icon: Package, label: "Alcance", value: "—" },
-                  { icon: TrendingUp, label: "Conversões", value: "—" },
-                ].map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="p-2 rounded bg-white/5 text-center">
-                    <Icon className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
-                    <p className="text-xs font-semibold text-white">{value}</p>
-                    <p className="text-[10px] text-muted-foreground">{label}</p>
+            {/* Conteúdo */}
+            <Card className="bg-[#111111] border-white/[0.06]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <Package className="w-4 h-4 text-amber-400" />
                   </div>
-                ))}
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleAnalytics}
-                className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
-              >
-                <BarChart2 className="w-3 h-3 mr-1.5" />
-                Ver análise
-              </Button>
-            </CardContent>
-          </Card>
+                  <div>
+                    <CardTitle className="text-sm font-semibold text-white">Conteúdo</CardTitle>
+                    <p className="text-xs text-muted-foreground">Publicações</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Crie conteúdos e campanhas utilizando os módulos centrais da plataforma.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCriarCampanha}
+                    className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
+                  >
+                    <Megaphone className="w-3 h-3 mr-1.5" />
+                    Criar campanha
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCriarConteudo}
+                    className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
+                  >
+                    <ClipboardList className="w-3 h-3 mr-1.5" />
+                    Criar conteúdo
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleProjetosSalvos}
+                    className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
+                  >
+                    <FolderOpen className="w-3 h-3 mr-1.5" />
+                    Projetos salvos
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Conteúdo */}
-          <Card className="bg-[#111111] border-white/[0.06]">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                  <ClipboardList className="w-4 h-4 text-violet-400" />
+            {/* Atividade da conta */}
+            <Card className="bg-[#111111] border-white/[0.06]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <ClipboardList className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-semibold text-white">Atividade da conta</CardTitle>
+                    <p className="text-xs text-muted-foreground">Movimentações recentes</p>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-sm font-semibold text-white">Conteúdo</CardTitle>
-                  <p className="text-xs text-muted-foreground">Publicações</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Crie conteúdos e campanhas utilizando os módulos centrais da plataforma.
-              </p>
-              <div className="flex flex-col gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCriarCampanha}
-                  className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
-                >
-                  <Megaphone className="w-3 h-3 mr-1.5" />
-                  Criar campanha
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCriarConteudo}
-                  className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
-                >
-                  <ClipboardList className="w-3 h-3 mr-1.5" />
-                  Criar conteúdo
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCriarAnuncio}
-                  className="w-full border-primary/30 text-primary hover:bg-primary/10 h-8 text-xs"
-                >
-                  <ExternalLink className="w-3 h-3 mr-1.5" />
-                  Criar anúncio
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Atividade da conta */}
-          <Card className="bg-[#111111] border-white/[0.06]">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <ClipboardList className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm font-semibold text-white">Atividade da conta</CardTitle>
-                  <p className="text-xs text-muted-foreground">Movimentações recentes</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2 py-2">
-                {activityRows.map(({ icon: Icon, label, value, ok }) => (
-                  <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
-                    <div className="flex items-center gap-2">
-                      <Icon className={`w-3.5 h-3.5 ${ok ? "text-emerald-400" : "text-muted-foreground"}`} />
-                      <span className="text-xs text-muted-foreground">{label}</span>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1 py-1">
+                  {loading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground py-3">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span className="text-xs">Carregando...</span>
                     </div>
-                    <span className={`text-xs font-medium ${ok ? "text-emerald-400" : "text-white"}`}>{value}</span>
-                  </div>
-                ))}
-              </div>
-              {!isConnected && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleConnect}
-                  disabled={connectLoading || isLoading}
-                  className="w-full border-amber-500/30 text-amber-400 hover:bg-amber-500/10 h-8 text-xs"
-                >
-                  {connectLoading
-                    ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                    : <Link2 className="w-3 h-3 mr-1.5" />
-                  }
-                  Conectar conta
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Análise */}
-          <Card className="bg-[#111111] border-white/[0.06]">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-cyan-400" />
+                  ) : (
+                    [
+                      { icon: Megaphone,     label: "Criar Campanha", value: getCount(activity, "create-campaign") },
+                      { icon: ClipboardList, label: "Criar Conteúdo", value: getCount(activity, "create-content") },
+                      { icon: Sparkles,      label: "Criar Imagem",   value: getCount(activity, "creative-generator") },
+                    ].map(({ icon: Icon, label, value }) => (
+                      <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">{label}</span>
+                        </div>
+                        <span className="text-xs font-semibold text-white">{value}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
-                <div>
-                  <CardTitle className="text-sm font-semibold text-white">Análise</CardTitle>
-                  <p className="text-xs text-muted-foreground">Performance e métricas</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Acompanhe visualizações, engajamento e desempenho diretamente na plataforma.
-              </p>
-              <div className="grid grid-cols-2 gap-2 py-1">
-                {[
-                  { icon: Package, label: "Produtos", value: "—" },
-                  { icon: TrendingUp, label: "Conversões", value: "—" },
-                ].map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="p-2 rounded bg-white/5 text-center">
-                    <Icon className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
-                    <p className="text-xs font-semibold text-white">{value}</p>
-                    <p className="text-[10px] text-muted-foreground">{label}</p>
-                  </div>
-                ))}
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleAnalytics}
-                className="w-full border-white/10 text-muted-foreground hover:text-white h-8 text-xs"
-              >
-                <TrendingUp className="w-3 h-3 mr-1.5" />
-                Ver análise
-              </Button>
-            </CardContent>
-          </Card>
+                <p className="text-[10px] text-muted-foreground/50">Dados dos últimos 30 dias</p>
+              </CardContent>
+            </Card>
 
-        </div>
+            {/* Análise */}
+            <Card className="bg-[#111111] border-white/[0.06] md:col-span-2">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-cyan-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-semibold text-white">Análise</CardTitle>
+                    <p className="text-xs text-muted-foreground">Performance e métricas</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground py-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span className="text-xs">Carregando...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-3 py-1">
+                    {[
+                      { icon: Search,       label: "Buscar Produtos",  value: getCount(activity, "find-products") },
+                      { icon: CheckCircle2, label: "Validar Produto",  value: getCount(activity, "validate-products") },
+                      { icon: TrendingUp,   label: "Scripts de Vídeo", value: getCount(activity, "video-scripts") },
+                    ].map(({ icon: Icon, label, value }) => (
+                      <div key={label} className="p-3 rounded-lg bg-white/5 text-center">
+                        <Icon className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1.5" />
+                        <p className="text-sm font-semibold text-white">{value}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground/50">Dados dos últimos 30 dias</p>
+              </CardContent>
+            </Card>
+
+          </div>
+        </motion.div>
       </motion.div>
     </div>
   );
