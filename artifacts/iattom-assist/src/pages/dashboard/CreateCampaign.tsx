@@ -630,6 +630,23 @@ export function CreateCampaign() {
     setMode("");
   };
 
+  const copyAllCampaign = () => {
+    if (!campaignData) return;
+    const lines: string[] = [];
+    if (campaignData.platformFields?.length) {
+      campaignData.platformFields.forEach((f) => {
+        lines.push(`${f.label}:\n${f.value}`);
+      });
+    } else {
+      if (campaignData.headline) lines.push(`Manchete: ${campaignData.headline}`);
+      if (campaignData.subheadline) lines.push(`Submanchete: ${campaignData.subheadline}`);
+      if (campaignData.cta) lines.push(`CTA: ${campaignData.cta}`);
+      if (campaignData.audience) lines.push(`Público: ${campaignData.audience}`);
+    }
+    void navigator.clipboard.writeText(lines.join("\n\n"));
+    toast({ description: "Campanha copiada." });
+  };
+
   const selectPlatform = (platform: PlatformDef) => {
     setGoal(platform.goal);
     setMode(platform.modes[0].value);
@@ -731,7 +748,7 @@ export function CreateCampaign() {
               : "Configure e gere sua entrega."}
           </p>
         </div>
-        {step !== "platform" && (
+        {showResult && (
           <Button size="sm" variant="outline" onClick={() => { setIsRefreshing(true); void refetchCredits(); setTimeout(() => { try { const p = loadModuleState<{ form: { product: string; audience: string; goal: string; mode: string; productType: string }; result: CampaignResult }>("campaign"); if (p?.result) setCampaignData(p.result); } catch {} setIsRefreshing(false); }, 750); }} disabled={fetchingCredits || isRefreshing} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
             <RefreshCw className={`w-3.5 h-3.5 ${(fetchingCredits || isRefreshing) ? "animate-spin" : ""}`} />
             Atualizar
@@ -968,6 +985,9 @@ export function CreateCampaign() {
                   <div className="flex items-center gap-2 shrink-0">
                     <button onClick={handleBack} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1">
                       <ChevronLeft className="w-3 h-3" /><span className="hidden sm:inline">Voltar</span>
+                    </button>
+                    <button onClick={copyAllCampaign} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1">
+                      <Copy className="w-3 h-3" /><span className="hidden sm:inline">Copiar Tudo</span>
                     </button>
                     <button onClick={handleSave} disabled={isSaving} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 disabled:opacity-50">
                       <Save className="w-3 h-3" /><span className="hidden sm:inline">{isSaving ? "Salvando..." : "Salvar"}</span>
