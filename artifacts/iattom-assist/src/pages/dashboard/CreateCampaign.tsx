@@ -583,11 +583,13 @@ export function CreateCampaign() {
     } catch {}
   }, []);
 
-  // Preservação global: restaurar último trabalho via localStorage
+  // Preservação global: restaurar última plataforma ativa via localStorage
   useEffect(() => {
     if (sessionStorage.getItem("iattom_campaign_prefill") || sessionStorage.getItem("iattom_reopen_campaign_v1")) return;
     try {
-      const persisted = loadModuleState<{ form: { product: string; audience: string; goal: string; mode: string; productType: string }; result: CampaignResult }>("campaign");
+      const meta = loadModuleState<{ platformKey: string }>("campaign_last");
+      if (!meta?.platformKey) return;
+      const persisted = loadModuleState<{ form: { product: string; audience: string; goal: string; mode: string; productType: string }; result: CampaignResult }>(`campaign_${meta.platformKey}`);
       if (persisted?.result) {
         if (persisted.form.product) setProduct(persisted.form.product);
         if (persisted.form.audience) setAudience(persisted.form.audience);
@@ -600,10 +602,11 @@ export function CreateCampaign() {
     } catch {}
   }, []);
 
-  // Auto-salvar quando campaignData mudar
+  // Auto-salvar por plataforma quando campaignData mudar
   useEffect(() => {
-    if (campaignData) {
-      saveModuleState("campaign", { form: { product, audience, goal, mode, productType }, result: campaignData });
+    if (campaignData && currentPlatform) {
+      saveModuleState(`campaign_${currentPlatform.key}`, { form: { product, audience, goal, mode, productType }, result: campaignData });
+      saveModuleState("campaign_last", { platformKey: currentPlatform.key });
     }
   }, [campaignData, product, audience, goal, mode, productType]);
 
@@ -613,10 +616,14 @@ export function CreateCampaign() {
     setRefineInputs({});
     setRefiningBlock(null);
     setIsRestored(false);
-    setStep("platform");
-    setGoal("");
-    setMode("");
-    clearModuleState("campaign");
+    setProduct("");
+    setAudience("");
+    setProductType("");
+    if (currentPlatform) {
+      setMode(currentPlatform.modes[0]?.value ?? "");
+      clearModuleState(`campaign_${currentPlatform.key}`);
+    }
+    // goal e step permanecem — usuário fica na mesma plataforma com campos limpos
   };
 
   const handleBack = () => {
@@ -648,8 +655,34 @@ export function CreateCampaign() {
   };
 
   const selectPlatform = (platform: PlatformDef) => {
+    reset();
+    setRefineInputs({});
+    setRefiningBlock(null);
+    setIsRestored(false);
+    try {
+      const persisted = loadModuleState<{ form: { product: string; audience: string; goal: string; mode: string; productType: string }; result: CampaignResult }>(`campaign_${platform.key}`);
+      if (persisted?.form) {
+        setProduct(persisted.form.product ?? "");
+        setAudience(persisted.form.audience ?? "");
+        setMode(persisted.form.mode || (platform.modes[0]?.value ?? ""));
+        setProductType(persisted.form.productType ?? "");
+        if (persisted.result) { setCampaignData(persisted.result); setIsRestored(true); }
+        else { setCampaignData(null); }
+      } else {
+        setProduct("");
+        setAudience("");
+        setMode(platform.modes[0]?.value ?? "");
+        setProductType("");
+        setCampaignData(null);
+      }
+    } catch {
+      setProduct("");
+      setAudience("");
+      setMode(platform.modes[0]?.value ?? "");
+      setProductType("");
+      setCampaignData(null);
+    }
     setGoal(platform.goal);
-    setMode(platform.modes[0].value);
     setStep("form");
   };
 
@@ -749,7 +782,7 @@ export function CreateCampaign() {
           </p>
         </div>
         {showResult && (
-          <Button size="sm" variant="outline" onClick={() => { setIsRefreshing(true); void refetchCredits(); setTimeout(() => { try { const p = loadModuleState<{ form: { product: string; audience: string; goal: string; mode: string; productType: string }; result: CampaignResult }>("campaign"); if (p?.result) setCampaignData(p.result); } catch {} setIsRefreshing(false); }, 750); }} disabled={fetchingCredits || isRefreshing} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+          <Button size="sm" variant="outline" onClick={() => { setIsRefreshing(true); void refetchCredits(); setTimeout(() => { try { if (currentPlatform) { const p = loadModuleState<{ form: { product: string; audience: string; goal: string; mode: string; productType: string }; result: CampaignResult }>(`campaign_${currentPlatform.key}`); if (p?.result) setCampaignData(p.result); } } catch {} setIsRefreshing(false); }, 750); }} disabled={fetchingCredits || isRefreshing} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
             <RefreshCw className={`w-3.5 h-3.5 ${(fetchingCredits || isRefreshing) ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
