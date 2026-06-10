@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Loader2, RefreshCw, AlertCircle, Image, Save, Download, Video, ChevronRight } from "lucide-react";
 import { useGetCreditsBalance, getGetCreditsBalanceQueryKey } from "@workspace/api-client-react";
-import { clearModuleState } from "@/hooks/useModulePersistence";
+import { clearModuleState, loadModuleState, saveModuleState } from "@/hooks/useModulePersistence";
 import { saveProjectAssets } from "@/lib/assetStorage";
 import { useSavedItems, type SavedItemRecord, type VideoAssetData } from "@/hooks/useSavedItems";
 import { Button } from "@/components/ui/button";
@@ -126,6 +126,17 @@ function VideoResultCard({
             {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
             {isSaving ? "Salvando..." : "Salvar"}
           </button>
+          {!result.isMock && result.videoUrl && (
+            <a
+              href={result.videoUrl}
+              download="iattom-video.mp4"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"
+            >
+              <Download className="w-3 h-3" /> Baixar
+            </a>
+          )}
           <button
             onClick={onReset}
             className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"
@@ -177,24 +188,7 @@ function VideoResultCard({
               </div>
               <p className="text-xs text-zinc-600 truncate max-w-xs">{result.prompt}</p>
             </div>
-            {!result.isMock && result.videoUrl && (
-              <a
-                href={result.videoUrl}
-                download="iattom-video.mp4"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors shrink-0"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Baixar
-              </a>
-            )}
           </div>
-          {!result.isMock && result.videoUrl && (
-            <p className="text-xs text-amber-500/70">
-              Faça o download agora — o link expira em alguns dias.
-            </p>
-          )}
         </CardContent>
       </Card>
     </motion.div>
@@ -223,15 +217,6 @@ function ConceptCard({ concept, index }: { concept: CreativeConcept; index: numb
         )}
         <CardContent className="p-3 flex items-center justify-between gap-2">
           <p className="text-xs font-semibold text-primary uppercase tracking-widest truncate">{concept.label}</p>
-          {concept.imageBase64 && (
-            <button
-              onClick={() => downloadImage(concept.imageBase64!, filename)}
-              className="text-muted-foreground hover:text-white transition-colors shrink-0"
-              title="Baixar imagem"
-            >
-              <Download className="w-3.5 h-3.5" />
-            </button>
-          )}
         </CardContent>
       </Card>
     </motion.div>
@@ -366,6 +351,30 @@ export function CreativeGenerator() {
     }
   }, []);
 
+  // Preservação global: restaurar após refresh via localStorage
+  useEffect(() => {
+    if (sessionStorage.getItem("iattom_restore_creative_v1") || sessionStorage.getItem("iattom_creative_prefill")) return;
+    try {
+      const persisted = loadModuleState<{ type: "image" | "video"; form: Record<string, unknown>; result: unknown }>("creative");
+      if (!persisted) return;
+      if (persisted.type === "image" && persisted.result && typeof persisted.result === "object" && "concepts" in (persisted.result as object)) {
+        const f = persisted.form as { prompt?: string; platform?: string; selectedFormats?: string[] };
+        if (f.prompt) setPrompt(f.prompt);
+        if (f.platform && PLATFORMS.some((p) => p.key === f.platform)) setPlatform(f.platform as PlatformKey);
+        if (Array.isArray(f.selectedFormats)) setSelectedFormats(f.selectedFormats.slice(0, MAX_FORMATS));
+        setRestoredResult(persisted.result as CreativeIdeasResult);
+      } else if (persisted.type === "video" && persisted.result) {
+        const f = persisted.form as { videoPrompt?: string; videoAvatar?: string; videoFormato?: string; videoDuration?: number };
+        setCreativeType("video");
+        if (f.videoPrompt) setVideoPrompt(f.videoPrompt);
+        if (f.videoAvatar && ["masculino", "feminino"].includes(f.videoAvatar)) setVideoAvatar(f.videoAvatar as "masculino" | "feminino");
+        if (f.videoFormato && ["9:16", "1:1", "16:9"].includes(f.videoFormato)) setVideoFormato(f.videoFormato as VideoFormato);
+        if (f.videoDuration === 30) setVideoDuration(30);
+        setRestoredVideoResult(persisted.result as VideoGenerationResult);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   // Restaurar de Projetos Salvos
   useEffect(() => {
     try {
@@ -437,6 +446,20 @@ export function CreativeGenerator() {
       }
     } catch { /* ignore */ }
   }, []);
+
+  // Auto-salvar imagem gerada no localStorage
+  useEffect(() => {
+    if (status === "done" && result) {
+      saveModuleState("creative", { type: "image", form: { prompt, platform, selectedFormats }, result });
+    }
+  }, [status, result, prompt, platform, selectedFormats]);
+
+  // Auto-salvar vídeo gerado no localStorage
+  useEffect(() => {
+    if (videoStatus === "done" && videoResult) {
+      saveModuleState("creative", { type: "video", form: { videoPrompt, videoAvatar, videoFormato, videoDuration }, result: videoResult });
+    }
+  }, [videoStatus, videoResult, videoPrompt, videoAvatar, videoFormato, videoDuration]);
 
   const isGenerating = status === "generating";
   const isDone = status === "done";
@@ -877,7 +900,7 @@ export function CreativeGenerator() {
                       <div className="flex items-center justify-between">
                         <Label className="text-sm text-muted-foreground">Formatos</Label>
                         <span className="text-xs text-zinc-600">
-                          {selectedFormats.length} de {MAX_FORMATS} selecionado{selectedFormats.length !== 1 ? "s" : ""}
+                          {selectedFormats.length} de {currentPlatformFormats.length} selecionado{selectedFormats.length !== 1 ? "s" : ""}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -1134,6 +1157,19 @@ export function CreativeGenerator() {
                 >
                   {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                   {isSaving ? "Salvando..." : "Salvar"}
+                </button>
+                <button
+                  onClick={() => {
+                    activeResult?.concepts.forEach((c: CreativeConcept, i: number) => {
+                      if (c.imageBase64) {
+                        const fn = `${c.label.replace(/[\s/]+/g, "-").toLowerCase()}.png`;
+                        setTimeout(() => downloadImage(c.imageBase64!, fn), i * 150);
+                      }
+                    });
+                  }}
+                  className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <Download className="w-3 h-3" /> Baixar
                 </button>
                 <button
                   onClick={() => { reset(); setRestoredResult(null); clearModuleState("creative"); }}

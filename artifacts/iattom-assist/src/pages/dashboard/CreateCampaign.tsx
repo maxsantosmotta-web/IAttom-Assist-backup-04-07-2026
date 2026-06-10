@@ -797,7 +797,7 @@ export function CreateCampaign() {
                     onClick={() => setStep("platform")}
                     className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"
                   >
-                    <ChevronLeft className="w-3.5 h-3.5" /> Trocar plataforma
+                    🔁 Trocar
                   </button>
                 </div>
               </CardHeader>
