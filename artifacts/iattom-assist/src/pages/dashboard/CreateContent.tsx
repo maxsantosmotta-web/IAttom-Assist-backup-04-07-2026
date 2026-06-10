@@ -241,7 +241,7 @@ export function CreateContent() {
                   <Copy className="w-3 h-3" /> Copiar tudo
                 </button>
                 <button onClick={handleSave} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5"><Save className="w-3 h-3" /> Salvar</button>
-                <button onClick={() => { reset(); setRestoredResult(null); clearModuleState("content"); }} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1"><Plus className="w-3 h-3" /> Novo</button>
+                <button onClick={() => { reset(); setRestoredResult(null); setTopic(""); setTone(""); setAdditionalContext(""); clearModuleState("content"); }} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1"><Plus className="w-3 h-3" /> Novo</button>
               </div>
             </div>
 
