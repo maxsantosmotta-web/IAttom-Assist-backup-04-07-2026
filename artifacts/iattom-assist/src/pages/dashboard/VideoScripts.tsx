@@ -275,7 +275,7 @@ export function VideoScripts() {
                 {activeResult.hooks?.length > 0 && (
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 font-medium">Variações de Hook</p>
-                    <div className="flex justify-end gap-3 mb-3">
+                    <div className="w-full flex justify-end items-center gap-3 mb-3">
                       <button onClick={copyFull} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Copy className="w-3 h-3" /> Copiar Tudo</button>
                       <button onClick={handleSave} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 whitespace-nowrap"><Save className="w-3 h-3" /> Salvar</button>
                       <button onClick={() => { reset(); setRestoredResult(null); setProduct(""); setFormat(""); setDuration(""); setStyle(""); clearModuleState("video_script"); }} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Plus className="w-3 h-3" /> Novo</button>
