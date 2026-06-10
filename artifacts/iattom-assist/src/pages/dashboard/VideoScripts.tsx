@@ -233,16 +233,9 @@ export function VideoScripts() {
             )}
             <Card className="bg-[#111111] border-primary/20">
               <CardHeader className="pb-3">
-                <div className="flex flex-col gap-2">
-                  <CardTitle className="text-base text-white flex items-center gap-2">
-                    <Video className="w-4 h-4 text-primary" />{activeResult.title}
-                  </CardTitle>
-                  <div className="flex items-center gap-3">
-                    <button onClick={copyFull} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Copy className="w-3 h-3" /> Copiar Tudo</button>
-                    <button onClick={handleSave} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 whitespace-nowrap"><Save className="w-3 h-3" /> Salvar</button>
-                    <button onClick={() => { reset(); setRestoredResult(null); setProduct(""); setFormat(""); setDuration(""); setStyle(""); clearModuleState("video_script"); }} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Plus className="w-3 h-3" /> Novo</button>
-                  </div>
-                </div>
+                <CardTitle className="text-base text-white flex items-center gap-2">
+                  <Video className="w-4 h-4 text-primary" />{activeResult.title}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
                 {(activeResult.voiceoverStyle || activeResult.musicMood || activeResult.editingPace) && (
@@ -282,6 +275,11 @@ export function VideoScripts() {
                 {activeResult.hooks?.length > 0 && (
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3 font-medium">Variações de Hook</p>
+                    <div className="flex justify-end gap-3 mb-3">
+                      <button onClick={copyFull} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Copy className="w-3 h-3" /> Copiar Tudo</button>
+                      <button onClick={handleSave} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 whitespace-nowrap"><Save className="w-3 h-3" /> Salvar</button>
+                      <button onClick={() => { reset(); setRestoredResult(null); setProduct(""); setFormat(""); setDuration(""); setStyle(""); clearModuleState("video_script"); }} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Plus className="w-3 h-3" /> Novo</button>
+                    </div>
                     <div className="space-y-2">
                       {activeResult.hooks.map((hook, i) => (
                         <div key={i} className="flex items-start gap-3 p-3 bg-white/5 border border-white/5 rounded-lg group">
