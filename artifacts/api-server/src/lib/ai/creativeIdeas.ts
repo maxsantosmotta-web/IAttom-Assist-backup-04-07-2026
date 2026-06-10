@@ -158,6 +158,8 @@ ${refinedCtx.systemEnhancement}
 FORMATOS SOLICITADOS:
 ${formatList}
 
+REGRA DE CORREÇÃO SEMÂNTICA: Antes de construir o briefing, interprete e corrija silenciosamente erros evidentes de digitação no nome ou descrição do produto (ex: "cuzinha" → "cozinha", "calca" → "calça", "tenis" → "tênis"). Utilize sempre a forma correta no briefing e nos prompts gerados. Exceção obrigatória: NÃO altere marcas, nomes comerciais ou produtos com grafia intencional (ex: IAttom, PROTEGNV, Hotmart, Shopee, Kiwify).
+
 REGRA ABSOLUTA DE FIDELIDADE AO PRODUTO: O produto informado é a referência central e obrigatória. NÃO substitua por versão genérica ou produto parecido. Preserve o nome exato, aparência, proporções e categoria do produto.
 
 REGRA DE IDIOMA: imagePrompt SEMPRE em inglês.

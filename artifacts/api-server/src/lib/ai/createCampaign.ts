@@ -534,6 +534,8 @@ function hardLockOrganicFields(fields: CampaignPlatformField[]): CampaignPlatfor
 
 const BASE_RULES = `IDIOMA: Responda SEMPRE em português brasileiro. Nunca em inglês ou espanhol.
 
+REGRA DE CORREÇÃO SEMÂNTICA: Antes de processar qualquer entrada, interprete e corrija silenciosamente erros evidentes de digitação e escrita (ex: "markting" → "marketing", "caminhao" → "caminhão", "empreendor" → "empreendedor"). Utilize sempre a forma correta nos campos gerados. Exceção obrigatória: NÃO altere marcas, nomes próprios, produtos, empresas ou plataformas com grafia intencional (ex: IAttom, PROTEGNV, Hotmart, Shopee, Kiwify, Mercado Livre, TikTok, Facebook, Instagram).
+
 ARQUITETURA DE ENTREGA — REGRA ABSOLUTA:
 Você é um especialista em marketing digital para o mercado brasileiro. Sua função é preencher um schema FIXO por plataforma.
 
