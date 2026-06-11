@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { randomUUID } from "crypto";
 import { getAuth } from "@clerk/express";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -7,8 +8,117 @@ import { getRelevantContext, type HistoryMessage } from "../lib/help/knowledge/i
 import { db, helpMessages } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { semanticNormalize } from "../lib/ai/semanticNormalize.js";
+import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router: IRouter = Router();
+
+// ── GCS helpers for Help image persistence ────────────────────────────────
+
+function parseHelpImageGCSPath(privateDirPath: string): { bucketName: string; objectPrefix: string } {
+  const clean = privateDirPath.startsWith("/") ? privateDirPath.slice(1) : privateDirPath.replace(/^gs:\/\//, "");
+  const slashIdx = clean.indexOf("/");
+  if (slashIdx === -1) return { bucketName: clean, objectPrefix: "" };
+  return { bucketName: clean.slice(0, slashIdx), objectPrefix: clean.slice(slashIdx + 1) };
+}
+
+async function uploadHelpImageToGCS(dataUrl: string): Promise<string> {
+  const match = dataUrl.match(/^data:(image\/[a-zA-Z+.-]+);base64,(.+)$/);
+  if (!match) throw new Error("Invalid image data URL");
+  const [, contentType, b64] = match;
+  const buffer = Buffer.from(b64, "base64");
+
+  const privateObjectDir = process.env.PRIVATE_OBJECT_DIR ?? "";
+  if (!privateObjectDir) throw new Error("PRIVATE_OBJECT_DIR not configured");
+
+  const { bucketName, objectPrefix } = parseHelpImageGCSPath(privateObjectDir);
+  const imageId = randomUUID();
+  const objectName = `${objectPrefix ? objectPrefix + "/" : ""}help-images/${imageId}`;
+
+  const bucket = objectStorageClient.bucket(bucketName);
+  await bucket.file(objectName).save(buffer, {
+    metadata: { contentType },
+    resumable: false,
+  });
+
+  return imageId;
+}
+
+// ── Help images: upload ────────────────────────────────────────────────────
+
+router.post("/help/images/upload", requireAuth, async (req, res): Promise<void> => {
+  const userId = getAuth(req)?.userId;
+  if (!userId) { res.status(401).json({ error: "Não autenticado." }); return; }
+
+  const rawImages: unknown[] = Array.isArray((req.body as { images?: unknown[] }).images)
+    ? (req.body as { images: unknown[] }).images
+    : [];
+
+  const validImages = rawImages
+    .slice(0, 10)
+    .filter(
+      (img): img is string =>
+        typeof img === "string" &&
+        img.startsWith("data:image/") &&
+        img.includes(";base64,") &&
+        img.length < 8_000_000,
+    );
+
+  if (validImages.length === 0) {
+    res.status(400).json({ error: "Nenhuma imagem válida recebida." });
+    return;
+  }
+
+  if (!process.env.PRIVATE_OBJECT_DIR) {
+    res.status(503).json({ error: "Storage não configurado." });
+    return;
+  }
+
+  try {
+    const ids = await Promise.all(validImages.map((img) => uploadHelpImageToGCS(img)));
+    const urls = ids.map((id) => `${process.env.BASE_PATH ?? ""}/api/help/images/${id}`);
+    res.json({ urls });
+  } catch (err) {
+    req.log.error({ msg: "Error uploading help images", userId, err });
+    res.status(500).json({ error: "Erro ao fazer upload das imagens." });
+  }
+});
+
+// ── Help images: serve ─────────────────────────────────────────────────────
+
+router.get("/help/images/:imageId", requireAuth, async (req, res): Promise<void> => {
+  const userId = getAuth(req)?.userId;
+  if (!userId) { res.status(401).json({ error: "Não autenticado." }); return; }
+
+  const imageId = (req.params as { imageId: string }).imageId;
+  if (!imageId || !/^[0-9a-f-]{36}$/.test(imageId)) {
+    res.status(400).json({ error: "ID inválido." });
+    return;
+  }
+
+  const privateObjectDir = process.env.PRIVATE_OBJECT_DIR ?? "";
+  if (!privateObjectDir) {
+    res.status(503).json({ error: "Storage não configurado." });
+    return;
+  }
+
+  try {
+    const { bucketName, objectPrefix } = parseHelpImageGCSPath(privateObjectDir);
+    const objectName = `${objectPrefix ? objectPrefix + "/" : ""}help-images/${imageId}`;
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
+    const [exists] = await file.exists();
+    if (!exists) { res.status(404).json({ error: "Imagem não encontrada." }); return; }
+
+    const [metadata] = await file.getMetadata();
+    const contentType = (metadata.contentType as string) || "image/png";
+    res.set("Content-Type", contentType);
+    res.set("Cache-Control", "private, max-age=86400");
+    file.createReadStream().pipe(res);
+  } catch (err) {
+    req.log.error({ msg: "Error serving help image", imageId, err });
+    res.status(500).json({ error: "Erro ao servir imagem." });
+  }
+});
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
@@ -320,18 +430,34 @@ O assistente orienta, diagnostica, compara e sugere caminhos. Não entrega o pro
 PROIBIDO GERAR OU CRIAR:
 campanha, conteúdo, copy, anúncio, roteiro, script, prompt, criativo visual, imagem, vídeo, briefing, legenda, hashtags, mensagem pronta, ticket, resposta de suporte, estratégia completa, funil, plano comercial, cronograma, execução.
 
-Quando o usuário pedir entrega completa, redirecione com utilidade:
-- Campanha completa → Criar Campanha
-- Conteúdo ou post pronto → Criar Conteúdo
-- Imagem ou criativo visual → Criar Imagem
-- Roteiro ou script → Scripts de Vídeo
-- Encontrar produto → Buscar Produtos
-- Validar produto → Validar Produto
-- Publicar ou anunciar → Criar Anúncio ou módulo da plataforma
+PROIBIDO PREENCHER: nunca preencher campos de módulos, nunca montar campanha por partes, nunca redigir texto pronto em etapas que contornem os módulos.
 
-REDIRECIONAMENTO CORRETO:
-"Entendi o que você precisa. Essa ação pertence ao módulo [X]. Posso te orientar sobre o que preencher em cada campo."
+Quando o usuário pedir entrega completa, redirecione com utilidade — CAMINHOS OBRIGATÓRIOS:
+- Campanha completa → "Essa ação é feita no módulo Criar Campanha. Caminho: Dashboard → Criar Campanha."
+- Conteúdo, post, legenda ou copy → "Essa ação é feita no módulo Criar Conteúdo. Caminho: Dashboard → Criar Conteúdo."
+- Prompt ou prompt para imagem → "Essa ação pertence ao módulo Prompt. Caminho: Dashboard → Prompt. Depois de gerar o prompt, use o módulo Criar Imagem para produzir o visual."
+- Imagem ou criativo visual → "Essa ação pertence ao módulo Criar Imagem. Caminho: Dashboard → Criar Imagem."
+- Roteiro, script ou vídeo → "Essa ação pertence ao módulo Scripts de Vídeo. Caminho: Dashboard → Scripts de Vídeo."
+- Encontrar produto → "Use o módulo Buscar Produtos. Caminho: Dashboard → Buscar Produtos."
+- Validar produto → "Use o módulo Validar Produto. Caminho: Dashboard → Validar Produto."
+- Publicar ou anunciar → "Use o módulo Criar Anúncio ou o módulo da plataforma correspondente."
+
+REDIRECIONAMENTO CORRETO (sem mencionar preencher campos):
+"Essa ação é feita no módulo [X]. Caminho: Dashboard → [X]."
 Nunca bloqueie com frieza. Nunca deixe o usuário sem próximo passo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUGESTÕES DE PRODUTOS E NICHOS (REGRA OBRIGATÓRIA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Quando o usuário perguntar o que vender, qual nicho explorar, ou pedir ideias de produto:
+Sugira no MÁXIMO 3 caminhos ou ideias iniciais. Nada além de 3.
+
+Exemplo correto:
+"Você pode avaliar até 3 caminhos: produto físico, produto digital ou afiliado. Escolha um e use Buscar Produtos para encontrar oportunidades e Validar Produto para confirmar viabilidade."
+
+Após as 3 sugestões: redirecione SEMPRE para Buscar Produtos ou Validar Produto.
+Nunca criar campanha, conteúdo, plano completo ou cronograma a partir de uma sugestão de produto.
+Nunca expandir a lista de sugestões além de 3 — mesmo que o usuário peça mais.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CRÉDITOS E PLANOS — PROIBIDO ABSOLUTO
@@ -1573,7 +1699,14 @@ router.get("/help/history", requireAuth, async (req, res): Promise<void> => {
       .orderBy(asc(helpMessages.createdAt))
       .limit(100);
 
-    res.json(rows.map((r) => ({ id: r.id, role: r.role, content: r.content })));
+    res.json(rows.map((r) => ({
+      id: r.id,
+      role: r.role,
+      content: r.content,
+      imageUrls: r.imageUrls
+        ? (JSON.parse(r.imageUrls) as string[])
+        : undefined,
+    })));
   } catch {
     req.log.error({ msg: "Error loading help history", userId });
     res.status(500).json({ error: "Erro ao carregar histórico." });
@@ -1586,9 +1719,10 @@ router.post("/help/save", requireAuth, async (req, res): Promise<void> => {
   const userId = getAuth(req)?.userId;
   if (!userId) { res.status(401).json({ error: "Não autenticado." }); return; }
 
-  const { userMessage, assistantMessage } = req.body as {
+  const { userMessage, assistantMessage, imageUrls } = req.body as {
     userMessage?: string;
     assistantMessage?: string;
+    imageUrls?: string[];
   };
 
   if (
@@ -1599,9 +1733,14 @@ router.post("/help/save", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const imageUrlsJson =
+    Array.isArray(imageUrls) && imageUrls.length > 0
+      ? JSON.stringify(imageUrls)
+      : null;
+
   try {
     await db.insert(helpMessages).values([
-      { clerkUserId: userId, role: "user",      content: userMessage.trim() },
+      { clerkUserId: userId, role: "user",      content: userMessage.trim(), imageUrls: imageUrlsJson },
       { clerkUserId: userId, role: "assistant", content: assistantMessage.trim() },
     ]);
     res.json({ ok: true });

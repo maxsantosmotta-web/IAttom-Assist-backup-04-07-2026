@@ -5,6 +5,7 @@ export const helpMessages = pgTable("help_messages", {
   clerkUserId: text("clerk_user_id").notNull(),
   role: text("role").notNull(),
   content: text("content").notNull(),
+  imageUrls: text("image_urls"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

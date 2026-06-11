@@ -16,6 +16,8 @@ interface Message {
 interface AttachedImage {
   dataUrl: string;
   name: string;
+  /** GCS serving URL — populated after eager upload completes */
+  storageUrl?: string;
 }
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -93,7 +95,7 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
       return fetch(`${BASE_URL}/api/help/history`, { credentials: "include" })
         .then((r) =>
           r.ok
-            ? (r.json() as Promise<{ id: number; role: string; content: string }[]>)
+            ? (r.json() as Promise<{ id: number; role: string; content: string; imageUrls?: string[] }[]>)
             : Promise.reject(new Error(`HTTP ${r.status}`))
         )
         .then((data) => {
@@ -110,6 +112,7 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
                 id: String(m.id),
                 role: m.role as "user" | "assistant",
                 content: m.content,
+                ...(m.imageUrls && m.imageUrls.length > 0 ? { imageUrls: m.imageUrls } : {}),
               }))
             );
           } else if (showGreetingIfEmpty) {
@@ -178,12 +181,16 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
   }, [syncStatus, loading, historyLoaded, loadHistory]);
 
   // ── saveExchange ───────────────────────────────────────────────────────────
-  const saveExchange = (userContent: string, assistantContent: string): void => {
+  const saveExchange = (userContent: string, assistantContent: string, imageUrls?: string[]): void => {
     if (!assistantContent) return;
     pendingSaveRef.current = fetch(`${BASE_URL}/api/help/save`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userMessage: userContent, assistantMessage: assistantContent }),
+      body: JSON.stringify({
+        userMessage: userContent,
+        assistantMessage: assistantContent,
+        ...(imageUrls && imageUrls.length > 0 ? { imageUrls } : {}),
+      }),
       credentials: "include",
     })
       .then(() => undefined)
@@ -204,7 +211,7 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
     setConfirmClear(false);
   };
 
-  // ── File selection handler (up to 10 images) ─────────────────────────────
+  // ── File selection handler (up to 10 images, with eager GCS upload) ──────
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     // Reset the input so the same files can be re-selected later
@@ -222,6 +229,8 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
 
     if (eligible.length === 0) return;
 
+    const startIdx = current;
+
     const readers = eligible.map(
       (file) =>
         new Promise<AttachedImage>((resolve) => {
@@ -236,6 +245,31 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
 
     void Promise.all(readers).then((newImages) => {
       setAttachedImages((prev) => [...prev, ...newImages].slice(0, MAX_IMAGES));
+
+      // Eager upload to GCS — runs in background, non-blocking
+      // By the time the user hits send, storageUrl is typically already populated
+      void (async () => {
+        try {
+          const uploadRes = await fetch(`${BASE_URL}/api/help/images/upload`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ images: newImages.map((i) => i.dataUrl) }),
+            credentials: "include",
+          });
+          if (!uploadRes.ok) return;
+          const { urls } = (await uploadRes.json()) as { urls: string[] };
+          setAttachedImages((curr) => {
+            const result = [...curr];
+            urls.forEach((url, i) => {
+              const idx = startIdx + i;
+              if (idx < result.length) result[idx] = { ...result[idx], storageUrl: url };
+            });
+            return result;
+          });
+        } catch {
+          // Upload failed — images still visible this session but won't persist after reload
+        }
+      })();
     });
   };
 
@@ -245,11 +279,17 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
     if (!text || loading) return;
 
     const snapshots = [...attachedImages];
+    // storageUrls: GCS URLs for persistence. Populated if eager upload already completed.
+    const storageUrls = snapshots.map((s) => s.storageUrl).filter((u): u is string => !!u);
+
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
       content: text,
-      ...(snapshots.length > 0 ? { imageUrls: snapshots.map((i) => i.dataUrl) } : {}),
+      // Display: prefer storageUrl (will survive reload), fall back to dataUrl (session only)
+      ...(snapshots.length > 0
+        ? { imageUrls: snapshots.map((s) => s.storageUrl || s.dataUrl) }
+        : {}),
     };
 
     const history = messages
@@ -271,8 +311,10 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
     ]);
 
     let finalAssistantContent = "";
+    let streamCompleted = false;
 
     try {
+      // Always send dataUrls to OpenAI (base64 required for vision)
       const body: Record<string, unknown> = { message: text, history };
       if (snapshots.length > 0) body.images = snapshots.map((i) => i.dataUrl);
 
@@ -310,6 +352,8 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
                   m.id === assistantId ? { ...m, content: m.content + data.content } : m
                 )
               );
+            } else if (data.type === "done") {
+              streamCompleted = true;
             } else if (data.type === "error" && data.message) {
               setMessages((prev) =>
                 prev.map((m) =>
@@ -326,7 +370,9 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
-            ? { ...m, content: "Não foi possível processar sua mensagem. Tente novamente." }
+            ? { ...m, content: finalAssistantContent
+                ? finalAssistantContent + "\n\n(resposta interrompida — tente novamente)"
+                : "Não foi possível processar sua mensagem. Tente novamente." }
             : m
         )
       );
@@ -335,7 +381,12 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
         prev.map((m) => (m.id === assistantId ? { ...m, streaming: false } : m))
       );
       setLoading(false);
-      if (finalAssistantContent) saveExchange(text, finalAssistantContent);
+      if (finalAssistantContent) {
+        const contentToSave = streamCompleted
+          ? finalAssistantContent
+          : finalAssistantContent + "\n\n(resposta interrompida — tente novamente)";
+        saveExchange(text, contentToSave, storageUrls.length > 0 ? storageUrls : undefined);
+      }
     }
   };
 
