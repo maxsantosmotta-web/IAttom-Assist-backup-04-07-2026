@@ -352,6 +352,14 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
       const body: Record<string, unknown> = { message: text, history };
       if (snapshots.length > 0) body.images = snapshots.map((i) => i.dataUrl);
 
+      // ── [HELP DEBUG] Diagnóstico de payload outgoing ──────────────────────
+      console.log("[HELP DEBUG] outgoing history count", history.length);
+      console.log("[HELP DEBUG] outgoing history", history);
+      console.log("[HELP DEBUG] outgoing imageUrls in history", history.map((h) => (h as { imageUrls?: string[] }).imageUrls));
+      console.log("[HELP DEBUG] outgoing images current", snapshots.length);
+      console.log("[HELP DEBUG] attachedImages snapshots", snapshots.map((s) => ({ name: s.name, hasDataUrl: !!s.dataUrl, hasStorageUrl: !!(s as { storageUrl?: string }).storageUrl })));
+      // ─────────────────────────────────────────────────────────────────────
+
       const res = await fetch(`${BASE_URL}/api/help/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -1527,6 +1527,10 @@ router.post("/help/chat", requireAuth, async (req, res): Promise<void> => {
     content: m.content,
   }));
 
+  // ── [HELP DEBUG] Payload recebido ─────────────────────────────────────────
+  req.log.info({ msg: "[HELP DEBUG] rawHistory received", count: rawHistory.length, imageUrlsPerMsg: rawHistory.map((m) => ({ role: m.role, imageUrls: m.imageUrls ?? null })) });
+  // ──────────────────────────────────────────────────────────────────────────
+
   // ── Continuation detection ────────────────────────────────────────────────
   const isContinuation = detectContinuation(message);
   const lastAssistantContent =
@@ -1657,13 +1661,27 @@ router.post("/help/chat", requireAuth, async (req, res): Promise<void> => {
     (m) => m.role === "user" && Array.isArray(m.imageUrls) && (m.imageUrls?.length ?? 0) > 0,
   );
 
+  // ── [HELP DEBUG] lastHistoryImgMsg selecionado ────────────────────────────
+  req.log.info({ msg: "[HELP DEBUG] lastHistoryImgMsg", found: !!lastHistoryImgMsg, imageUrls: lastHistoryImgMsg?.imageUrls ?? null });
+  // ──────────────────────────────────────────────────────────────────────────
+
   let historyImgContent: Array<{ type: "image_url"; image_url: { url: string; detail: "auto" } }> = [];
   if (lastHistoryImgMsg?.imageUrls && lastHistoryImgMsg.imageUrls.length > 0) {
-    const fetched = await Promise.all(lastHistoryImgMsg.imageUrls.map(fetchHistoryImageAsDataUrl));
-    historyImgContent = fetched
+    const fetchResults = await Promise.all(
+      lastHistoryImgMsg.imageUrls.map(async (url) => {
+        const result = await fetchHistoryImageAsDataUrl(url);
+        req.log.info({ msg: "[HELP DEBUG] fetchHistoryImageAsDataUrl", url, success: !!result });
+        return result;
+      }),
+    );
+    historyImgContent = fetchResults
       .filter((u): u is string => !!u)
       .map((url) => ({ type: "image_url" as const, image_url: { url, detail: "auto" as const } }));
   }
+
+  // ── [HELP DEBUG] historyImgContent reconstruído ───────────────────────────
+  req.log.info({ msg: "[HELP DEBUG] rebuilt history images count", count: historyImgContent.length });
+  // ──────────────────────────────────────────────────────────────────────────
 
   try {
     // Build messages array.
@@ -1692,6 +1710,20 @@ router.post("/help/chat", requireAuth, async (req, res): Promise<void> => {
       { role: "user" as const, content: userContent },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ] as unknown as Parameters<typeof openai.chat.completions.create>[0]["messages"];
+
+    // ── [HELP DEBUG] Resumo final das messages para OpenAI ──────────────────
+    req.log.info({
+      msg: "[HELP DEBUG] final OpenAI messages summary",
+      total: messages.length,
+      summary: (messages as Array<{ role: string; content: unknown }>).map((m) => ({
+        role: m.role,
+        contentType: Array.isArray(m.content) ? "multimodal" : "text",
+        imageCount: Array.isArray(m.content)
+          ? (m.content as Array<{ type: string }>).filter((p) => p.type === "image_url").length
+          : 0,
+      })),
+    });
+    // ────────────────────────────────────────────────────────────────────────
 
     const stream = await openai.chat.completions.create({
       model: "gpt-5-mini",
