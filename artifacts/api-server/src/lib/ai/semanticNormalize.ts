@@ -84,9 +84,11 @@ interface ContextEntry {
 
 const CONTEXT_ONLY: ContextEntry[] = [
   {
-    words: ["colt", "coac", "coah", "coatch", "coatch"],
+    // formas incorretas de "coach" / "coaching" — ambíguas sem contexto (ex: Colt = carro)
+    words: ["colt", "coac", "coah", "coatch", "colting", "coachig", "coachin"],
     target: "coach",
     contexts: [
+      // domínio de negócios / desenvolvimento pessoal
       "mentoria", "mentorar", "mentorando",
       "empreendedor", "empreendedorismo", "empreendedora",
       "vendas", "vender", "vendedor",
@@ -97,6 +99,12 @@ const CONTEXT_ONLY: ContextEntry[] = [
       "carreira", "executivo", "executiva",
       "coaching", "coachee",
       "servico", "serviço", "consultoria",
+      // conteineres profissionais / educacionais — qualquer produto que seja um curso ou formação
+      "curso", "cursos", "ebook", "faculdade", "treinamento", "treinamentos",
+      "instituto", "programa", "programas", "metodo", "método", "academia",
+      "formacao", "formação", "workshop", "capacitacao", "capacitação",
+      "certificacao", "certificação", "especializacao", "especialização",
+      "bootcamp", "imersao", "imersão", "masterclass", "palestra",
     ],
   },
 ];
@@ -115,18 +123,28 @@ const SIMILARITY_TARGETS: SimilarityTarget[] = [
     target: "coach",
     targetLower: "coach",
     contexts: [
+      // domínio de negócios / desenvolvimento pessoal
       "mentoria", "mentorar", "empreendedor", "empreendedorismo",
       "vendas", "negocio", "negócio", "posicionamento",
       "desenvolvimento", "carreira", "executivo", "coaching",
+      // conteineres profissionais / educacionais
+      "curso", "cursos", "ebook", "faculdade", "treinamento",
+      "instituto", "programa", "metodo", "método", "academia",
+      "formacao", "formação", "workshop", "bootcamp", "masterclass",
     ],
   },
   {
     target: "marketing",
     targetLower: "marketing",
     contexts: [
+      // domínio de marketing / negócios
       "digital", "vendas", "conteudo", "conteúdo", "redes", "sociais",
       "estrategia", "estratégia", "campanha", "marca", "negocio", "negócio",
       "anuncio", "anúncio", "trafego", "tráfego",
+      // conteineres profissionais / educacionais — ex: "Curso de marqueting"
+      "curso", "cursos", "ebook", "faculdade", "treinamento",
+      "instituto", "programa", "metodo", "método", "academia",
+      "formacao", "formação", "workshop", "bootcamp", "masterclass",
     ],
   },
 ];
