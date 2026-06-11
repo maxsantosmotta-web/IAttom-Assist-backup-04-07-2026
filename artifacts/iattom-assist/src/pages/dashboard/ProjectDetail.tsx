@@ -725,7 +725,7 @@ export function ProjectDetail() {
     return (
       <div className="space-y-6">
         <button onClick={() => navigate("/dashboard/projects")} className="flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Voltar para Projetos Salvos
+          <ArrowLeft className="w-4 h-4" /> Voltar para Biblioteca
         </button>
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <p className="text-base font-semibold text-zinc-400 mb-2">Projeto não encontrado</p>
@@ -799,7 +799,7 @@ export function ProjectDetail() {
         className="flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Projetos Salvos
+        Biblioteca
       </button>
 
       {/* Header */}

@@ -255,7 +255,7 @@ export function FindProducts() {
             {isRestoredMode && (
               <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                <p className="text-xs text-primary">Busca restaurada de Projetos Salvos</p>
+                <p className="text-xs text-primary">Busca restaurada da Biblioteca</p>
               </div>
             )}
             {activeResult.marketInsight && (

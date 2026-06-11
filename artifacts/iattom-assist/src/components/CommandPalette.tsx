@@ -21,7 +21,7 @@ const ALL_PAGES = [
   { href: "/dashboard/billing", label: "Faturamento", icon: CreditCard, desc: "Gerenciar assinatura", keywords: "faturamento assinatura plano upgrade" },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings, desc: "Preferências da conta", keywords: "configuracoes conta perfil" },
   { href: "/dashboard/analytics", label: "Análises", icon: BarChart2, desc: "Insights de uso", keywords: "analises insights stats" },
-  { href: "/dashboard/prompts", label: "Prompts Salvos", icon: BookMarked, desc: "Biblioteca de prompts", keywords: "prompts salvos library" },
+  { href: "/dashboard/prompts", label: "Criar Prompt", icon: BookMarked, desc: "Criar e gerenciar prompts", keywords: "criar prompt prompts salvos library" },
   { href: "/dashboard/referral", label: "Indicações", icon: Gift, desc: "Indique amigos e ganhe créditos", keywords: "indicacoes referral convite" },
 ];
 

@@ -287,11 +287,11 @@ export function Trash() {
       if (item.kind === "project" && item.rawProject) {
         await restoreItem(item.rawProject.id);
         void loadProjects();
-        toast({ description: `"${item.displayName}" restaurado para Projetos Salvos.` });
+        toast({ description: `"${item.displayName}" restaurado para Biblioteca.` });
       } else if (item.kind === "prompt" && item.rawPrompt) {
         await apiFetch<{ ok: boolean }>(`/api/prompts/${item.rawPrompt.id}/restore`, { method: "POST" });
         void loadPrompts();
-        toast({ description: `"${item.displayName}" restaurado para Prompts Salvos.` });
+        toast({ description: `"${item.displayName}" restaurado para Criar Prompt.` });
       } else if (item.kind === "activity" && item.rawActivity) {
         await apiFetch<{ ok: boolean }>(`/api/history/${item.rawActivity.id}/restore`, { method: "POST" });
         void loadActivities();

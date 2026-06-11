@@ -759,7 +759,7 @@ export function CreateCampaign() {
     setIsSaving(true);
     try {
       await saveItem({ id: projectId, title, type: "campaign", platform, content, data: structuredData, hasImages: false });
-      toast({ description: "Projeto salvo em Projetos Salvos." });
+      toast({ description: "Projeto salvo na Biblioteca." });
     } catch { toast({ description: "Erro ao salvar. Tente novamente.", variant: "destructive" }); }
     finally { setIsSaving(false); }
   };
@@ -796,7 +796,7 @@ export function CreateCampaign() {
           <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-primary/5 border border-primary/20">
             <div className="flex items-center gap-2.5">
               <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
-              <p className="text-sm text-primary font-medium">Entrega restaurada de Projetos Salvos</p>
+              <p className="text-sm text-primary font-medium">Entrega restaurada da Biblioteca</p>
             </div>
             <button onClick={handleReset} className="text-xs text-muted-foreground hover:text-white transition-colors">
               Novo

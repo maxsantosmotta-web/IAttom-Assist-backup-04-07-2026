@@ -281,7 +281,7 @@ export function DashboardHome() {
           </Link>
           <Link href="/dashboard/prompts" className="inline-flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
             <BookMarked className="w-3.5 h-3.5" />
-            Prompts Salvos
+            Criar Prompt
           </Link>
         </div>
         <Link href="/dashboard/credits" className="inline-flex items-center gap-2 text-xs text-zinc-600 hover:text-zinc-400 transition-colors">

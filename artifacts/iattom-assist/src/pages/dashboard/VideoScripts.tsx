@@ -228,7 +228,7 @@ export function VideoScripts() {
             {isRestoredMode && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                <p className="text-xs text-primary">Script restaurado de Projetos Salvos</p>
+                <p className="text-xs text-primary">Script restaurado da Biblioteca</p>
               </div>
             )}
             <Card className="bg-[#111111] border-primary/20">

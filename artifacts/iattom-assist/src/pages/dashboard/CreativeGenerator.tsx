@@ -1152,7 +1152,7 @@ export function CreativeGenerator() {
             {isRestoredMode && (
               <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                <p className="text-xs text-primary">Criativo restaurado de Projetos Salvos</p>
+                <p className="text-xs text-primary">Criativo restaurado da Biblioteca</p>
               </div>
             )}
 
@@ -1298,7 +1298,7 @@ export function CreativeGenerator() {
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15"
                 >
                   <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                  <p className="text-xs text-primary">Vídeo restaurado de Projetos Salvos</p>
+                  <p className="text-xs text-primary">Vídeo restaurado da Biblioteca</p>
                 </motion.div>
               )}
               <VideoResultCard

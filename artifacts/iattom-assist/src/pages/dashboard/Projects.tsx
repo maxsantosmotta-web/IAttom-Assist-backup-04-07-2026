@@ -157,7 +157,7 @@ export function Projects() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Espaço de Trabalho</p>
-            <h2 className="text-2xl font-bold text-white mb-1">Projetos Salvos</h2>
+            <h2 className="text-2xl font-bold text-white mb-1">Biblioteca</h2>
             <p className="text-muted-foreground text-sm">
               Campanhas, conteúdos, criativos e scripts gerados e salvos.
             </p>
