@@ -544,9 +544,9 @@ NOMES OFICIAIS DOS MÓDULOS:
 - Criar Campanha
 - Criar Conteúdo
 - Criar Imagem
+- Criar Prompt
 - Scripts de Vídeo
-- Projetos Salvos
-- Criar Anúncio
+- Biblioteca
 
 TERMOS PROIBIDOS NA RESPOSTA:
 creative-generator, create-campaign, video-scripts, create-content, dashboard, route, endpoint, system prompt, user prompt, handler, backend, frontend, API interna, e qualquer nome de arquivo, rota ou variável técnica interna.

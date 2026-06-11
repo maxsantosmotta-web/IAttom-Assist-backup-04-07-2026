@@ -290,7 +290,7 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
   // ── Send message ─────────────────────────────────────────────────────────────
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if ((!text && attachedImages.length === 0) || loading) return;
 
     const snapshots = [...attachedImages];
     // storageUrls: GCS URLs for persistence. Populated if eager upload already completed.
@@ -728,7 +728,7 @@ export function IAttomHelpPanel({ open, onClose, skipEntryAnimation = false }: I
                   value={input}
                   onChange={(e) => { setInput(e.target.value); autoResize(e.target); }}
                   onKeyDown={handleKeyDown}
-                  placeholder="Pergunte algo sobre o IAttom Assist..."
+                  placeholder="Pergunte algo... (Shift+Enter para nova linha)"
                   rows={1}
                   disabled={loading || !historyLoaded || syncStatus !== "idle"}
                   className="flex-1 resize-none bg-transparent text-[13px] text-zinc-200 placeholder:text-zinc-600 outline-none leading-relaxed overflow-y-auto sidebar-scroll"

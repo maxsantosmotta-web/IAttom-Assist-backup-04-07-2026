@@ -33,11 +33,15 @@ import { IAttomHelpPanel } from "@/components/IAttomHelpPanel";
 const navItems = [
   { href: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { href: "/dashboard/find-products", label: "Buscar Produtos", icon: Search },
-  { href: "/dashboard/validate-products", label: "Validar Produtos", icon: CheckCircle },
+  { href: "/dashboard/validate-products", label: "Validar Produto", icon: CheckCircle },
   { href: "/dashboard/create-campaign", label: "Criar Campanha", icon: Megaphone },
   { href: "/dashboard/create-content", label: "Criar Conteúdo", icon: FileText },
-  { href: "/dashboard/creative-generator", label: "Gerador Criativo", icon: Sparkles },
+  { href: "/dashboard/creative-generator", label: "Criar Imagem", icon: Sparkles },
+  { href: "/dashboard/prompts", label: "Criar Prompt", icon: BookMarked },
   { href: "/dashboard/video-scripts", label: "Scripts de Vídeo", icon: Video },
+  { href: "/dashboard/projects", label: "Biblioteca", icon: FolderOpen },
+  { href: "/dashboard/history", label: "Atividades", icon: Clock },
+  { href: "/dashboard/analytics", label: "Análises", icon: BarChart2 },
   { href: "/dashboard/mercado-livre", label: "Mercado Livre", icon: ShoppingCart },
   { href: "/dashboard/shopee", label: "Shopee", icon: ShoppingBag },
   { href: "/dashboard/tiktok", label: "TikTok", icon: Music2 },
@@ -45,14 +49,11 @@ const navItems = [
   { href: "/dashboard/kiwify", label: "Kiwify", icon: Layers },
   { href: "/dashboard/facebook", label: "Facebook", icon: Facebook },
   { href: "/dashboard/instagram", label: "Instagram", icon: Instagram },
-  { href: "/dashboard/projects", label: "Biblioteca", icon: FolderOpen },
-  { href: "/dashboard/history", label: "Atividades", icon: Clock },
-  { href: "/dashboard/analytics", label: "Análises", icon: BarChart2 },
-  { href: "/dashboard/prompts", label: "Criar Prompt", icon: BookMarked },
-  { href: "/dashboard/referral", label: "Indicações", icon: Gift },
-  { href: "/dashboard/credits", label: "Créditos", icon: Zap },
-  { href: "/dashboard/billing", label: "Faturamento", icon: CreditCard },
+  { separator: true },
   { href: "/dashboard/trash", label: "Lixeira", icon: Trash2 },
+  { href: "/dashboard/referral", label: "Indicações", icon: Gift },
+  { href: "/dashboard/billing", label: "Faturamento", icon: CreditCard },
+  { href: "/dashboard/credits", label: "Créditos", icon: Zap },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
 ];
 
@@ -177,7 +178,10 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         <p className="px-3 pb-2 text-[9px] font-black tracking-widest text-zinc-700 uppercase">
           Espaço de Trabalho
         </p>
-        {navItems.map((item) => {
+        {navItems.map((item, idx) => {
+          if ("separator" in item) {
+            return <div key={`sep-${idx}`} className="my-1.5 border-t border-white/[0.06]" />;
+          }
           const isActive = location === item.href;
           const Icon = item.icon;
           return (
