@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { purgeExpired, type SavedItemBase } from "@/lib/trashStorage";
 import { deleteProjectAssets } from "@/lib/assetStorage";
 import { useSavedItems } from "@/hooks/useSavedItems";
+import { MediaTagBadges } from "@/components/ui/MediaTagBadges";
 
 interface SavedItem extends SavedItemBase {
   type: "campaign" | "content" | "creative" | "video_script" | "product_discovery" | "product_validation";
@@ -287,11 +288,7 @@ export function Projects() {
                             {platformLabels[item.platform]}
                           </Badge>
                         )}
-                        {item.hasImages && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-violet-400 bg-violet-500/8 border-violet-500/15">
-                            imagens
-                          </Badge>
-                        )}
+                        <MediaTagBadges hasImages={item.hasImages} hasVideos={!!item.videosData} />
                       </div>
 
                       {/* Preview do conteúdo */}

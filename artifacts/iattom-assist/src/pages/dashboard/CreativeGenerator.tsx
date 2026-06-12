@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Loader2, RefreshCw, AlertCircle, Image, Save, Download, Video, ChevronRight } from "lucide-react";
+import { MediaTagBadges } from "@/components/ui/MediaTagBadges";
 import { useGetCreditsBalance, getGetCreditsBalanceQueryKey } from "@workspace/api-client-react";
 import { clearModuleState, loadModuleState, saveModuleState } from "@/hooks/useModulePersistence";
 import { saveProjectAssets } from "@/lib/assetStorage";
@@ -1373,15 +1374,7 @@ export function CreativeGenerator() {
               </div>
             ) : (
               <div className="max-h-64 overflow-y-auto space-y-1.5 mt-2 pr-0.5">
-                {existingProjects.map((proj) => {
-                  const hasImg = !!proj.hasImages;
-                  const hasVid = !!proj.videosData;
-                  const mediaLabel = hasImg && hasVid
-                    ? "Imagem e vídeo existentes"
-                    : hasImg ? "Imagem existente"
-                    : hasVid ? "Vídeo existente"
-                    : null;
-                  return (
+                {existingProjects.map((proj) => (
                   <button
                     key={proj.id}
                     onClick={() => handleSelectProject(proj)}
@@ -1393,14 +1386,11 @@ export function CreativeGenerator() {
                         {({ campaign: "Campanha", content: "Conteúdo", creative: "Criativo", video_script: "Script", product_discovery: "Produtos", product_validation: "Validação" }[proj.type] ?? "Projeto")}
                       </p>
                     </div>
-                    {mediaLabel && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-400 border border-white/[0.08] shrink-0 whitespace-nowrap">
-                        {mediaLabel}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <MediaTagBadges hasImages={proj.hasImages} hasVideos={!!proj.videosData} />
+                    </div>
                   </button>
-                  );
-                })}
+                ))}
               </div>
             )}
             <DialogFooter className="mt-3">
@@ -1506,15 +1496,7 @@ export function CreativeGenerator() {
               </div>
             ) : (
               <div className="max-h-64 overflow-y-auto space-y-1.5 mt-2 pr-0.5">
-                {videoSaveProjects.map((proj) => {
-                  const hasImg = !!proj.hasImages;
-                  const hasVid = !!proj.videosData;
-                  const mediaLabel = hasImg && hasVid
-                    ? "Imagem e vídeo existentes"
-                    : hasImg ? "Imagem existente"
-                    : hasVid ? "Vídeo existente"
-                    : null;
-                  return (
+                {videoSaveProjects.map((proj) => (
                   <button
                     key={proj.id}
                     onClick={() => void doVideoSaveToExisting(proj)}
@@ -1526,16 +1508,15 @@ export function CreativeGenerator() {
                         {({ campaign: "Campanha", content: "Conteúdo", creative: "Criativo", video_script: "Script", product_discovery: "Produtos", product_validation: "Validação" }[proj.type] ?? "Projeto")}
                       </p>
                     </div>
-                    {mediaLabel ? (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-400 border border-white/[0.08] shrink-0 whitespace-nowrap">
-                        {mediaLabel}
-                      </span>
+                    {(!!proj.hasImages || !!proj.videosData) ? (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <MediaTagBadges hasImages={proj.hasImages} hasVideos={!!proj.videosData} />
+                      </div>
                     ) : (
                       <ChevronRight className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
                     )}
                   </button>
-                  );
-                })}
+                ))}
               </div>
             )}
             <DialogFooter className="mt-3">

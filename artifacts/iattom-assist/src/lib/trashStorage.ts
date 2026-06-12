@@ -10,6 +10,7 @@ export interface SavedItemBase {
   content: string;
   data?: string;
   hasImages?: boolean;
+  videosData?: string | null;
   createdAt: string;
 }
 
