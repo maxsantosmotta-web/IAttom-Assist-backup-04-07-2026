@@ -269,7 +269,7 @@ export function CreativeGenerator() {
   const [pendingVideoId, setPendingVideoId] = useState<string | null>(null);
   const [isCheckingVideoId, setIsCheckingVideoId] = useState(false);
   const { toast } = useToast();
-  const { saveItem, saveItemAssets, getItems, saveItemVideoAssets } = useSavedItems();
+  const { saveItem, saveItemAssets, getItems, saveItemVideoAssets, getItemVideoAssets } = useSavedItems();
   const { isFetching: fetchingCredits, refetch: refetchCredits } = useGetCreditsBalance({
     query: { queryKey: getGetCreditsBalanceQueryKey(), staleTime: 0 },
   });
@@ -464,7 +464,7 @@ export function CreativeGenerator() {
     if (videoStatus === "done" && videoResult) {
       saveModuleState("creative", { type: "video", form: { videoPrompt, videoEstilo, videoAvatar, videoFormato, videoDuration }, result: videoResult });
     }
-  }, [videoStatus, videoResult, videoPrompt, videoAvatar, videoFormato, videoDuration]);
+  }, [videoStatus, videoResult, videoPrompt, videoEstilo, videoAvatar, videoFormato, videoDuration]);
 
   const isGenerating = status === "generating";
   const isDone = status === "done";
@@ -779,14 +779,17 @@ export function CreativeGenerator() {
     setVideoSaveDialogOpen(false);
     setVideoIsSaving(true);
     try {
+      const existing = await getItemVideoAssets(proj.id);
       const videoEntry: VideoAssetData = {
         videoUrl: activeVideoResult.videoUrl,
         title: `Vídeo — ${activeVideoResult.prompt?.slice(0, 60) || "Gerado"}`,
         durationSeconds: activeVideoResult.durationSeconds,
         savedAt: new Date().toISOString(),
         provider: "heygen",
+        videoEstilo: activeVideoResult.videoEstilo,
+        videoAvatar: activeVideoResult.videoAvatar,
       };
-      await saveItemVideoAssets(proj.id, [videoEntry]);
+      await saveItemVideoAssets(proj.id, [...existing, videoEntry]);
       toast({ description: "Vídeo adicionado ao projeto." });
     } catch {
       toast({ description: "Erro ao salvar. Tente novamente.", variant: "destructive" });

@@ -32,6 +32,8 @@ export interface VideoAssetData {
   durationSeconds?: number;
   savedAt: string;
   provider?: string;
+  videoEstilo?: string;
+  videoAvatar?: string;
 }
 
 async function apiFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
