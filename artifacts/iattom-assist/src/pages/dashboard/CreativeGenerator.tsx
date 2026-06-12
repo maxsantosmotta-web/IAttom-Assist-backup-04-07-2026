@@ -790,6 +790,15 @@ export function CreativeGenerator() {
         videoAvatar: activeVideoResult.videoAvatar,
       };
       await saveItemVideoAssets(proj.id, [...existing, videoEntry]);
+      // Atualiza localStorage imediatamente para a Biblioteca refletir o badge sem aguardar syncFromDB
+      try {
+        const raw = localStorage.getItem("iattom_saved_items_v1");
+        if (raw) {
+          const items = JSON.parse(raw) as Array<Record<string, unknown>>;
+          const patched = items.map(i => i.id === proj.id ? { ...i, videosData: "1" } : i);
+          localStorage.setItem("iattom_saved_items_v1", JSON.stringify(patched));
+        }
+      } catch { /* ignore */ }
       toast({ description: "Vídeo adicionado ao projeto." });
     } catch {
       toast({ description: "Erro ao salvar. Tente novamente.", variant: "destructive" });
@@ -1489,7 +1498,7 @@ export function CreativeGenerator() {
                 <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0" />
               </button>
               <button
-                onClick={() => { setVideoSaveDialogStep("pick-project"); void loadVideoProjects(); }}
+                onClick={() => { setVideoLoadingProjects(true); setVideoSaveDialogStep("pick-project"); void loadVideoProjects(); }}
                 disabled={videoIsSaving}
                 className="w-full flex items-center justify-between gap-3 p-4 rounded-xl border border-white/[0.08] bg-[#0a0a0a] hover:border-primary/30 hover:bg-primary/5 transition-colors text-left disabled:opacity-50"
               >
