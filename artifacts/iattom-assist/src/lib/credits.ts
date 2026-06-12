@@ -19,7 +19,7 @@ export const PLAN_CREDITS = {
 } as const;
 
 export const PLAN_NAMES: Record<string, string> = {
-  free:     "START",
+  free:     "FREE",
   pro:      "COMPLETO",
   business: "PREMIUM",
   agency:   "PRO",
