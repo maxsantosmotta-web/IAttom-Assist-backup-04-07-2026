@@ -761,43 +761,37 @@ components:
       properties:
         balance:
           type: integer
+        creativeBalance:
+          type: integer
         plan:
           type: string
           enum: [free, pro, business, agency]
         planLimit:
           type: integer
+        creativePlanLimit:
+          type: integer
         percentage:
+          type: number
+        creativePercentage:
           type: number
         lowCredit:
           type: boolean
+        lowCreativeCredit:
+          type: boolean
         featureCosts:
           type: object
-          properties:
-            product_discovery:
-              type: integer
-            product_validation:
-              type: integer
-            campaign:
-              type: integer
-            content:
-              type: integer
-            creative:
-              type: integer
-            video_script:
-              type: integer
-          required:
-            - product_discovery
-            - product_validation
-            - campaign
-            - content
-            - creative
-            - video_script
+          additionalProperties:
+            type: integer
       required:
         - balance
+        - creativeBalance
         - plan
         - planLimit
+        - creativePlanLimit
         - percentage
+        - creativePercentage
         - lowCredit
+        - lowCreativeCredit
         - featureCosts
 
     CreditTransaction:

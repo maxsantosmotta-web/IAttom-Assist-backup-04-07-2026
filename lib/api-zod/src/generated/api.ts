@@ -215,18 +215,15 @@ export const GetMeResponse = zod.object({
  */
 export const GetCreditsBalanceResponse = zod.object({
   balance: zod.number(),
+  creativeBalance: zod.number(),
   plan: zod.enum(["free", "pro", "business", "agency"]),
   planLimit: zod.number(),
+  creativePlanLimit: zod.number(),
   percentage: zod.number(),
+  creativePercentage: zod.number(),
   lowCredit: zod.boolean(),
-  featureCosts: zod.object({
-    product_discovery: zod.number(),
-    product_validation: zod.number(),
-    campaign: zod.number(),
-    content: zod.number(),
-    creative: zod.number(),
-    video_script: zod.number(),
-  }),
+  lowCreativeCredit: zod.boolean(),
+  featureCosts: zod.record(zod.string(), zod.number()),
 });
 
 /**

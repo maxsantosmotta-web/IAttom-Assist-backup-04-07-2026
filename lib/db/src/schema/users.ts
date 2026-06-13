@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull().default("user"),
   plan: planEnum("plan").notNull().default("free"),
   credits: integer("credits").notNull().default(0),
+  creativeCredits: integer("creative_credits").notNull().default(0),
   betaAccess: boolean("beta_access").notNull().default(false),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),

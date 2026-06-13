@@ -7,21 +7,34 @@ export const FEATURE_COSTS = {
   campaign: 10,
   content: 8,
   creativeImage1: 10,
-  creativeImage2: 15,
-  creativeImage3: 20,
+  creativeImage2: 20,
+  creativeImage3: 30,
   video_script: 10,
   prompt_creation: 5,
 } as const;
 
 export const PLAN_CREDITS = {
   free: 0,
-  pro: 700,
-  business: 1500,
-  agency: 3250,
+  pro: 600,
+  business: 1350,
+  agency: 3000,
+} as const;
+
+export const PLAN_CREATIVE_CREDITS = {
+  free: 0,
+  pro: 100,
+  business: 150,
+  agency: 250,
 } as const;
 
 export type FeatureKey = keyof typeof FEATURE_COSTS;
 export type PlanKey = keyof typeof PLAN_CREDITS;
+
+export const CREATIVE_FEATURES = new Set<FeatureKey>([
+  "creativeImage1",
+  "creativeImage2",
+  "creativeImage3",
+]);
 
 export async function getUserWithCredits(clerkId: string) {
   const [user] = await db.select().from(users).where(eq(users.clerkId, clerkId));
@@ -30,25 +43,31 @@ export async function getUserWithCredits(clerkId: string) {
 
 export async function deductCredits(clerkId: string, feature: FeatureKey) {
   const cost = FEATURE_COSTS[feature];
+  const isCreative = CREATIVE_FEATURES.has(feature);
   const [user] = await db.select().from(users).where(eq(users.clerkId, clerkId));
 
   if (!user) return { success: false as const, error: "user_not_found" as const };
 
-  if (user.credits < cost) {
+  const currentBalance = isCreative ? user.creativeCredits : user.credits;
+
+  if (currentBalance < cost) {
     return {
       success: false as const,
       error: "insufficient_credits" as const,
-      balance: user.credits,
+      balance: currentBalance,
       required: cost,
     };
   }
 
-  const balanceBefore = user.credits;
+  const balanceBefore = currentBalance;
   const balanceAfter = balanceBefore - cost;
 
   const [updated] = await db
     .update(users)
-    .set({ credits: balanceAfter, updatedAt: new Date() })
+    .set({
+      ...(isCreative ? { creativeCredits: balanceAfter } : { credits: balanceAfter }),
+      updatedAt: new Date(),
+    })
     .where(eq(users.clerkId, clerkId))
     .returning();
 
@@ -59,6 +78,7 @@ export async function deductCredits(clerkId: string, feature: FeatureKey) {
       amount: -cost,
       type: "debit",
       feature,
+      balanceType: isCreative ? "creative" : "general",
       description: ({
         product_discovery: "Uso do Buscador de Produtos",
         product_validation: "Uso do Validador de Produtos",

@@ -130,21 +130,18 @@ export const CreditsBalancePlan = {
   agency: "agency",
 } as const;
 
-export type CreditsBalanceFeatureCosts = {
-  product_discovery: number;
-  product_validation: number;
-  campaign: number;
-  content: number;
-  creative: number;
-  video_script: number;
-};
+export type CreditsBalanceFeatureCosts = { [key: string]: number };
 
 export interface CreditsBalance {
   balance: number;
+  creativeBalance: number;
   plan: CreditsBalancePlan;
   planLimit: number;
+  creativePlanLimit: number;
   percentage: number;
+  creativePercentage: number;
   lowCredit: boolean;
+  lowCreativeCredit: boolean;
   featureCosts: CreditsBalanceFeatureCosts;
 }
 

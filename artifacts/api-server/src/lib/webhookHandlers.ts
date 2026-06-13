@@ -5,10 +5,17 @@ import { getStripeSync, getUncachableStripeClient } from "./stripeClient.js";
 import { logger } from "./logger.js";
 
 const PLAN_CREDITS: Record<string, number> = {
-  free: 50,
-  pro: 500,
-  business: 2000,
-  agency: 10000,
+  free: 0,
+  pro: 600,
+  business: 1350,
+  agency: 3000,
+};
+
+const PLAN_CREATIVE_CREDITS: Record<string, number> = {
+  free: 0,
+  pro: 100,
+  business: 150,
+  agency: 250,
 };
 
 type ValidPlan = "free" | "pro" | "business" | "agency";
@@ -55,6 +62,7 @@ async function handleSubscriptionChange(
     }
 
     const newCredits = PLAN_CREDITS[planKey];
+    const newCreativeCredits = PLAN_CREATIVE_CREDITS[planKey] ?? 0;
     const balanceBefore = user.credits;
     const balanceAfter = newCredits;
 
@@ -63,6 +71,7 @@ async function handleSubscriptionChange(
       .set({
         plan: planKey,
         credits: newCredits,
+        creativeCredits: newCreativeCredits,
         stripeSubscriptionId: subscription.id,
         stripeSubscriptionStatus: status,
         helpMessagesUsed: 0,
@@ -99,6 +108,7 @@ async function handleSubscriptionChange(
       .set({
         plan: "free",
         credits: PLAN_CREDITS.free,
+        creativeCredits: PLAN_CREATIVE_CREDITS.free,
         stripeSubscriptionId: subscription.id,
         stripeSubscriptionStatus: status,
         updatedAt: new Date(),
@@ -146,6 +156,7 @@ async function handleSubscriptionDeleted(
     .set({
       plan: "free",
       credits: PLAN_CREDITS.free,
+      creativeCredits: PLAN_CREATIVE_CREDITS.free,
       stripeSubscriptionId: null,
       stripeSubscriptionStatus: "canceled",
       updatedAt: new Date(),

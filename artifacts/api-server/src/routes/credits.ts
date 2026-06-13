@@ -8,7 +8,15 @@ import {
   UseCreditsBody,
   UseCreditsResponse,
 } from "@workspace/api-zod";
-import { deductCredits, FEATURE_COSTS, PLAN_CREDITS, type FeatureKey, getTransactionCount } from "../lib/credits";
+import {
+  deductCredits,
+  FEATURE_COSTS,
+  PLAN_CREDITS,
+  PLAN_CREATIVE_CREDITS,
+  CREATIVE_FEATURES,
+  type FeatureKey,
+  getTransactionCount,
+} from "../lib/credits";
 
 const router: IRouter = Router();
 
@@ -23,16 +31,25 @@ router.get("/credits/balance", requireAuth, async (req, res): Promise<void> => {
 
   const plan = user.plan as keyof typeof PLAN_CREDITS;
   const planLimit = PLAN_CREDITS[plan] ?? PLAN_CREDITS.free;
+  const creativePlanLimit = PLAN_CREATIVE_CREDITS[plan] ?? PLAN_CREATIVE_CREDITS.free;
 
   const percentage = planLimit > 0 ? Math.min(100, Math.round((user.credits / planLimit) * 100)) : 0;
+  const creativePercentage = creativePlanLimit > 0
+    ? Math.min(100, Math.round((user.creativeCredits / creativePlanLimit) * 100))
+    : 0;
   const lowCredit = percentage < 20;
+  const lowCreativeCredit = creativePercentage < 20;
 
   res.json(GetCreditsBalanceResponse.parse({
     balance: user.credits,
+    creativeBalance: user.creativeCredits,
     plan: user.plan,
     planLimit,
+    creativePlanLimit,
     percentage,
+    creativePercentage,
     lowCredit,
+    lowCreativeCredit,
     featureCosts: FEATURE_COSTS,
   }));
 });
@@ -97,9 +114,6 @@ router.post("/credits/use", requireAuth, async (req, res): Promise<void> => {
   }));
 });
 
-// ── POST /credits/refund — devolve créditos após falha técnica de geração ─────
-// Chamado pelo frontend quando useAiStream retorna status "error".
-// Só reembolsa se a feature key for válida e tiver custo > 0.
 router.post("/credits/refund", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const { feature } = req.body as { feature?: string };
@@ -109,12 +123,20 @@ router.post("/credits/refund", requireAuth, async (req, res): Promise<void> => {
     res.json({ ok: true, refunded: 0 });
     return;
   }
+  const isCreative = CREATIVE_FEATURES.has(featureKey);
   try {
-    await db
-      .update(users)
-      .set({ credits: sql`${users.credits} + ${cost}` })
-      .where(eq(users.clerkId, clerkUserId));
-    req.log.info({ clerkUserId, feature: featureKey, cost }, "credits: reembolso por falha técnica");
+    if (isCreative) {
+      await db
+        .update(users)
+        .set({ creativeCredits: sql`${users.creativeCredits} + ${cost}` })
+        .where(eq(users.clerkId, clerkUserId));
+    } else {
+      await db
+        .update(users)
+        .set({ credits: sql`${users.credits} + ${cost}` })
+        .where(eq(users.clerkId, clerkUserId));
+    }
+    req.log.info({ clerkUserId, feature: featureKey, cost, isCreative }, "credits: reembolso por falha técnica");
     res.json({ ok: true, refunded: cost });
   } catch (err) {
     req.log.error({ err }, "credits: falha ao processar reembolso");

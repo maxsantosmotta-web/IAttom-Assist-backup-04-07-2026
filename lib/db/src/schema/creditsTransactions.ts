@@ -8,6 +8,7 @@ export const creditsTransactions = pgTable("credits_transactions", {
   amount: integer("amount").notNull(),
   type: creditTypeEnum("type").notNull(),
   feature: text("feature"),
+  balanceType: text("balance_type"),
   description: text("description").notNull(),
   balanceBefore: integer("balance_before").notNull(),
   balanceAfter: integer("balance_after").notNull(),

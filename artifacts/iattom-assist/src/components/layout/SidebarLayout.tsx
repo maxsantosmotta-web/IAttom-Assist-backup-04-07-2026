@@ -138,6 +138,12 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const creditBarColor = getCreditBarColor(creditPct);
   const creditTextColor = getCreditColor(creditPct);
   const isLowCredit = creditsData?.lowCredit ?? false;
+  const creativeBalance = creditsData?.creativeBalance ?? 0;
+  const creativePct = creditsData?.creativePercentage ?? 0;
+  const creativePlanLimit = creditsData?.creativePlanLimit ?? 0;
+  const creativeBarColor = getCreditBarColor(creativePct);
+  const creativeTextColor = getCreditColor(creativePct);
+  const isLowCreativeCredit = creditsData?.lowCreativeCredit ?? false;
 
   const SidebarContent = () => (
     <>
@@ -280,25 +286,52 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       {/* Credits Widget */}
       {creditsData && (
         <div className="px-4 py-3.5 border-t border-white/[0.06] shrink-0">
-          <Link href="/dashboard/credits" className="block group">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-primary fill-primary" />
-                <span className="text-[11px] text-zinc-500 font-semibold tracking-wide">Créditos</span>
+          <Link href="/dashboard/credits" className="block group space-y-2.5">
+            {/* Créditos Gerais */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Zap className="w-3 h-3 text-primary fill-primary" />
+                  <span className="text-[11px] text-zinc-500 font-semibold tracking-wide">Créditos</span>
+                </div>
+                <span className={`text-[11px] font-bold tabular-nums ${creditTextColor}`}>
+                  {creditBalance.toLocaleString()}
+                  <span className="text-zinc-700 font-normal"> / {creditsData.planLimit.toLocaleString()}</span>
+                </span>
               </div>
-              <span className={`text-[11px] font-bold tabular-nums ${creditTextColor}`}>
-                {creditBalance.toLocaleString()}
-                <span className="text-zinc-700 font-normal"> / {creditsData.planLimit.toLocaleString()}</span>
-              </span>
+              <div className="h-1 rounded-full bg-white/[0.05] overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${creditBarColor}`}
+                  style={{ width: `${Math.min(creditPct, 100)}%` }}
+                />
+              </div>
+              {isLowCredit && (
+                <p className="text-[10px] text-red-400 mt-1 font-medium">Créditos baixos</p>
+              )}
             </div>
-            <div className="h-1 rounded-full bg-white/[0.05] overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-700 ${creditBarColor}`}
-                style={{ width: `${Math.min(creditPct, 100)}%` }}
-              />
-            </div>
-            {isLowCredit && (
-              <p className="text-[10px] text-red-400 mt-1.5 font-medium">Créditos baixos — atualize seu plano</p>
+            {/* Créditos de Criativo */}
+            {creativePlanLimit > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 text-violet-400 text-[10px] font-black flex items-center justify-center">✦</span>
+                    <span className="text-[11px] text-zinc-500 font-semibold tracking-wide">Criativos</span>
+                  </div>
+                  <span className={`text-[11px] font-bold tabular-nums ${creativeTextColor}`}>
+                    {creativeBalance.toLocaleString()}
+                    <span className="text-zinc-700 font-normal"> / {creativePlanLimit.toLocaleString()}</span>
+                  </span>
+                </div>
+                <div className="h-1 rounded-full bg-white/[0.05] overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${creativeBarColor}`}
+                    style={{ width: `${Math.min(creativePct, 100)}%` }}
+                  />
+                </div>
+                {isLowCreativeCredit && (
+                  <p className="text-[10px] text-red-400 mt-1 font-medium">Criativos baixos</p>
+                )}
+              </div>
             )}
           </Link>
         </div>

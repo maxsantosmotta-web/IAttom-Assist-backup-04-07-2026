@@ -6,7 +6,7 @@ import {
   useGetCreditsBalance,
   getGetCreditsBalanceQueryKey,
 } from "@workspace/api-client-react";
-import { PLAN_NAMES, PLAN_CREDITS, FEATURE_COSTS } from "@/lib/credits";
+import { PLAN_NAMES, PLAN_CREDITS, PLAN_CREATIVE_CREDITS, FEATURE_COSTS, CREATIVE_FEATURES } from "@/lib/credits";
 import type { FeatureKey } from "@/lib/credits";
 
 export function useUserAccess() {
@@ -27,27 +27,37 @@ export function useUserAccess() {
   const isAdmin = me?.role === "admin";
   const planSlug = (me?.plan ?? "free") as keyof typeof PLAN_CREDITS;
   const planName = PLAN_NAMES[planSlug] ?? planSlug.toUpperCase();
+
   const credits = balance?.balance ?? 0;
+  const creativeCredits = balance?.creativeBalance ?? 0;
   const planLimit = PLAN_CREDITS[planSlug] ?? PLAN_CREDITS.free;
+  const creativePlanLimit = PLAN_CREATIVE_CREDITS[planSlug] ?? PLAN_CREATIVE_CREDITS.free;
   const percentage = balance?.percentage ?? 0;
+  const creativePercentage = balance?.creativePercentage ?? 0;
   const isLoaded = !meLoading && me !== undefined;
 
   const canUseFeature = (feature: FeatureKey): boolean => {
     if (isAdmin) return true;
+    if (CREATIVE_FEATURES.has(feature)) return creativeCredits >= FEATURE_COSTS[feature];
     return credits >= FEATURE_COSTS[feature];
   };
 
-  const unlockedModules = (Object.keys(FEATURE_COSTS) as FeatureKey[]).filter(
-    (f) => isAdmin || credits >= FEATURE_COSTS[f],
-  );
+  const unlockedModules = (Object.keys(FEATURE_COSTS) as FeatureKey[]).filter((f) => {
+    if (isAdmin) return true;
+    if (CREATIVE_FEATURES.has(f)) return creativeCredits >= FEATURE_COSTS[f];
+    return credits >= FEATURE_COSTS[f];
+  });
 
   return {
     isAdmin,
     planSlug,
     planName,
     credits,
+    creativeCredits,
     planLimit,
+    creativePlanLimit,
     percentage,
+    creativePercentage,
     isLoaded,
     canUseFeature,
     unlockedModules,
