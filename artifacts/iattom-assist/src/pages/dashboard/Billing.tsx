@@ -284,7 +284,7 @@ export function Billing() {
   const checkout = useCreateCheckoutSession({
     mutation: {
       onSuccess: (data) => { if (data.url) window.location.href = data.url; },
-      onError: () => toast({ title: "Erro no checkout", description: "Não foi possível iniciar o checkout. Tente novamente.", variant: "destructive" }),
+      onError: () => toast({ title: "Erro ao iniciar checkout", description: "Não foi possível iniciar o checkout. Tente novamente.", variant: "destructive" }),
     },
   });
   const portal = useCreateBillingPortal({
@@ -347,7 +347,7 @@ export function Billing() {
       if (!resp.ok) throw new Error(data.error ?? "Erro");
       if (data.url) window.location.href = data.url;
     } catch {
-      toast({ title: "Erro ao iniciar compra", description: "Tente novamente em instantes.", variant: "destructive" });
+      toast({ title: "Erro ao iniciar checkout", description: "Não foi possível iniciar o checkout. Tente novamente.", variant: "destructive" });
     } finally {
       setCreditsPending(null);
     }
