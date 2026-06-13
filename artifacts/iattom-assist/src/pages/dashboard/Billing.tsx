@@ -143,7 +143,7 @@ const PLAN_DESC: Record<string, string> = {
   free:     "Plano de demonstração para conhecer o IAttom Assist antes de contratar um plano pago.",
   pro:      "Ideal para quem deseja começar a criar campanhas, imagens e utilizar os principais recursos do IAttom Assist.",
   business: "Mais controle, mais produção, mais oportunidades de venda.",
-  agency:   "Experiência máxima. Ideal para agências e times.",
+  agency:   "Todos os recursos do IAttom Assist para criar, validar, publicar e escalar com máxima capacidade.",
 };
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   active:   { label: "Ativo",               color: "text-emerald-400" },
@@ -609,6 +609,30 @@ export function Billing() {
                           <li key={f} className="flex items-start gap-2">
                             <CircleSlash className="w-3.5 h-3.5 shrink-0 mt-0.5 text-zinc-600" />
                             <span className="text-xs text-zinc-600">{f}</span>
+                          </li>
+                        ))}
+                      </>
+                    ) : planKey === "agency" ? (
+                      <>
+                        {[
+                          "Buscar Produtos",
+                          "Validar Produto",
+                          "Criar Prompt",
+                          "Criar Conteúdo",
+                          "Criar Campanha",
+                          "Criar Imagem",
+                          "Scripts de Vídeo",
+                          "Gerador de Vídeo (Opcional - consultar pacote)",
+                          "IAttom Help",
+                          "Navegação pela Plataforma",
+                          "Publicação Assistida",
+                          "Análise",
+                          "Monitoramento",
+                          "Biblioteca",
+                        ].map((f) => (
+                          <li key={f} className="flex items-start gap-2">
+                            <Check className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#E8C96A]" />
+                            <span className="text-xs text-zinc-400">{f}</span>
                           </li>
                         ))}
                       </>
