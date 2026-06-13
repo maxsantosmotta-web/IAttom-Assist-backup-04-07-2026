@@ -7,10 +7,10 @@ import { requireAdmin } from "../middlewares/requireAdmin.js";
 const router: IRouter = Router();
 
 const PLAN_CREDITS: Record<string, number> = {
-  free: 50,
-  pro: 500,
-  business: 2000,
-  agency: 10000,
+  free: 0,
+  pro: 400,
+  business: 1000,
+  agency: 2300,
 };
 
 const PLAN_MRR: Record<string, number> = {

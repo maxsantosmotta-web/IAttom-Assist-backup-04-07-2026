@@ -111,6 +111,8 @@ async function handleSubscriptionChange(
         creativeCredits: PLAN_CREATIVE_CREDITS.free,
         stripeSubscriptionId: subscription.id,
         stripeSubscriptionStatus: status,
+        helpMessagesUsed: 0,
+        helpUsedResetAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(users.clerkId, user.clerkId));
@@ -159,6 +161,8 @@ async function handleSubscriptionDeleted(
       creativeCredits: PLAN_CREATIVE_CREDITS.free,
       stripeSubscriptionId: null,
       stripeSubscriptionStatus: "canceled",
+      helpMessagesUsed: 0,
+      helpUsedResetAt: new Date(),
       updatedAt: new Date(),
     })
     .where(eq(users.clerkId, user.clerkId));
