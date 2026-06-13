@@ -666,7 +666,7 @@ export function Billing() {
                         <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                       )}
                       {planKey === "free"
-                        ? "Começar grátis"
+                        ? "Começar GRÁTIS"
                         : hasActiveSub && isUpgrade
                         ? `Fazer Upgrade`
                         : `Assinar ${PLAN_NAMES[planKey] ?? plan.name}`}
