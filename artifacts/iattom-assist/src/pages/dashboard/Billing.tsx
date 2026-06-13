@@ -650,6 +650,7 @@ export function Billing() {
                           "Criar Prompt",
                           "Criar Campanha",
                           "Criar Imagem",
+                          "Gerador de Vídeo (Opcional - consultar pacote)",
                           "IAttom Help",
                           "Navegação pela Plataforma",
                           "Publicação Assistida",
