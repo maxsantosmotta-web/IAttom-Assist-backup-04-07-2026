@@ -3,7 +3,9 @@ import { db, users } from "@workspace/db";
 import { getUncachableStripeClient } from "./stripeClient.js";
 
 const APP_ORIGIN =
-  process.env.REPLIT_DOMAINS
+  process.env.APP_PUBLIC_URL
+    ? process.env.APP_PUBLIC_URL.replace(/\/$/, "")
+    : process.env.REPLIT_DOMAINS
     ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
     : "http://localhost:80";
 

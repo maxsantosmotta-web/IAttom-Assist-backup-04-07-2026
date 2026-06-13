@@ -29,7 +29,7 @@ const CREDIT_PACKAGES = [
 /* ─── image packages ─────────────────────────────────────────────────── */
 const IMAGE_PACKAGES = [
   {
-    id: "image_20", tag: "CRIATIVO 20", images: 20, price: "R$ 47,00",
+    id: "creative_20", tag: "CRIATIVO 20", images: 20, price: "R$ 47,00",
     bg: "bg-[#0a080e]",
     border: "border-violet-500/50 shadow-[0_0_36px_-6px_rgba(139,92,246,0.22)] hover:shadow-[0_0_44px_-6px_rgba(139,92,246,0.30)]",
     topLine: "via-violet-400/70",
@@ -41,7 +41,7 @@ const IMAGE_PACKAGES = [
     btn: "bg-violet-600 text-white hover:bg-violet-500 font-bold",
   },
   {
-    id: "image_35", tag: "CRIATIVO 35", images: 35, price: "R$ 79,00",
+    id: "creative_35", tag: "CRIATIVO 35", images: 35, price: "R$ 79,00",
     bg: "bg-[#040b07]",
     border: "border-emerald-700/40 hover:border-emerald-700/55 shadow-[0_0_36px_-4px_rgba(6,78,59,0.25)]",
     topLine: "via-emerald-600/40",
@@ -53,7 +53,7 @@ const IMAGE_PACKAGES = [
     btn: "bg-emerald-800 text-white hover:bg-emerald-700 font-bold",
   },
   {
-    id: "image_50", tag: "CRIATIVO 50", images: 50, price: "R$ 89,00",
+    id: "creative_50", tag: "CRIATIVO 50", images: 50, price: "R$ 89,00",
     bg: "bg-[#0e0c06]",
     border: "border-[#C9A84C]/55 shadow-[0_0_36px_-4px_rgba(201,168,76,0.20)] hover:shadow-[0_0_44px_-4px_rgba(201,168,76,0.28)]",
     topLine: "via-[#C9A84C]/60",
