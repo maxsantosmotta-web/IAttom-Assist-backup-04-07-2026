@@ -38,3 +38,4 @@ export * from "./userMlConnections";
 export * from "./userTiktokConnections";
 export * from "./savedItems";
 export * from "./helpMessages";
+export * from "./videoTransactions";

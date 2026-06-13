@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   stripeSubscriptionStatus: text("stripe_subscription_status"),
   extraCredits: integer("extra_credits").notNull().default(0),
   extraCreativeCredits: integer("extra_creative_credits").notNull().default(0),
+  videoBalance: integer("video_balance").notNull().default(0),
   helpMessagesUsed: integer("help_messages_used").notNull().default(0),
   helpUsedResetAt: timestamp("help_used_reset_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

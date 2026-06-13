@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { eq } from "drizzle-orm";
-import { db, users, creditsTransactions } from "@workspace/db";
+import { db, users, creditsTransactions, videoTransactions } from "@workspace/db";
 import { getStripeSync, getUncachableStripeClient } from "./stripeClient.js";
 import { logger } from "./logger.js";
 
@@ -192,30 +192,36 @@ async function handlePackagePurchase(
 
   const isCreditPack   = type === "credit_pack" || type === "credit_purchase";
   const isCreativePack = type === "creative_pack";
+  const isVideoPack    = type === "video_pack";
 
-  if (!isCreditPack && !isCreativePack) return;
+  if (!isCreditPack && !isCreativePack && !isVideoPack) return;
 
   if (!clerkUserId) {
     logger.warn({ sessionId: session.id }, "Package purchase: missing clerkUserId in metadata");
     return;
   }
 
-  const amount = parseInt(meta.amount ?? meta.credits ?? "0", 10);
-  if (!amount || amount <= 0) {
-    logger.warn({ sessionId: session.id }, "Package purchase: invalid amount in metadata");
-    return;
-  }
-
-  // Idempotency — skip if this session was already processed
-  const existing = await db
-    .select({ id: creditsTransactions.id })
-    .from(creditsTransactions)
-    .where(eq(creditsTransactions.stripeSessionId, session.id))
-    .limit(1);
-
-  if (existing.length > 0) {
-    logger.info({ sessionId: session.id }, "Package purchase: already processed, skipping");
-    return;
+  // Idempotency — check per pack type
+  if (isVideoPack) {
+    const existing = await db
+      .select({ id: videoTransactions.id })
+      .from(videoTransactions)
+      .where(eq(videoTransactions.stripeSessionId, session.id))
+      .limit(1);
+    if (existing.length > 0) {
+      logger.info({ sessionId: session.id }, "Video pack purchase: already processed, skipping");
+      return;
+    }
+  } else {
+    const existing = await db
+      .select({ id: creditsTransactions.id })
+      .from(creditsTransactions)
+      .where(eq(creditsTransactions.stripeSessionId, session.id))
+      .limit(1);
+    if (existing.length > 0) {
+      logger.info({ sessionId: session.id }, "Package purchase: already processed, skipping");
+      return;
+    }
   }
 
   const [user] = await db
@@ -225,6 +231,45 @@ async function handlePackagePurchase(
 
   if (!user) {
     logger.warn({ clerkUserId }, "Package purchase: user not found");
+    return;
+  }
+
+  if (isVideoPack) {
+    const videos = parseInt(meta.videos ?? "0", 10);
+    if (!videos || videos <= 0) {
+      logger.warn({ sessionId: session.id }, "Video pack purchase: invalid videos count in metadata");
+      return;
+    }
+
+    const balanceBefore = user.videoBalance ?? 0;
+    const balanceAfter  = balanceBefore + videos;
+
+    await db
+      .update(users)
+      .set({ videoBalance: balanceAfter, updatedAt: new Date() })
+      .where(eq(users.clerkId, clerkUserId));
+
+    await db.insert(videoTransactions).values({
+      clerkUserId,
+      amount: videos,
+      type: "purchase",
+      packId: meta.packId ?? null,
+      description: `Compra de pacote de vídeos — ${videos} vídeo${videos !== 1 ? "s" : ""}`,
+      balanceBefore,
+      balanceAfter,
+      stripeSessionId: session.id,
+    });
+
+    logger.info(
+      { clerkUserId, videos, balanceBefore, balanceAfter, sessionId: session.id },
+      "Video pack processed — videoBalance updated",
+    );
+    return;
+  }
+
+  const amount = parseInt(meta.amount ?? meta.credits ?? "0", 10);
+  if (!amount || amount <= 0) {
+    logger.warn({ sessionId: session.id }, "Package purchase: invalid amount in metadata");
     return;
   }
 

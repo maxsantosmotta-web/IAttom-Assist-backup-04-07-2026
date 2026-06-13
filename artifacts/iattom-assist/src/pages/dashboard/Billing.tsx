@@ -303,6 +303,13 @@ export function Billing() {
     } else if (payment === "credits_success") {
       toast({ title: "Créditos adicionados", description: "Seus créditos foram somados ao saldo da conta." });
       window.history.replaceState({}, "", window.location.pathname);
+    } else if (payment === "video_success") {
+      toast({ title: "Pacote de vídeos adicionado", description: "Seus vídeos foram adicionados ao saldo da conta." });
+      window.history.replaceState({}, "", window.location.pathname);
+      fetch("/api/videos/balance", { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => setVideoBalance((d as { videoBalance: number }).videoBalance ?? 0))
+        .catch(() => {});
     } else if (payment === "canceled") {
       toast({ title: "Checkout cancelado", description: "Nenhuma cobrança foi realizada." });
       window.history.replaceState({}, "", window.location.pathname);
@@ -323,14 +330,42 @@ export function Billing() {
   const [creditsPending, setCreditsPending] = useState<string | null>(null);
   const [videoPending, setVideoPending] = useState<string | null>(null);
   const [imagePending, setImagePending] = useState<string | null>(null);
+  const [videoBalance, setVideoBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/videos/balance", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => setVideoBalance((d as { videoBalance: number }).videoBalance ?? 0))
+      .catch(() => setVideoBalance(0));
+  }, []);
 
   const handleBuyImagePack = (_packId: string) => {
     toast({ title: "Compra de pacote em breve", description: "Esta opção estará disponível na próxima etapa.", variant: "destructive" });
   };
 
-  const handleBuyVideoPack = (_packId: string) => {
-    toast({ title: "Compra de pacote em breve", description: "Esta opção estará disponível na próxima etapa.", variant: "destructive" });
+  const handleBuyVideoPack = async (packId: string) => {
+    if (currentPlan === "free") {
+      setShowComparison(true);
+      return;
+    }
+    setVideoPending(packId);
+    try {
+      const resp = await fetch("/api/stripe/videos/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packageId: packId }),
+        credentials: "include",
+      });
+      const data = await resp.json() as { url?: string; error?: string };
+      if (!resp.ok) throw new Error(data.error ?? "Erro ao iniciar checkout");
+      if (data.url) window.location.href = data.url;
+    } catch {
+      toast({ title: "Erro ao iniciar checkout", description: "Não foi possível iniciar o checkout. Tente novamente.", variant: "destructive" });
+    } finally {
+      setVideoPending(null);
+    }
   };
+
   const handleBuyCredits = (_packageId: string) => {
     toast({ title: "Compra de pacote em breve", description: "Esta opção estará disponível na próxima etapa.", variant: "destructive" });
   };
@@ -885,7 +920,7 @@ export function Billing() {
 
       {/* ── Pacotes de Vídeo ──────────────────────────────────────────── */}
       <div className="rounded-xl border border-white/[0.07] bg-[#111111] p-6">
-        <div className="flex items-start gap-4 flex-wrap mb-5">
+        <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Film className="w-4 h-4 text-primary" />
@@ -894,6 +929,13 @@ export function Billing() {
             <h2 className="text-sm font-semibold text-zinc-300">Mais Recursos para Sua Operação</h2>
             <p className="text-xs text-zinc-600 mt-0.5">Adicione recursos visuais e torne seus materiais mais completos e profissionais.</p>
           </div>
+          {videoBalance !== null && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-400/20 shrink-0">
+              <Film className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-xs font-bold text-blue-300 tabular-nums">{videoBalance}</span>
+              <span className="text-[10px] text-zinc-600">vídeo{videoBalance !== 1 ? "s" : ""} disponível{videoBalance !== 1 ? "is" : ""}</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">

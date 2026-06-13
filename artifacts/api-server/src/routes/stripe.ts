@@ -12,6 +12,7 @@ import {
   createBillingPortalSession,
   createCreditPurchaseCheckoutSession,
   createCreativePurchaseCheckoutSession,
+  createVideoPackCheckoutSession,
   createFreeStartCheckoutSession,
 } from "../lib/stripeService.js";
 import {
@@ -122,6 +123,57 @@ router.post(
         return res.status(503).json({ error: "Faturamento não disponível neste ambiente." });
       }
       req.log.error({ err }, "Failed to create creative purchase checkout session");
+      return res.status(500).json({ error: "Falha ao iniciar o checkout" });
+    }
+  },
+);
+
+/* ─── video packages ──────────────────────────────────────────────────── */
+const VIDEO_PACKAGES = [
+  { id: "video_5",  videos: 5,  unitAmountBrl: 6700,  name: "Pack 5 Vídeos"  },
+  { id: "video_7",  videos: 7,  unitAmountBrl: 8900,  name: "Pack 7 Vídeos"  },
+  { id: "video_10", videos: 10, unitAmountBrl: 13700, name: "Pack 10 Vídeos" },
+] as const;
+
+/* ─── POST /stripe/videos/checkout — vídeos avulsos ─────────────────── */
+const VideoCheckoutBodySchema = z.object({
+  packageId: z.string().min(1),
+});
+
+router.post(
+  "/stripe/videos/checkout",
+  requireAuth,
+  requirePlan(["pro", "business", "agency"]),
+  async (req: Request, res: Response) => {
+    const parsed = VideoCheckoutBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "packageId is required" });
+    }
+
+    const { packageId } = parsed.data;
+    const pkg = VIDEO_PACKAGES.find((p) => p.id === packageId);
+    if (!pkg) {
+      return res.status(400).json({ error: "Pacote de vídeo inválido" });
+    }
+
+    const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
+
+    try {
+      const url = await createVideoPackCheckoutSession(
+        clerkUserId,
+        pkg.id,
+        pkg.videos,
+        pkg.unitAmountBrl,
+        pkg.name,
+      );
+      return res.json({ url });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("not configured")) {
+        req.log.warn("Video checkout attempted but billing is not configured");
+        return res.status(503).json({ error: "Faturamento não disponível neste ambiente." });
+      }
+      req.log.error({ err }, "Failed to create video pack checkout session");
       return res.status(500).json({ error: "Falha ao iniciar o checkout" });
     }
   },

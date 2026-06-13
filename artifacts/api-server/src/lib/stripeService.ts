@@ -154,6 +154,50 @@ export async function createCreativePurchaseCheckoutSession(
   return session.url;
 }
 
+export async function createVideoPackCheckoutSession(
+  clerkUserId: string,
+  packId: string,
+  videos: number,
+  unitAmountBrl: number,
+  packageName: string,
+): Promise<string> {
+  const customerId = await ensureStripeCustomer(clerkUserId);
+  const stripe = await getUncachableStripeClient();
+
+  const billingUrl = `${APP_ORIGIN}${BASE_PATH}/dashboard/billing`;
+
+  const session = await stripe.checkout.sessions.create({
+    customer: customerId,
+    payment_method_types: ["card"],
+    line_items: [
+      {
+        price_data: {
+          currency: "brl",
+          unit_amount: unitAmountBrl,
+          product_data: {
+            name: packageName,
+            description: `${videos} vídeo${videos !== 1 ? "s" : ""} — compra avulsa (não expiram)`,
+          },
+        },
+        quantity: 1,
+      },
+    ],
+    mode: "payment",
+    success_url: `${billingUrl}?payment=video_success`,
+    cancel_url: `${billingUrl}?payment=canceled`,
+    client_reference_id: clerkUserId,
+    metadata: {
+      clerkUserId,
+      type: "video_pack",
+      packId,
+      videos: String(videos),
+    },
+  });
+
+  if (!session.url) throw new Error("Stripe checkout session URL is null");
+  return session.url;
+}
+
 export async function createFreeStartCheckoutSession(
   clerkUserId: string,
 ): Promise<string> {

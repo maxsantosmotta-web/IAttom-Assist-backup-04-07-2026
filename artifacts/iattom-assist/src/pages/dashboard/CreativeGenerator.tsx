@@ -255,6 +255,14 @@ export function CreativeGenerator() {
   const [videoDuration, setVideoDuration] = useState<VideoDuration>(30);
   const [videoPrompt, setVideoPrompt] = useState("");
   const [restoredVideoResult, setRestoredVideoResult] = useState<VideoGenerationResult | null>(null);
+  const [videoBalance, setVideoBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/videos/balance", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => setVideoBalance((d as { videoBalance: number }).videoBalance ?? 0))
+      .catch(() => setVideoBalance(0));
+  }, []);
 
   const { status, result, error, generate, reset } = useAiStream<CreativeIdeasResult>();
   const {
@@ -614,7 +622,8 @@ export function CreativeGenerator() {
   const resultCount = Array.isArray(activeResult?.concepts) ? activeResult.concepts.length : 0;
 
   // ── Vídeo ────────────────────────────────────────────────────────────────
-  const canGenerateVideo = !!videoPrompt.trim() && !!videoEstilo;
+  const hasVideoBalance = videoBalance === null || videoBalance > 0;
+  const canGenerateVideo = !!videoPrompt.trim() && !!videoEstilo && hasVideoBalance;
   const isVideoGenerating = videoStatus === "generating";
   const isVideoDone = videoStatus === "done";
   const isVideoError = videoStatus === "error";
@@ -622,10 +631,11 @@ export function CreativeGenerator() {
   const activeVideoResult = videoResult ?? restoredVideoResult;
   const isVideoRestoredMode = !!restoredVideoResult && videoStatus === "idle";
 
-  const runVideoGenerate = () => {
+  const runVideoGenerate = async () => {
     if (!videoEstilo) return;
+    if (videoBalance !== null && videoBalance <= 0) return;
     setRestoredVideoResult(null);
-    videoGenerate("/api/ai/generate-video", {
+    const generated = await videoGenerate("/api/ai/generate-video", {
       videoEstilo,
       videoAvatar,
       videoAmbiente,
@@ -633,6 +643,21 @@ export function CreativeGenerator() {
       videoDuration,
       videoPrompt: videoPrompt.trim(),
     });
+    if (generated !== null) {
+      try {
+        const resp = await fetch("/api/videos/use", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+        if (resp.ok) {
+          const data = await resp.json() as { newBalance?: number };
+          if (typeof data.newBalance === "number") {
+            setVideoBalance(data.newBalance);
+          }
+        }
+      } catch { /* ignore — balance will be refreshed on next load */ }
+    }
   };
 
   const openVideoSaveDialog = () => {
@@ -1068,9 +1093,26 @@ export function CreativeGenerator() {
                   />
                 </div>
 
+                {/* Gate: sem saldo de vídeos */}
+                {videoBalance === 0 && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-400/20">
+                    <Video className="w-4 h-4 text-blue-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-blue-300">Saldo de vídeos esgotado</p>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">Adquira um pacote para gerar vídeos com IA.</p>
+                    </div>
+                    <button
+                      onClick={() => { window.location.href = `${import.meta.env.BASE_URL}dashboard/billing`; }}
+                      className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold whitespace-nowrap flex items-center gap-0.5 transition-colors"
+                    >
+                      Ver pacotes <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+
                 {/* Gerar vídeo */}
                 <Button
-                  onClick={runVideoGenerate}
+                  onClick={() => { void runVideoGenerate(); }}
                   disabled={!canGenerateVideo || isVideoGenerating}
                   className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
                 >
