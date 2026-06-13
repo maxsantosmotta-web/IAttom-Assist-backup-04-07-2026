@@ -3,16 +3,15 @@ export const FEATURE_COSTS = {
   product_validation: 5,
   campaign: 10,
   content: 8,
-  // Criativo — custo por imagem gerada (ajuste aqui se necessário)
-  creativeImage1: 10,  // 1 imagem
-  creativeImage2: 15,  // 2 imagens
-  creativeImage3: 20,  // 3 imagens
-  creativeVideo20: 40, // 1 vídeo de 20s com avatar HeyGen
+  creativeImage1: 10,
+  creativeImage2: 15,
+  creativeImage3: 20,
+  creativeVideo20: 40,
   video_script: 10,
 } as const;
 
 export const PLAN_CREDITS = {
-  free: 50,
+  free: 0,
   pro: 700,
   business: 1500,
   agency: 3250,

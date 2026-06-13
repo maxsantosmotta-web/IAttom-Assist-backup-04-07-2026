@@ -6,15 +6,18 @@ export const FEATURE_COSTS = {
   product_validation: 5,
   campaign: 10,
   content: 8,
-  creative: 15,
+  creativeImage1: 10,
+  creativeImage2: 15,
+  creativeImage3: 20,
+  creativeVideo20: 40,
   video_script: 10,
 } as const;
 
 export const PLAN_CREDITS = {
-  free: 50,
-  pro: 500,
-  business: 2000,
-  agency: 10000,
+  free: 0,
+  pro: 700,
+  business: 1500,
+  agency: 3250,
 } as const;
 
 export type FeatureKey = keyof typeof FEATURE_COSTS;
@@ -61,7 +64,10 @@ export async function deductCredits(clerkId: string, feature: FeatureKey) {
         product_validation: "Uso do Validador de Produtos",
         campaign: "Uso do Criador de Campanha",
         content: "Uso do Criador de Conteúdo",
-        creative: "Uso do Gerador Criativo",
+        creativeImage1: "Uso do Gerador Criativo (1 imagem)",
+        creativeImage2: "Uso do Gerador Criativo (2 imagens)",
+        creativeImage3: "Uso do Gerador Criativo (3 imagens)",
+        creativeVideo20: "Uso do Gerador de Vídeo (20s)",
         video_script: "Uso do Gerador de Scripts",
       } as Record<string, string>)[feature] ?? `Uso de ${feature.replace(/_/g, " ")}`,
       balanceBefore,
