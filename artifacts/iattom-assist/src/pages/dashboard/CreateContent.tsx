@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useSavedItems } from "@/hooks/useSavedItems";
 import { CreditsGate } from "@/components/CreditsGate";
+import { ModuleLockGate } from "@/components/ModuleLockGate";
+import { useUserAccess } from "@/hooks/useUserAccess";
 import { useAiStream } from "@/hooks/useAiStream";
 import { loadModuleState, saveModuleState, clearModuleState } from "@/hooks/useModulePersistence";
 import type { ContentResult } from "@/types/ai";
@@ -43,6 +45,7 @@ function ContentTab({ content, label, icon: Icon }: { content: string; label: st
 }
 
 export function CreateContent() {
+  const { planSlug, isAdmin } = useUserAccess();
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("");
   const [additionalContext, setAdditionalContext] = useState("");
@@ -124,6 +127,7 @@ export function CreateContent() {
     toast({ description: "Salvo com sucesso." });
   };
 
+  if (!isAdmin && !["agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["agency"]} moduleName="Criar Conteúdo" />;
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-start justify-between gap-4">

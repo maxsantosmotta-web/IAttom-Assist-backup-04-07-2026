@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { CreditsGate } from "@/components/CreditsGate";
+import { ModuleLockGate } from "@/components/ModuleLockGate";
+import { useUserAccess } from "@/hooks/useUserAccess";
 import { useAiStream } from "@/hooks/useAiStream";
 import { useSavedItems } from "@/hooks/useSavedItems";
 import type { FindProductsResult, FoundProduct } from "@/types/ai";
@@ -48,6 +50,7 @@ const PLATFORM_OPTIONS = [
 ];
 
 export function FindProducts() {
+  const { planSlug, isAdmin } = useUserAccess();
   const [query, setQuery] = useState("");
   const [niche, setNiche] = useState("");
   const [platform, setPlatform] = useState("");
@@ -140,6 +143,7 @@ export function FindProducts() {
     toast({ description: "Salvo com sucesso." });
   };
 
+  if (!isAdmin && !["agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["agency"]} moduleName="Buscar Produtos" />;
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-start justify-between gap-4">

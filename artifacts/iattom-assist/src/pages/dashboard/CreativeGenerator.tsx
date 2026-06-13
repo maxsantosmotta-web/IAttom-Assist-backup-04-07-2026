@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { CreditsGate } from "@/components/CreditsGate";
+import { ModuleLockGate } from "@/components/ModuleLockGate";
+import { useUserAccess } from "@/hooks/useUserAccess";
 import { useAiStream } from "@/hooks/useAiStream";
 import type { CreativeIdeasResult, CreativeConcept, VideoGenerationResult } from "@/types/ai";
 import type { FeatureKey } from "@/lib/credits";
@@ -225,6 +227,7 @@ function ConceptCard({ concept, index }: { concept: CreativeConcept; index: numb
 }
 
 export function CreativeGenerator() {
+  const { planSlug, isAdmin } = useUserAccess();
   const [creativeType, setCreativeType] = useState<CreativeType>(() => {
     try {
       const saved = localStorage.getItem("iattom_creative_tab_v1");
@@ -784,6 +787,7 @@ export function CreativeGenerator() {
     }
   };
 
+  if (!isAdmin && !["pro", "business", "agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["pro", "business", "agency"]} moduleName="Criar Imagem" />;
   return (
     <>
     <div className="space-y-6">

@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { CreditsGate } from "@/components/CreditsGate";
+import { ModuleLockGate } from "@/components/ModuleLockGate";
+import { useUserAccess } from "@/hooks/useUserAccess";
 
 interface SavedPrompt {
   id: number;
@@ -67,6 +69,7 @@ function resolveColor(module: string): string {
 const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
 
 export function SavedPrompts() {
+  const { planSlug, isAdmin } = useUserAccess();
   const [prompts, setPrompts]     = useState<SavedPrompt[]>([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState("");
@@ -276,6 +279,7 @@ export function SavedPrompts() {
   const canGenerate = !!guidedTipo && guidedSubject.trim().length > 0;
   const canSave     = newTitle.trim().length > 0 && newPrompt.trim().length > 0;
 
+  if (!isAdmin && !["pro", "business", "agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["pro", "business", "agency"]} moduleName="Criar Prompt" />;
   return (
     <div className="space-y-6 pb-4">
 

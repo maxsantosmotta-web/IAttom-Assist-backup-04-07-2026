@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { CreditsGate } from "@/components/CreditsGate";
+import { ModuleLockGate } from "@/components/ModuleLockGate";
+import { useUserAccess } from "@/hooks/useUserAccess";
 import { useAiStream } from "@/hooks/useAiStream";
 import type { ValidationResult } from "@/types/ai";
 
@@ -49,6 +51,7 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 export function ValidateProducts() {
+  const { planSlug, isAdmin } = useUserAccess();
   const [productName, setProductName] = useState("");
   const [description, setDescription] = useState("");
   const { saveItem } = useSavedItems();
@@ -152,6 +155,7 @@ export function ValidateProducts() {
     });
   };
 
+  if (!isAdmin && !["business", "agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["business", "agency"]} moduleName="Validar Produto" />;
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-start justify-between gap-4">

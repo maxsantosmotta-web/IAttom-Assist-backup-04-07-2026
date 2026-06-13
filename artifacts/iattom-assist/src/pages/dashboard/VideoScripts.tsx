@@ -10,11 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSavedItems } from "@/hooks/useSavedItems";
 import { CreditsGate } from "@/components/CreditsGate";
+import { ModuleLockGate } from "@/components/ModuleLockGate";
+import { useUserAccess } from "@/hooks/useUserAccess";
 import { useAiStream } from "@/hooks/useAiStream";
 import { loadModuleState, saveModuleState, clearModuleState } from "@/hooks/useModulePersistence";
 import type { VideoScriptResult, ScriptScene } from "@/types/ai";
 
 export function VideoScripts() {
+  const { planSlug, isAdmin } = useUserAccess();
   const [product, setProduct] = useState("");
   const [format, setFormat] = useState("");
   const [duration, setDuration] = useState("");
@@ -116,6 +119,7 @@ export function VideoScripts() {
     toast({ description: "Salvo com sucesso." });
   };
 
+  if (!isAdmin && !["business", "agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["business", "agency"]} moduleName="Scripts de Vídeo" />;
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-start justify-between gap-4">

@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { CreditsGate } from "@/components/CreditsGate";
+import { ModuleLockGate } from "@/components/ModuleLockGate";
+import { useUserAccess } from "@/hooks/useUserAccess";
 import { useAiStream } from "@/hooks/useAiStream";
 import type { CampaignResult, CampaignPlatformField, CampaignCreativeBriefing } from "@/types/ai";
 
@@ -506,6 +508,7 @@ function CreativeBriefingBlock({ briefing }: { briefing: CampaignCreativeBriefin
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function CreateCampaign() {
+  const { planSlug, isAdmin } = useUserAccess();
   const [step, setStep] = useState<"platform" | "form">("platform");
   const [product, setProduct] = useState("");
   const [audience, setAudience] = useState("");
@@ -767,6 +770,7 @@ export function CreateCampaign() {
   const showResult = (isDone || isRestored) && isCampaignComplete(campaignData);
   const hasPlatformFields = !!(campaignData?.platformFields && campaignData.platformFields.length > 0);
 
+  if (!isAdmin && !["pro", "business", "agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["pro", "business", "agency"]} moduleName="Criar Campanha" />;
   return (
     <div className="space-y-8">
       {/* Header */}

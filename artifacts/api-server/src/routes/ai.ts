@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { rateLimit } from "express-rate-limit";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
+import { requirePlan } from "../middlewares/requirePlan.js";
 import {
   AiFindProductsBody,
   AiValidateProductBody,
@@ -35,7 +36,8 @@ const aiRateLimiter = rateLimit({
 
 router.use(aiRateLimiter);
 
-router.post("/ai/find-products", requireAuth, async (req, res): Promise<void> => {
+// PRO only
+router.post("/ai/find-products", requireAuth, requirePlan(["agency"]), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiFindProductsBody.safeParse(req.body);
   if (!parsed.success) {
@@ -47,7 +49,8 @@ router.post("/ai/find-products", requireAuth, async (req, res): Promise<void> =>
   await streamFindProducts(parsed.data, res, clerkUserId, ac.signal);
 });
 
-router.post("/ai/validate-product", requireAuth, async (req, res): Promise<void> => {
+// PREMIUM + PRO
+router.post("/ai/validate-product", requireAuth, requirePlan(["business", "agency"]), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiValidateProductBody.safeParse(req.body);
   if (!parsed.success) {
@@ -59,7 +62,8 @@ router.post("/ai/validate-product", requireAuth, async (req, res): Promise<void>
   await streamValidateProduct(parsed.data, res, clerkUserId, ac.signal);
 });
 
-router.post("/ai/create-campaign", requireAuth, async (req, res): Promise<void> => {
+// START + PREMIUM + PRO
+router.post("/ai/create-campaign", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiCreateCampaignBody.safeParse(req.body);
   if (!parsed.success) {
@@ -71,7 +75,8 @@ router.post("/ai/create-campaign", requireAuth, async (req, res): Promise<void> 
   await streamCreateCampaign(parsed.data, res, clerkUserId, ac.signal);
 });
 
-router.post("/ai/refine-campaign-block", requireAuth, async (req, res): Promise<void> => {
+// START + PREMIUM + PRO
+router.post("/ai/refine-campaign-block", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiRefineCampaignBlockBody.safeParse(req.body);
   if (!parsed.success) {
@@ -87,7 +92,8 @@ router.post("/ai/refine-campaign-block", requireAuth, async (req, res): Promise<
   res.json(result);
 });
 
-router.post("/ai/create-content", requireAuth, async (req, res): Promise<void> => {
+// PRO only
+router.post("/ai/create-content", requireAuth, requirePlan(["agency"]), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiCreateContentBody.safeParse(req.body);
   if (!parsed.success) {
@@ -99,7 +105,8 @@ router.post("/ai/create-content", requireAuth, async (req, res): Promise<void> =
   await streamCreateContent(parsed.data, res, clerkUserId, ac.signal);
 });
 
-router.post("/ai/creative-ideas", requireAuth, async (req, res): Promise<void> => {
+// START + PREMIUM + PRO
+router.post("/ai/creative-ideas", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiCreativeIdeasBody.safeParse(req.body);
   if (!parsed.success) {
@@ -111,7 +118,8 @@ router.post("/ai/creative-ideas", requireAuth, async (req, res): Promise<void> =
   await streamCreativeIdeas(parsed.data, res, clerkUserId, ac.signal);
 });
 
-router.post("/ai/video-script", requireAuth, async (req, res): Promise<void> => {
+// PREMIUM + PRO
+router.post("/ai/video-script", requireAuth, requirePlan(["business", "agency"]), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiVideoScriptBody.safeParse(req.body);
   if (!parsed.success) {
@@ -123,7 +131,8 @@ router.post("/ai/video-script", requireAuth, async (req, res): Promise<void> => 
   await streamVideoScript(parsed.data, res, clerkUserId, ac.signal);
 });
 
-router.post("/ai/generate-video", requireAuth, async (req, res): Promise<void> => {
+// START + PREMIUM + PRO
+router.post("/ai/generate-video", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiGenerateVideoBody.safeParse(req.body);
   if (!parsed.success) {
@@ -139,7 +148,8 @@ router.post("/ai/generate-video", requireAuth, async (req, res): Promise<void> =
   await streamVideoGeneration(parsed.data, res, clerkUserId, ac.signal);
 });
 
-router.post("/ai/analyze-reference", requireAuth, async (req, res): Promise<void> => {
+// START + PREMIUM + PRO (part of creative flow)
+router.post("/ai/analyze-reference", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
   const { imageBase64, productName } = req.body as { imageBase64?: unknown; productName?: unknown };
   if (typeof imageBase64 !== "string" || !imageBase64.trim()) {
     res.status(400).json({ error: "imageBase64 is required" });
@@ -158,7 +168,8 @@ router.post("/ai/analyze-reference", requireAuth, async (req, res): Promise<void
   }
 });
 
-router.get("/ai/video-status/:videoId", requireAuth, async (req, res): Promise<void> => {
+// START + PREMIUM + PRO
+router.get("/ai/video-status/:videoId", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
   const videoId = req.params["videoId"] as string;
   if (!videoId || !videoId.trim()) {
     res.status(400).json({ error: "video_id inválido" });
@@ -169,11 +180,11 @@ router.get("/ai/video-status/:videoId", requireAuth, async (req, res): Promise<v
     return;
   }
   try {
-    const statusData = await getVideoStatus(videoId.trim());
-    res.json(statusData);
+    const status = await getVideoStatus(videoId);
+    res.json(status);
   } catch (err) {
-    req.log.error({ err, videoId }, "[video-status] erro ao consultar HeyGen");
-    res.status(500).json({ error: "Não foi possível consultar o status do vídeo." });
+    req.log.error({ err }, "video-status failed");
+    res.status(500).json({ error: "Falha ao verificar status do vídeo" });
   }
 });
 
