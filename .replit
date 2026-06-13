@@ -51,3 +51,4 @@ HEYGEN_VOICE_MALE_ID = "0d0e23e8170446e38b18a7380b2d30a8"
 HEYGEN_VOICE_FEMALE_ID = "0edbc867be6f48c5be8ff8b0fbca0802"
 
 [userenv.production]
+APP_PUBLIC_URL = "https://iattomassist.com.br"
