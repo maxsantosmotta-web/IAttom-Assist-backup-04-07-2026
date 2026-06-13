@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import {
   Crown, Check, Zap, ExternalLink, AlertTriangle, RefreshCw,
   CreditCard, Gift, TrendingUp, Star, Lock,
-  Sparkles, Building2, Rocket, CircleSlash, ShoppingCart, Plus,
+  Sparkles, Building2, Rocket, CircleSlash, ShoppingCart, Plus, Film,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,46 @@ const CREDIT_PACKAGES = [
   { id: "credits_300",  credits: 300,  label: "300",   price: "R$ 69,90",  tag: "Vantagem",     perUnit: "R$ 0,23/cr" },
   { id: "credits_700",  credits: 700,  label: "700",   price: "R$ 97,90",  tag: "Mais Popular", perUnit: "R$ 0,14/cr" },
   { id: "credits_1500", credits: 1500, label: "1.500", price: "R$ 137,90", tag: "Melhor Valor",  perUnit: "R$ 0,09/cr" },
+] as const;
+
+/* ─── video packages ─────────────────────────────────────────────────── */
+const VIDEO_PACKAGES = [
+  {
+    id: "video_5",  tag: "PACK 5",  videos: 5,  price: "R$ 67,00",
+    bg: "bg-[#060a10]",
+    border: "border-blue-400/20 hover:border-blue-400/35",
+    topLine: "via-blue-400/25",
+    ambient: "from-blue-500/[0.03]",
+    badge: "bg-blue-500/10 text-blue-300 border border-blue-400/20 border-t-0",
+    iconBg: "bg-blue-500/12 border border-blue-400/20",
+    iconColor: "text-blue-300",
+    labelColor: "text-blue-300",
+    btn: "bg-blue-500/15 text-blue-200 hover:bg-blue-500/25 border border-blue-400/25",
+  },
+  {
+    id: "video_7",  tag: "PACK 7",  videos: 7,  price: "R$ 89,00",
+    bg: "bg-[#0a080e]",
+    border: "border-violet-500/50 shadow-[0_0_36px_-6px_rgba(139,92,246,0.22)] hover:shadow-[0_0_44px_-6px_rgba(139,92,246,0.30)]",
+    topLine: "via-violet-400/70",
+    ambient: "from-violet-500/[0.06]",
+    badge: "bg-violet-600 text-white shadow-[0_2px_8px_rgba(139,92,246,0.35)]",
+    iconBg: "bg-violet-500/15 border border-violet-500/30",
+    iconColor: "text-violet-400",
+    labelColor: "text-violet-400",
+    btn: "bg-violet-600 text-white hover:bg-violet-500 font-bold",
+  },
+  {
+    id: "video_10", tag: "PACK 10", videos: 10, price: "R$ 137,00",
+    bg: "bg-[#050e09]",
+    border: "border-emerald-500/30 hover:border-emerald-500/45 shadow-[0_0_36px_-4px_rgba(16,185,129,0.16)]",
+    topLine: "via-emerald-400/50",
+    ambient: "from-emerald-500/[0.04]",
+    badge: "bg-emerald-600 text-white",
+    iconBg: "bg-emerald-500/10 border border-emerald-500/25",
+    iconColor: "text-emerald-400",
+    labelColor: "text-emerald-400",
+    btn: "bg-emerald-600 text-white hover:bg-emerald-500 font-bold",
+  },
 ] as const;
 
 /* ─── plan visual tokens ─────────────────────────────────────────────── */
@@ -242,6 +282,13 @@ export function Billing() {
   const sortedPlans = [...plans].sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));
 
   const [creditsPending, setCreditsPending] = useState<string | null>(null);
+  const [videoPending, setVideoPending] = useState<string | null>(null);
+
+  const handleBuyVideoPack = (packId: string) => {
+    setVideoPending(packId);
+    toast({ title: "Em breve", description: "Pacotes de vídeo estarão disponíveis na próxima etapa." });
+    setTimeout(() => setVideoPending(null), 1200);
+  };
   const handleBuyCredits = async (packageId: string) => {
     setCreditsPending(packageId);
     try {
@@ -729,14 +776,76 @@ export function Billing() {
                   </div>
                 </div>
 
-                <p className="text-xl font-bold mb-0.5 text-white">{pkg.price}</p>
-                <p className={`text-[10px] mb-5 ${CREDIT_PERUNIT_COLOR[scheme]}`}>{pkg.perUnit}</p>
+                <p className="text-xl font-bold mb-5 text-white">{pkg.price}</p>
 
                 <Button
                   size="sm"
                   className={`w-full h-9 text-xs ${CREDIT_BTN[scheme]}`}
                   onClick={() => handleBuyCredits(pkg.id)}
                   disabled={isPending || creditsPending !== null}
+                >
+                  {isPending
+                    ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Aguarde...</>
+                    : <><ShoppingCart className="w-3.5 h-3.5 mr-1.5" />Comprar</>
+                  }
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Pacotes de Vídeo ──────────────────────────────────────────── */}
+      <div className="rounded-xl border border-white/[0.07] bg-[#111111] p-6">
+        <div className="flex items-start gap-4 flex-wrap mb-5">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Film className="w-4 h-4 text-primary" />
+              <p className="text-xs text-primary uppercase tracking-widest font-semibold">Pacotes de Vídeo</p>
+            </div>
+            <h2 className="text-sm font-semibold text-zinc-300">Mais Recursos para Sua Operação</h2>
+            <p className="text-xs text-zinc-600 mt-0.5">Adicione recursos visuais e torne seus materiais mais completos e profissionais.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+          {VIDEO_PACKAGES.map((pkg) => {
+            const isPending = videoPending === pkg.id;
+            return (
+              <div
+                key={pkg.id}
+                className={`relative flex flex-col rounded-xl border pt-8 px-5 pb-5 transition-all duration-200 ${pkg.bg} ${pkg.border}`}
+              >
+                {/* top accent line */}
+                <div className={`absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent ${pkg.topLine} to-transparent rounded-t-xl`} />
+                {/* ambient top glow */}
+                <div className={`absolute top-0 inset-x-0 h-8 bg-gradient-to-b ${pkg.ambient} to-transparent rounded-t-xl pointer-events-none`} />
+
+                {/* badge */}
+                <div className="absolute -top-px left-1/2 -translate-x-1/2">
+                  <span className={`inline-block text-[9px] font-bold px-3 py-0.5 rounded-b-md whitespace-nowrap tracking-wide ${pkg.badge}`}>
+                    {pkg.tag}
+                  </span>
+                </div>
+
+                {/* header */}
+                <div className="flex items-center gap-2.5 mb-3 mt-1">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${pkg.iconBg}`}>
+                    <Film className={`w-3.5 h-3.5 ${pkg.iconColor}`} />
+                  </div>
+                  <div>
+                    <p className={`text-lg font-bold leading-none ${pkg.labelColor}`}>{pkg.videos}</p>
+                    <p className="text-[10px] text-zinc-600 mt-0.5">vídeos</p>
+                  </div>
+                </div>
+
+                <p className="text-xl font-bold mb-5 text-white">{pkg.price}</p>
+
+                <Button
+                  size="sm"
+                  className={`w-full h-9 text-xs ${pkg.btn}`}
+                  onClick={() => handleBuyVideoPack(pkg.id)}
+                  disabled={isPending || videoPending !== null}
                 >
                   {isPending
                     ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Aguarde...</>
