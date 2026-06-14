@@ -2,11 +2,9 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
-import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
-  getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware.js";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
@@ -74,13 +72,16 @@ app.post(
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
+const clerkPubKey = process.env.CLERK_PUBLISHABLE_KEY?.trim().replace(/\.+$/, "");
+if (!clerkPubKey) {
+  logger.error("CLERK_PUBLISHABLE_KEY is not set — Clerk middleware will fail. Set this env var before starting the server.");
+  process.exit(1);
+}
+
 app.use(
-  clerkMiddleware((req) => ({
-    publishableKey: publishableKeyFromHost(
-      getClerkProxyHost(req) ?? "",
-      process.env.CLERK_PUBLISHABLE_KEY,
-    ),
-  })),
+  clerkMiddleware({
+    publishableKey: clerkPubKey,
+  }),
 );
 
 app.use("/api", router);
