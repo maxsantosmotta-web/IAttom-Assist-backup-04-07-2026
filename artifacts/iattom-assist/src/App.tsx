@@ -22,6 +22,7 @@ import { AboutPage } from "@/pages/AboutPage";
 import { HelpPage } from "@/pages/HelpPage";
 import { BetaGate } from "@/components/BetaGate";
 import { PlanGate } from "@/components/PlanGate";
+import { UserSyncGate } from "@/components/UserSyncGate";
 
 // Eager load lightweight pages
 import { DashboardHome } from "@/pages/dashboard/DashboardHome";
@@ -234,42 +235,44 @@ function ProtectedDashboard() {
   return (
     <>
       <Show when="signed-in">
-        <BetaGate>
-          <SidebarLayout>
-            <PlanGate>
-              <Suspense fallback={<PageLoader />}>
-                <Switch>
-                  <Route path="/dashboard" component={DashboardHome} />
-                  <Route path="/dashboard/find-products" component={FindProducts} />
-                  <Route path="/dashboard/validate-products" component={ValidateProducts} />
-                  <Route path="/dashboard/create-campaign" component={CreateCampaign} />
-                  <Route path="/dashboard/create-content" component={CreateContent} />
-                  <Route path="/dashboard/creative-generator" component={CreativeGenerator} />
-                  <Route path="/dashboard/video-scripts" component={VideoScripts} />
-                  <Route path="/dashboard/projects/:id" component={ProjectDetail} />
-                  <Route path="/dashboard/projects" component={Projects} />
-                  <Route path="/dashboard/history" component={History} />
-                  <Route path="/dashboard/credits" component={Credits} />
-                  <Route path="/dashboard/billing" component={Billing} />
-                  <Route path="/dashboard/settings" component={Settings} />
-                  <Route path="/dashboard/analytics" component={Analytics} />
-                  <Route path="/dashboard/prompts" component={SavedPrompts} />
-                  <Route path="/dashboard/referral" component={Referral} />
-                  <Route path="/dashboard/trash" component={Trash} />
-                  <Route path="/dashboard/mercado-livre" component={MercadoLivre} />
-                  <Route path="/dashboard/shopee" component={Shopee} />
-                  <Route path="/dashboard/tiktok" component={TikTok} />
-                  <Route path="/dashboard/hotmart" component={Hotmart} />
-                  <Route path="/dashboard/kiwify" component={Kiwify} />
-                  <Route path="/dashboard/facebook" component={Facebook} />
-                  <Route path="/dashboard/instagram" component={Instagram} />
-                  <Route path="/dashboard/create-ad" component={CreateAd} />
-                  <Route component={NotFound} />
-                </Switch>
-              </Suspense>
-            </PlanGate>
-          </SidebarLayout>
-        </BetaGate>
+        <UserSyncGate>
+          <BetaGate>
+            <SidebarLayout>
+              <PlanGate>
+                <Suspense fallback={<PageLoader />}>
+                  <Switch>
+                    <Route path="/dashboard" component={DashboardHome} />
+                    <Route path="/dashboard/find-products" component={FindProducts} />
+                    <Route path="/dashboard/validate-products" component={ValidateProducts} />
+                    <Route path="/dashboard/create-campaign" component={CreateCampaign} />
+                    <Route path="/dashboard/create-content" component={CreateContent} />
+                    <Route path="/dashboard/creative-generator" component={CreativeGenerator} />
+                    <Route path="/dashboard/video-scripts" component={VideoScripts} />
+                    <Route path="/dashboard/projects/:id" component={ProjectDetail} />
+                    <Route path="/dashboard/projects" component={Projects} />
+                    <Route path="/dashboard/history" component={History} />
+                    <Route path="/dashboard/credits" component={Credits} />
+                    <Route path="/dashboard/billing" component={Billing} />
+                    <Route path="/dashboard/settings" component={Settings} />
+                    <Route path="/dashboard/analytics" component={Analytics} />
+                    <Route path="/dashboard/prompts" component={SavedPrompts} />
+                    <Route path="/dashboard/referral" component={Referral} />
+                    <Route path="/dashboard/trash" component={Trash} />
+                    <Route path="/dashboard/mercado-livre" component={MercadoLivre} />
+                    <Route path="/dashboard/shopee" component={Shopee} />
+                    <Route path="/dashboard/tiktok" component={TikTok} />
+                    <Route path="/dashboard/hotmart" component={Hotmart} />
+                    <Route path="/dashboard/kiwify" component={Kiwify} />
+                    <Route path="/dashboard/facebook" component={Facebook} />
+                    <Route path="/dashboard/instagram" component={Instagram} />
+                    <Route path="/dashboard/create-ad" component={CreateAd} />
+                    <Route component={NotFound} />
+                  </Switch>
+                </Suspense>
+              </PlanGate>
+            </SidebarLayout>
+          </BetaGate>
+        </UserSyncGate>
       </Show>
       <Show when="signed-out">
         <Redirect to="/" />
@@ -282,33 +285,35 @@ function ProtectedAdmin() {
   return (
     <>
       <Show when="signed-in">
-        <AdminGuard>
-          <AdminLayout>
-            <Suspense fallback={<PageLoader />}>
-              <Switch>
-                <Route path="/admin" component={AdminOverview} />
-                <Route path="/admin/users" component={AdminUsers} />
-                <Route path="/admin/analytics" component={AdminAnalytics} />
-                <Route path="/admin/activity" component={AdminActivity} />
-                <Route path="/admin/waitlist" component={AdminWaitlist} />
-                <Route path="/admin/feedback" component={AdminFeedback} />
-                <Route path="/admin/integrations" component={AdminIntegrations} />
-                <Route path="/admin/instagram" component={AdminInstagram} />
-                <Route path="/admin/facebook"  component={AdminFacebook}  />
-                <Route path="/admin/shopee" component={AdminShopee} />
-                <Route path="/admin/mercado-livre" component={AdminMercadoLivre} />
-                <Route path="/admin/hotmart" component={AdminHotmart} />
-                <Route path="/admin/kiwify" component={AdminKiwify} />
-                <Route path="/admin/trash" component={AdminTrash} />
-                <Route path="/admin/tiktok" component={AdminTikTok} />
-                <Route path="/admin/api-config" component={AdminApiConfig} />
-                <Route path="/admin/health" component={AdminHealth} />
-                <Route path="/admin/webhooks" component={AdminWebhooks} />
-                <Route component={NotFound} />
-              </Switch>
-            </Suspense>
-          </AdminLayout>
-        </AdminGuard>
+        <UserSyncGate>
+          <AdminGuard>
+            <AdminLayout>
+              <Suspense fallback={<PageLoader />}>
+                <Switch>
+                  <Route path="/admin" component={AdminOverview} />
+                  <Route path="/admin/users" component={AdminUsers} />
+                  <Route path="/admin/analytics" component={AdminAnalytics} />
+                  <Route path="/admin/activity" component={AdminActivity} />
+                  <Route path="/admin/waitlist" component={AdminWaitlist} />
+                  <Route path="/admin/feedback" component={AdminFeedback} />
+                  <Route path="/admin/integrations" component={AdminIntegrations} />
+                  <Route path="/admin/instagram" component={AdminInstagram} />
+                  <Route path="/admin/facebook"  component={AdminFacebook}  />
+                  <Route path="/admin/shopee" component={AdminShopee} />
+                  <Route path="/admin/mercado-livre" component={AdminMercadoLivre} />
+                  <Route path="/admin/hotmart" component={AdminHotmart} />
+                  <Route path="/admin/kiwify" component={AdminKiwify} />
+                  <Route path="/admin/trash" component={AdminTrash} />
+                  <Route path="/admin/tiktok" component={AdminTikTok} />
+                  <Route path="/admin/api-config" component={AdminApiConfig} />
+                  <Route path="/admin/health" component={AdminHealth} />
+                  <Route path="/admin/webhooks" component={AdminWebhooks} />
+                  <Route component={NotFound} />
+                </Switch>
+              </Suspense>
+            </AdminLayout>
+          </AdminGuard>
+        </UserSyncGate>
       </Show>
       <Show when="signed-out">
         <Redirect to="/" />
