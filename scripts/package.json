@@ -6,10 +6,13 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed-products": "tsx ./src/seed-products.ts",
+    "reconcile-session": "tsx ./src/reconcile-session.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pg": "^8.11.0",
+    "pg": "^8.20.0",
     "stripe": "^22.1.0",
     "stripe-replit-sync": "^1.0.0",
     "tsx": "catalog:"

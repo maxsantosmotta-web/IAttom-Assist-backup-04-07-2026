@@ -28,10 +28,26 @@ async function handleSubscriptionChange(
       ? subscription.customer
       : subscription.customer.id;
 
-  const [user] = await db
+  let [user] = await db
     .select()
     .from(users)
     .where(eq(users.stripeCustomerId, customerId));
+
+  if (!user) {
+    const clerkUserId = subscription.metadata?.clerkUserId;
+    if (clerkUserId) {
+      [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.clerkId, clerkUserId));
+      if (user) {
+        await db
+          .update(users)
+          .set({ stripeCustomerId: customerId, updatedAt: new Date() })
+          .where(eq(users.clerkId, clerkUserId));
+      }
+    }
+  }
 
   if (!user) {
     logger.warn({ customerId }, "No user found for Stripe customer on webhook");
@@ -52,11 +68,15 @@ async function handleSubscriptionChange(
     const stripe = await getUncachableStripeClient();
     const product = await stripe.products.retrieve(productId);
 
-    const planKey = product.metadata?.plan as ValidPlan | undefined;
-    if (!planKey || !PLAN_CREDITS[planKey]) {
+    const planKey = (
+      product.metadata?.plan ||
+      subscription.metadata?.planKey
+    ) as ValidPlan | undefined;
+
+    if (!planKey || !Object.prototype.hasOwnProperty.call(PLAN_CREDITS, planKey)) {
       logger.warn(
-        { productId },
-        "Stripe product has no plan metadata — cannot activate plan",
+        { productId, subMetadata: subscription.metadata },
+        "Stripe product has no plan metadata and subscription has no planKey — cannot activate plan",
       );
       return;
     }
@@ -324,6 +344,32 @@ async function handlePackagePurchase(
   }
 }
 
+export async function reconcileCheckoutSession(sessionId: string): Promise<{ ok: boolean; message: string }> {
+  const stripe = await getUncachableStripeClient();
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+  if (session.status !== "complete") {
+    return { ok: false, message: `Session status is ${session.status}, not complete` };
+  }
+
+  if (session.mode === "subscription" && session.subscription) {
+    const subId =
+      typeof session.subscription === "string"
+        ? session.subscription
+        : session.subscription.id;
+    const sub = await stripe.subscriptions.retrieve(subId);
+    await handleSubscriptionChange(sub);
+    return { ok: true, message: `Subscription ${subId} reconciled` };
+  }
+
+  if (session.mode === "payment") {
+    await handlePackagePurchase(session);
+    return { ok: true, message: `Payment session ${sessionId} reconciled` };
+  }
+
+  return { ok: false, message: `Session mode ${session.mode} not handled` };
+}
+
 export class WebhookHandlers {
   static async processWebhook(
     payload: Buffer,
@@ -359,11 +405,20 @@ export class WebhookHandlers {
             event.data.object as Stripe.Subscription,
           );
           break;
-        case "checkout.session.completed":
-          await handlePackagePurchase(
-            event.data.object as Stripe.Checkout.Session,
-          );
+        case "checkout.session.completed": {
+          const session = event.data.object as Stripe.Checkout.Session;
+          await handlePackagePurchase(session);
+          if (session.mode === "subscription" && session.subscription) {
+            const stripe = await getUncachableStripeClient();
+            const subId =
+              typeof session.subscription === "string"
+                ? session.subscription
+                : session.subscription.id;
+            const sub = await stripe.subscriptions.retrieve(subId);
+            await handleSubscriptionChange(sub);
+          }
           break;
+        }
         default:
           break;
       }

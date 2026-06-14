@@ -19,6 +19,7 @@ import {
   getSubscriptionByCustomerId,
   getPlansWithPrices,
 } from "../lib/stripeStorage.js";
+import { reconcileCheckoutSession } from "../lib/webhookHandlers.js";
 
 const router: IRouter = Router();
 
@@ -390,6 +391,24 @@ router.post(
       }
       req.log.error({ err }, "Failed to create checkout session");
       return res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  },
+);
+
+router.post(
+  "/stripe/reconcile-session",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const { sessionId } = req.body as { sessionId?: string };
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId required" });
+    }
+    try {
+      const result = await reconcileCheckoutSession(sessionId);
+      return res.json(result);
+    } catch (err) {
+      req.log.error({ err }, "Reconcile session failed");
+      return res.status(500).json({ error: "Reconciliation failed" });
     }
   },
 );
