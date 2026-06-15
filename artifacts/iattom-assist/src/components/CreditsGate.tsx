@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUseCredits, useGetCreditsBalance, getGetCreditsBalanceQueryKey, useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@clerk/react";
 import type { FeatureKey } from "@/lib/credits";
 import { FEATURE_COSTS, PLAN_CREDITS, PLAN_CREATIVE_CREDITS, CREATIVE_FEATURES } from "@/lib/credits";
 import { PlanComparisonModal } from "@/components/PlanComparisonModal";
@@ -30,10 +31,11 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
   const qc = useQueryClient();
   const cost = FEATURE_COSTS[feature];
   const isCreativeFeature = CREATIVE_FEATURES.has(feature);
+  const { isSignedIn } = useUser();
 
-  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), staleTime: 0 } });
+  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), staleTime: 0, enabled: !!isSignedIn } });
   const { data: balanceData } = useGetCreditsBalance({
-    query: { queryKey: getGetCreditsBalanceQueryKey(), retry: false, staleTime: 0 },
+    query: { queryKey: getGetCreditsBalanceQueryKey(), retry: false, staleTime: 0, enabled: !!isSignedIn },
   });
 
   const mutation = useUseCredits({

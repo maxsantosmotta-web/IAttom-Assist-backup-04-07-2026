@@ -40,11 +40,11 @@ const ErrorScreen = ({ onRetry }: { onRetry: () => void }) => (
 );
 
 export function BetaGate({ children }: BetaGateProps) {
-  const { isLoaded, user } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
   const [location, navigate] = useLocation();
 
   const { data: me, isLoading, isError, refetch } = useGetMe({
-    query: { queryKey: getGetMeQueryKey(), staleTime: 0, enabled: isLoaded },
+    query: { queryKey: getGetMeQueryKey(), staleTime: 0, enabled: isLoaded && !!isSignedIn },
   });
 
   const isBillingPage = location === PLAN_GATE_BYPASS;

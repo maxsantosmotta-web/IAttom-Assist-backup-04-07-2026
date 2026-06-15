@@ -80,6 +80,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         void qc.invalidateQueries({ queryKey: getGetMeQueryKey() });
         void qc.invalidateQueries({ queryKey: getGetCreditsBalanceQueryKey() });
       },
+      onError: () => {
+        // Sync failure is non-blocking — sidebar may show stale data until next mount.
+      },
     },
   });
   const { data: me } = useGetMe({
