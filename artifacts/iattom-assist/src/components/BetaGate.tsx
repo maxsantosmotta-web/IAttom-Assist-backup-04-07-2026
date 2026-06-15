@@ -7,6 +7,8 @@ interface BetaGateProps {
   children: React.ReactNode;
 }
 
+const PLAN_GATE_BYPASS = "/dashboard/billing";
+
 const Spinner = () => (
   <div className="flex items-center justify-center min-h-[100dvh] bg-[#0a0a0a]">
     <div className="w-7 h-7 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -21,34 +23,23 @@ export function BetaGate({ children }: BetaGateProps) {
     query: { queryKey: getGetMeQueryKey(), staleTime: 0, enabled: isLoaded },
   });
 
-  const isAdmin     = me?.role === "admin";
-  const isOnBilling = location === "/dashboard/billing";
+  const isBillingPage = location === PLAN_GATE_BYPASS;
 
-  const needsVerification =
-    !isAdmin &&
+  const needsOnboarding =
+    !isBillingPage &&
     me !== undefined &&
-    !me.registrationConfirmed;
-
-  const needsPlanSelection =
-    !isAdmin &&
-    me !== undefined &&
-    me.registrationConfirmed &&
-    !me.planSelected &&
-    !isOnBilling;
-
-  const redirectTarget = needsVerification
-    ? "/verify-email"
-    : needsPlanSelection
-    ? "/dashboard/billing"
-    : null;
+    me.role !== "admin" &&
+    me.plan === "free" &&
+    !me.planSelected;
 
   useEffect(() => {
     if (!isLoaded || isLoading || me === undefined) return;
-    if (redirectTarget) navigate(redirectTarget, { replace: true });
-  }, [isLoaded, isLoading, me, redirectTarget, navigate]);
+    if (needsOnboarding) navigate(PLAN_GATE_BYPASS, { replace: true });
+  }, [isLoaded, isLoading, me, needsOnboarding, navigate]);
 
   if (!isLoaded || isLoading || me === undefined) return <Spinner />;
-  if (redirectTarget) return <Spinner />;
+
+  if (needsOnboarding) return <Spinner />;
 
   return <>{children}</>;
 }

@@ -13,7 +13,6 @@ export const users = pgTable("users", {
   credits: integer("credits").notNull().default(0),
   creativeCredits: integer("creative_credits").notNull().default(0),
   betaAccess: boolean("beta_access").notNull().default(false),
-  registrationConfirmed: boolean("registration_confirmed").notNull().default(false),
   planSelected: boolean("plan_selected").notNull().default(false),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),

@@ -30,25 +30,6 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
   res.json(GetMeResponse.parse(user));
 });
 
-router.post("/user/confirm-registration", requireAuth, async (req, res): Promise<void> => {
-  const { clerkUserId } = req as AuthenticatedRequest;
-  const [user] = await db.select().from(users).where(eq(users.clerkId, clerkUserId));
-  if (!user) { res.status(404).json({ error: "User not found" }); return; }
-  const updateData: Partial<typeof users.$inferInsert> = {
-    registrationConfirmed: true,
-    updatedAt: new Date(),
-  };
-  if (req.body?.name && typeof req.body.name === "string") {
-    updateData.name = req.body.name.trim().slice(0, 120);
-  }
-  const [updated] = await db
-    .update(users)
-    .set(updateData)
-    .where(eq(users.clerkId, clerkUserId))
-    .returning();
-  res.json({ ok: true, registrationConfirmed: updated.registrationConfirmed });
-});
-
 router.post("/user/select-plan", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const [user] = await db.select().from(users).where(eq(users.clerkId, clerkUserId));

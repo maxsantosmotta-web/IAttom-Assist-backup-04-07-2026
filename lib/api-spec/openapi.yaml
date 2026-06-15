@@ -743,8 +743,6 @@ components:
           type: integer
         betaAccess:
           type: boolean
-        registrationConfirmed:
-          type: boolean
         planSelected:
           type: boolean
         createdAt:
@@ -758,7 +756,6 @@ components:
         - plan
         - credits
         - betaAccess
-        - registrationConfirmed
         - planSelected
         - createdAt
 
