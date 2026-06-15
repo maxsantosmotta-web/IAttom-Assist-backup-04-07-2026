@@ -137,6 +137,11 @@ router.post("/auth/confirm-registration", requireAuth, async (req, res): Promise
   const [user] = await db.select().from(users).where(eq(users.clerkId, clerkUserId));
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
+  if (user.role !== "admin") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
   await db
     .update(users)
     .set({ registrationConfirmed: true, updatedAt: new Date() })

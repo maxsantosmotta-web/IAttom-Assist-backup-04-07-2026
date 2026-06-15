@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useSendVerificationCode,
   useVerifyCode,
-  useConfirmRegistration,
   getGetMeQueryKey,
 } from "@workspace/api-client-react";
 
@@ -23,7 +22,6 @@ export interface UseEmailVerificationReturn {
   sendCode: () => Promise<void>;
   resendCode: () => Promise<void>;
   verify: (code: string) => Promise<void>;
-  confirmDirect: () => Promise<void>;
   reset: () => void;
   isSending: boolean;
   isVerifying: boolean;
@@ -74,7 +72,6 @@ export function useEmailVerification(): UseEmailVerificationReturn {
 
   const sendMutation = useSendVerificationCode();
   const verifyMutation = useVerifyCode();
-  const confirmMutation = useConfirmRegistration();
 
   const sendCode = useCallback(async () => {
     setError(null);
@@ -131,18 +128,6 @@ export function useEmailVerification(): UseEmailVerificationReturn {
     [verifyMutation, queryClient],
   );
 
-  const confirmDirect = useCallback(async () => {
-    setError(null);
-    try {
-      await confirmMutation.mutateAsync();
-      setStep("confirmed");
-      void queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-    } catch {
-      setStep("error");
-      setError("Falha ao confirmar registro. Tente novamente.");
-    }
-  }, [confirmMutation, queryClient]);
-
   const reset = useCallback(() => {
     setStep("idle");
     setError(null);
@@ -157,7 +142,6 @@ export function useEmailVerification(): UseEmailVerificationReturn {
     sendCode,
     resendCode,
     verify,
-    confirmDirect,
     reset,
     isSending: step === "sending",
     isVerifying: step === "verifying",
