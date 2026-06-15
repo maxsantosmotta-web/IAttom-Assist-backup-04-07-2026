@@ -22,8 +22,6 @@ import { AboutPage } from "@/pages/AboutPage";
 import { HelpPage } from "@/pages/HelpPage";
 import { BetaGate } from "@/components/BetaGate";
 import { PlanGate } from "@/components/PlanGate";
-import { Onboarding } from "@/pages/Onboarding";
-
 // Eager load lightweight pages
 import { DashboardHome } from "@/pages/dashboard/DashboardHome";
 import { Credits } from "@/pages/dashboard/Credits";
