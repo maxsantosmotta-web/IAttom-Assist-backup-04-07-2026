@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
-import { eq, ilike, count, desc, and, gte, or, isNull, ne, sql, inArray } from "drizzle-orm";
+import { eq, ilike, count, desc, and, gte, or, isNull, ne, sql } from "drizzle-orm";
 import { db, users, projectsTable, historyTable, creditsTransactions, waitlistTable, feedbackTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import {
@@ -787,66 +787,5 @@ router.get("/admin/export/activity", requireAdmin, async (_req, res): Promise<vo
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.send("\uFEFF" + header + body);
 });
-
-/* ── TEMPORARY CLEANUP — AUTHORIZED ONE-TIME USE ───────────────────────────
-   Authorized to remove test users from production.
-   MUST be removed and redeployed immediately after use.
-   Protected by X-Cleanup-Secret header.
-   NEVER touches maxsantosmotta@gmail.com.                                  */
-router.post("/admin/cleanup-test-users", async (req, res): Promise<void> => {
-  const secret = req.headers["x-cleanup-secret"];
-  if (!secret || secret !== process.env.CLEANUP_SECRET) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  const PROTECTED_EMAIL = "maxsantosmotta@gmail.com";
-
-  // Safety check: confirm Max exists and will not be touched
-  const [maxUser] = await db
-    .select({ id: users.id, email: users.email, role: users.role, plan: users.plan, credits: users.credits, betaAccess: users.betaAccess })
-    .from(users)
-    .where(eq(users.email, PROTECTED_EMAIL));
-
-  if (!maxUser) {
-    res.status(500).json({ error: "Protected user not found — aborting" });
-    return;
-  }
-
-  // Identify users to delete
-  const toDelete = await db
-    .select({ id: users.id, email: users.email, clerkId: users.clerkId })
-    .from(users)
-    .where(ne(users.email, PROTECTED_EMAIL));
-
-  if (toDelete.length === 0) {
-    res.json({ protected: maxUser, deleted: [], dependenciesRemoved: {}, message: "Nothing to delete — already clean" });
-    return;
-  }
-
-  const clerkIds = toDelete.map((u) => u.clerkId);
-  const deps: Record<string, number> = {};
-
-  // Remove dependencies from all related tables
-  const depResult1 = await db.delete(feedbackTable).where(inArray(feedbackTable.clerkUserId, clerkIds)).returning({ id: feedbackTable.id });
-  deps.feedback = depResult1.length;
-
-  const depResult2 = await db.delete(creditsTransactions).where(inArray(creditsTransactions.clerkUserId, clerkIds)).returning({ id: creditsTransactions.id });
-  deps.creditsTransactions = depResult2.length;
-
-  // Delete the test users (Max is explicitly protected by email filter)
-  const deleted = await db
-    .delete(users)
-    .where(ne(users.email, PROTECTED_EMAIL))
-    .returning({ id: users.id, email: users.email, clerkId: users.clerkId });
-
-  res.json({
-    protected: { ...maxUser, message: "UNTOUCHED" },
-    deleted,
-    dependenciesRemoved: deps,
-    count: deleted.length,
-  });
-});
-/* ── END TEMPORARY CLEANUP ──────────────────────────────────────────────── */
 
 export default router;
