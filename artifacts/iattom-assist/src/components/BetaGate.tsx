@@ -24,19 +24,31 @@ export function BetaGate({ children }: BetaGateProps) {
   const isAdmin     = me?.role === "admin";
   const isOnBilling = location === "/dashboard/billing";
 
+  const needsVerification =
+    !isAdmin &&
+    me !== undefined &&
+    !me.registrationConfirmed;
+
   const needsPlanSelection =
     !isAdmin &&
     me !== undefined &&
+    me.registrationConfirmed &&
     !me.planSelected &&
     !isOnBilling;
 
+  const redirectTarget = needsVerification
+    ? "/verify-email"
+    : needsPlanSelection
+    ? "/dashboard/billing"
+    : null;
+
   useEffect(() => {
     if (!isLoaded || isLoading || me === undefined) return;
-    if (needsPlanSelection) navigate("/dashboard/billing", { replace: true });
-  }, [isLoaded, isLoading, me, needsPlanSelection, navigate]);
+    if (redirectTarget) navigate(redirectTarget, { replace: true });
+  }, [isLoaded, isLoading, me, redirectTarget, navigate]);
 
   if (!isLoaded || isLoading || me === undefined) return <Spinner />;
-  if (needsPlanSelection) return <Spinner />;
+  if (redirectTarget) return <Spinner />;
 
   return <>{children}</>;
 }

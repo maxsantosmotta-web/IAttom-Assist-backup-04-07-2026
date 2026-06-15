@@ -22,6 +22,7 @@ import { AboutPage } from "@/pages/AboutPage";
 import { HelpPage } from "@/pages/HelpPage";
 import { BetaGate } from "@/components/BetaGate";
 import { PlanGate } from "@/components/PlanGate";
+import { VerifyEmail } from "@/pages/VerifyEmail";
 
 // Eager load lightweight pages
 import { DashboardHome } from "@/pages/dashboard/DashboardHome";
@@ -196,7 +197,7 @@ function SignUpCallbackPage() {
         <SignUp
           routing="path"
           path={`${basePath}/sign-up`}
-          fallbackRedirectUrl={`${basePath}/dashboard/billing`}
+          fallbackRedirectUrl={`${basePath}/verify-email`}
           appearance={clerkAppearance}
         />
       </div>
@@ -217,11 +218,24 @@ function HomeRedirect() {
   );
 }
 
+function ProtectedVerifyEmail() {
+  return (
+    <>
+      <Show when="signed-in">
+        <VerifyEmail />
+      </Show>
+      <Show when="signed-out">
+        <Redirect to="/sign-up" />
+      </Show>
+    </>
+  );
+}
+
 function ProtectedOnboarding() {
   return (
     <>
       <Show when="signed-in">
-        <Redirect to="/dashboard/billing" />
+        <Redirect to="/verify-email" />
       </Show>
       <Show when="signed-out">
         <Redirect to="/sign-up" />
@@ -418,7 +432,7 @@ function ClerkProviderWithRoutes() {
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
       signInFallbackRedirectUrl={`${window.location.origin}${basePath}/dashboard`}
-      signUpFallbackRedirectUrl={`${window.location.origin}${basePath}/dashboard/billing`}
+      signUpFallbackRedirectUrl={`${window.location.origin}${basePath}/verify-email`}
       localization={clerkLocalization}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
@@ -432,6 +446,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/" component={HomeRedirect} />
               <Route path="/sign-in/*?" component={SignInCallbackPage} />
               <Route path="/sign-up/*?" component={SignUpCallbackPage} />
+              <Route path="/verify-email" component={ProtectedVerifyEmail} />
               <Route path="/onboarding/*?" component={ProtectedOnboarding} />
               <Route path="/dashboard/*?" component={ProtectedDashboard} />
               <Route path="/admin/*?" component={ProtectedAdmin} />
