@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   videoBalance: integer("video_balance").notNull().default(0),
   helpMessagesUsed: integer("help_messages_used").notNull().default(0),
   helpUsedResetAt: timestamp("help_used_reset_at"),
+  registrationConfirmed: boolean("registration_confirmed").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
