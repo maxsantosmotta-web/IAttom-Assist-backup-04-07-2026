@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, ClipboardEvent, KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2, Loader2, MailCheck, RefreshCw, ShieldAlert } from "lucide-react";
+import { useClerk } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { useEmailVerification } from "@/hooks/useEmailVerification";
 
@@ -119,6 +120,8 @@ export function EmailVerificationModal({
   onClose,
   onSuccess,
 }: EmailVerificationModalProps) {
+  const { signOut } = useClerk();
+
   const {
     step,
     error,
@@ -150,6 +153,10 @@ export function EmailVerificationModal({
     reset();
     setDigits(Array(6).fill(""));
     onClose();
+    // Encerra a sessão Clerk não confirmada. Sem signOut o usuário permanece
+    // isSignedIn=true com registrationConfirmed=false e BetaGate re-exibe o
+    // modal imediatamente — loop infinito. redirectUrl devolve para a landing.
+    void signOut({ redirectUrl: "/" });
   };
 
   const handleConfirm = async () => {
