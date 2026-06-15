@@ -184,7 +184,7 @@ function SignInCallbackPage() {
       <SignIn
         routing="path"
         path={`${basePath}/sign-in`}
-        fallbackRedirectUrl={`${basePath}/dashboard`}
+        fallbackRedirectUrl={`${basePath}/dashboard/billing`}
         appearance={clerkAppearance}
       />
     </div>
@@ -198,7 +198,7 @@ function SignUpCallbackPage() {
       <SignUp
         routing="path"
         path={`${basePath}/sign-up`}
-        fallbackRedirectUrl={`${basePath}/onboarding`}
+        fallbackRedirectUrl={`${basePath}/dashboard/billing`}
         appearance={clerkAppearance}
       />
     </div>
@@ -349,6 +349,11 @@ const clerkLocalization = {
     banned_user: BLOCKED_MSG,
     user_locked: BLOCKED_MSG,
     user_banned: BLOCKED_MSG,
+    // Mensagens do fluxo oficial de auth
+    form_identifier_exists: "E-mail já cadastrado. Utilize Fazer Login.",
+    form_identifier_not_found: "Usuário não encontrado. Crie sua conta.",
+    form_password_incorrect: "E-mail ou senha inválidos.",
+    form_param_nil: "E-mail ou senha inválidos.",
   },
 };
 
@@ -418,7 +423,7 @@ function ClerkProviderWithRoutes() {
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
-      signInFallbackRedirectUrl={`${window.location.origin}${basePath}/dashboard`}
+      signInFallbackRedirectUrl={`${window.location.origin}${basePath}/dashboard/billing`}
       signUpFallbackRedirectUrl={`${window.location.origin}${basePath}/dashboard/billing`}
       localization={clerkLocalization}
       routerPush={(to) => setLocation(stripBase(to))}

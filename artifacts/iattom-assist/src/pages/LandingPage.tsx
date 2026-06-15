@@ -80,7 +80,7 @@ function SignUpDrawer({ onClose, isVisible }: { onClose: () => void; onOpenLogin
     <DrawerShell onClose={onClose} isVisible={isVisible}>
       <SignUp
         routing="hash"
-        fallbackRedirectUrl="/onboarding"
+        fallbackRedirectUrl="/dashboard/billing"
         appearance={drawerAppearance}
       />
     </DrawerShell>
@@ -96,7 +96,7 @@ function SignInDrawer({ onClose, isVisible }: { onClose: () => void; onOpenSignU
     <DrawerShell onClose={onClose} isVisible={isVisible}>
       <SignIn
         routing="hash"
-        fallbackRedirectUrl="/dashboard"
+        fallbackRedirectUrl="/dashboard/billing"
         appearance={drawerAppearance}
       />
     </DrawerShell>
