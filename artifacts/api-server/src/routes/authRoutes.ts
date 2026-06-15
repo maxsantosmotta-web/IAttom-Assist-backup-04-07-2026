@@ -30,6 +30,18 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
   res.json(GetMeResponse.parse(user));
 });
 
+router.post("/user/select-plan", requireAuth, async (req, res): Promise<void> => {
+  const { clerkUserId } = req as AuthenticatedRequest;
+  const [user] = await db.select().from(users).where(eq(users.clerkId, clerkUserId));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+  const [updated] = await db
+    .update(users)
+    .set({ betaAccess: true, updatedAt: new Date() })
+    .where(eq(users.clerkId, clerkUserId))
+    .returning();
+  res.json({ ok: true, plan: updated.plan, betaAccess: updated.betaAccess });
+});
+
 router.post("/admin/bootstrap", requireAuth, async (req, res): Promise<void> => {
   const auth = getAuth(req);
   const clerkUserId = auth?.userId;

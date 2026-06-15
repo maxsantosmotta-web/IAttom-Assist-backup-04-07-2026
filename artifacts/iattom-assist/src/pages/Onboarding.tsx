@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useUser } from "@clerk/react";
+import { useUser, useAuth } from "@clerk/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check, Zap, Star, RefreshCw, CheckCircle2, ChevronDown, Shield,
@@ -231,18 +231,20 @@ function FaqItem({ item, index }: { item: typeof FAQ_ITEMS[0]; index: number }) 
 export function Onboarding() {
   const [, navigate] = useLocation();
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const { toast } = useToast();
   const [selecting, setSelecting] = useState<PlanKey | null>(null);
 
   const { data: me, isLoading: meLoading } = useGetMe({
-    query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 30_000 },
+    query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 0 },
   });
 
   useEffect(() => {
     if (!isLoaded || !user || meLoading || me === undefined) return;
     const isAdmin = me?.role === "admin";
     const hasPaidPlan = me?.plan !== undefined && me.plan !== "free";
-    if (isAdmin || hasPaidPlan) {
+    const hasSelectedFree = me?.betaAccess === true;
+    if (isAdmin || hasPaidPlan || hasSelectedFree) {
       navigate("/dashboard", { replace: true });
     }
   }, [isLoaded, user, me, meLoading]);
@@ -267,10 +269,31 @@ export function Onboarding() {
     },
   });
 
-  const handleSelect = (planKey: PlanKey) => {
+  const handleSelect = async (planKey: PlanKey) => {
     if (!user || selecting) return;
+
+    if (planKey === "free") {
+      setSelecting("free");
+      try {
+        const token = await getToken();
+        await fetch(`${import.meta.env.BASE_URL}api/user/select-plan`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        localStorage.setItem(onboardingKey(user.id), "1");
+        navigate("/dashboard", { replace: true });
+      } catch {
+        setSelecting(null);
+        toast({ title: "Erro ao selecionar plano", description: "Tente novamente em instantes.", variant: "destructive" });
+      }
+      return;
+    }
+
     const stripePlan = stripePlans.find((p) => p.planKey === planKey);
-    if (!stripePlan?.priceId) return;
+    if (!stripePlan?.priceId) {
+      toast({ title: "Plano indisponível", description: "Não foi possível iniciar o checkout. Tente novamente.", variant: "destructive" });
+      return;
+    }
     localStorage.setItem(onboardingKey(user.id), "1");
     setSelecting(planKey);
     checkout.mutate({ data: { priceId: stripePlan.priceId, planKey } });

@@ -22,6 +22,7 @@ import { AboutPage } from "@/pages/AboutPage";
 import { HelpPage } from "@/pages/HelpPage";
 import { BetaGate } from "@/components/BetaGate";
 import { PlanGate } from "@/components/PlanGate";
+import { Onboarding } from "@/pages/Onboarding";
 
 // Eager load lightweight pages
 import { DashboardHome } from "@/pages/dashboard/DashboardHome";
@@ -221,7 +222,7 @@ function ProtectedOnboarding() {
   return (
     <>
       <Show when="signed-in">
-        <Redirect to="/dashboard" />
+        <Onboarding />
       </Show>
       <Show when="signed-out">
         <Redirect to="/sign-up" />
