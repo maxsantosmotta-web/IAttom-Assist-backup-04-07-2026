@@ -788,4 +788,31 @@ router.get("/admin/export/activity", requireAdmin, async (_req, res): Promise<vo
   res.send("\uFEFF" + header + body);
 });
 
+/* ── TEMPORARY: cleanup test users from production ─────────────────────────
+   Remove this entire block after cleanup is confirmed.
+   Protected by X-Cleanup-Secret header (CLEANUP_SECRET env var).          */
+router.post("/admin/cleanup-test-users", async (req, res): Promise<void> => {
+  const secret = req.headers["x-cleanup-secret"];
+  if (!secret || secret !== process.env.CLEANUP_SECRET) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const KEEP_EMAIL = "maxsantosmotta@gmail.com";
+  const toDelete = await db
+    .select({ id: users.id, email: users.email, clerkId: users.clerkId })
+    .from(users)
+    .where(ne(users.email, KEEP_EMAIL));
+
+  if (toDelete.length === 0) {
+    res.json({ deleted: [], count: 0, message: "Nothing to delete" });
+    return;
+  }
+  const clerkIds = toDelete.map((u) => u.clerkId);
+  await db.delete(feedbackTable).where(sql`${feedbackTable.clerkUserId} = ANY(${clerkIds})`);
+  await db.delete(creditsTransactions).where(sql`${creditsTransactions.clerkUserId} = ANY(${clerkIds})`);
+  const deleted = await db.delete(users).where(ne(users.email, KEEP_EMAIL)).returning({ id: users.id, email: users.email });
+  res.json({ deleted, count: deleted.length });
+});
+/* ── END TEMPORARY ──────────────────────────────────────────────────────── */
+
 export default router;
