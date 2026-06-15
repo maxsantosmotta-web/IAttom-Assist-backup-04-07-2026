@@ -69,13 +69,13 @@ router.get("/credits/transactions", requireAuth, async (req, res): Promise<void>
       .limit(limit)
       .offset(offset),
     getTransactionCount(clerkUserId),
-    db.select({ credits: users.credits }).from(users).where(eq(users.clerkId, clerkUserId)),
+    db.select({ credits: users.credits, extraCredits: users.extraCredits }).from(users).where(eq(users.clerkId, clerkUserId)),
   ]);
 
   res.json(ListCreditTransactionsResponse.parse({
     transactions: txList,
     total,
-    balance: userRow?.credits ?? 0,
+    balance: (userRow?.credits ?? 0) + (userRow?.extraCredits ?? 0),
   }));
 });
 
