@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { Switch, Route, Redirect, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import { ClerkProvider, Show, useClerk, SignIn, SignUp } from "@clerk/react";
+import { ClerkProvider, Show, useClerk, useSignUp, SignIn, SignUp } from "@clerk/react";
 import { ptBR } from "@clerk/localizations";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
@@ -197,25 +197,43 @@ function SignInCallbackPage() {
 
 function SignUpCallbackPage() {
   const [location] = useLocation();
+  const { signUp, fetchStatus } = useSignUp();
 
-  // Esta página existe APENAS para callbacks OAuth (ex: /sign-up/sso-callback do Google).
-  // Quando o Clerk faz routerPush para /sign-up raiz (ex: ao detectar e-mail existente
-  // no drawer hash-routed e tentar "transferir" o fluxo), o usuário volta para o home —
-  // o drawer é o único ponto de entrada para cadastro.
-  if (location === "/sign-up") {
-    return <Redirect to="/" />;
+  // Sub-rotas (ex: /sign-up/sso-callback) são sempre callbacks OAuth — renderiza direto.
+  if (location !== "/sign-up") {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
+        <SignUp
+          routing="path"
+          path={`${basePath}/sign-up`}
+          fallbackRedirectUrl={`${basePath}/dashboard/billing`}
+          appearance={clerkAppearance}
+        />
+      </div>
+    );
   }
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
-      <SignUp
-        routing="path"
-        path={`${basePath}/sign-up`}
-        fallbackRedirectUrl={`${basePath}/dashboard/billing`}
-        appearance={clerkAppearance}
-      />
-    </div>
-  );
+  // Em /sign-up raiz: aguarda Clerk resolver o estado antes de decidir.
+  if (fetchStatus === "fetching") return null;
+
+  // Cadastro novo em andamento (OTP enviado, aguardando confirmação): exibe etapa de código.
+  // Isso ocorre quando o Clerk hash-routed chama routerPush("/sign-up") após enviar o código.
+  if (signUp?.status === "missing_requirements") {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
+        <SignUp
+          routing="path"
+          path={`${basePath}/sign-up`}
+          fallbackRedirectUrl={`${basePath}/dashboard/billing`}
+          appearance={clerkAppearance}
+        />
+      </div>
+    );
+  }
+
+  // Sem sign-up ativo (navegação indevida ou "transfer" de e-mail existente):
+  // volta ao home — o drawer é o único ponto de entrada oficial.
+  return <Redirect to="/" />;
 }
 
 function HomeRedirect() {
