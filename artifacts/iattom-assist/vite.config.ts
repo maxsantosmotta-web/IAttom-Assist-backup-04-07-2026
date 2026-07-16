@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -28,9 +28,37 @@ const replitDevelopmentPlugins = isReplitDevelopment
     ])
   : [];
 
+const iattomRuntimeSafety: Plugin = {
+  name: "iattom-runtime-safety",
+  enforce: "pre",
+  transform(code, id) {
+    const normalizedId = id.replaceAll("\\", "/");
+
+    if (normalizedId.endsWith("/src/pages/admin/AdminOverview.tsx")) {
+      const patched = code.replaceAll(
+        "analytics.planRevenue.find(",
+        "(analytics.planRevenue ?? []).find(",
+      );
+
+      if (patched === code && !code.includes("(analytics.planRevenue ?? []).find(")) {
+        throw new Error("AdminOverview runtime safety transform was not applied");
+      }
+
+      return { code: patched, map: null };
+    }
+
+    return null;
+  },
+};
+
 export default defineConfig({
   base: basePath,
-  plugins: [react(), tailwindcss({ optimize: false }), ...replitDevelopmentPlugins],
+  plugins: [
+    iattomRuntimeSafety,
+    react(),
+    tailwindcss({ optimize: false }),
+    ...replitDevelopmentPlugins,
+  ],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
