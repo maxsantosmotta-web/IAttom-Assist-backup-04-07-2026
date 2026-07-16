@@ -42,9 +42,41 @@ patchFile("../src/pages/dashboard/Billing.tsx", [
 
 patchFile("../src/pages/admin/AdminOverview.tsx", [
   [
+    "function normalizeAction(action: string): string {\n  const base = action.split(\":\")[0].trim();",
+    "function normalizeAction(action?: string | null): string {\n  const safeAction = typeof action === \"string\" ? action : \"\";\n  const base = safeAction.split(\":\")[0].trim();",
+  ],
+  [
+    "return base.length > 0 ? base : action;",
+    "return base.length > 0 ? base : (safeAction || \"Atividade sem identificação\");",
+  ],
+  [
     "analytics.planRevenue.find(",
     "(analytics.planRevenue ?? []).find(",
   ],
+  [
+    "const planBar = growthStats\n    ? [",
+    "const planBar = growthStats?.planBreakdown\n    ? [",
+  ],
+  [
+    "setSubs(data.subscriptions);",
+    "setSubs(Array.isArray(data.subscriptions) ? data.subscriptions : []);",
+  ],
+  [
+    "const items = activity ?? [];",
+    "const items = Array.isArray(activity) ? activity : [];",
+  ],
+  [
+    "for (const it of items) {\n      const label = normalizeAction(it.action);",
+    "for (const it of items) {\n      if (!it || typeof it !== \"object\") continue;\n      const label = normalizeAction((it as { action?: string | null }).action);",
+  ],
+  [
+    "const featureData = (analytics?.featureUsage ?? [])",
+    "const featureData = (Array.isArray(analytics?.featureUsage) ? analytics.featureUsage : [])",
+  ],
+  [
+    "<AreaChart data={analytics?.userGrowth ?? []}",
+    "<AreaChart data={Array.isArray(analytics?.userGrowth) ? analytics.userGrowth : []}",
+  ],
 ]);
 
-console.log("Post-login Billing, owner admin access and AdminOverview fallbacks verified and normalized.");
+console.log("Dashboard and admin runtime payload guards verified and normalized.");
