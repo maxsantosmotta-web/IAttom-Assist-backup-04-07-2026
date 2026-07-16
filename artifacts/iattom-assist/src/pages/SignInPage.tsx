@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useSignIn, useClerk } from "@clerk/react";
+import { useSignIn } from "@clerk/react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 const basePath = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
+const billingPath = `${basePath}/dashboard/billing` || "/dashboard/billing";
 
 function GoogleIcon() {
   return (
@@ -11,7 +12,7 @@ function GoogleIcon() {
       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
       <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
       <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-2.86 3.31-4.53z" fill="#EA4335" />
     </svg>
   );
 }
@@ -37,36 +38,127 @@ function mapSignInError(code?: string, msg?: string): string {
   }
 }
 
+type ClerkErrorLike = {
+  errors?: { code?: string; message?: string; longMessage?: string }[];
+  code?: string;
+  message?: string;
+};
+
 export function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [needsClientTrust, setNeedsClientTrust] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { signIn } = useSignIn();
-  const clerk = useClerk();
   const [, setLocation] = useLocation();
+
+  const finishSignIn = async () => {
+    await signIn.finalize({
+      navigate: ({ session, decorateUrl }) => {
+        if (session?.currentTask) {
+          console.error("[SignIn] Pending session task:", session.currentTask);
+          setError("Sua conta exige uma etapa adicional de segurança.");
+          return;
+        }
+
+        const url = decorateUrl(billingPath);
+        if (url.startsWith("http")) {
+          window.location.assign(url);
+        } else {
+          setLocation(url);
+        }
+      },
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signIn || loading) return;
+
     setLoading(true);
     setError("");
+
     try {
-      const result = await signIn.create({ identifier: email, password });
-      if (result.status === "complete" && result.createdSessionId) {
-        await clerk.setActive({ session: result.createdSessionId });
-        setLocation("/dashboard/billing");
-      } else {
-        console.error("[SignIn] Unexpected status:", result.status);
-        setError("Erro ao fazer login. Tente novamente.");
+      const { error: clerkError } = await signIn.password({
+        emailAddress: email.trim(),
+        password,
+      });
+
+      if (clerkError) {
+        const first = (clerkError as ClerkErrorLike)?.errors?.[0];
+        setError(mapSignInError(first?.code, first?.longMessage ?? first?.message));
+        return;
       }
+
+      if (signIn.status === "complete") {
+        await finishSignIn();
+        return;
+      }
+
+      if (signIn.status === "needs_client_trust") {
+        const emailCodeFactor = signIn.supportedSecondFactors.find(
+          (factor) => factor.strategy === "email_code",
+        );
+
+        if (!emailCodeFactor) {
+          setError("Não foi possível iniciar a verificação deste dispositivo.");
+          return;
+        }
+
+        await signIn.mfa.sendEmailCode();
+        setNeedsClientTrust(true);
+        return;
+      }
+
+      if (signIn.status === "needs_second_factor") {
+        setError("Sua conta exige uma etapa adicional de segurança.");
+        return;
+      }
+
+      console.error("[SignIn] Unexpected status:", signIn.status, signIn);
+      setError("Não foi possível concluir o login.");
     } catch (err: unknown) {
-      const e = err as { errors?: { code?: string; message?: string; longMessage?: string }[] };
-      const first = e?.errors?.[0];
-      console.error("[SignIn] Clerk error:", JSON.stringify(e?.errors));
-      setError(mapSignInError(first?.code, first?.longMessage ?? first?.message));
+      const clerkError = err as ClerkErrorLike;
+      const first = clerkError?.errors?.[0];
+      console.error("[SignIn] Clerk error:", err);
+      setError(mapSignInError(first?.code ?? clerkError.code, first?.longMessage ?? first?.message ?? clerkError.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyDevice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!signIn || loading || verificationCode.length !== 6) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const { error: clerkError } = await signIn.mfa.verifyEmailCode({ code: verificationCode });
+
+      if (clerkError) {
+        const first = (clerkError as ClerkErrorLike)?.errors?.[0];
+        setError(first?.longMessage ?? first?.message ?? "Código inválido ou expirado.");
+        return;
+      }
+
+      if (signIn.status === "complete") {
+        await finishSignIn();
+        return;
+      }
+
+      console.error("[SignIn] Verification incomplete:", signIn.status, signIn);
+      setError("Não foi possível concluir a verificação.");
+    } catch (err: unknown) {
+      const clerkError = err as ClerkErrorLike;
+      const first = clerkError?.errors?.[0];
+      console.error("[SignIn Verify] Clerk error:", err);
+      setError(first?.longMessage ?? first?.message ?? clerkError.message ?? "Código inválido ou expirado.");
     } finally {
       setLoading(false);
     }
@@ -74,20 +166,36 @@ export function SignInPage() {
 
   const handleGoogle = async () => {
     if (!signIn || loading) return;
+
     setLoading(true);
     setError("");
+
     try {
-      await signIn.authenticateWithRedirect({
+      const { error: clerkError } = await signIn.sso({
         strategy: "oauth_google",
-        redirectUrl: `${window.location.origin}${basePath}/sign-in/sso-callback`,
-        redirectUrlComplete: `${window.location.origin}${basePath}/dashboard/billing`,
+        redirectCallbackUrl: `${window.location.origin}${basePath}/sign-in/sso-callback`,
+        redirectUrl: `${window.location.origin}${billingPath}`,
       });
+
+      if (clerkError) {
+        const first = (clerkError as ClerkErrorLike)?.errors?.[0];
+        setError(first?.longMessage ?? first?.message ?? "Erro ao autenticar com Google. Tente novamente.");
+        setLoading(false);
+      }
     } catch (err: unknown) {
-      const e = err as { errors?: { code?: string; message?: string }[] };
-      console.error("[SignIn Google] Clerk error:", JSON.stringify(e?.errors));
-      setError("Erro ao autenticar com Google. Tente novamente.");
+      const clerkError = err as ClerkErrorLike;
+      const first = clerkError?.errors?.[0];
+      console.error("[SignIn Google] Clerk error:", err);
+      setError(first?.longMessage ?? first?.message ?? clerkError.message ?? "Erro ao autenticar com Google. Tente novamente.");
       setLoading(false);
     }
+  };
+
+  const resetVerification = () => {
+    signIn.reset();
+    setNeedsClientTrust(false);
+    setVerificationCode("");
+    setError("");
   };
 
   return (
@@ -110,109 +218,163 @@ export function SignInPage() {
             </div>
 
             <div className="text-center mb-7">
-              <h1 className="text-[21px] font-bold text-white tracking-tight">Fazer Login</h1>
-              <p className="text-[12.5px] text-white/38 mt-1">Acesse o IAttom Assist</p>
+              <h1 className="text-[21px] font-bold text-white tracking-tight">
+                {needsClientTrust ? "Verifique seu dispositivo" : "Fazer Login"}
+              </h1>
+              <p className="text-[12.5px] text-white/38 mt-1">
+                {needsClientTrust ? `Enviamos um código para ${email}` : "Acesse o IAttom Assist"}
+              </p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleGoogle}
-              disabled={loading}
-              className="w-full h-[44px] flex items-center justify-center gap-2.5 rounded-lg border border-white/[0.10] text-white/80 text-[13px] font-medium transition-colors hover:bg-white/[0.05] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed mb-5"
-              style={{ background: "rgba(255,255,255,0.025)" }}
-            >
-              <GoogleIcon />
-              Continuar com Google
-            </button>
+            {!needsClientTrust && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGoogle}
+                  disabled={loading}
+                  className="w-full h-[44px] flex items-center justify-center gap-2.5 rounded-lg border border-white/[0.10] text-white/80 text-[13px] font-medium transition-colors hover:bg-white/[0.05] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed mb-5"
+                  style={{ background: "rgba(255,255,255,0.025)" }}
+                >
+                  <GoogleIcon />
+                  Continuar com Google
+                </button>
 
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
-              <span className="text-[10.5px] text-white/25 tracking-[0.16em]">OU</span>
-              <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
-            </div>
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+                  <span className="text-[10.5px] text-white/25 tracking-[0.16em]">OU</span>
+                  <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+                </div>
+              </>
+            )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11.5px] text-white/45 tracking-wide">E-mail</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  required
-                  autoComplete="email"
-                  className="w-full h-[43px] px-3.5 rounded-lg text-[13.5px] text-white placeholder:text-white/22 outline-none transition-colors"
-                  style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.09)" }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(201,168,76,0.5)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; }}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11.5px] text-white/45 tracking-wide">Senha</label>
-                <div className="relative">
+            {needsClientTrust ? (
+              <form onSubmit={handleVerifyDevice} className="flex flex-col gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11.5px] text-white/45 tracking-wide">Código de verificação</label>
                   <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Sua senha"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="000000"
                     required
-                    autoComplete="current-password"
-                    className="w-full h-[43px] px-3.5 pr-11 rounded-lg text-[13.5px] text-white placeholder:text-white/22 outline-none transition-colors"
+                    className="w-full h-[43px] px-3.5 rounded-lg text-[13.5px] text-white placeholder:text-white/22 outline-none transition-colors text-center tracking-[0.45em]"
+                    style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.09)" }}
+                  />
+                </div>
+
+                {error && (
+                  <div className="rounded-lg px-4 py-3 text-[12.5px] leading-snug" style={{ background: "rgba(127,29,29,0.25)", border: "1px solid rgba(239,68,68,0.18)", color: "#fca5a5" }}>
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || verificationCode.length !== 6}
+                  className="w-full h-[44px] rounded-lg font-bold text-[12.5px] tracking-[0.14em] uppercase text-black transition-all disabled:opacity-55 disabled:cursor-not-allowed mt-1"
+                  style={{ background: loading ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}
+                >
+                  {loading ? "Aguarde..." : "Verificar"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={resetVerification}
+                  className="flex items-center justify-center gap-1.5 text-[12px] text-white/25 hover:text-white/55 transition-colors mt-2"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Voltar
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11.5px] text-white/45 tracking-wide">E-mail</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    required
+                    autoComplete="email"
+                    className="w-full h-[43px] px-3.5 rounded-lg text-[13.5px] text-white placeholder:text-white/22 outline-none transition-colors"
                     style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.09)" }}
                     onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(201,168,76,0.5)"; }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; }}
                   />
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/28 hover:text-white/55 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-[15px] h-[15px]" /> : <Eye className="w-[15px] h-[15px]" />}
-                  </button>
                 </div>
-              </div>
 
-              {error && (
-                <div className="rounded-lg px-4 py-3 text-[12.5px] leading-snug" style={{ background: "rgba(127,29,29,0.25)", border: "1px solid rgba(239,68,68,0.18)", color: "#fca5a5" }}>
-                  {error}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11.5px] text-white/45 tracking-wide">Senha</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Sua senha"
+                      required
+                      autoComplete="current-password"
+                      className="w-full h-[43px] px-3.5 pr-11 rounded-lg text-[13.5px] text-white placeholder:text-white/22 outline-none transition-colors"
+                      style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.09)" }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(201,168,76,0.5)"; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; }}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/28 hover:text-white/55 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-[15px] h-[15px]" /> : <Eye className="w-[15px] h-[15px]" />}
+                    </button>
+                  </div>
                 </div>
-              )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full h-[44px] rounded-lg font-bold text-[12.5px] tracking-[0.14em] uppercase text-black transition-all disabled:opacity-55 disabled:cursor-not-allowed mt-1"
-                style={{ background: loading ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}
-              >
-                {loading ? "Aguarde..." : "Entrar"}
-              </button>
-            </form>
+                {error && (
+                  <div className="rounded-lg px-4 py-3 text-[12.5px] leading-snug" style={{ background: "rgba(127,29,29,0.25)", border: "1px solid rgba(239,68,68,0.18)", color: "#fca5a5" }}>
+                    {error}
+                  </div>
+                )}
 
-            <div className="mt-6 flex flex-col items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setLocation("/")}
-                className="flex items-center gap-1.5 text-[12px] text-white/25 hover:text-white/55 transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                Voltar ao início
-              </button>
-              <p className="text-[12px] text-white/25">
-                Não tem conta?{" "}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-[44px] rounded-lg font-bold text-[12.5px] tracking-[0.14em] uppercase text-black transition-all disabled:opacity-55 disabled:cursor-not-allowed mt-1"
+                  style={{ background: loading ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}
+                >
+                  {loading ? "Aguarde..." : "Entrar"}
+                </button>
+              </form>
+            )}
+
+            {!needsClientTrust && (
+              <div className="mt-6 flex flex-col items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setLocation("/sign-up")}
-                  className="transition-colors"
-                  style={{ color: "#C9A84C" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#E8C96A"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#C9A84C"; }}
+                  onClick={() => setLocation("/")}
+                  className="flex items-center gap-1.5 text-[12px] text-white/25 hover:text-white/55 transition-colors"
                 >
-                  Criar conta
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Voltar ao início
                 </button>
-              </p>
-            </div>
+                <p className="text-[12px] text-white/25">
+                  Não tem conta?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setLocation("/sign-up")}
+                    className="transition-colors"
+                    style={{ color: "#C9A84C" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = "#E8C96A"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "#C9A84C"; }}
+                  >
+                    Criar conta
+                  </button>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
