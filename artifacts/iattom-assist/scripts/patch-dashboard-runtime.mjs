@@ -30,6 +30,10 @@ patchFile("../src/pages/dashboard/Billing.tsx", [
     "((PLAN_CREDITS[planKey as keyof typeof PLAN_CREDITS] ?? plan.credits) * 12).toLocaleString(\"pt-BR\") + \" créditos / ano\"",
     "((PLAN_CREDITS[planKey as keyof typeof PLAN_CREDITS] ?? plan.credits ?? 0) * 12).toLocaleString(\"pt-BR\") + \" créditos / ano\"",
   ],
+  [
+    "plan.features.map((feature) => (",
+    "(plan.features ?? []).map((feature) => (",
+  ],
 ]);
 
-console.log("Post-login dashboard and billing runtime sources verified and normalized.");
+console.log("Exact post-login Billing crash and numeric fallbacks verified and normalized.");
