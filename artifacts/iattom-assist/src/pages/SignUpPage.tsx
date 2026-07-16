@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSignUp } from "@clerk/react/legacy";
+import { useSignUp } from "@clerk/react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
