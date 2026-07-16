@@ -76,8 +76,14 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidUpdate(prevProps: Props) {
-    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
-      this.setState({ hasError: false, error: null, componentStack: "", retryCount: 0 });
+    if (prevProps.resetKey !== this.props.resetKey) {
+      if (this.retryTimer) {
+        clearTimeout(this.retryTimer);
+        this.retryTimer = null;
+      }
+      if (this.state.hasError || this.state.retryCount !== 0 || this.state.error || this.state.componentStack) {
+        this.setState({ hasError: false, error: null, componentStack: "", retryCount: 0 });
+      }
     }
   }
 
@@ -98,6 +104,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     if (this.state.retryCount === 0) {
       this.retryTimer = setTimeout(() => {
+        this.retryTimer = null;
         this.setState({
           hasError: false,
           error: null,
