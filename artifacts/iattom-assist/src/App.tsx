@@ -3,7 +3,6 @@ import { Switch, Route, Redirect, Router as WouterRouter, useLocation } from "wo
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ClerkProvider, Show, useClerk, AuthenticateWithRedirectCallback } from "@clerk/react";
 import { ptBR } from "@clerk/localizations";
-import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { AnimatePresence } from "framer-motion";
 import { Toaster } from "@/components/ui/toaster";
@@ -108,11 +107,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string)?.replace(/\.+$/, ""),
-);
-
+const clerkPubKey = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string)?.replace(/\.+$/, "");
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
