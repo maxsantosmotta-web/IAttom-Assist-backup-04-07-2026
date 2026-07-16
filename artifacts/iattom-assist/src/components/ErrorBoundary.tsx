@@ -1,7 +1,7 @@
 import { Component } from "react";
 import type { ReactNode, ErrorInfo } from "react";
 import { LogoMark } from "@/components/ui/Logo";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, LogOut } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -11,46 +11,89 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  componentStack: string;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, componentStack: "" };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[ErrorBoundary]", error, info.componentStack);
+    const componentStack = info.componentStack ?? "";
+    this.setState({ componentStack });
+    console.error("[ErrorBoundary]", {
+      message: error.message,
+      stack: error.stack,
+      componentStack,
+      pathname: window.location.pathname,
+      href: window.location.href,
+    });
   }
+
+  private handleSignOut = async () => {
+    try {
+      const clerk = (window as Window & {
+        Clerk?: { signOut: (options?: { redirectUrl?: string }) => Promise<void> };
+      }).Clerk;
+
+      if (clerk) {
+        await clerk.signOut({ redirectUrl: "/sign-in" });
+        return;
+      }
+    } catch (error) {
+      console.error("[ErrorBoundary] sign out failed", error);
+    }
+
+    window.location.href = "/sign-in";
+  };
 
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
 
+      const diagnostic = [
+        this.state.error?.message,
+        this.state.error?.stack,
+        this.state.componentStack,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
       return (
         <div className="min-h-screen bg-[#080808] flex items-center justify-center p-6">
-          <div className="max-w-md w-full text-center">
+          <div className="max-w-2xl w-full text-center">
             <LogoMark size={40} className="mx-auto mb-8 opacity-50" />
-            <h1 className="text-xl font-bold text-white mb-2">Something went wrong</h1>
-            <p className="text-sm text-zinc-500 mb-2 leading-relaxed">
-              An unexpected error occurred. Try refreshing the page.
+            <h1 className="text-xl font-bold text-white mb-2">Erro ao abrir o painel</h1>
+            <p className="text-sm text-zinc-500 mb-4 leading-relaxed">
+              O diagnóstico técnico abaixo mostra o componente exato que interrompeu a entrada.
             </p>
-            {this.state.error && (
-              <p className="text-xs text-zinc-700 mb-6 font-mono bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 break-all">
-                {this.state.error.message}
-              </p>
+            {diagnostic && (
+              <pre className="max-h-[46vh] overflow-auto text-left text-[11px] leading-relaxed text-zinc-400 mb-6 font-mono bg-white/[0.03] border border-white/[0.08] rounded-lg px-4 py-3 whitespace-pre-wrap break-words">
+                {diagnostic}
+              </pre>
             )}
-            <button
-              onClick={() => window.location.reload()}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm font-medium hover:bg-primary/15 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Reload page
-            </button>
+            <div className="flex flex-wrap justify-center gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm font-medium hover:bg-primary/15 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Atualizar página
+              </button>
+              <button
+                onClick={() => void this.handleSignOut()}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.10] text-zinc-300 text-sm font-medium hover:bg-white/[0.08] transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Sair da conta
+              </button>
+            </div>
           </div>
         </div>
       );
