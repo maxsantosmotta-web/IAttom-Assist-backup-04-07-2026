@@ -133,4 +133,55 @@ patchFile("../src/pages/admin/AdminActivity.tsx", [
   ],
 ]);
 
+patchFile("../src/pages/admin/AdminAnalytics.tsx", [
+  [
+    "if (res.ok) setGrowthStats(await res.json());",
+    "if (res.ok) {\n          const raw = await res.json();\n          setGrowthStats({\n            mrr: Number(raw?.mrr) || 0,\n            activeSubscribers: Number(raw?.activeSubscribers) || 0,\n            totalUsers: Number(raw?.totalUsers) || 0,\n            conversionRate: Number(raw?.conversionRate) || 0,\n            activationRate: Number(raw?.activationRate) || 0,\n            activatedCount: Number(raw?.activatedCount) || 0,\n            newUsersThisWeek: Number(raw?.newUsersThisWeek) || 0,\n            newUsersThisMonth: Number(raw?.newUsersThisMonth) || 0,\n            churnRisk: Array.isArray(raw?.churnRisk) ? raw.churnRisk.filter(Boolean) : [],\n            totalReferralCodes: Number(raw?.totalReferralCodes) || 0,\n            totalReferralUses: Number(raw?.totalReferralUses) || 0,\n            creditsSpentThisMonth: Number(raw?.creditsSpentThisMonth) || 0,\n            planBreakdown: {\n              free: Number(raw?.planBreakdown?.free) || 0,\n              pro: Number(raw?.planBreakdown?.pro) || 0,\n              business: Number(raw?.planBreakdown?.business) || 0,\n              agency: Number(raw?.planBreakdown?.agency) || 0,\n            },\n          });\n        }",
+  ],
+  [
+    "if (res.ok) setCreditsData(await res.json() as CreditAnalytics);",
+    "if (res.ok) {\n          const raw = await res.json();\n          setCreditsData({\n            byFeature: Array.isArray(raw?.byFeature) ? raw.byFeature.filter(Boolean) : [],\n            byDay: Array.isArray(raw?.byDay) ? raw.byDay.filter(Boolean) : [],\n            byPlan: Array.isArray(raw?.byPlan) ? raw.byPlan.filter(Boolean) : [],\n            days: Number(raw?.days) || 0,\n          });\n        }",
+  ],
+  [
+    "const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({",
+    "const featureData = (Array.isArray(analytics?.featureUsage) ? analytics.featureUsage.filter(Boolean) : []).map((f, i) => ({",
+  ],
+  [
+    "const found = (analytics?.planRevenue ?? []).find(",
+    "const found = (Array.isArray(analytics?.planRevenue) ? analytics.planRevenue.filter(Boolean) : []).find(",
+  ],
+  [
+    "const planBar = (growthStats && hasPaidSubscribers)",
+    "const planBar = (growthStats?.planBreakdown && hasPaidSubscribers)",
+  ],
+  [
+    "!growthLoading && growthStats && growthStats.churnRisk.length > 0",
+    "!growthLoading && growthStats && Array.isArray(growthStats.churnRisk) && growthStats.churnRisk.length > 0",
+  ],
+  [
+    "{growthStats.churnRisk.map((u) => (",
+    "{(Array.isArray(growthStats.churnRisk) ? growthStats.churnRisk : []).filter(Boolean).map((u) => (",
+  ],
+  [
+    "<AreaChart data={analytics?.userGrowth ?? []}",
+    "<AreaChart data={Array.isArray(analytics?.userGrowth) ? analytics.userGrowth.filter(Boolean) : []}",
+  ],
+  [
+    "!isLoading && analytics && analytics.featureUsage.length > 0",
+    "!isLoading && analytics && Array.isArray(analytics.featureUsage) && analytics.featureUsage.length > 0",
+  ],
+  [
+    "{creditsData.byFeature.map((f, i) => (",
+    "{(Array.isArray(creditsData?.byFeature) ? creditsData.byFeature : []).filter(Boolean).map((f, i) => (",
+  ],
+  [
+    "data={creditsData.byDay}",
+    "data={Array.isArray(creditsData?.byDay) ? creditsData.byDay.filter(Boolean) : []}",
+  ],
+  [
+    "data={creditsData.byPlan}",
+    "data={Array.isArray(creditsData?.byPlan) ? creditsData.byPlan.filter(Boolean) : []}",
+  ],
+]);
+
 console.log("Dashboard and all admin runtime payload guards verified and normalized.");
