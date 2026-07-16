@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const rawPort = process.env.PORT ?? "8080";
 const port = Number(rawPort);
@@ -12,27 +11,26 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = process.env.BASE_PATH ?? "/";
+const isReplitDevelopment =
+  process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined;
+
+const replitDevelopmentPlugins = isReplitDevelopment
+  ? await Promise.all([
+      import("@replit/vite-plugin-runtime-error-modal").then((m) =>
+        m.default(),
+      ),
+      import("@replit/vite-plugin-cartographer").then((m) =>
+        m.cartographer({
+          root: path.resolve(import.meta.dirname, ".."),
+        }),
+      ),
+      import("@replit/vite-plugin-dev-banner").then((m) => m.devBanner()),
+    ])
+  : [];
 
 export default defineConfig({
   base: basePath,
-  plugins: [
-    react(),
-    tailwindcss({ optimize: false }),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
-  ],
+  plugins: [react(), tailwindcss({ optimize: false }), ...replitDevelopmentPlugins],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
