@@ -8,7 +8,7 @@ function patchFile(relativePath, replacements) {
     if (!source.includes(before) && !source.includes(after)) {
       throw new Error(`Expected runtime expression was not found in ${relativePath}: ${before}`);
     }
-    source = source.replace(before, after);
+    source = source.replaceAll(before, after);
   }
 
   writeFileSync(path, source);
@@ -40,4 +40,11 @@ patchFile("../src/pages/dashboard/Billing.tsx", [
   ],
 ]);
 
-console.log("Post-login fallbacks and owner admin access verified and normalized.");
+patchFile("../src/pages/admin/AdminOverview.tsx", [
+  [
+    "analytics.planRevenue.find(",
+    "(analytics.planRevenue ?? []).find(",
+  ],
+]);
+
+console.log("Post-login Billing, owner admin access and AdminOverview fallbacks verified and normalized.");
