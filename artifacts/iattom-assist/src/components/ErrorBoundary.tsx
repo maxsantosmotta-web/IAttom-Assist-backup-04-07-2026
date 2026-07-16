@@ -7,12 +7,14 @@ import { RefreshCw, LogOut } from "lucide-react";
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  resetKey?: string;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
   componentStack: string;
+  retryCount: number;
 }
 
 function ErrorScreen({ diagnostic }: { diagnostic: string }) {
@@ -62,13 +64,25 @@ function ErrorScreen({ diagnostic }: { diagnostic: string }) {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null, componentStack: "" };
+    this.state = { hasError: false, error: null, componentStack: "", retryCount: 0 };
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false, error: null, componentStack: "", retryCount: 0 });
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.retryTimer) clearTimeout(this.retryTimer);
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -81,10 +95,22 @@ export class ErrorBoundary extends Component<Props, State> {
       pathname: window.location.pathname,
       href: window.location.href,
     });
+
+    if (this.state.retryCount === 0) {
+      this.retryTimer = setTimeout(() => {
+        this.setState({
+          hasError: false,
+          error: null,
+          componentStack: "",
+          retryCount: 1,
+        });
+      }, 500);
+    }
   }
 
   render() {
     if (this.state.hasError) {
+      if (this.state.retryCount === 0) return null;
       if (this.props.fallback) return this.props.fallback;
 
       const diagnostic = [
