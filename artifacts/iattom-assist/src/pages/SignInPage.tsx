@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSignIn } from "@clerk/react";
+import { useSignIn, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
@@ -44,18 +44,19 @@ export function SignInPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { isLoaded, signIn, setActive } = useSignIn();
+  const { signIn } = useSignIn();
+  const clerk = useClerk();
   const [, setLocation] = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || !signIn || !setActive || loading) return;
+    if (!signIn || loading) return;
     setLoading(true);
     setError("");
     try {
       const result = await signIn.create({ identifier: email, password });
       if (result.status === "complete" && result.createdSessionId) {
-        await setActive({ session: result.createdSessionId });
+        await clerk.setActive({ session: result.createdSessionId });
         setLocation("/dashboard/billing");
       } else {
         console.error("[SignIn] Unexpected status:", result.status);
@@ -72,7 +73,7 @@ export function SignInPage() {
   };
 
   const handleGoogle = async () => {
-    if (!isLoaded || !signIn || loading) return;
+    if (!signIn || loading) return;
     setLoading(true);
     setError("");
     try {
@@ -116,7 +117,7 @@ export function SignInPage() {
             <button
               type="button"
               onClick={handleGoogle}
-              disabled={loading || !isLoaded}
+              disabled={loading}
               className="w-full h-[44px] flex items-center justify-center gap-2.5 rounded-lg border border-white/[0.10] text-white/80 text-[13px] font-medium transition-colors hover:bg-white/[0.05] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed mb-5"
               style={{ background: "rgba(255,255,255,0.025)" }}
             >
@@ -181,11 +182,11 @@ export function SignInPage() {
 
               <button
                 type="submit"
-                disabled={loading || !isLoaded}
+                disabled={loading}
                 className="w-full h-[44px] rounded-lg font-bold text-[12.5px] tracking-[0.14em] uppercase text-black transition-all disabled:opacity-55 disabled:cursor-not-allowed mt-1"
-                style={{ background: (loading || !isLoaded) ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}
+                style={{ background: loading ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}
               >
-                {!isLoaded ? "Carregando..." : loading ? "Aguarde..." : "Entrar"}
+                {loading ? "Aguarde..." : "Entrar"}
               </button>
             </form>
 

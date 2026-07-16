@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSignUp } from "@clerk/react";
+import { useSignUp, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
@@ -46,12 +46,13 @@ export function SignUpPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { isLoaded, signUp, setActive } = useSignUp();
+  const { signUp } = useSignUp();
+  const clerk = useClerk();
   const [, setLocation] = useLocation();
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || !signUp || !setActive || loading) return;
+    if (!signUp || loading) return;
     setLoading(true);
     setError("");
     try {
@@ -60,7 +61,7 @@ export function SignUpPage() {
         await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
         setStep("otp");
       } else if (result.status === "complete" && result.createdSessionId) {
-        await setActive({ session: result.createdSessionId });
+        await clerk.setActive({ session: result.createdSessionId });
         setLocation("/dashboard/billing");
       }
     } catch (err: unknown) {
@@ -75,13 +76,13 @@ export function SignUpPage() {
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || !signUp || !setActive || loading) return;
+    if (!signUp || loading) return;
     setLoading(true);
     setError("");
     try {
       const result = await signUp.attemptEmailAddressVerification({ code });
       if (result.status === "complete" && result.createdSessionId) {
-        await setActive({ session: result.createdSessionId });
+        await clerk.setActive({ session: result.createdSessionId });
         setLocation("/dashboard/billing");
       } else {
         setError("Verificação incompleta. Tente novamente.");
@@ -97,7 +98,7 @@ export function SignUpPage() {
   };
 
   const handleResend = async () => {
-    if (!isLoaded || !signUp || loading) return;
+    if (!signUp || loading) return;
     setLoading(true);
     setError("");
     try {
@@ -112,7 +113,7 @@ export function SignUpPage() {
   };
 
   const handleGoogle = async () => {
-    if (!isLoaded || !signUp || loading) return;
+    if (!signUp || loading) return;
     setLoading(true);
     setError("");
     try {
@@ -158,7 +159,7 @@ export function SignUpPage() {
                 <button
                   type="button"
                   onClick={handleGoogle}
-                  disabled={loading || !isLoaded}
+                  disabled={loading}
                   className="w-full h-[44px] flex items-center justify-center gap-2.5 rounded-lg border border-white/[0.10] text-white/80 text-[13px] font-medium transition-colors hover:bg-white/[0.05] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed mb-5"
                   style={{ background: "rgba(255,255,255,0.025)" }}
                 >
@@ -223,11 +224,11 @@ export function SignUpPage() {
 
                   <button
                     type="submit"
-                    disabled={loading || !isLoaded}
+                    disabled={loading}
                     className="w-full h-[44px] rounded-lg font-bold text-[12.5px] tracking-[0.14em] uppercase text-black transition-all disabled:opacity-55 disabled:cursor-not-allowed mt-1"
-                    style={{ background: (loading || !isLoaded) ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}
+                    style={{ background: loading ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}
                   >
-                    {!isLoaded ? "Carregando..." : loading ? "Aguarde..." : "Continuar"}
+                    {loading ? "Aguarde..." : "Continuar"}
                   </button>
                 </form>
 
