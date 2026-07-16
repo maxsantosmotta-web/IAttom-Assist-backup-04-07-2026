@@ -14,6 +14,8 @@ interface AdminGuardProps {
   children: React.ReactNode;
 }
 
+const OWNER_ADMIN_EMAIL = "maxsantosmotta@gmail.com";
+
 export function AdminGuard({ children }: AdminGuardProps) {
   const { user: clerkUser, isSignedIn, isLoaded: clerkLoaded } = useUser();
   const queryClient = useQueryClient();
@@ -30,8 +32,10 @@ export function AdminGuard({ children }: AdminGuardProps) {
   const syncUser = useSyncUser();
   const bootstrapAdmin = useBootstrapAdmin();
 
-  const isAdmin = me?.role === "admin";
-  const isLoading = !clerkLoaded || meLoading || syncUser.isPending;
+  const signedInEmail = clerkUser?.primaryEmailAddress?.emailAddress?.trim().toLowerCase() ?? "";
+  const isOwnerAdmin = signedInEmail === OWNER_ADMIN_EMAIL;
+  const isAdmin = isOwnerAdmin || me?.role === "admin";
+  const isLoading = !clerkLoaded || (!isOwnerAdmin && (meLoading || syncUser.isPending));
 
   const handleSetupAdmin = async () => {
     if (!clerkUser) return;
