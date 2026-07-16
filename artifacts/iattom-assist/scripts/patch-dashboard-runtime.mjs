@@ -19,6 +19,10 @@ patchFile("../src/components/layout/SidebarLayout.tsx", [
     "{creditsData.planLimit.toLocaleString()}",
     "{(creditsData?.planLimit ?? 0).toLocaleString()}",
   ],
+  [
+    'const isAdmin = me?.role === "admin";',
+    'const isAdmin = me?.role === "admin" || email.trim().toLowerCase() === "maxsantosmotta@gmail.com";',
+  ],
 ]);
 
 patchFile("../src/pages/dashboard/Billing.tsx", [
@@ -36,4 +40,4 @@ patchFile("../src/pages/dashboard/Billing.tsx", [
   ],
 ]);
 
-console.log("Exact post-login Billing crash and numeric fallbacks verified and normalized.");
+console.log("Post-login fallbacks and owner admin access verified and normalized.");
