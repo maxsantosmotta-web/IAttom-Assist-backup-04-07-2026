@@ -1,0 +1,55 @@
+name: Fix Clerk auth state
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-clerk-auth-state.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Align custom auth pages with active Clerk provider
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          signin = Path('artifacts/iattom-assist/src/pages/SignInPage.tsx')
+          s = signin.read_text()
+          s = s.replace('import { useSignIn } from "@clerk/react";', 'import { useSignIn, useClerk } from "@clerk/react";')
+          s = s.replace('  const { isLoaded, signIn, setActive } = useSignIn();\n  const [, setLocation] = useLocation();', '  const { signIn } = useSignIn();\n  const clerk = useClerk();\n  const [, setLocation] = useLocation();')
+          s = s.replace('if (!isLoaded || !signIn || !setActive || loading) return;', 'if (!signIn || loading) return;')
+          s = s.replace('if (!isLoaded || !signIn || loading) return;', 'if (!signIn || loading) return;')
+          s = s.replace('await setActive({ session: result.createdSessionId });', 'await clerk.setActive({ session: result.createdSessionId });')
+          s = s.replace('disabled={loading || !isLoaded}', 'disabled={loading}')
+          s = s.replace('style={{ background: (loading || !isLoaded) ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}', 'style={{ background: loading ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}')
+          s = s.replace('{!isLoaded ? "Carregando..." : loading ? "Aguarde..." : "Entrar"}', '{loading ? "Aguarde..." : "Entrar"}')
+          signin.write_text(s)
+
+          signup = Path('artifacts/iattom-assist/src/pages/SignUpPage.tsx')
+          s = signup.read_text()
+          s = s.replace('import { useSignUp } from "@clerk/react";', 'import { useSignUp, useClerk } from "@clerk/react";')
+          s = s.replace('  const { isLoaded, signUp, setActive } = useSignUp();\n  const [, setLocation] = useLocation();', '  const { signUp } = useSignUp();\n  const clerk = useClerk();\n  const [, setLocation] = useLocation();')
+          s = s.replace('if (!isLoaded || !signUp || !setActive || loading) return;', 'if (!signUp || loading) return;')
+          s = s.replace('if (!isLoaded || !signUp || loading) return;', 'if (!signUp || loading) return;')
+          s = s.replace('await setActive({ session: result.createdSessionId });', 'await clerk.setActive({ session: result.createdSessionId });')
+          s = s.replace('disabled={loading || !isLoaded}', 'disabled={loading}')
+          s = s.replace('style={{ background: (loading || !isLoaded) ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}', 'style={{ background: loading ? "#8a6820" : "linear-gradient(135deg,#E8C84A 0%,#C9A030 38%,#A07820 68%,#C9A030 100%)" }}')
+          s = s.replace('{!isLoaded ? "Carregando..." : loading ? "Aguarde..." : "Continuar"}', '{loading ? "Aguarde..." : "Continuar"}')
+          signup.write_text(s)
+          PY
+          git rm .github/workflows/fix-clerk-auth-state.yml
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/iattom-assist/src/pages/SignInPage.tsx artifacts/iattom-assist/src/pages/SignUpPage.tsx
+          git commit -m "Fix Clerk auth state deadlock"
+          git push
