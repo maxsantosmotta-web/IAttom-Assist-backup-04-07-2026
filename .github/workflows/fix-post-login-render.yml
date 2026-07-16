@@ -1,0 +1,51 @@
+name: Fix post-login dashboard render
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-post-login-render.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Fix undefined credit limits and signed-in route handling
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          sidebar = Path('artifacts/iattom-assist/src/components/layout/SidebarLayout.tsx')
+          text = sidebar.read_text()
+          old = '{creditsData.planLimit.toLocaleString()}'
+          new = '{(creditsData.planLimit ?? 0).toLocaleString()}'
+          if old not in text:
+              raise SystemExit('Expected SidebarLayout planLimit expression not found')
+          text = text.replace(old, new, 1)
+          sidebar.write_text(text)
+
+          signin = Path('artifacts/iattom-assist/src/pages/SignInPage.tsx')
+          text = signin.read_text()
+          text = text.replace('import { useState } from "react";', 'import { useEffect, useState } from "react";', 1)
+          text = text.replace('import { useSignIn, useClerk } from "@clerk/react";', 'import { useAuth, useSignIn, useClerk } from "@clerk/react";', 1)
+          marker = '  const { signIn } = useSignIn();\n  const clerk = useClerk();\n  const [, setLocation] = useLocation();\n'
+          replacement = '  const { signIn } = useSignIn();\n  const { isLoaded: authLoaded, isSignedIn } = useAuth();\n  const clerk = useClerk();\n  const [, setLocation] = useLocation();\n\n  useEffect(() => {\n    if (authLoaded && isSignedIn) {\n      setLocation("/dashboard");\n    }\n  }, [authLoaded, isSignedIn, setLocation]);\n'
+          if marker not in text:
+              raise SystemExit('Expected SignInPage hook block not found')
+          text = text.replace(marker, replacement, 1)
+          signin.write_text(text)
+          PY
+          git rm .github/workflows/fix-post-login-render.yml
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/iattom-assist/src/components/layout/SidebarLayout.tsx artifacts/iattom-assist/src/pages/SignInPage.tsx .github/workflows/fix-post-login-render.yml
+          git commit -m "Fix post-login dashboard render and signed-in redirect"
+          git push
