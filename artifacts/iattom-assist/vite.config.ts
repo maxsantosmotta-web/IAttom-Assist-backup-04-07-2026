@@ -11,16 +11,15 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = process.env.BASE_PATH ?? "/";
-const apiServerUrl = process.env.API_SERVER_URL?.trim().replace(/\/+$/, "");
-const apiProxy: Record<string, string | ProxyOptions> | undefined = apiServerUrl
-  ? {
-      "/api": {
-        target: apiServerUrl,
-        changeOrigin: true,
-        secure: apiServerUrl.startsWith("https://"),
-      },
-    }
-  : undefined;
+const defaultApiServerUrl = "http://workspaceapi-server.railway.internal:8080";
+const apiServerUrl = (process.env.API_SERVER_URL?.trim() || defaultApiServerUrl).replace(/\/+$/, "");
+const apiProxy: Record<string, string | ProxyOptions> = {
+  "/api": {
+    target: apiServerUrl,
+    changeOrigin: true,
+    secure: apiServerUrl.startsWith("https://"),
+  },
+};
 
 const isReplitDevelopment =
   process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined;
