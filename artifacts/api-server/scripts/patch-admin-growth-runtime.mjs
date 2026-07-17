@@ -34,15 +34,15 @@ if (!source.includes(routeMarker)) {
     db.select({ count: count() }).from(users).where(eq(users.plan, "agency")),
     db.select({ count: count() }).from(users).where(gte(users.createdAt, weekStart)),
     db.select({ count: count() }).from(users).where(gte(users.createdAt, monthStart)),
-    db.execute(sql\`SELECT count(DISTINCT clerk_user_id)::int AS count
-      FROM (
-        SELECT clerk_user_id FROM history WHERE deleted_at IS NULL
-        UNION
-        SELECT clerk_user_id FROM projects
-      ) activated\`),
-    db.execute(sql\`SELECT COALESCE(abs(sum(amount)), 0)::int AS total
-      FROM credits_transactions
-      WHERE amount < 0 AND created_at >= \${monthStart}\`),
+    db.select({
+      count: sql<number>\`count(distinct \${historyTable.clerkUserId})::int\`,
+    }).from(historyTable).where(isNull(historyTable.deletedAt)),
+    db.select({
+      total: sql<number>\`coalesce(abs(sum(\${creditsTransactions.amount})), 0)::int\`,
+    }).from(creditsTransactions).where(and(
+      gte(creditsTransactions.createdAt, monthStart),
+      sql\`\${creditsTransactions.amount} < 0\`,
+    )),
   ]);
 
   const totalUsers = Number(totalUsersRow?.count) || 0;
@@ -51,8 +51,8 @@ if (!source.includes(routeMarker)) {
   const businessUsers = Number(businessUsersRow?.count) || 0;
   const agencyUsers = Number(agencyUsersRow?.count) || 0;
   const activeSubscribers = proUsers + businessUsers + agencyUsers;
-  const activatedUsers = Number((activatedUsersRow.rows?.[0] as { count?: number | string } | undefined)?.count) || 0;
-  const creditsSpentThisMonth = Number((creditsSpentRow.rows?.[0] as { total?: number | string } | undefined)?.total) || 0;
+  const activatedUsers = Number(activatedUsersRow?.count) || 0;
+  const creditsSpentThisMonth = Number(creditsSpentRow?.total) || 0;
 
   const conversionRate = totalUsers > 0
     ? Math.round((activeSubscribers / totalUsers) * 1000) / 10
