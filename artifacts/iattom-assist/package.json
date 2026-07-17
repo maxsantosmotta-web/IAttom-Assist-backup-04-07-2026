@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@10.12.1",
   "scripts": {
-    "dev": "pnpm --filter @workspace/api-server start",
+    "dev": "vite preview --config vite.config.ts --host 0.0.0.0",
     "dev:vite": "node scripts/patch-dashboard-runtime.mjs && node scripts/patch-settings-referral.mjs && node scripts/patch-admin-live-data.mjs && vite --config vite.config.ts --host 0.0.0.0",
     "build": "node scripts/patch-dashboard-runtime.mjs && node scripts/patch-settings-referral.mjs && node scripts/patch-admin-live-data.mjs && vite build --config vite.config.ts && pnpm --filter @workspace/api-server build",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
