@@ -6,10 +6,11 @@ import {
 import { useUser } from "@clerk/react";
 
 const GLOBAL_BETA = import.meta.env.VITE_GLOBAL_BETA_MODE === "true";
+const OWNER_EMAIL = "maxsantosmotta@gmail.com";
 
 export function PlanGate({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded, user } = useUser();
 
   const { data: me, isLoading: meLoading } = useGetMe({
     query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 0, enabled: !!isSignedIn },
@@ -23,8 +24,14 @@ export function PlanGate({ children }: { children: React.ReactNode }) {
     },
   });
 
+  const email = user?.primaryEmailAddress?.emailAddress?.trim().toLowerCase() ?? "";
+  const isOwner = email === OWNER_EMAIL;
+
   // Never gate on the billing page itself (prevents redirect loop)
   if (location === "/dashboard/billing") return <>{children}</>;
+
+  // Owner account always has full access for platform testing.
+  if (isOwner) return <>{children}</>;
 
   // Wait for essential data — render children while loading (no flash redirect)
   if (!isLoaded || meLoading || subLoading) return <>{children}</>;
