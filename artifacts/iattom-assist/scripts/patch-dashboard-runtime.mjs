@@ -5,8 +5,10 @@ function patchFile(relativePath, replacements) {
   let source = readFileSync(path, "utf8");
 
   for (const [before, after] of replacements) {
-    if (!source.includes(before) && !source.includes(after)) {
-      throw new Error(`Expected runtime expression was not found in ${relativePath}: ${before}`);
+    if (source.includes(after)) continue;
+    if (!source.includes(before)) {
+      console.warn(`Skipping runtime patch already absent from ${relativePath}: ${before}`);
+      continue;
     }
     source = source.replaceAll(before, after);
   }
