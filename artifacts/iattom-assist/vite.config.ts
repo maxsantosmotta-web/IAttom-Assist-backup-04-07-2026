@@ -57,6 +57,11 @@ const iattomRuntimeSafety: Plugin = {
       return { code: patched, map: null };
     }
 
+    if (normalizedId.endsWith("/src/pages/dashboard/Settings.tsx")) {
+      const patched = code.replace(/\s+capture="user"/, "");
+      return patched === code ? null : { code: patched, map: null };
+    }
+
     return null;
   },
 };
