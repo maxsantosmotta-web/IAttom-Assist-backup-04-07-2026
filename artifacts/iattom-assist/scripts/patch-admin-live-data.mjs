@@ -25,11 +25,11 @@ const after = `if (res.ok) {
           });
         } else {
           const [statsRes, analyticsRes] = await Promise.all([
-            fetch(\`${BASE}/api/admin/stats\`, {
+            fetch(\`\${BASE}/api/admin/stats\`, {
               headers: { Authorization: \`Bearer \${token}\` },
               credentials: "include",
             }),
-            fetch(\`${BASE}/api/admin/analytics\`, {
+            fetch(\`\${BASE}/api/admin/analytics\`, {
               headers: { Authorization: \`Bearer \${token}\` },
               credentials: "include",
             }),
