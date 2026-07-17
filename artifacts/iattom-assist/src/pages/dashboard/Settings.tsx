@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { User, Bell, Shield, CreditCard, Zap, ExternalLink, Save, RefreshCw } from "lucide-react";
+import { User, Bell, Shield, CreditCard, Zap, ExternalLink, Save, RefreshCw, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 import { useGetMe } from "@workspace/api-client-react";
@@ -26,6 +27,7 @@ const itemVariants = {
 };
 
 const NOTIF_STORAGE_KEY = "iattom_notification_prefs_v1";
+const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
 
 interface NotifPrefs {
   appNotif: boolean;
@@ -55,12 +57,15 @@ export function Settings() {
   const { data: me, isFetching: fetchingMe, refetch: refetchMe } = useGetMe({ query: { queryKey: getGetMeQueryKey(), staleTime: 0 } });
 
   const [, navigate] = useLocation();
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(loadNotifPrefs);
 
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<"idle" | "success" | "invalid" | "error">("idle");
 
   useEffect(() => {
     if (isLoaded && user) {
@@ -73,6 +78,8 @@ export function Settings() {
   const plan = (me?.plan ?? "free") as keyof typeof PLAN_CREDITS;
   const planInfo = PLAN_PRICES[plan];
   const planCredits = PLAN_CREDITS[plan];
+  const displayName = user?.fullName || user?.firstName || "Usuário";
+  const initials = displayName.split(" ").map((part) => part[0]).join("").toUpperCase().slice(0, 2);
 
   const hasNameChanged =
     editFirstName !== (user?.firstName ?? "") ||
@@ -91,6 +98,32 @@ export function Settings() {
       setTimeout(() => setSaveStatus("idle"), 4000);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleProfileImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !user) return;
+
+    if (!file.type.startsWith("image/") || file.size > MAX_PROFILE_IMAGE_BYTES) {
+      setPhotoStatus("invalid");
+      setTimeout(() => setPhotoStatus("idle"), 4000);
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    setPhotoStatus("idle");
+    try {
+      await user.setProfileImage({ file });
+      await user.reload();
+      setPhotoStatus("success");
+      setTimeout(() => setPhotoStatus("idle"), 3000);
+    } catch {
+      setPhotoStatus("error");
+      setTimeout(() => setPhotoStatus("idle"), 4000);
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -144,6 +177,41 @@ export function Settings() {
                 </div>
               ) : (
                 <>
+                  <div className="flex items-center gap-4 rounded-lg bg-white/[0.03] border border-white/5 p-4">
+                    <Avatar className="w-16 h-16 border border-white/10 shrink-0">
+                      {user?.imageUrl && <AvatarImage src={user.imageUrl} alt={displayName} />}
+                      <AvatarFallback className="bg-primary/15 text-primary text-sm font-bold">{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-white">Foto do perfil</p>
+                      <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WebP com até 5 MB.</p>
+                      <div className="flex items-center gap-3 mt-3 flex-wrap">
+                        <input
+                          ref={photoInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          capture="user"
+                          className="hidden"
+                          onChange={(event) => void handleProfileImageChange(event)}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={isUploadingPhoto}
+                          onClick={() => photoInputRef.current?.click()}
+                          className="border-primary/30 text-primary hover:bg-primary/10 text-xs"
+                        >
+                          <Camera className="w-3.5 h-3.5 mr-1.5" />
+                          {isUploadingPhoto ? "Enviando..." : user?.imageUrl ? "Trocar foto" : "Adicionar foto"}
+                        </Button>
+                        {photoStatus === "success" && <span className="text-xs text-emerald-400">Foto atualizada.</span>}
+                        {photoStatus === "invalid" && <span className="text-xs text-red-400">Use uma imagem válida de até 5 MB.</span>}
+                        {photoStatus === "error" && <span className="text-xs text-red-400">Não foi possível enviar. Tente novamente.</span>}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Nome</Label>
@@ -202,14 +270,14 @@ export function Settings() {
                   )}
 
                   <div className="flex items-center justify-between rounded-lg bg-white/5 border border-white/5 p-3">
-                    <p className="text-xs text-muted-foreground">E-mail e avatar são gerenciados pela sua conta.</p>
+                    <p className="text-xs text-muted-foreground">E-mail e segurança são gerenciados pela sua conta.</p>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={openClerkProfile}
                       className="text-primary hover:text-primary/80 text-xs shrink-0 ml-3"
                     >
-                      <ExternalLink className="w-3 h-3 mr-1.5" /> Editar Perfil
+                      <ExternalLink className="w-3 h-3 mr-1.5" /> Editar Conta
                     </Button>
                   </div>
                 </>
