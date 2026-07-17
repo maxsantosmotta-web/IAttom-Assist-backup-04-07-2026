@@ -5,9 +5,7 @@ import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 const basePath = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
 const dashboardPath = `${basePath}/dashboard` || "/dashboard";
-const canonicalOrigin = window.location.hostname === "www.iattomassist.com.br"
-  ? "https://iattomassist.com.br"
-  : window.location.origin;
+const googleCallbackPath = `${basePath}/sign-in/sso-callback` || "/sign-in/sso-callback";
 
 function GoogleIcon() {
   return (
@@ -25,7 +23,6 @@ function mapSignInError(code?: string, msg?: string): string {
     case "form_identifier_not_found":
       return "Usuário não encontrado. Crie sua conta.";
     case "form_password_incorrect":
-      return "E-mail ou senha inválidos.";
     case "form_param_nil":
       return "E-mail ou senha inválidos.";
     case "form_param_format_invalid":
@@ -69,17 +66,14 @@ export function SignInPage() {
         }
 
         const url = decorateUrl(dashboardPath);
-        if (url.startsWith("http")) {
-          window.location.assign(url);
-        } else {
-          setLocation(url);
-        }
+        if (url.startsWith("http")) window.location.assign(url);
+        else setLocation(url);
       },
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!signIn || loading) return;
 
     setLoading(true);
@@ -134,8 +128,8 @@ export function SignInPage() {
     }
   };
 
-  const handleVerifyDevice = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleVerifyDevice = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!signIn || loading || verificationCode.length !== 6) return;
 
     setLoading(true);
@@ -173,19 +167,26 @@ export function SignInPage() {
     setLoading(true);
     setError("");
 
+    const timeoutId = window.setTimeout(() => {
+      setLoading(false);
+      setError("O Google não abriu. Atualize a página e tente novamente.");
+    }, 12_000);
+
     try {
       const { error: clerkError } = await signIn.sso({
         strategy: "oauth_google",
-        redirectCallbackUrl: `${canonicalOrigin}${basePath}/sign-in/sso-callback`,
-        redirectUrl: `${canonicalOrigin}${dashboardPath}`,
+        redirectCallbackUrl: googleCallbackPath,
+        redirectUrl: dashboardPath,
       });
 
       if (clerkError) {
+        window.clearTimeout(timeoutId);
         const first = (clerkError as ClerkErrorLike)?.errors?.[0];
         setError(first?.longMessage ?? first?.message ?? "Erro ao autenticar com Google. Tente novamente.");
         setLoading(false);
       }
     } catch (err: unknown) {
+      window.clearTimeout(timeoutId);
       const clerkError = err as ClerkErrorLike;
       const first = clerkError?.errors?.[0];
       console.error("[SignIn Google] Clerk error:", err);
@@ -214,7 +215,8 @@ export function SignInPage() {
               <img
                 src="/iattom-logo-transparent.png"
                 alt="IAttom Assist"
-                width={68} height={68}
+                width={68}
+                height={68}
                 draggable={false}
                 className="w-[68px] h-[68px] object-contain select-none"
               />
@@ -239,7 +241,7 @@ export function SignInPage() {
                   style={{ background: "rgba(255,255,255,0.025)" }}
                 >
                   <GoogleIcon />
-                  Continuar com Google
+                  {loading ? "Abrindo Google..." : "Continuar com Google"}
                 </button>
 
                 <div className="flex items-center gap-3 mb-5">
@@ -260,7 +262,7 @@ export function SignInPage() {
                     autoComplete="one-time-code"
                     maxLength={6}
                     value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="000000"
                     required
                     className="w-full h-[43px] px-3.5 rounded-lg text-[13.5px] text-white placeholder:text-white/22 outline-none transition-colors text-center tracking-[0.45em]"
@@ -299,14 +301,14 @@ export function SignInPage() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                     placeholder="seu@email.com"
                     required
                     autoComplete="email"
                     className="w-full h-[43px] px-3.5 rounded-lg text-[13.5px] text-white placeholder:text-white/22 outline-none transition-colors"
                     style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.09)" }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(201,168,76,0.5)"; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; }}
+                    onFocus={(event) => { event.currentTarget.style.borderColor = "rgba(201,168,76,0.5)"; }}
+                    onBlur={(event) => { event.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; }}
                   />
                 </div>
 
@@ -316,19 +318,19 @@ export function SignInPage() {
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(event) => setPassword(event.target.value)}
                       placeholder="Sua senha"
                       required
                       autoComplete="current-password"
                       className="w-full h-[43px] px-3.5 pr-11 rounded-lg text-[13.5px] text-white placeholder:text-white/22 outline-none transition-colors"
                       style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.09)" }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(201,168,76,0.5)"; }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; }}
+                      onFocus={(event) => { event.currentTarget.style.borderColor = "rgba(201,168,76,0.5)"; }}
+                      onBlur={(event) => { event.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; }}
                     />
                     <button
                       type="button"
                       tabIndex={-1}
-                      onClick={() => setShowPassword((v) => !v)}
+                      onClick={() => setShowPassword((value) => !value)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-white/28 hover:text-white/55 transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-[15px] h-[15px]" /> : <Eye className="w-[15px] h-[15px]" />}
@@ -370,8 +372,8 @@ export function SignInPage() {
                     onClick={() => setLocation("/sign-up")}
                     className="transition-colors"
                     style={{ color: "#C9A84C" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = "#E8C96A"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = "#C9A84C"; }}
+                    onMouseEnter={(event) => { event.currentTarget.style.color = "#E8C96A"; }}
+                    onMouseLeave={(event) => { event.currentTarget.style.color = "#C9A84C"; }}
                   >
                     Criar conta
                   </button>
