@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, type Plugin, type ProxyOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -11,6 +11,17 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = process.env.BASE_PATH ?? "/";
+const apiServerUrl = process.env.API_SERVER_URL?.trim().replace(/\/+$/, "");
+const apiProxy: Record<string, string | ProxyOptions> | undefined = apiServerUrl
+  ? {
+      "/api": {
+        target: apiServerUrl,
+        changeOrigin: true,
+        secure: apiServerUrl.startsWith("https://"),
+      },
+    }
+  : undefined;
+
 const isReplitDevelopment =
   process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined;
 
@@ -76,6 +87,7 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: apiProxy,
     fs: {
       strict: true,
     },
@@ -84,5 +96,6 @@ export default defineConfig({
     port,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: apiProxy,
   },
 });
