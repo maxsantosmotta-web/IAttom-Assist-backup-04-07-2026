@@ -4,7 +4,10 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 const basePath = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
-const billingPath = `${basePath}/dashboard/billing` || "/dashboard/billing";
+const dashboardPath = `${basePath}/dashboard` || "/dashboard";
+const canonicalOrigin = window.location.hostname === "www.iattomassist.com.br"
+  ? "https://iattomassist.com.br"
+  : window.location.origin;
 
 function GoogleIcon() {
   return (
@@ -65,7 +68,7 @@ export function SignInPage() {
           return;
         }
 
-        const url = decorateUrl(billingPath);
+        const url = decorateUrl(dashboardPath);
         if (url.startsWith("http")) {
           window.location.assign(url);
         } else {
@@ -173,8 +176,8 @@ export function SignInPage() {
     try {
       const { error: clerkError } = await signIn.sso({
         strategy: "oauth_google",
-        redirectCallbackUrl: `${window.location.origin}${basePath}/sign-in/sso-callback`,
-        redirectUrl: `${window.location.origin}${billingPath}`,
+        redirectCallbackUrl: `${canonicalOrigin}${basePath}/sign-in/sso-callback`,
+        redirectUrl: `${canonicalOrigin}${dashboardPath}`,
       });
 
       if (clerkError) {
