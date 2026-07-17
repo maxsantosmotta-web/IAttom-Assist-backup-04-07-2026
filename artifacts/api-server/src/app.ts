@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import path from "node:path";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -85,6 +86,28 @@ app.use(
 );
 
 app.use("/api", router);
+
+// Railway runs this API server as the single production process. Serve the
+// already-built React application from the same origin so authenticated API
+// requests, Clerk proxy requests and the dashboard use one stable domain.
+const frontendDist = path.resolve(process.cwd(), "artifacts/iattom-assist/dist/public");
+app.use(express.static(frontendDist, { index: false, fallthrough: true }));
+
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    res.status(404).json({ error: "API route not found" });
+    return;
+  }
+
+  if (req.method === "GET" && req.accepts("html")) {
+    res.sendFile(path.join(frontendDist, "index.html"), (error) => {
+      if (error) next(error);
+    });
+    return;
+  }
+
+  next();
+});
 
 // ─── Start global integration monitors ───────────────────────────────────────
 IntegrationManager.startHealthMonitor();
