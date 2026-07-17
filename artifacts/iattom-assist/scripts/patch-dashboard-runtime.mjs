@@ -38,7 +38,11 @@ patchFile("../src/pages/dashboard/Billing.tsx", [
   ],
   [
     "plan.features.map((feature) => (",
-    "(plan.features ?? []).map((feature) => (",
+    "(Array.isArray(plan?.features) ? plan.features : []).map((feature) => (",
+  ],
+  [
+    "const sortedPlans = [...plans].sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));",
+    "const safePlans = Array.isArray(plans) ? plans.filter((plan) => plan && typeof plan.planKey === \"string\") : [];\n  const sortedPlans = Array.from(new Map(safePlans.map((plan) => [plan.planKey, plan])).values())\n    .sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));",
   ],
 ]);
 
@@ -186,4 +190,103 @@ patchFile("../src/pages/admin/AdminAnalytics.tsx", [
   ],
 ]);
 
-console.log("Dashboard and all admin runtime payload guards verified and normalized.");
+patchFile("../src/pages/dashboard/DashboardHome.tsx", [
+  [
+    "const recentModules = historyData\n    ? Array.from(new Map(\n        historyData",
+    "const safeHistoryData = Array.isArray(historyData) ? historyData.filter(Boolean) : [];\n  const recentModules = safeHistoryData.length > 0\n    ? Array.from(new Map(\n        safeHistoryData",
+  ],
+  [
+    ".map((h) => MODULE_TO_ACTION[h.module])",
+    ".map((h) => MODULE_TO_ACTION[typeof h?.module === \"string\" ? h.module : \"\"])",
+  ],
+]);
+
+patchFile("../src/pages/dashboard/History.tsx", [
+  [
+    "const filtered = (history ?? []).filter((h) =>\n    h.action.toLowerCase().includes(search.toLowerCase()) ||\n    h.module.toLowerCase().includes(search.toLowerCase()) ||\n    (h.projectName ?? \"\").toLowerCase().includes(search.toLowerCase())\n  );\n\n  const hasItems = (history ?? []).length > 0;",
+    "const safeHistory = Array.isArray(history) ? history.filter(Boolean) : [];\n  const searchLower = search.toLowerCase();\n  const filtered = safeHistory.filter((h) =>\n    (typeof h?.action === \"string\" ? h.action : \"\").toLowerCase().includes(searchLower) ||\n    (typeof h?.module === \"string\" ? h.module : \"\").toLowerCase().includes(searchLower) ||\n    (typeof h?.projectName === \"string\" ? h.projectName : \"\").toLowerCase().includes(searchLower)\n  );\n\n  const hasItems = safeHistory.length > 0;",
+  ],
+  [
+    "const seconds = Math.floor((Date.now() - d.getTime()) / 1000);",
+    "if (Number.isNaN(d.getTime())) return \"—\";\n  const seconds = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));",
+  ],
+  [
+    "{translateAction(item.action)}",
+    "{translateAction(typeof item?.action === \"string\" ? item.action : \"Atividade\")}",
+  ],
+  [
+    "const Icon = moduleIcons[item.module] ?? Clock;",
+    "const safeModule = typeof item?.module === \"string\" ? item.module : \"unknown\";\n                const Icon = moduleIcons[safeModule] ?? Clock;",
+  ],
+  [
+    "const colorClass = moduleColors[item.module] ??",
+    "const colorClass = moduleColors[safeModule] ??",
+  ],
+  [
+    "{moduleLabels[item.module] ?? item.module.replace(/_/g, \" \")}",
+    "{moduleLabels[safeModule] ?? safeModule.replace(/_/g, \" \")}",
+  ],
+]);
+
+patchFile("../src/pages/dashboard/Credits.tsx", [
+  [
+    "function translateDescription(desc: string): string {\n  return descriptionTranslations[desc] ?? desc;\n}",
+    "function translateDescription(desc?: string | null): string {\n  const safe = typeof desc === \"string\" && desc.trim() ? desc : \"Transação\";\n  return descriptionTranslations[safe] ?? safe;\n}",
+  ],
+  [
+    "const percentage = balance?.percentage ?? 0;",
+    "const percentage = Number.isFinite(Number(balance?.percentage)) ? Number(balance?.percentage) : 0;\n  const safeTransactions = Array.isArray(txData?.transactions) ? txData.transactions.filter(Boolean) : [];",
+  ],
+  [
+    "{txData && (\n            <span className=\"text-xs text-muted-foreground\">{txData.total} total</span>\n          )}",
+    "{txData && (\n            <span className=\"text-xs text-muted-foreground\">{Number(txData?.total) || safeTransactions.length} total</span>\n          )}",
+  ],
+  [
+    ") : !txData?.transactions.length ? (",
+    ") : safeTransactions.length === 0 ? (",
+  ],
+  [
+    "{txData.transactions.map((tx) => (",
+    "{safeTransactions.map((tx) => (",
+  ],
+  [
+    "{new Date(tx.createdAt).toLocaleDateString(\"pt-BR\")}",
+    "{tx?.createdAt && !Number.isNaN(new Date(tx.createdAt).getTime()) ? new Date(tx.createdAt).toLocaleDateString(\"pt-BR\") : \"—\"}",
+  ],
+  [
+    "{new Date(tx.createdAt).toLocaleTimeString(\"pt-BR\", {",
+    "{tx?.createdAt && !Number.isNaN(new Date(tx.createdAt).getTime()) ? new Date(tx.createdAt).toLocaleTimeString(\"pt-BR\", {",
+  ],
+  [
+    "minute: \"2-digit\",\n                          })}",
+    "minute: \"2-digit\",\n                          }) : \"\"}",
+  ],
+  [
+    "{tx.amount >= 0 ? \"+\" : \"\"}\n                        {tx.amount}",
+    "{Number(tx?.amount) >= 0 ? \"+\" : \"\"}\n                        {Number(tx?.amount) || 0}",
+  ],
+]);
+
+patchFile("../src/pages/dashboard/Settings.tsx", [
+  [
+    "const planInfo = PLAN_PRICES[plan];\n  const planCredits = PLAN_CREDITS[plan];",
+    "const planInfo = PLAN_PRICES[plan] ?? PLAN_PRICES.free;\n  const planCredits = PLAN_CREDITS[plan] ?? PLAN_CREDITS.free ?? 0;",
+  ],
+]);
+
+patchFile("../src/components/layout/AdminLayout.tsx", [
+  [
+    "const [location] = useLocation();",
+    "const [location] = useLocation();",
+  ],
+  [
+    "<Link\n            href=\"/dashboard\"\n            className=\"flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] transition-all duration-150\"\n            onClick={closeSidebar}\n          >",
+    "<a\n            href=\"/dashboard\"\n            className=\"flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] transition-all duration-150\"\n            onClick={(event) => { event.preventDefault(); closeSidebar(); window.location.assign(\"/dashboard\"); }}\n          >",
+  ],
+  [
+    "</Link>\n        </div>\n\n        {/* Nav */}",
+    "</a>\n        </div>\n\n        {/* Nav */}",
+  ],
+]);
+
+console.log("Dashboard, user modules and admin navigation runtime guards verified and normalized.");
