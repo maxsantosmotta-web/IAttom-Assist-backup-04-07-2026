@@ -33,10 +33,15 @@ let signInSource = readFileSync(signInUrl, "utf8");
 const relativeConstants = `const dashboardPath = \`${"${basePath}"}/dashboard\` || "/dashboard";
 const googleCallbackPath = \`${"${basePath}"}/sign-in/sso-callback\` || "/sign-in/sso-callback";`;
 
-const absoluteConstants = `const dashboardPath = \`${"${basePath}"}/dashboard\` || "/dashboard";
+const rootAbsoluteConstants = `const dashboardPath = \`${"${basePath}"}/dashboard\` || "/dashboard";
 const canonicalOrigin = window.location.hostname === "www.iattomassist.com.br"
   ? "https://iattomassist.com.br"
   : window.location.origin;
+const googleCallbackUrl = \`${"${canonicalOrigin}${basePath}"}/sign-in/sso-callback\`;
+const googleRedirectUrl = \`${"${canonicalOrigin}${dashboardPath}"}\`;`;
+
+const wwwAbsoluteConstants = `const dashboardPath = \`${"${basePath}"}/dashboard\` || "/dashboard";
+const canonicalOrigin = "https://www.iattomassist.com.br";
 const googleCallbackUrl = \`${"${canonicalOrigin}${basePath}"}/sign-in/sso-callback\`;
 const googleRedirectUrl = \`${"${canonicalOrigin}${dashboardPath}"}\`;`;
 
@@ -49,7 +54,10 @@ const absoluteRedirects = `redirectCallbackUrl: googleCallbackUrl,
 let signInChanged = false;
 
 if (signInSource.includes(relativeConstants)) {
-  signInSource = signInSource.replace(relativeConstants, absoluteConstants);
+  signInSource = signInSource.replace(relativeConstants, wwwAbsoluteConstants);
+  signInChanged = true;
+} else if (signInSource.includes(rootAbsoluteConstants)) {
+  signInSource = signInSource.replace(rootAbsoluteConstants, wwwAbsoluteConstants);
   signInChanged = true;
 }
 
@@ -60,9 +68,9 @@ if (signInSource.includes(relativeRedirects)) {
 
 if (signInChanged) {
   writeFileSync(signInUrl, signInSource);
-  console.log("Absolute Google OAuth redirect URLs applied.");
-} else if (signInSource.includes(absoluteConstants) && signInSource.includes(absoluteRedirects)) {
-  console.log("Absolute Google OAuth redirect URLs already applied.");
+  console.log("Google OAuth redirects pinned to www.iattomassist.com.br.");
+} else if (signInSource.includes(wwwAbsoluteConstants) && signInSource.includes(absoluteRedirects)) {
+  console.log("Google OAuth redirects already use www.iattomassist.com.br.");
 } else {
   throw new Error("Google OAuth redirect markers were not found");
 }
