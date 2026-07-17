@@ -8,6 +8,7 @@ interface BetaGateProps {
 }
 
 const PLAN_GATE_BYPASS = "/dashboard/billing";
+const OWNER_EMAIL = "maxsantosmotta@gmail.com";
 
 const Spinner = () => (
   <div className="flex items-center justify-center min-h-[100dvh] bg-[#0a0a0a]">
@@ -39,16 +40,19 @@ const ErrorScreen = ({ onRetry }: { onRetry: () => void }) => (
 );
 
 export function BetaGate({ children }: BetaGateProps) {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
   const [location, navigate] = useLocation();
 
   const { data: me, isLoading, isError, refetch } = useGetMe({
     query: { queryKey: getGetMeQueryKey(), staleTime: 0, enabled: isLoaded && !!isSignedIn },
   });
 
+  const email = user?.primaryEmailAddress?.emailAddress?.trim().toLowerCase() ?? "";
+  const isOwner = email === OWNER_EMAIL;
   const isBillingPage = location === PLAN_GATE_BYPASS;
 
   const needsOnboarding =
+    !isOwner &&
     !isBillingPage &&
     me !== undefined &&
     me.role !== "admin" &&
@@ -56,9 +60,13 @@ export function BetaGate({ children }: BetaGateProps) {
     !me.planSelected;
 
   useEffect(() => {
+    if (isOwner) return;
     if (!isLoaded || isLoading || me === undefined) return;
     if (needsOnboarding) navigate(PLAN_GATE_BYPASS, { replace: true });
-  }, [isLoaded, isLoading, me, needsOnboarding, navigate]);
+  }, [isOwner, isLoaded, isLoading, me, needsOnboarding, navigate]);
+
+  // Owner account bypasses profile/onboarding restrictions for testing.
+  if (isOwner) return <>{children}</>;
 
   // Aguarda Clerk carregar e a query executar
   if (!isLoaded || isLoading) return <Spinner />;
