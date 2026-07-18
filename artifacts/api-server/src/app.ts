@@ -88,25 +88,25 @@ app.use(
   }),
 );
 
-// Direct production route. It is intentionally registered before the generated
-// admin router so old build-time patches cannot override this behavior.
-app.delete("/api/admin/users/:id", requireAdmin, async (req, res): Promise<void> => {
+// Dedicated production endpoint. A unique path prevents the legacy generated
+// DELETE /api/admin/users/:id route from intercepting this request.
+app.delete("/api/admin/users/:id/remove-v2", requireAdmin, async (req, res): Promise<void> => {
   const id = Number.parseInt(req.params.id as string, 10);
   if (!Number.isInteger(id)) {
-    res.status(400).json({ error: "ID de usuário inválido", source: "direct-admin-delete-v1" });
+    res.status(400).json({ error: "ID de usuário inválido", source: "direct-admin-delete-v2" });
     return;
   }
 
   const [targetUser] = await db.select().from(users).where(eq(users.id, id));
   if (!targetUser) {
-    res.status(404).json({ error: "Usuário não encontrado", source: "direct-admin-delete-v1" });
+    res.status(404).json({ error: "Usuário não encontrado", source: "direct-admin-delete-v2" });
     return;
   }
 
   if (targetUser.email.trim().toLowerCase() === "maxsantosmotta@gmail.com") {
     res.status(403).json({
       error: "A conta principal do administrador não pode ser excluída.",
-      source: "direct-admin-delete-v1",
+      source: "direct-admin-delete-v2",
     });
     return;
   }
@@ -117,7 +117,7 @@ app.delete("/api/admin/users/:id", requireAdmin, async (req, res): Promise<void>
     } catch (clerkError: unknown) {
       req.log.warn(
         { err: clerkError, clerkId: targetUser.clerkId },
-        "Direct admin delete: Clerk removal failed; continuing anonymization",
+        "Direct admin delete v2: Clerk removal failed; continuing anonymization",
       );
     }
 
@@ -135,7 +135,7 @@ app.delete("/api/admin/users/:id", requireAdmin, async (req, res): Promise<void>
     if (!updated) {
       res.status(500).json({
         error: "O banco não confirmou a anonimização do usuário.",
-        source: "direct-admin-delete-v1",
+        source: "direct-admin-delete-v2",
       });
       return;
     }
@@ -144,17 +144,17 @@ app.delete("/api/admin/users/:id", requireAdmin, async (req, res): Promise<void>
       ok: true,
       deletedEmail: targetUser.email,
       cleanupMode: "anonymized",
-      source: "direct-admin-delete-v1",
+      source: "direct-admin-delete-v2",
     });
   } catch (err: unknown) {
     const detail = err instanceof Error ? err.message : "Erro desconhecido";
     req.log.error(
       { err, userId: id, clerkId: targetUser.clerkId },
-      "Direct admin delete failed",
+      "Direct admin delete v2 failed",
     );
     res.status(500).json({
-      error: `Falha direta ao remover usuário: ${detail}`,
-      source: "direct-admin-delete-v1",
+      error: `Falha v2 ao remover usuário: ${detail}`,
+      source: "direct-admin-delete-v2",
     });
   }
 });
