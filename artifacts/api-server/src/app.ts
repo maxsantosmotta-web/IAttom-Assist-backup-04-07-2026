@@ -91,7 +91,7 @@ app.use(
 // Direct production route. It is intentionally registered before the generated
 // admin router so old build-time patches cannot override this behavior.
 app.delete("/api/admin/users/:id", requireAdmin, async (req, res): Promise<void> => {
-  const id = Number.parseInt(req.params.id, 10);
+  const id = Number.parseInt(req.params.id as string, 10);
   if (!Number.isInteger(id)) {
     res.status(400).json({ error: "ID de usuário inválido", source: "direct-admin-delete-v1" });
     return;
