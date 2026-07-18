@@ -40,7 +40,19 @@ router.delete("/admin/users/:id", requireAdmin, async (req, res): Promise<void> 
   }
 
   try {
-    await clerkClient.users.deleteUser(targetUser.clerkId);
+    try {
+      await clerkClient.users.deleteUser(targetUser.clerkId);
+    } catch (clerkError: unknown) {
+      const error = clerkError as {
+        status?: number;
+        statusCode?: number;
+        errors?: Array<{ code?: string }>;
+      };
+      const status = error?.status ?? error?.statusCode;
+      const notFound = status === 404 || error?.errors?.some((item) => item?.code === "resource_not_found");
+      if (!notFound) throw clerkError;
+      req.log.warn({ clerkId: targetUser.clerkId }, "Clerk user already absent; continuing database cleanup");
+    }
 
     await db.transaction(async (tx) => {
       await tx.delete(creditsTransactions).where(eq(creditsTransactions.clerkUserId, targetUser.clerkId));
