@@ -2,11 +2,14 @@ import express, { type Express } from "express";
 import path from "node:path";
 import cors from "cors";
 import pinoHttp from "pino-http";
-import { clerkMiddleware } from "@clerk/express";
+import { clerkClient, clerkMiddleware } from "@clerk/express";
+import { eq } from "drizzle-orm";
+import { db, users } from "@workspace/db";
 import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware.js";
+import { requireAdmin } from "./middlewares/requireAdmin.js";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { WebhookHandlers } from "./lib/webhookHandlers.js";
@@ -84,6 +87,77 @@ app.use(
     publishableKey: clerkPubKey,
   }),
 );
+
+// Direct production route. It is intentionally registered before the generated
+// admin router so old build-time patches cannot override this behavior.
+app.delete("/api/admin/users/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "ID de usuário inválido", source: "direct-admin-delete-v1" });
+    return;
+  }
+
+  const [targetUser] = await db.select().from(users).where(eq(users.id, id));
+  if (!targetUser) {
+    res.status(404).json({ error: "Usuário não encontrado", source: "direct-admin-delete-v1" });
+    return;
+  }
+
+  if (targetUser.email.trim().toLowerCase() === "maxsantosmotta@gmail.com") {
+    res.status(403).json({
+      error: "A conta principal do administrador não pode ser excluída.",
+      source: "direct-admin-delete-v1",
+    });
+    return;
+  }
+
+  try {
+    try {
+      await clerkClient.users.deleteUser(targetUser.clerkId);
+    } catch (clerkError: unknown) {
+      req.log.warn(
+        { err: clerkError, clerkId: targetUser.clerkId },
+        "Direct admin delete: Clerk removal failed; continuing anonymization",
+      );
+    }
+
+    const anonymousEmail = `deleted_${targetUser.id}_${Date.now()}@deleted.iattom.invalid`;
+    const [updated] = await db
+      .update(users)
+      .set({
+        email: anonymousEmail,
+        name: "Usuário excluído",
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, targetUser.id))
+      .returning({ id: users.id });
+
+    if (!updated) {
+      res.status(500).json({
+        error: "O banco não confirmou a anonimização do usuário.",
+        source: "direct-admin-delete-v1",
+      });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      deletedEmail: targetUser.email,
+      cleanupMode: "anonymized",
+      source: "direct-admin-delete-v1",
+    });
+  } catch (err: unknown) {
+    const detail = err instanceof Error ? err.message : "Erro desconhecido";
+    req.log.error(
+      { err, userId: id, clerkId: targetUser.clerkId },
+      "Direct admin delete failed",
+    );
+    res.status(500).json({
+      error: `Falha direta ao remover usuário: ${detail}`,
+      source: "direct-admin-delete-v1",
+    });
+  }
+});
 
 app.use("/api", router);
 
