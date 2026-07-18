@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { useSignUp, useClerk } from "@clerk/react";
+import { useSignUp } from "@clerk/react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 const basePath = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
+const canonicalOrigin = "https://www.iattomassist.com.br";
+const billingPath = `${basePath}/dashboard/billing` || "/dashboard/billing";
+const googleCallbackUrl = `${canonicalOrigin}${basePath}/sign-up/sso-callback`;
+const googleRedirectUrl = `${canonicalOrigin}${billingPath}`;
 
 function GoogleIcon() {
   return (
@@ -37,6 +41,12 @@ function mapSignUpError(code?: string, msg?: string): string {
   }
 }
 
+type ClerkErrorLike = {
+  errors?: { code?: string; message?: string; longMessage?: string }[];
+  code?: string;
+  message?: string;
+};
+
 export function SignUpPage() {
   const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
@@ -47,28 +57,66 @@ export function SignUpPage() {
   const [loading, setLoading] = useState(false);
 
   const { signUp } = useSignUp();
-  const clerk = useClerk();
   const [, setLocation] = useLocation();
+
+  const finishSignUp = async () => {
+    await signUp.finalize({
+      navigate: ({ session, decorateUrl }) => {
+        if (session?.currentTask) {
+          console.error("[SignUp] Pending session task:", session.currentTask);
+          setError("Sua conta exige uma etapa adicional antes de continuar.");
+          return;
+        }
+
+        const url = decorateUrl(billingPath);
+        if (url.startsWith("http")) window.location.assign(url);
+        else setLocation(url);
+      },
+    });
+  };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signUp || loading) return;
+
     setLoading(true);
     setError("");
+
     try {
-      const result = await signUp.create({ emailAddress: email, password });
-      if (result.status === "missing_requirements") {
-        await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-        setStep("otp");
-      } else if (result.status === "complete" && result.createdSessionId) {
-        await clerk.setActive({ session: result.createdSessionId });
-        setLocation("/dashboard/billing");
+      const { error: clerkError } = await signUp.password({
+        emailAddress: email.trim(),
+        password,
+      });
+
+      if (clerkError) {
+        const first = (clerkError as ClerkErrorLike)?.errors?.[0];
+        setError(mapSignUpError(first?.code, first?.longMessage ?? first?.message));
+        return;
       }
+
+      if (signUp.status === "complete") {
+        await finishSignUp();
+        return;
+      }
+
+      if (signUp.status === "missing_requirements") {
+        const { error: verificationError } = await signUp.verifications.sendEmailCode();
+        if (verificationError) {
+          const first = (verificationError as ClerkErrorLike)?.errors?.[0];
+          setError(mapSignUpError(first?.code, first?.longMessage ?? first?.message));
+          return;
+        }
+        setStep("otp");
+        return;
+      }
+
+      console.error("[SignUp] Unexpected status:", signUp.status, signUp);
+      setError("Não foi possível iniciar o cadastro.");
     } catch (err: unknown) {
-      const e = err as { errors?: { code?: string; message?: string; longMessage?: string }[] };
-      const first = e?.errors?.[0];
-      console.error("[SignUp] Clerk error:", JSON.stringify(e?.errors));
-      setError(mapSignUpError(first?.code, first?.longMessage ?? first?.message));
+      const clerkError = err as ClerkErrorLike;
+      const first = clerkError?.errors?.[0];
+      console.error("[SignUp] Clerk error:", err);
+      setError(mapSignUpError(first?.code ?? clerkError.code, first?.longMessage ?? first?.message ?? clerkError.message));
     } finally {
       setLoading(false);
     }
@@ -76,22 +124,32 @@ export function SignUpPage() {
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signUp || loading) return;
+    if (!signUp || loading || code.length !== 6) return;
+
     setLoading(true);
     setError("");
+
     try {
-      const result = await signUp.attemptEmailAddressVerification({ code });
-      if (result.status === "complete" && result.createdSessionId) {
-        await clerk.setActive({ session: result.createdSessionId });
-        setLocation("/dashboard/billing");
-      } else {
-        setError("Verificação incompleta. Tente novamente.");
+      const { error: clerkError } = await signUp.verifications.verifyEmailCode({ code });
+
+      if (clerkError) {
+        const first = (clerkError as ClerkErrorLike)?.errors?.[0];
+        setError(mapSignUpError(first?.code, first?.longMessage ?? first?.message));
+        return;
       }
+
+      if (signUp.status === "complete") {
+        await finishSignUp();
+        return;
+      }
+
+      console.error("[SignUp OTP] Verification incomplete:", signUp.status, signUp);
+      setError("Verificação incompleta. Tente novamente.");
     } catch (err: unknown) {
-      const e = err as { errors?: { code?: string; message?: string; longMessage?: string }[] };
-      const first = e?.errors?.[0];
-      console.error("[SignUp OTP] Clerk error:", JSON.stringify(e?.errors));
-      setError(mapSignUpError(first?.code, first?.longMessage ?? first?.message));
+      const clerkError = err as ClerkErrorLike;
+      const first = clerkError?.errors?.[0];
+      console.error("[SignUp OTP] Clerk error:", err);
+      setError(mapSignUpError(first?.code ?? clerkError.code, first?.longMessage ?? first?.message ?? clerkError.message));
     } finally {
       setLoading(false);
     }
@@ -99,14 +157,21 @@ export function SignUpPage() {
 
   const handleResend = async () => {
     if (!signUp || loading) return;
+
     setLoading(true);
     setError("");
+
     try {
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      const { error: clerkError } = await signUp.verifications.sendEmailCode();
+      if (clerkError) {
+        const first = (clerkError as ClerkErrorLike)?.errors?.[0];
+        setError(mapSignUpError(first?.code, first?.longMessage ?? first?.message));
+      }
     } catch (err: unknown) {
-      const e = err as { errors?: { code?: string; message?: string }[] };
-      console.error("[SignUp resend] Clerk error:", JSON.stringify(e?.errors));
-      setError("Erro ao reenviar. Tente novamente.");
+      const clerkError = err as ClerkErrorLike;
+      const first = clerkError?.errors?.[0];
+      console.error("[SignUp resend] Clerk error:", err);
+      setError(mapSignUpError(first?.code ?? clerkError.code, first?.longMessage ?? first?.message ?? clerkError.message));
     } finally {
       setLoading(false);
     }
@@ -114,20 +179,43 @@ export function SignUpPage() {
 
   const handleGoogle = async () => {
     if (!signUp || loading) return;
+
     setLoading(true);
     setError("");
+
+    const timeoutId = window.setTimeout(() => {
+      setLoading(false);
+      setError("O Google não abriu. Atualize a página e tente novamente.");
+    }, 12_000);
+
     try {
-      await signUp.authenticateWithRedirect({
+      const { error: clerkError } = await signUp.sso({
         strategy: "oauth_google",
-        redirectUrl: `${window.location.origin}${basePath}/sign-up/sso-callback`,
-        redirectUrlComplete: `${window.location.origin}${basePath}/dashboard/billing`,
+        redirectCallbackUrl: googleCallbackUrl,
+        redirectUrl: googleRedirectUrl,
       });
+
+      if (clerkError) {
+        window.clearTimeout(timeoutId);
+        const first = (clerkError as ClerkErrorLike)?.errors?.[0];
+        setError(first?.longMessage ?? first?.message ?? "Erro ao autenticar com Google. Tente novamente.");
+        setLoading(false);
+      }
     } catch (err: unknown) {
-      const e = err as { errors?: { code?: string; message?: string }[] };
-      console.error("[SignUp Google] Clerk error:", JSON.stringify(e?.errors));
-      setError("Erro ao autenticar com Google. Tente novamente.");
+      window.clearTimeout(timeoutId);
+      const clerkError = err as ClerkErrorLike;
+      const first = clerkError?.errors?.[0];
+      console.error("[SignUp Google] Clerk error:", err);
+      setError(first?.longMessage ?? first?.message ?? clerkError.message ?? "Erro ao autenticar com Google. Tente novamente.");
       setLoading(false);
     }
+  };
+
+  const returnToEmail = () => {
+    signUp.reset();
+    setStep("email");
+    setError("");
+    setCode("");
   };
 
   return (
@@ -164,7 +252,7 @@ export function SignUpPage() {
                   style={{ background: "rgba(255,255,255,0.025)" }}
                 >
                   <GoogleIcon />
-                  Continuar com Google
+                  {loading ? "Abrindo Google..." : "Continuar com Google"}
                 </button>
 
                 <div className="flex items-center gap-3 mb-5">
@@ -316,7 +404,7 @@ export function SignUpPage() {
                 <div className="mt-6 flex justify-center">
                   <button
                     type="button"
-                    onClick={() => { setStep("email"); setError(""); setCode(""); }}
+                    onClick={returnToEmail}
                     className="flex items-center gap-1.5 text-[12px] text-white/25 hover:text-white/55 transition-colors"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
