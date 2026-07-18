@@ -49,14 +49,42 @@ router.delete("/admin/users/:id", requireAdmin, async (req, res): Promise<void> 
       );
     }
 
-    await db.transaction(async (tx) => {
-      await tx.delete(creditsTransactions).where(eq(creditsTransactions.clerkUserId, targetUser.clerkId));
-      await tx.delete(historyTable).where(eq(historyTable.clerkUserId, targetUser.clerkId));
-      await tx.delete(projectsTable).where(eq(projectsTable.clerkUserId, targetUser.clerkId));
-      await tx.delete(users).where(eq(users.id, targetUser.id));
-    });
+    let cleanupMode: "deleted" | "anonymized" = "deleted";
 
-    res.json({ ok: true, deletedEmail: targetUser.email });
+    try {
+      await db.transaction(async (tx) => {
+        await tx.delete(creditsTransactions).where(eq(creditsTransactions.clerkUserId, targetUser.clerkId));
+        await tx.delete(historyTable).where(eq(historyTable.clerkUserId, targetUser.clerkId));
+        await tx.delete(projectsTable).where(eq(projectsTable.clerkUserId, targetUser.clerkId));
+        await tx.delete(users).where(eq(users.id, targetUser.id));
+      });
+    } catch (databaseDeleteError: unknown) {
+      cleanupMode = "anonymized";
+      const deletedKey = \`deleted_\${targetUser.id}_\${Date.now()}\`;
+      await db.update(users).set({
+        email: \`\${deletedKey}@deleted.iattom.invalid\`,
+        clerkId: deletedKey,
+        name: "Usuário excluído",
+        credits: 0,
+        creativeCredits: 0,
+        extraCredits: 0,
+        extraCreativeCredits: 0,
+        videoBalance: 0,
+        betaAccess: false,
+        planSelected: false,
+        registrationConfirmed: false,
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        stripeSubscriptionStatus: null,
+        updatedAt: new Date(),
+      }).where(eq(users.id, targetUser.id));
+      req.log.warn(
+        { err: databaseDeleteError, userId: id, previousEmail: targetUser.email },
+        "User had legacy database references; record anonymized and original email released",
+      );
+    }
+
+    res.json({ ok: true, deletedEmail: targetUser.email, cleanupMode });
   } catch (err) {
     req.log.error({ err, userId: id, clerkId: targetUser.clerkId }, "Failed to permanently delete user");
     res.status(500).json({ error: "Não foi possível excluir o usuário completamente." });
@@ -64,6 +92,10 @@ router.delete("/admin/users/:id", requireAdmin, async (req, res): Promise<void> 
 });`;
 
 backend = replaceRequired(backend, backendMarker, backendReplacement, "admin delete endpoint");
+backend = backend.replace(
+  `  const conditions = [];`,
+  `  const conditions = [ne(users.name, "Usuário excluído")];`,
+);
 writeFileSync(backendUrl, backend);
 
 const frontendUrl = new URL("../src/pages/admin/AdminUsers.tsx", import.meta.url);
