@@ -72,7 +72,7 @@ analytics = replaceOnce(
 analytics = analytics.replace(`    })) ?? [];`, `    }));`);
 writeFileSync(analyticsUrl, analytics);
 
-// 2) Plan comparison modal: fit viewport and scroll vertically on mobile.
+// 2) Plan comparison modal: fit viewport, scroll vertically and never show endless skeletons.
 const modalUrl = new URL("../src/components/PlanComparisonModal.tsx", import.meta.url);
 let modal = readFileSync(modalUrl, "utf8");
 
@@ -102,6 +102,50 @@ modal = replaceOnce(
   `className="p-6"`,
   `className="p-4 sm:p-6"`,
   "Plan modal responsive padding",
+);
+
+modal = replaceOnce(
+  modal,
+  `  const { data: plans = [], isLoading } = useGetStripePlans({
+    query: { queryKey: getGetStripePlansQueryKey(), staleTime: 60_000 },
+  });`,
+  `  const { data: plans = [], isLoading, isError } = useGetStripePlans({
+    query: {
+      queryKey: getGetStripePlansQueryKey(),
+      staleTime: 300_000,
+      gcTime: 900_000,
+      retry: 1,
+      retryDelay: 800,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    },
+  });`,
+  "Plan modal cached plans query",
+);
+
+modal = replaceOnce(
+  modal,
+  `              {(isLoading || sortedPlans.length === 0) ? (`,
+  `              {(isLoading && sortedPlans.length === 0) ? (`,
+  "Plan modal finite loading",
+);
+
+modal = replaceOnce(
+  modal,
+  `              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">`,
+  `              ) : isError && sortedPlans.length === 0 ? (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-6 text-center">
+                  <p className="text-sm font-semibold text-amber-300">Os planos não puderam ser carregados agora.</p>
+                  <p className="text-xs text-zinc-500 mt-1">Volte ao painel e tente abrir o faturamento novamente em alguns instantes.</p>
+                </div>
+              ) : sortedPlans.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-[#111111] p-6 text-center">
+                  <p className="text-sm font-semibold text-zinc-300">Nenhum plano disponível no momento.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">`,
+  "Plan modal error and empty states",
 );
 writeFileSync(modalUrl, modal);
 
@@ -178,4 +222,123 @@ signup = signup.replace(
 );
 writeFileSync(signupUrl, signup);
 
-console.log("Analytics stability, mobile plan scrolling and signup timing are applied.");
+// 4) Billing: cache Stripe state, stop infinite skeletons and add mobile back navigation.
+const billingUrl = new URL("../src/pages/dashboard/Billing.tsx", import.meta.url);
+let billing = readFileSync(billingUrl, "utf8");
+
+billing = replaceOnce(
+  billing,
+  `  const { data: plans = [], isLoading: plansLoading, isFetching: fetchingPlans, refetch: refetchPlans } = useGetStripePlans({
+    query: { queryKey: getGetStripePlansQueryKey(), retry: false, staleTime: 0 },
+  });
+  const { data: subscription, isLoading: subLoading, isFetching: fetchingSub, refetch: refetchSub } = useGetStripeSubscription({
+    query: { queryKey: getGetStripeSubscriptionQueryKey(), retry: false, staleTime: 0 },
+  });
+  const { data: me, isFetching: fetchingMe, refetch: refetchMe } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 0 } });
+  const { data: creditsData, isFetching: fetchingCredits, refetch: refetchCredits } = useGetCreditsBalance({
+    query: { queryKey: getGetCreditsBalanceQueryKey(), retry: false, staleTime: 0 },
+  });`,
+  `  const { data: plans = [], isLoading: plansLoading, isFetching: fetchingPlans, isError: plansError, refetch: refetchPlans } = useGetStripePlans({
+    query: {
+      queryKey: getGetStripePlansQueryKey(),
+      retry: 1,
+      retryDelay: 800,
+      staleTime: 300_000,
+      gcTime: 900_000,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    },
+  });
+  const { data: subscription, isLoading: subLoading, isFetching: fetchingSub, refetch: refetchSub } = useGetStripeSubscription({
+    query: {
+      queryKey: getGetStripeSubscriptionQueryKey(),
+      retry: 1,
+      retryDelay: 800,
+      staleTime: 120_000,
+      gcTime: 600_000,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    },
+  });
+  const { data: me, isFetching: fetchingMe, refetch: refetchMe } = useGetMe({
+    query: { queryKey: getGetMeQueryKey(), retry: 1, staleTime: 120_000, refetchOnMount: false, refetchOnWindowFocus: false },
+  });
+  const { data: creditsData, isFetching: fetchingCredits, refetch: refetchCredits } = useGetCreditsBalance({
+    query: { queryKey: getGetCreditsBalanceQueryKey(), retry: 1, staleTime: 60_000, refetchOnMount: false, refetchOnWindowFocus: false },
+  });`,
+  "Billing cached query configuration",
+);
+
+billing = replaceOnce(
+  billing,
+  `  const isLoading    = plansLoading || subLoading;`,
+  `  const isLoading    = (plansLoading && plans.length === 0) || (subLoading && !subscription);
+  const plansUnavailable = plansError && plans.length === 0;`,
+  "Billing finite loading state",
+);
+
+if (!billing.includes("Mobile billing back button")) {
+  billing = replaceOnce(
+    billing,
+    `  return (
+    <div className="space-y-8 max-w-5xl">`,
+    `  return (
+    <div className="space-y-8 max-w-5xl">
+      {/* Mobile billing back button */}
+      <button
+        type="button"
+        onClick={() => {
+          if (window.history.length > 1) window.history.back();
+          else setLocation("/dashboard");
+        }}
+        className="md:hidden inline-flex items-center gap-2 text-sm font-semibold text-primary active:opacity-70"
+      >
+        <span aria-hidden="true">←</span>
+        Voltar
+      </button>`,
+    "Billing mobile back button",
+  );
+}
+
+billing = replaceOnce(
+  billing,
+  `        {isLoading ? (`,
+  `        {isLoading && sortedPlans.length === 0 ? (`,
+  "Billing finite skeleton condition",
+);
+
+billing = replaceOnce(
+  billing,
+  `        ) : sortedPlans.length === 0 ? (
+          <div className="rounded-xl border border-white/10 bg-[#111111] p-8 flex flex-col items-center text-center gap-4">`,
+  `        ) : plansUnavailable ? (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-8 flex flex-col items-center text-center gap-3">
+            <AlertTriangle className="w-6 h-6 text-amber-400" />
+            <div>
+              <p className="text-sm font-semibold text-amber-300 mb-1">Não foi possível carregar os planos agora.</p>
+              <p className="text-xs text-zinc-500 max-w-sm">O restante da plataforma continua disponível. Volte ao painel e abra o faturamento novamente mais tarde.</p>
+            </div>
+          </div>
+        ) : sortedPlans.length === 0 ? (
+          <div className="rounded-xl border border-white/10 bg-[#111111] p-8 flex flex-col items-center text-center gap-4">`,
+  "Billing error state",
+);
+
+if (!billing.includes("Billing initial scroll reset")) {
+  billing = replaceOnce(
+    billing,
+    `  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");`,
+    `  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+
+  useEffect(() => {
+    // Billing initial scroll reset
+    const main = document.querySelector("main");
+    main?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);`,
+    "Billing initial scroll reset",
+  );
+}
+
+writeFileSync(billingUrl, billing);
+
+console.log("Analytics, mobile plans, signup timing and billing stability are applied.");
