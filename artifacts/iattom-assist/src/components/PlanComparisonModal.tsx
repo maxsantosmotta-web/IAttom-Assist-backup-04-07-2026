@@ -80,7 +80,9 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
 
   const currentPlan  = me?.plan ?? "free";
   const hasActiveSub = subscription?.hasSubscription === true;
-  const sortedPlans  = [...plans].sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));
+  const sortedPlans = plans
+    .filter((plan) => plan.planKey !== "free")
+    .sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));
 
   const handleUpgrade = (priceId: string | null | undefined, planKey: string) => {
     checkout.mutate({ data: { priceId: priceId ?? "free", planKey } });
@@ -115,7 +117,6 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
           >
             <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#C9A84C]/35 to-transparent" />
 
-            {/* ── Header ────────────────────────────────────────────── */}
             <div className="flex items-start justify-between p-6 pb-4 border-b border-white/[0.06]">
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -126,7 +127,6 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                 <p className="text-sm text-muted-foreground mt-0.5">Desbloqueie mais créditos e recursos avançados.</p>
               </div>
               <div className="flex items-center gap-3">
-                {/* billing toggle */}
                 <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.07]">
                   {(["monthly", "annual"] as const).map((opt) => (
                     <button
@@ -161,16 +161,15 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
               </div>
             </div>
 
-            {/* ── Plans ─────────────────────────────────────────────── */}
             <div className="p-6">
               {(isLoading || sortedPlans.length === 0) ? (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[0,1,2,3].map((i) => (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {[0,1,2].map((i) => (
                     <div key={i} className="h-80 rounded-xl bg-white/[0.03] skeleton-shimmer" />
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {sortedPlans.map((plan) => {
                     const key        = plan.planKey;
                     const isCurrent  = key === currentPlan && hasActiveSub;
@@ -209,7 +208,6 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                           </div>
                         )}
 
-                        {/* plan icon + name */}
                         <div className="flex items-center gap-2 mb-1 mt-1">
                           <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
                             key === "free"     ? "bg-blue-500/12 border border-blue-400/20" :
@@ -226,7 +224,6 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
 
                         <p className="text-[11px] text-zinc-600 leading-snug mb-3">{PLAN_DESC[key] ?? plan.description}</p>
 
-                        {/* price — annual shows full annual as main */}
                         <div className="mb-3">
                           <div className="text-2xl font-bold text-white leading-none">{getMainPrice(key)}</div>
                           {billing === "annual" && perMonth ? (
@@ -244,7 +241,6 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                           )}
                         </div>
 
-                        {/* credits */}
                         <div className="flex items-center gap-1.5 mb-4 p-2 rounded-lg bg-white/[0.04] border border-white/[0.06]">
                           <Zap className="w-3 h-3 text-primary fill-primary shrink-0" />
                           <span className="text-xs font-semibold text-zinc-300">
@@ -252,7 +248,6 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                           </span>
                         </div>
 
-                        {/* features */}
                         <ul className="space-y-2 mb-5 flex-1">
                           {plan.features.slice(0, 4).map((f) => (
                             <li key={f} className="flex items-start gap-2">
@@ -262,7 +257,6 @@ export function PlanComparisonModal({ open, onClose, highlightPlan = "pro" }: Pl
                           ))}
                         </ul>
 
-                        {/* CTA */}
                         {isCurrent ? (
                           <Button disabled size="sm" className="w-full text-xs bg-white/5 border border-white/10 text-zinc-500">
                             Plano Atual
