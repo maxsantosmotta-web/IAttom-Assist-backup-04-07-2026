@@ -101,7 +101,7 @@ frontend = replaceRequired(
     setDeleteLoading(true);
     try {
       const token = await getToken();
-      const res = await fetch(\`${"${BASE}"}/api/admin/users/${"${deleteTarget.id}"}\`, {
+      const res = await fetch(\`${"${BASE}"}/api/admin/users/${"${deleteTarget.id}"}/remove-v2\`, {
         method: "DELETE",
         headers: { Authorization: \`Bearer ${"${token}"}\` },
       });
