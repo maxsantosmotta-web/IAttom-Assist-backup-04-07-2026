@@ -61,7 +61,7 @@ const navItems = [
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
@@ -82,6 +82,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     signOut({ redirectUrl: `${window.location.origin}${basePath}/` });
   };
 
+  const handleBackToDashboard = () => {
+    closeSidebar();
+    setLocation("/dashboard");
+  };
+
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {isMobileOpen && (
@@ -96,7 +101,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Logo */}
         <div className="flex items-center h-16 px-5 border-b border-white/[0.06] shrink-0 gap-3">
           <LogoMark size={30} />
           <div className="flex items-center gap-1.5 ml-auto">
@@ -114,19 +118,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
 
-        {/* Back link */}
         <div className="px-3 py-3 border-b border-white/[0.04] shrink-0">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] transition-all duration-150"
-            onClick={closeSidebar}
+          <button
+            type="button"
+            onClick={handleBackToDashboard}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04] transition-all duration-150"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
             Voltar ao Dashboard
-          </Link>
+          </button>
         </div>
 
-        {/* Nav */}
         <div className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
           <p className="px-3 pb-2 text-[10px] font-semibold tracking-widest text-zinc-600 uppercase">
             Painel de Controle
@@ -155,7 +157,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           })}
         </div>
 
-        {/* User */}
         <div className="p-3 border-t border-white/[0.06] shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -189,7 +190,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 flex items-center justify-between px-5 md:px-6 border-b border-white/[0.06] bg-[#080808] shrink-0">
           <div className="flex items-center gap-3">
