@@ -50,7 +50,7 @@ patchFile("../src/components/IAttomHelpPanel.tsx", [
   ],
   [
     "  const { user } = useUser();\n  const userId = user?.id;",
-    "  const { user } = useUser();\n  const userId = user?.id;\n  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 60_000, enabled: !!userId } });\n  const isFreePlan = me?.plan === \"free\" && me?.planSelected === true;\n  const helpAccessLoading = !!userId && me === undefined;",
+    "  const { user } = useUser();\n  const userId = user?.id;\n  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 0, enabled: !!userId } });\n  const isFreePlan = me?.plan === \"free\" && me?.planSelected === true;\n  const helpAccessLoading = !!userId && me === undefined;",
   ],
   [
     "{usage !== null && (usage.limit === 0 || usage.remaining === 0) ? (",
@@ -59,37 +59,6 @@ patchFile("../src/components/IAttomHelpPanel.tsx", [
   [
     "{usage.limit === 0\n                      ? \"O IAttom Help não está disponível no plano gratuito.\"\n                      : \"Limite de mensagens atingido para este ciclo.\"}",
     "{helpAccessLoading\n                      ? \"Verificando disponibilidade do IAttom Help...\"\n                      : isFreePlan || usage?.limit === 0\n                        ? \"O IAttom Help não está disponível no plano gratuito.\"\n                        : \"Limite de mensagens atingido para este ciclo.\"}",
-  ],
-]);
-
-patchFile("../src/components/layout/SidebarLayout.tsx", [
-  [
-    'import { useQueryClient } from "@tanstack/react-query";\n',
-    "",
-  ],
-  [
-    "  useSyncUser, useGetMe, getGetMeQueryKey,\n  useGetCreditsBalance, getGetCreditsBalanceQueryKey,",
-    "  useGetMe, getGetMeQueryKey,\n  useGetCreditsBalance, getGetCreditsBalanceQueryKey,",
-  ],
-  [
-    "  const qc = useQueryClient();\n  const syncUser = useSyncUser({\n    mutation: {\n      onSuccess: () => {\n        // Invalidate both me and credits so the sidebar reflects real balance immediately after claim/sync.\n        void qc.invalidateQueries({ queryKey: getGetMeQueryKey() });\n        void qc.invalidateQueries({ queryKey: getGetCreditsBalanceQueryKey() });\n      },\n      onError: () => {\n        // Sync failure is non-blocking — sidebar may show stale data until next mount.\n      },\n    },\n  });\n",
-    "",
-  ],
-  [
-    "\n  useEffect(() => {\n    if (isLoaded && isSignedIn && user) {\n      const email = user.primaryEmailAddress?.emailAddress;\n      const name = user.fullName ?? user.firstName ?? undefined;\n      if (email) syncUser.mutate({ data: { email, name } });\n    }\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [isLoaded, isSignedIn]);\n",
-    "",
-  ],
-  [
-    "                <motion.div\n                  layoutId=\"nav-active-pill\"\n                  className=\"absolute inset-0 rounded-xl bg-primary/[0.10]\"\n                  transition={{ type: \"spring\", stiffness: 420, damping: 38 }}\n                />",
-    "                <div className=\"absolute inset-0 rounded-xl bg-primary/[0.10]\" />",
-  ],
-  [
-    "              <motion.div\n                className=\"absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-r-full bg-primary origin-center\"\n                initial={false}\n                animate={{ height: isActive ? 20 : 0, opacity: isActive ? 1 : 0 }}\n                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}\n              />",
-    "              {isActive && <div className=\"absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary\" />}",
-  ],
-  [
-    "              <motion.div\n                className=\"absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-r-full bg-primary origin-center\"\n                initial={false}\n                animate={{ height: location.startsWith(\"/admin\") ? 20 : 0, opacity: location.startsWith(\"/admin\") ? 1 : 0 }}\n                transition={{ duration: 0.18 }}\n              />",
-    "              {location.startsWith(\"/admin\") && <div className=\"absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary\" />}",
   ],
 ]);
 
@@ -120,4 +89,4 @@ patchFile("../src/pages/dashboard/Referral.tsx", [
   ],
 ]);
 
-console.log("Settings, Help, sidebar performance and referral runtime fixes applied.");
+console.log("Settings FREE plan, IAttom Help access and referral runtime fixes applied.");
