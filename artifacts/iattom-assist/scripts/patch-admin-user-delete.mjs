@@ -43,50 +43,26 @@ router.delete("/admin/users/:id", requireAdmin, async (req, res): Promise<void> 
     try {
       await clerkClient.users.deleteUser(targetUser.clerkId);
     } catch (clerkError: unknown) {
-      req.log.warn(
-        { err: clerkError, clerkId: targetUser.clerkId },
-        "Clerk deletion failed; continuing database cleanup",
-      );
+      req.log.warn({ err: clerkError, clerkId: targetUser.clerkId }, "Clerk deletion failed; continuing safe anonymization");
     }
 
-    let cleanupMode: "deleted" | "anonymized" = "deleted";
+    const deletedEmail = \`deleted_\${targetUser.id}_\${Date.now()}@deleted.iattom.invalid\`;
+    const [updated] = await db.update(users).set({
+      email: deletedEmail,
+      name: "Usuário excluído",
+      updatedAt: new Date(),
+    }).where(eq(users.id, targetUser.id)).returning({ id: users.id });
 
-    try {
-      await db.transaction(async (tx) => {
-        await tx.delete(creditsTransactions).where(eq(creditsTransactions.clerkUserId, targetUser.clerkId));
-        await tx.delete(historyTable).where(eq(historyTable.clerkUserId, targetUser.clerkId));
-        await tx.delete(projectsTable).where(eq(projectsTable.clerkUserId, targetUser.clerkId));
-        await tx.delete(users).where(eq(users.id, targetUser.id));
-      });
-    } catch (databaseDeleteError: unknown) {
-      cleanupMode = "anonymized";
-      const deletedKey = \`deleted_\${targetUser.id}_\${Date.now()}\`;
-      await db.update(users).set({
-        email: \`\${deletedKey}@deleted.iattom.invalid\`,
-        name: "Usuário excluído",
-        credits: 0,
-        creativeCredits: 0,
-        extraCredits: 0,
-        extraCreativeCredits: 0,
-        videoBalance: 0,
-        betaAccess: false,
-        planSelected: false,
-        registrationConfirmed: false,
-        stripeCustomerId: null,
-        stripeSubscriptionId: null,
-        stripeSubscriptionStatus: null,
-        updatedAt: new Date(),
-      }).where(eq(users.id, targetUser.id));
-      req.log.warn(
-        { err: databaseDeleteError, userId: id, previousEmail: targetUser.email },
-        "User had legacy database references; record anonymized and original email released",
-      );
+    if (!updated) {
+      res.status(500).json({ error: "O banco não confirmou a remoção do usuário." });
+      return;
     }
 
-    res.json({ ok: true, deletedEmail: targetUser.email, cleanupMode });
-  } catch (err) {
-    req.log.error({ err, userId: id, clerkId: targetUser.clerkId }, "Failed to permanently delete user");
-    res.status(500).json({ error: "Não foi possível excluir o usuário completamente." });
+    res.json({ ok: true, deletedEmail: targetUser.email, cleanupMode: "anonymized" });
+  } catch (err: unknown) {
+    const detail = err instanceof Error ? err.message : "Erro desconhecido";
+    req.log.error({ err, userId: id, clerkId: targetUser.clerkId }, "Failed to anonymize legacy user");
+    res.status(500).json({ error: `Falha ao remover usuário do painel: ${detail}` });
   }
 });`;
 
@@ -134,7 +110,7 @@ frontend = replaceRequired(
 
       await queryClient.invalidateQueries({ queryKey: getListAdminUsersQueryKey() });
       await refetch();
-      toast({ description: \`Usuário ${"${payload?.deletedEmail ?? deleteTarget.email}"} excluído definitivamente.\` });
+      toast({ description: \`Usuário ${"${payload?.deletedEmail ?? deleteTarget.email}"} removido do painel.\` });
       setDeleteTarget(null);
     } catch (error: unknown) {
       toast({
@@ -184,7 +160,7 @@ const deleteDialog = `      {/* ── DIALOG: Excluir Usuário ─────�
               <p className="text-sm text-zinc-300 break-all">{deleteTarget?.email}</p>
             </div>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Esta ação exclui definitivamente a conta, libera o e-mail para um novo cadastro e não pode ser desfeita.
+              Esta ação remove a conta do painel, libera o e-mail para novo cadastro e não pode ser desfeita.
             </p>
           </div>
           <DialogFooter>
@@ -207,4 +183,4 @@ ${dialogMarker}`;
 frontend = replaceRequired(frontend, dialogMarker, deleteDialog, "delete confirmation dialog");
 writeFileSync(frontendUrl, frontend);
 
-console.log("Protected permanent user deletion added to Admin Users.");
+console.log("Protected safe user removal added to Admin Users.");
