@@ -263,6 +263,8 @@ function ClerkProviderWithRoutes() {
 
 function App() {
   const splashNeeded = (() => {
+    const currentPath = stripBase(window.location.pathname);
+    if (currentPath.startsWith("/dashboard") || currentPath.startsWith("/admin")) return false;
     try {
       if (sessionStorage.getItem("iattom_splash_seen")) return false;
       sessionStorage.setItem("iattom_splash_seen", "1");
