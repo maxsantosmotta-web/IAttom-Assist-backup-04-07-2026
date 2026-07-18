@@ -36,11 +36,30 @@ router.post("/user/select-plan", requireAuth, async (req, res): Promise<void> =>
   const { clerkUserId } = req as AuthenticatedRequest;
   const [user] = await db.select().from(users).where(eq(users.clerkId, clerkUserId));
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  const protectedPaidStatuses = new Set(["active", "trialing", "past_due"]);
+  const hasProtectedPaidSubscription =
+    user.plan !== "free" &&
+    !!user.stripeSubscriptionId &&
+    !!user.stripeSubscriptionStatus &&
+    protectedPaidStatuses.has(user.stripeSubscriptionStatus);
+
+  if (hasProtectedPaidSubscription) {
+    res.status(409).json({ error: "Active paid subscription cannot be replaced by FREE." });
+    return;
+  }
+
   const [updated] = await db
     .update(users)
-    .set({ planSelected: true, updatedAt: new Date() })
+    .set({ plan: "free", planSelected: true, updatedAt: new Date() })
     .where(eq(users.clerkId, clerkUserId))
     .returning();
+
+  req.log.info(
+    { clerkUserId, previousPlan: user.plan, selectedPlan: updated.plan },
+    "FREE plan selected",
+  );
+
   res.json({ ok: true, plan: updated.plan, planSelected: updated.planSelected });
 });
 
