@@ -18,12 +18,47 @@ function patchFile(relativePath, replacements) {
 
 patchFile("../src/pages/dashboard/Settings.tsx", [
   [
+    'import { PLAN_CREDITS, PLAN_PRICES } from "@/lib/credits";',
+    'import { PLAN_CREDITS, PLAN_NAMES, PLAN_PRICES } from "@/lib/credits";',
+  ],
+  [
+    "const planInfo = PLAN_PRICES[plan];\n  const planCredits = PLAN_CREDITS[plan];",
+    "const planInfo = PLAN_PRICES[plan] ?? PLAN_PRICES.free;\n  const planCredits = Number(PLAN_CREDITS[plan] ?? PLAN_CREDITS.free ?? 0) || 0;",
+  ],
+  [
     "const planInfo = PLAN_PRICES[plan] ?? PLAN_PRICES.free;\n  const planCredits = PLAN_CREDITS[plan] ?? PLAN_CREDITS.free ?? 0;",
     "const planInfo = PLAN_PRICES[plan] ?? PLAN_PRICES.free;\n  const planCredits = Number(PLAN_CREDITS[plan] ?? PLAN_CREDITS.free ?? 0) || 0;",
   ],
   [
     "{me.credits.toLocaleString()}",
     "{(Number(me?.credits) || 0).toLocaleString()}",
+  ],
+  [
+    "{planInfo?.label ?? plan.toUpperCase()}",
+    "{PLAN_NAMES[plan] ?? plan.toUpperCase()}",
+  ],
+  [
+    '{planInfo?.monthlyDisplay ?? "—"} — cobrado mensalmente',
+    '{plan === "free" ? "Plano gratuito de demonstração" : (planInfo?.monthlyDisplay ?? "—") + " — cobrado mensalmente"}',
+  ],
+]);
+
+patchFile("../src/components/IAttomHelpPanel.tsx", [
+  [
+    'import { useUser } from "@clerk/react";',
+    'import { useUser } from "@clerk/react";\nimport { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";',
+  ],
+  [
+    "  const { user } = useUser();\n  const userId = user?.id;",
+    "  const { user } = useUser();\n  const userId = user?.id;\n  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 0, enabled: !!userId } });\n  const isFreePlan = me?.plan === \"free\" && me?.planSelected === true;\n  const helpAccessLoading = !!userId && me === undefined;",
+  ],
+  [
+    "{usage !== null && (usage.limit === 0 || usage.remaining === 0) ? (",
+    "{helpAccessLoading || isFreePlan || (usage !== null && (usage.limit === 0 || usage.remaining === 0)) ? (",
+  ],
+  [
+    "{usage.limit === 0\n                      ? \"O IAttom Help não está disponível no plano gratuito.\"\n                      : \"Limite de mensagens atingido para este ciclo.\"}",
+    "{helpAccessLoading\n                      ? \"Verificando disponibilidade do IAttom Help...\"\n                      : isFreePlan || usage?.limit === 0\n                        ? \"O IAttom Help não está disponível no plano gratuito.\"\n                        : \"Limite de mensagens atingido para este ciclo.\"}",
   ],
 ]);
 
@@ -54,4 +89,4 @@ patchFile("../src/pages/dashboard/Referral.tsx", [
   ],
 ]);
 
-console.log("Settings and referral runtime fixes applied.");
+console.log("Settings FREE plan, IAttom Help access and referral runtime fixes applied.");
