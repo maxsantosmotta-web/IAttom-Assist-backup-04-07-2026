@@ -62,7 +62,7 @@ router.delete("/admin/users/:id", requireAdmin, async (req, res): Promise<void> 
   } catch (err: unknown) {
     const detail = err instanceof Error ? err.message : "Erro desconhecido";
     req.log.error({ err, userId: id, clerkId: targetUser.clerkId }, "Failed to anonymize legacy user");
-    res.status(500).json({ error: `Falha ao remover usuário do painel: ${detail}` });
+    res.status(500).json({ error: "Falha ao remover usuário do painel: " + detail });
   }
 });`;
 
