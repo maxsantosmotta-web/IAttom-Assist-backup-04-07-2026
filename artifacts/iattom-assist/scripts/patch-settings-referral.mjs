@@ -224,4 +224,23 @@ patchFile("../src/pages/dashboard/Billing.tsx", [
   ],
 ]);
 
-console.log("Rapid navigation request pressure, referral retry and billing cache fixes applied.");
+patchFile("../src/components/PlanComparisonModal.tsx", [
+  [
+    "const sortedPlans  = [...plans].sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));",
+    "const sortedPlans = plans\n    .filter((plan) => plan.planKey !== \"free\")\n    .sort((a, b) => PLAN_ORDER.indexOf(a.planKey) - PLAN_ORDER.indexOf(b.planKey));",
+  ],
+  [
+    '<div className="grid grid-cols-2 lg:grid-cols-4 gap-4">',
+    '<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">',
+  ],
+  [
+    "{[0,1,2,3].map((i) => (",
+    "{[0,1,2].map((i) => (",
+  ],
+  [
+    '<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">',
+    '<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">',
+  ],
+]);
+
+console.log("Rapid navigation request pressure, referral retry, billing cache and upgrade modal fixes applied.");
