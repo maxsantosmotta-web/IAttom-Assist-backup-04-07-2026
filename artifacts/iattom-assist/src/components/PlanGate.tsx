@@ -39,6 +39,10 @@ export function PlanGate({ children }: { children: React.ReactNode }) {
   // Admins bypass gate
   if (me?.role === "admin") return <>{children}</>;
 
+  // A FREE plan is valid after the user explicitly selects it.
+  // FREE has no Stripe subscription, so it must be recognized from /auth/me.
+  if (me?.plan === "free" && me?.planSelected === true) return <>{children}</>;
+
   // If Stripe check errored (not configured), fail open — let user through
   if (subError) return <>{children}</>;
 
@@ -48,6 +52,6 @@ export function PlanGate({ children }: { children: React.ReactNode }) {
   // Global beta mode: bypass plan restriction temporarily
   if (GLOBAL_BETA) return <>{children}</>;
 
-  // No active subscription → force to billing/plans screen
+  // No selected FREE plan and no active paid subscription → billing
   return <Redirect to="/dashboard/billing" />;
 }
