@@ -14,22 +14,41 @@ if (!source.includes("const [confirmPassword, setConfirmPassword]")) {
   source = source.replace(stateBefore, stateAfter);
 }
 
-const validationBefore = `    if (!signUp || loading) return;
+const validationVariants = [
+  {
+    before: `    if (!signUp || emailLoading) return;
+
+    setEmailLoading(true);
+    setError("");`,
+    after: `    if (!signUp || emailLoading) return;
+    if (password !== confirmPassword) {
+      setError("As senhas não coincidem.");
+      return;
+    }
+
+    setEmailLoading(true);
+    setError("");`,
+  },
+  {
+    before: `    if (!signUp || loading) return;
 
     setLoading(true);
-    setError("");`;
-const validationAfter = `    if (!signUp || loading) return;
+    setError("");`,
+    after: `    if (!signUp || loading) return;
     if (password !== confirmPassword) {
       setError("As senhas não coincidem.");
       return;
     }
 
     setLoading(true);
-    setError("");`;
+    setError("");`,
+  },
+];
 
 if (!source.includes('setError("As senhas não coincidem.")')) {
-  if (!source.includes(validationBefore)) throw new Error("Signup submit validation marker was not found");
-  source = source.replace(validationBefore, validationAfter);
+  const validation = validationVariants.find(({ before }) => source.includes(before));
+  if (!validation) throw new Error("Signup submit validation marker was not found");
+  source = source.replace(validation.before, validation.after);
 }
 
 const errorMarker = `                  {error && (`;
