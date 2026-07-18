@@ -107,7 +107,7 @@ const bootstrapReplacement = `function UserBootstrap({ children }: { children: R
         </div>
       </div>;
     }
-    return <LoadingScreen />;
+    return <div className="min-h-[100dvh] bg-[#0a0a0a]" />;
   }
 
   return <>{children}</>;
@@ -277,33 +277,10 @@ billingSource = replaceRequired(
 billingSource = billingSource.replaceAll("hasActiveSub && isDowngrade", "hasActivePaidPlan && isDowngrade");
 billingSource = billingSource.replaceAll("hasActiveSub && isUpgrade", "hasActivePaidPlan && isUpgrade");
 
-const portalBefore = `              <Button
-                variant="outline"
-                size="sm"
-                className="border-white/10 hover:border-primary/30 text-sm text-zinc-300"
-                onClick={() => portal.mutate()}
-                disabled={portal.isPending}
-              >
-                {portal.isPending
-                  ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  : <ExternalLink className="w-3.5 h-3.5 mr-1.5" />}
-                Gerenciar Assinatura
-              </Button>`;
-const portalAfter = `              {hasActivePaidPlan && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/10 hover:border-primary/30 text-sm text-zinc-300"
-                  onClick={() => portal.mutate()}
-                  disabled={portal.isPending}
-                >
-                  {portal.isPending
-                    ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    : <ExternalLink className="w-3.5 h-3.5 mr-1.5" />}
-                  Gerenciar Assinatura
-                </Button>
-              )}`;
-billingSource = replaceRequired(billingSource, portalBefore, portalAfter, "Paid billing portal");
+const pricingButtonBefore = `                        onClick={() => handleCheckout(plan, billingInterval)}`;
+const pricingButtonAfter = `                        onClick={() => handleCheckout(plan, billingInterval)}`;
 
+billingSource = billingSource.replace(pricingButtonBefore, pricingButtonAfter);
 writeFileSync(billingUrl, billingSource);
-console.log("Signup loading, user bootstrap and FREE billing persistence patches applied.");
+
+console.log("Authentication redirects, dashboard bootstrap and billing state fixes applied.");
