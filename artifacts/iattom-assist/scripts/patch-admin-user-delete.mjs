@@ -63,7 +63,6 @@ router.delete("/admin/users/:id", requireAdmin, async (req, res): Promise<void> 
       const deletedKey = \`deleted_\${targetUser.id}_\${Date.now()}\`;
       await db.update(users).set({
         email: \`\${deletedKey}@deleted.iattom.invalid\`,
-        clerkId: deletedKey,
         name: "Usuário excluído",
         credits: 0,
         creativeCredits: 0,
