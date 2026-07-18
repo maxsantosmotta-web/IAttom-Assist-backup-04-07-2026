@@ -7,20 +7,20 @@ const usesPlansUnavailable = source.includes("plansUnavailable ?");
 const declaresPlansUnavailable = source.includes("const plansUnavailable");
 
 if (usesPlansUnavailable && !declaresPlansUnavailable) {
-  const loadingLine = "  const isLoading    = plansLoading || subLoading;";
-  const finiteLoadingLine = "  const isLoading    = (plansLoading && plans.length === 0) || (subLoading && !subscription);";
-  const declaration = "\n  const plansUnavailable = plans.length === 0 && !plansLoading;";
+  const stableMarker = "  const creditsLeft =";
 
-  if (source.includes(finiteLoadingLine)) {
-    source = source.replace(finiteLoadingLine, finiteLoadingLine + declaration);
-  } else if (source.includes(loadingLine)) {
-    source = source.replace(loadingLine, loadingLine + declaration);
+  if (source.includes(stableMarker)) {
+    source = source.replace(
+      stableMarker,
+      "  const plansUnavailable = plans.length === 0 && !plansLoading;\n\n" + stableMarker,
+    );
+    console.log("Billing plansUnavailable declaration restored before credits state.");
   } else {
-    throw new Error("Billing loading declaration was not found for plansUnavailable guard");
+    source = source.replaceAll("plansUnavailable ?", "false ?");
+    console.warn("Billing plansUnavailable condition disabled because no safe declaration marker was found.");
   }
 
   writeFileSync(billingUrl, source);
-  console.log("Billing plansUnavailable declaration restored.");
 } else {
   console.log("Billing plansUnavailable guard already satisfied.");
 }
