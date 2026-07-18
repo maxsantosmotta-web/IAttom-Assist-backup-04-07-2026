@@ -15,6 +15,27 @@ function patchFile(relativePath, replacements) {
   writeFileSync(path, source);
 }
 
+function normalizeAuthLoading(relativePath) {
+  const path = new URL(relativePath, import.meta.url);
+  let source = readFileSync(path, "utf8");
+
+  // After the loading state is split, every remaining legacy identifier belongs
+  // to the email/password flow. Google-specific references were already changed
+  // explicitly to googleLoading above. Word boundaries avoid touching either
+  // emailLoading or googleLoading.
+  if (source.includes("const [emailLoading, setEmailLoading]")) {
+    source = source
+      .replace(/\bsetLoading\b/g, "setEmailLoading")
+      .replace(/\bloading\b/g, "emailLoading");
+  }
+
+  if (/\bloading\b/.test(source) || /\bsetLoading\b/.test(source)) {
+    throw new Error(`Residual legacy loading identifier in ${relativePath}`);
+  }
+
+  writeFileSync(path, source);
+}
+
 patchFile("../src/App.tsx", [
   ['import { SignInPage } from "@/pages/SignInPage";', 'import { SignInPage } from "@/pages/SignInPage";\nimport { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";', true],
   ['        <Route path="/sign-in/*?" component={SignInCallbackPage} />', '        <Route path="/forgot-password" component={ForgotPasswordPage} />\n        <Route path="/sign-in/*?" component={SignInCallbackPage} />', true],
@@ -52,6 +73,8 @@ patchFile("../src/pages/SignInPage.tsx", [
   ["{loading ? \"Aguarde...\" : \"Entrar\"}", "{emailLoading ? \"Aguarde...\" : \"Entrar\"}"],
   ["                  </div>\n                </div>\n\n                {error && (", "                  </div>\n                  <button type=\"button\" onClick={() => setLocation(\"/forgot-password\")} className=\"self-end text-[11.5px] transition-colors\" style={{ color: \"#C9A84C\" }}>Esqueci minha senha</button>\n                </div>\n\n                {error && ("],
 ]);
+
+normalizeAuthLoading("../src/pages/SignInPage.tsx");
 
 patchFile("../src/pages/SignUpPage.tsx", [
   ["  const [password, setPassword] = useState(\"\");\n  const [showPassword, setShowPassword] = useState(false);", "  const [password, setPassword] = useState(\"\");\n  const [confirmPassword, setConfirmPassword] = useState(\"\");\n  const [showPassword, setShowPassword] = useState(false);\n  const [showConfirmPassword, setShowConfirmPassword] = useState(false);"],
