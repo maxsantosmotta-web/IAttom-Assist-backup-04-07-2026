@@ -62,6 +62,13 @@ patchFile("../src/components/IAttomHelpPanel.tsx", [
   ],
 ]);
 
+patchFile("../src/components/layout/SidebarLayout.tsx", [
+  [
+    `              {isActive && (\n                <motion.div\n                  layoutId="nav-active-pill"\n                  className="absolute inset-0 rounded-xl bg-primary/[0.10]"\n                  transition={{ type: "spring", stiffness: 420, damping: 38 }}\n                />\n              )}\n              <motion.div\n                className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-r-full bg-primary origin-center"\n                initial={false}\n                animate={{ height: isActive ? 20 : 0, opacity: isActive ? 1 : 0 }}\n                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}\n              />`,
+    `              {isActive && (\n                <>\n                  <div className="absolute inset-0 rounded-xl bg-primary/[0.10]" />\n                  <div className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-primary" />\n                </>\n              )}`,
+  ],
+]);
+
 patchFile("../src/pages/dashboard/Referral.tsx", [
   [
     "const [loading, setLoading] = useState(true);",
@@ -89,4 +96,4 @@ patchFile("../src/pages/dashboard/Referral.tsx", [
   ],
 ]);
 
-console.log("Settings FREE plan, IAttom Help access and referral runtime fixes applied.");
+console.log("Settings FREE plan, stable user navigation, IAttom Help access and referral runtime fixes applied.");
