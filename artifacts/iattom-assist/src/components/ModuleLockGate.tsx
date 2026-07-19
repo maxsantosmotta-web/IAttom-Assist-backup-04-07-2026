@@ -2,12 +2,7 @@ import { useState } from "react";
 import { Lock, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlanComparisonModal } from "@/components/PlanComparisonModal";
-
-const PLAN_DISPLAY: Record<string, string> = {
-  pro: "START",
-  business: "PREMIUM",
-  agency: "PRO",
-};
+import { PLAN_NAMES } from "@/lib/credits";
 
 const PLAN_ORDER = ["pro", "business", "agency"];
 
@@ -20,7 +15,7 @@ export function ModuleLockGate({ allowedPlans, moduleName }: ModuleLockGateProps
   const [showPlans, setShowPlans] = useState(false);
 
   const minimumPlan = PLAN_ORDER.find((p) => allowedPlans.includes(p)) ?? allowedPlans[0] ?? "pro";
-  const minimumPlanName = PLAN_DISPLAY[minimumPlan] ?? minimumPlan.toUpperCase();
+  const minimumPlanName = PLAN_NAMES[minimumPlan] ?? minimumPlan.toUpperCase();
   const exclusive = allowedPlans.length === 1;
 
   return (
@@ -50,7 +45,7 @@ export function ModuleLockGate({ allowedPlans, moduleName }: ModuleLockGateProps
       <PlanComparisonModal
         open={showPlans}
         onClose={() => setShowPlans(false)}
-        highlightPlan="pro"
+        highlightPlan={minimumPlan}
       />
     </>
   );
