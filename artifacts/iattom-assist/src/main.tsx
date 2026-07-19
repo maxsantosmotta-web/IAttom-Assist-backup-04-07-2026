@@ -3,6 +3,8 @@ import App from "./App";
 import "./index.css";
 import { initializeAdminManualDeleteEnhancer } from "./lib/adminManualDeleteEnhancer";
 
+// Keep this initialization in the permanent frontend source so Railway includes
+// the protected manual user deletion control in the production bundle.
 const currentHost = window.location.hostname;
 const canonicalHost = "www.iattomassist.com.br";
 const mustUseCanonicalHost =
