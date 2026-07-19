@@ -3,7 +3,7 @@ import { StripeSync } from "stripe-replit-sync";
 
 /**
  * Fetches Stripe credentials from the Replit connection API.
- * Falls back to STRIPE_SECRET_KEY env var if connector is unavailable.
+ * Falls back to Railway/environment variables when the connector is unavailable.
  * Not cached — tokens can rotate, so fetch fresh each time.
  */
 async function getStripeCredentials(): Promise<{ secretKey: string; webhookSecret?: string }> {
@@ -37,17 +37,19 @@ async function getStripeCredentials(): Promise<{ secretKey: string; webhookSecre
         }
       }
     } catch {
-      // Fall through to env var fallback
+      // Fall through to environment variable fallback
     }
   }
 
-  const key = process.env.STRIPE_SECRET_KEY ?? null;
-  if (!key) {
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
+  if (!secretKey) {
     throw new Error(
-      "Stripe is not configured. Connect Stripe via the Integrations tab, or set STRIPE_SECRET_KEY.",
+      "Stripe is not configured. Set STRIPE_SECRET_KEY in the production environment.",
     );
   }
-  return { secretKey: key };
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim() || undefined;
+  return { secretKey, webhookSecret };
 }
 
 export function isStripeConfigured(): boolean {
