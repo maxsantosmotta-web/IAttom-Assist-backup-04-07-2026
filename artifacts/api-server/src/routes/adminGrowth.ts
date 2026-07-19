@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
-import { eq, gte, and, count } from "drizzle-orm";
+import { eq, gte, and, count, sql } from "drizzle-orm";
 import { db, users, historyTable, creditsTransactions } from "@workspace/db";
 import { referralsTable, referralUsesTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 
 const router: IRouter = Router();
+const OWNER_EMAIL = "maxsantosmotta@gmail.com";
 
 const PLAN_CREDITS: Record<string, number> = {
   free: 0,
@@ -21,6 +22,10 @@ const PLAN_MRR: Record<string, number> = {
 };
 
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
+const commercialUserCondition = and(
+  eq(users.role, "user"),
+  sql`lower(coalesce(${users.email}, '')) <> ${OWNER_EMAIL}`,
+);
 
 router.get("/admin/growth-stats", requireAdmin, async (req, res): Promise<void> => {
   try {
@@ -41,9 +46,9 @@ router.get("/admin/growth-stats", requireAdmin, async (req, res): Promise<void> 
         plan: users.plan,
         credits: users.credits,
         stripeSubscriptionStatus: users.stripeSubscriptionStatus,
-      }).from(users).where(eq(users.role, "user")),
-      db.select({ count: count() }).from(users).where(and(eq(users.role, "user"), gte(users.createdAt, weekAgo))),
-      db.select({ count: count() }).from(users).where(and(eq(users.role, "user"), gte(users.createdAt, monthAgo))),
+      }).from(users).where(commercialUserCondition),
+      db.select({ count: count() }).from(users).where(and(commercialUserCondition, gte(users.createdAt, weekAgo))),
+      db.select({ count: count() }).from(users).where(and(commercialUserCondition, gte(users.createdAt, monthAgo))),
       db.selectDistinct({ clerkUserId: historyTable.clerkUserId }).from(historyTable),
       db.select({ count: count() }).from(referralsTable),
       db.select({ count: count() }).from(referralUsesTable),
