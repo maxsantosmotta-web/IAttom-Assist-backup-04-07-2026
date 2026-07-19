@@ -31,8 +31,29 @@
     <script type="module" src="/src/main.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
+        let reloadingForUpdate = false;
+
+        navigator.serviceWorker.addEventListener('message', function (event) {
+          if (event.data && event.data.type === 'IATTOM_UPDATE_READY' && !reloadingForUpdate) {
+            reloadingForUpdate = true;
+            window.location.reload();
+          }
+        });
+
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (!reloadingForUpdate) {
+            reloadingForUpdate = true;
+            window.location.reload();
+          }
+        });
+
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js');
+          navigator.serviceWorker
+            .register('/sw.js', { updateViaCache: 'none' })
+            .then(function (registration) {
+              registration.update().catch(function () {});
+            })
+            .catch(function () {});
         });
       }
     </script>
