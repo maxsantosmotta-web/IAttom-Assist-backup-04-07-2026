@@ -21,7 +21,6 @@ const PLAN_MRR: Record<string, number> = {
   agency: 299,
 };
 
-const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
 const commercialUserCondition = and(
   eq(users.role, "user"),
   sql`lower(coalesce(${users.email}, '')) <> ${OWNER_EMAIL}`,
@@ -45,7 +44,7 @@ router.get("/admin/growth-stats", requireAdmin, async (req, res): Promise<void> 
         clerkId: users.clerkId,
         plan: users.plan,
         credits: users.credits,
-        stripeSubscriptionStatus: users.stripeSubscriptionStatus,
+        stripeCustomerId: users.stripeCustomerId,
       }).from(users).where(commercialUserCondition),
       db.select({ count: count() }).from(users).where(and(commercialUserCondition, gte(users.createdAt, weekAgo))),
       db.select({ count: count() }).from(users).where(and(commercialUserCondition, gte(users.createdAt, monthAgo))),
@@ -63,10 +62,34 @@ router.get("/admin/growth-stats", requireAdmin, async (req, res): Promise<void> 
     const activatedCount = allUsers.filter((user) => activatedSet.has(user.clerkId)).length;
     const activationRate = totalUsers > 0 ? Math.round((activatedCount / totalUsers) * 100) : 0;
 
+    // Revenue is fail-closed: only subscriptions confirmed by Stripe Sync as
+    // active/trialing AND livemode=true are allowed into commercial metrics.
+    // Test-mode subscriptions and stale status fields on users never count.
+    const liveCustomerIds = new Set<string>();
+    try {
+      const liveSubscriptions = await db.execute(
+        sql`SELECT DISTINCT customer
+            FROM stripe.subscriptions
+            WHERE status IN ('active', 'trialing')
+              AND livemode = true
+              AND customer IS NOT NULL`,
+      );
+
+      for (const row of liveSubscriptions.rows as Array<{ customer?: string | null }>) {
+        if (typeof row.customer === "string" && row.customer.trim()) {
+          liveCustomerIds.add(row.customer);
+        }
+      }
+    } catch (error) {
+      req.log.warn({ error }, "Commercial analytics could not confirm live Stripe subscriptions; returning zero paid revenue");
+    }
+
     const paidUsers = allUsers.filter((user) =>
       user.plan !== "free" &&
-      ACTIVE_SUBSCRIPTION_STATUSES.has((user.stripeSubscriptionStatus ?? "").toLowerCase()),
+      typeof user.stripeCustomerId === "string" &&
+      liveCustomerIds.has(user.stripeCustomerId),
     );
+
     const conversionRate = totalUsers > 0 ? Math.round((paidUsers.length / totalUsers) * 100) : 0;
     const mrr = paidUsers.reduce((sum, user) => sum + (PLAN_MRR[user.plan] ?? 0), 0);
 
