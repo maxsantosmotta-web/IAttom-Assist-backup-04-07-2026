@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { initializeAdminManualDeleteEnhancer } from "./lib/adminManualDeleteEnhancer";
 
 const currentHost = window.location.hostname;
 const canonicalHost = "www.iattomassist.com.br";
@@ -51,5 +52,6 @@ if (mustUseCanonicalHost) {
   canonicalUrl.host = canonicalHost;
   window.location.replace(canonicalUrl.toString());
 } else {
+  initializeAdminManualDeleteEnhancer();
   createRoot(document.getElementById("root")!).render(<App />);
 }
