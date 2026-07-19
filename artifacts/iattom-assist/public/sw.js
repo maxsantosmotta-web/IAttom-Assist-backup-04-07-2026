@@ -1,7 +1,6 @@
-const CACHE_VERSION = "iattom-assist-v3";
+const CACHE_VERSION = "iattom-assist-v4";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
-// Static assets that are safe to cache long-term (have content-hash in filename)
 const STATIC_EXTENSIONS = [".js", ".css", ".woff2", ".woff", ".ttf"];
 
 function isStaticAsset(url) {
@@ -20,14 +19,14 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((k) => !k.startsWith(CACHE_VERSION))
-            .map((k) => caches.delete(k))
-        )
-      )
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
+      .then(async () => {
+        const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        for (const client of clients) {
+          client.postMessage({ type: "IATTOM_UPDATE_READY", version: CACHE_VERSION });
+        }
+      }),
   );
 });
 
@@ -37,16 +36,21 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // HTML documents: always network-first, no cache
-  // This guarantees the latest index.html is always served
-  if (isHtmlRequest(event.request) || url.pathname === "/" || url.pathname.endsWith(".html")) {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
-    );
+  if (url.pathname === "/sw.js") {
+    event.respondWith(fetch(event.request, { cache: "no-store" }));
     return;
   }
 
-  // Static hashed assets: cache-first for performance
+  if (url.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  if (isHtmlRequest(event.request) || url.pathname === "/" || url.pathname.endsWith(".html")) {
+    event.respondWith(fetch(event.request, { cache: "no-store" }));
+    return;
+  }
+
   if (isStaticAsset(url)) {
     event.respondWith(
       caches.open(STATIC_CACHE).then((cache) =>
@@ -54,27 +58,17 @@ self.addEventListener("fetch", (event) => {
           if (cached) return cached;
           return fetch(event.request).then((response) => {
             if (response && response.status === 200) {
-              cache.put(event.request, response.clone());
+              void cache.put(event.request, response.clone());
             }
             return response;
           });
-        })
-      )
+        }),
+      ),
     );
     return;
   }
 
-  // Everything else (images, manifests, sw itself): network-first
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        if (response && response.status === 200 && response.type === "basic") {
-          caches
-            .open(STATIC_CACHE)
-            .then((cache) => cache.put(event.request, response.clone()));
-        }
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+    fetch(event.request, { cache: "no-store" }).catch(() => caches.match(event.request)),
   );
 });
