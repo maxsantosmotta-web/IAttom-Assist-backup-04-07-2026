@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
+import { getUncachableStripeClient } from "./stripeClient.js";
 
 export interface StripeProductRow {
   id: string;
@@ -43,6 +44,51 @@ export async function getSubscriptionByCustomerId(
   } catch {
     return null;
   }
+}
+
+async function getPlansFromStripeApi(): Promise<
+  Array<{ product: StripeProductRow; prices: StripePriceRow[] }>
+> {
+  const stripe = await getUncachableStripeClient();
+  const products = await stripe.products.list({ active: true, limit: 100 });
+  const planProducts = products.data.filter((product) => Boolean(product.metadata?.plan));
+
+  const rows = await Promise.all(
+    planProducts.map(async (product) => {
+      const prices = await stripe.prices.list({
+        product: product.id,
+        active: true,
+        type: "recurring",
+        limit: 100,
+      });
+
+      return {
+        product: {
+          id: product.id,
+          name: product.name,
+          description: product.description ?? null,
+          active: product.active,
+          metadata: product.metadata ?? null,
+        },
+        prices: prices.data.map((price) => ({
+          id: price.id,
+          product: product.id,
+          unit_amount: price.unit_amount,
+          currency: price.currency,
+          recurring: price.recurring
+            ? {
+                interval: price.recurring.interval,
+                interval_count: price.recurring.interval_count,
+              }
+            : null,
+          active: price.active,
+          metadata: price.metadata ?? null,
+        })),
+      };
+    }),
+  );
+
+  return rows;
 }
 
 export async function getPlansWithPrices(): Promise<
@@ -103,7 +149,14 @@ export async function getPlansWithPrices(): Promise<
       }
     }
 
-    return Array.from(map.values());
+    const syncedRows = Array.from(map.values());
+    if (syncedRows.some((row) => row.prices.length > 0)) return syncedRows;
+  } catch {
+    // Fall back to the live Stripe API below.
+  }
+
+  try {
+    return await getPlansFromStripeApi();
   } catch {
     return [];
   }
