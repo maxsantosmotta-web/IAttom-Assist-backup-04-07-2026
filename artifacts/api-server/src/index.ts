@@ -4,6 +4,20 @@ import { logger } from "./lib/logger.js";
 import { getStripeSync } from "./lib/stripeClient.js";
 import { rehydrateMLTokens } from "./lib/mlTokenStartup.js";
 
+function resolvePublicOrigin(): string | null {
+  const explicit = process.env.APP_PUBLIC_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+
+  const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
+  if (railwayDomain) return `https://${railwayDomain.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+
+  const replitDomains = process.env.REPLIT_DOMAINS?.trim();
+  const replitDomain = replitDomains?.split(",")[0]?.trim();
+  if (replitDomain) return `https://${replitDomain.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+
+  return null;
+}
+
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
@@ -21,7 +35,6 @@ async function initStripe() {
   }
 
   // Step 2: Connect to Stripe API (requires STRIPE_SECRET_KEY or connector).
-  // If no key is available, billing features are gracefully disabled — app still starts.
   let stripeSync: Awaited<ReturnType<typeof getStripeSync>> | null = null;
   try {
     stripeSync = await getStripeSync();
@@ -29,19 +42,20 @@ async function initStripe() {
     logger.warn(
       { err },
       "Stripe API key not available — set STRIPE_SECRET_KEY to enable live billing. " +
-      "Plans page and credit system will work; checkout/portal will return 503.",
+      "Checkout and billing portal will remain unavailable until configured.",
     );
     return;
   }
 
-  // Step 3: Register webhook and start background sync.
+  // Step 3: Register webhook against the real production origin and start backfill.
   try {
-    const domains = process.env.REPLIT_DOMAINS ?? "";
-    const primaryDomain = domains.split(",")[0];
-    if (primaryDomain) {
-      const webhookUrl = `https://${primaryDomain}/api/stripe/webhook`;
+    const publicOrigin = resolvePublicOrigin();
+    if (publicOrigin) {
+      const webhookUrl = `${publicOrigin}/api/stripe/webhook`;
       await stripeSync.findOrCreateManagedWebhook(webhookUrl);
       logger.info({ webhookUrl }, "Stripe webhook configured");
+    } else {
+      logger.warn("No public application URL found — Stripe webhook was not auto-registered");
     }
 
     stripeSync.syncBackfill().catch((err: unknown) => {
