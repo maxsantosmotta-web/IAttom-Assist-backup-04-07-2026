@@ -72,6 +72,41 @@ const CustomTooltip = ({
   );
 };
 
+function LiveScanner({ color, duration = 6 }: { color: string; duration?: number }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden rounded-[inherit]" aria-hidden="true">
+      <motion.div
+        className="absolute -inset-y-1 w-28 opacity-50 blur-xl"
+        style={{ background: `linear-gradient(90deg, transparent, ${color}33, ${color}66, ${color}22, transparent)` }}
+        animate={{ x: ["-160%", "780%"] }}
+        transition={{ duration, repeat: Infinity, ease: "linear", repeatDelay: 0.4 }}
+      />
+      <motion.div
+        className="absolute inset-x-0 top-0 h-px"
+        style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }}
+        animate={{ opacity: [0.25, 0.9, 0.25] }}
+        transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </div>
+  );
+}
+
+function LiveStatus() {
+  return (
+    <div className="flex items-center gap-2 text-[10px] font-medium text-emerald-300/80">
+      <span className="relative flex h-2 w-2">
+        <motion.span
+          className="absolute inline-flex h-full w-full rounded-full bg-emerald-400"
+          animate={{ scale: [1, 2.2, 1], opacity: [0.85, 0, 0.85] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+        />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+      </span>
+      monitoramento ativo
+    </div>
+  );
+}
+
 const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
 const panelClass = "relative overflow-hidden border border-white/[0.07] bg-[#0a0d13] shadow-[inset_0_1px_0_rgba(255,255,255,0.025),0_24px_70px_rgba(0,0,0,0.22)]";
 
@@ -174,7 +209,8 @@ export function AdminActivity() {
             <h2 className="mb-1 text-2xl font-bold text-white">Atividade da Plataforma</h2>
             <p className="text-sm text-muted-foreground">Monitoramento visual das ações, execuções e movimentações da plataforma.</p>
           </div>
-          <div className="flex items-center gap-2 sm:mt-1 sm:shrink-0">
+          <div className="flex flex-wrap items-center gap-3 sm:mt-1 sm:justify-end">
+            <LiveStatus />
             <Button
               size="sm"
               variant="outline"
@@ -209,17 +245,17 @@ export function AdminActivity() {
           { label: "Últimos 7 dias", value: isLoading ? null : kpis.week, sub: "no período", icon: CalendarDays, accent: "#22d3ee", color: "text-cyan-300 bg-cyan-400/10 border-cyan-400/20" },
           { label: "Últimos 30 dias", value: isLoading ? null : kpis.month, sub: "no período", icon: TrendingUp, accent: "#a78bfa", color: "text-violet-300 bg-violet-400/10 border-violet-400/20" },
           { label: "Média Diária", value: isLoading ? null : kpis.avgDaily, sub: "ações/dia (7 dias)", icon: BarChart2, accent: "#34d399", color: "text-emerald-300 bg-emerald-400/10 border-emerald-400/20" },
-        ] as const).map(({ label, value, sub, icon: Icon, accent, color }) => (
+        ] as const).map(({ label, value, sub, icon: Icon, accent, color }, index) => (
           <Card key={label} className={`${panelClass} group transition-colors hover:border-white/[0.12]`}>
-            <div className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}99, transparent)` }} />
+            <LiveScanner color={accent} duration={7 + index} />
             <div className="absolute -right-8 -top-10 h-24 w-24 rounded-full opacity-10 blur-2xl transition-opacity group-hover:opacity-20" style={{ backgroundColor: accent }} />
-            <CardContent className="relative p-5">
+            <CardContent className="relative z-[2] p-5">
               <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg border ${color}`}>
                 <Icon className="h-4 w-4" />
               </div>
               {value === null
                 ? <Skeleton className="mb-1 h-8 w-16 bg-white/5" />
-                : <p className="mb-0.5 text-2xl font-bold tabular-nums text-white">{value}</p>}
+                : <motion.p className="mb-0.5 text-2xl font-bold tabular-nums text-white" animate={{ opacity: [0.82, 1, 0.82] }} transition={{ duration: 3.2, repeat: Infinity }}>{value}</motion.p>}
               <p className="mb-0.5 text-xs font-semibold text-white">{label}</p>
               <p className="text-xs text-muted-foreground">{sub}</p>
             </CardContent>
@@ -230,53 +266,46 @@ export function AdminActivity() {
       <div className="grid gap-6 lg:grid-cols-2">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
           <Card className={`${panelClass} h-full`}>
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent" />
+            <LiveScanner color="#a78bfa" duration={5.5} />
             <div className="absolute -right-20 -top-24 h-52 w-52 rounded-full bg-violet-500/10 blur-3xl" />
-            <CardHeader className="relative pb-2">
+            <CardHeader className="relative z-[2] pb-2">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
                 <TrendingUp className="h-4 w-4 text-violet-300" />
                 Movimento da Plataforma
                 <span className="ml-auto text-[10px] font-normal text-zinc-600">últimos 14 dias</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="relative">
+            <CardContent className="relative z-[2]">
               {isLoading ? (
                 <Skeleton className="h-52 w-full rounded-lg bg-white/5" />
               ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={dailyChart} margin={{ top: 14, right: 8, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="activityLine" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.55} />
-                        <stop offset="55%" stopColor="#7c3aed" stopOpacity={0.16} />
-                        <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
-                      </linearGradient>
-                      <filter id="activityGlow" x="-30%" y="-30%" width="160%" height="160%">
-                        <feGaussianBlur stdDeviation="3" result="blur" />
-                        <feMerge>
-                          <feMergeNode in="blur" />
-                          <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                      </filter>
-                    </defs>
-                    <CartesianGrid stroke="rgba(255,255,255,0.055)" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#5d606b" }} axisLine={false} tickLine={false} interval={1} />
-                    <YAxis tick={{ fontSize: 10, fill: "#5d606b" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(167,139,250,0.22)", strokeDasharray: "4 4" }} />
-                    <Area
-                      type="monotone"
-                      dataKey="count"
-                      stroke="#c4b5fd"
-                      strokeWidth={3}
-                      fill="url(#activityLine)"
-                      name="Ações"
-                      dot={{ fill: "#c4b5fd", r: 2.5, stroke: "#11131a", strokeWidth: 2 }}
-                      activeDot={{ r: 5, fill: "#ffffff", stroke: "#a78bfa", strokeWidth: 3 }}
-                      animationDuration={950}
-                      style={{ filter: "url(#activityGlow)" }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <div className="relative">
+                  <motion.div
+                    className="pointer-events-none absolute inset-y-4 z-[3] w-px bg-gradient-to-b from-transparent via-violet-300 to-transparent shadow-[0_0_16px_rgba(167,139,250,0.9)]"
+                    animate={{ left: ["2%", "98%", "2%"] }}
+                    transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart data={dailyChart} margin={{ top: 14, right: 8, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="activityLine" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.55} />
+                          <stop offset="55%" stopColor="#7c3aed" stopOpacity={0.16} />
+                          <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
+                        </linearGradient>
+                        <filter id="activityGlow" x="-30%" y="-30%" width="160%" height="160%">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                        </filter>
+                      </defs>
+                      <CartesianGrid stroke="rgba(255,255,255,0.055)" vertical={false} />
+                      <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#5d606b" }} axisLine={false} tickLine={false} interval={1} />
+                      <YAxis tick={{ fontSize: 10, fill: "#5d606b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(167,139,250,0.22)", strokeDasharray: "4 4" }} />
+                      <Area type="monotone" dataKey="count" stroke="#c4b5fd" strokeWidth={3} fill="url(#activityLine)" name="Ações" dot={{ fill: "#c4b5fd", r: 2.5, stroke: "#11131a", strokeWidth: 2 }} activeDot={{ r: 5, fill: "#ffffff", stroke: "#a78bfa", strokeWidth: 3 }} animationDuration={950} style={{ filter: "url(#activityGlow)" }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -284,24 +313,12 @@ export function AdminActivity() {
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.17 }}>
           <Card className={`${panelClass} h-full`}>
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" />
+            <LiveScanner color="#22d3ee" duration={5.8} />
             <div className="absolute -left-20 -bottom-24 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl" />
-            <CardHeader className="relative pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
-                <BarChart2 className="h-4 w-4 text-cyan-300" />
-                Atividade por Módulo
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="relative">
-              {isLoading ? (
-                <Skeleton className="h-52 w-full rounded-lg bg-white/5" />
-              ) : moduleChart.length === 0 ? (
-                <div className="flex h-52 items-center justify-center">
-                  <div className="text-center">
-                    <Activity className="mx-auto mb-2 h-6 w-6 text-white/10" />
-                    <p className="text-xs text-muted-foreground">Sem dados suficientes.</p>
-                  </div>
-                </div>
+            <CardHeader className="relative z-[2] pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><BarChart2 className="h-4 w-4 text-cyan-300" />Atividade por Módulo</CardTitle></CardHeader>
+            <CardContent className="relative z-[2]">
+              {isLoading ? <Skeleton className="h-52 w-full rounded-lg bg-white/5" /> : moduleChart.length === 0 ? (
+                <div className="flex h-52 items-center justify-center"><div className="text-center"><Activity className="mx-auto mb-2 h-6 w-6 text-white/10" /><p className="text-xs text-muted-foreground">Sem dados suficientes.</p></div></div>
               ) : (
                 <ResponsiveContainer width="100%" height={Math.max(200, moduleChart.length * 40)}>
                   <BarChart data={moduleChart} layout="vertical" margin={{ top: 6, right: 38, left: 10, bottom: 0 }}>
@@ -309,11 +326,7 @@ export function AdminActivity() {
                     <XAxis type="number" tick={{ fontSize: 10, fill: "#5d606b" }} axisLine={false} tickLine={false} allowDecimals={false} />
                     <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={92} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.025)" }} />
-                    <Bar dataKey="count" name="Ações" radius={[0, 18, 18, 0]} maxBarSize={22} animationDuration={850}>
-                      {moduleChart.map((entry) => (
-                        <Cell key={entry.name} fill={entry.fill} stroke={entry.fill} strokeOpacity={0.45} />
-                      ))}
-                    </Bar>
+                    <Bar dataKey="count" name="Ações" radius={[0, 18, 18, 0]} maxBarSize={22} animationDuration={850}>{moduleChart.map((entry) => <Cell key={entry.name} fill={entry.fill} stroke={entry.fill} strokeOpacity={0.45} />)}</Bar>
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -325,27 +338,17 @@ export function AdminActivity() {
       {actionChart.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.22 }}>
           <Card className={panelClass}>
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
+            <LiveScanner color="#fbbf24" duration={6.2} />
             <div className="absolute -right-16 -bottom-24 h-52 w-52 rounded-full bg-amber-400/[0.08] blur-3xl" />
-            <CardHeader className="relative pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
-                <Zap className="h-4 w-4 text-amber-300" />
-                Atividade por Tipo de Ação
-                <span className="ml-auto text-[10px] font-normal text-zinc-600">top 9 · últimos 100 eventos</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="relative">
+            <CardHeader className="relative z-[2] pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Zap className="h-4 w-4 text-amber-300" />Atividade por Tipo de Ação<span className="ml-auto text-[10px] font-normal text-zinc-600">top 9 · últimos 100 eventos</span></CardTitle></CardHeader>
+            <CardContent className="relative z-[2]">
               <ResponsiveContainer width="100%" height={Math.max(220, actionChart.length * 40)}>
                 <BarChart data={actionChart} layout="vertical" margin={{ top: 6, right: 38, left: 10, bottom: 0 }}>
                   <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 10, fill: "#5d606b" }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={142} />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.025)" }} />
-                  <Bar dataKey="count" name="Ocorrências" radius={[0, 18, 18, 0]} maxBarSize={22} animationDuration={900}>
-                    {actionChart.map((entry) => (
-                      <Cell key={entry.name} fill={entry.fill} stroke={entry.fill} strokeOpacity={0.45} />
-                    ))}
-                  </Bar>
+                  <Bar dataKey="count" name="Ocorrências" radius={[0, 18, 18, 0]} maxBarSize={22} animationDuration={900}>{actionChart.map((entry) => <Cell key={entry.name} fill={entry.fill} stroke={entry.fill} strokeOpacity={0.45} />)}</Bar>
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
