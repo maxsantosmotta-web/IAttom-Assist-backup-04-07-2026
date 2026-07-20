@@ -53,73 +53,91 @@ export async function getUserWithCredits(clerkId: string) {
   return user ?? null;
 }
 
+interface LockedCreditBalances {
+  credits: number;
+  extra_credits: number;
+  creative_credits: number;
+  extra_creative_credits: number;
+}
+
 export async function deductCredits(clerkId: string, feature: FeatureKey) {
   const cost = FEATURE_COSTS[feature];
   const isCreative = CREATIVE_FEATURES.has(feature);
 
-  const [user] = await db.select().from(users).where(eq(users.clerkId, clerkId));
-  if (!user) return { success: false as const, error: "user_not_found" as const };
+  return db.transaction(async (tx) => {
+    // Lock the user row so concurrent generations cannot spend the same balance.
+    const lockedResult = await tx.execute(
+      sql`SELECT credits, extra_credits, creative_credits, extra_creative_credits
+          FROM users
+          WHERE clerk_id = ${clerkId}
+          FOR UPDATE`,
+    );
 
-  const planBalance  = isCreative ? user.creativeCredits  : user.credits;
-  const extraBalance = isCreative ? (user.extraCreativeCredits ?? 0) : (user.extraCredits ?? 0);
-  const total        = planBalance + extraBalance;
+    const locked = lockedResult.rows[0] as LockedCreditBalances | undefined;
+    if (!locked) {
+      return { success: false as const, error: "user_not_found" as const };
+    }
 
-  if (total < cost) {
-    return {
-      success: false as const,
-      error: "insufficient_credits" as const,
-      balance: total,
-      required: cost,
-    };
-  }
+    const planBalance = isCreative ? Number(locked.creative_credits) : Number(locked.credits);
+    const extraBalance = isCreative ? Number(locked.extra_creative_credits) : Number(locked.extra_credits);
+    const total = planBalance + extraBalance;
 
-  const fromPlan  = Math.min(cost, planBalance);
-  const fromExtra = cost - fromPlan;
-
-  const newPlanBalance  = planBalance  - fromPlan;
-  const newExtraBalance = extraBalance - fromExtra;
-
-  const updateFields = isCreative
-    ? {
-        creativeCredits:      newPlanBalance,
-        extraCreativeCredits: newExtraBalance,
-        updatedAt: new Date(),
-      }
-    : {
-        credits:      newPlanBalance,
-        extraCredits: newExtraBalance,
-        updatedAt: new Date(),
+    if (total < cost) {
+      return {
+        success: false as const,
+        error: "insufficient_credits" as const,
+        balance: total,
+        required: cost,
       };
+    }
 
-  const [updated] = await db
-    .update(users)
-    .set(updateFields)
-    .where(eq(users.clerkId, clerkId))
-    .returning();
+    const fromPlan = Math.min(cost, planBalance);
+    const fromExtra = cost - fromPlan;
+    const newPlanBalance = planBalance - fromPlan;
+    const newExtraBalance = extraBalance - fromExtra;
 
-  const newTotal = total - cost;
+    const updateFields = isCreative
+      ? {
+          creativeCredits: newPlanBalance,
+          extraCreativeCredits: newExtraBalance,
+          updatedAt: new Date(),
+        }
+      : {
+          credits: newPlanBalance,
+          extraCredits: newExtraBalance,
+          updatedAt: new Date(),
+        };
 
-  const [tx] = await db
-    .insert(creditsTransactions)
-    .values({
-      clerkUserId: clerkId,
-      amount: -cost,
-      type: "debit",
-      feature,
-      balanceType: isCreative ? "creative" : "general",
-      description: DEBIT_DESCRIPTIONS[feature] ?? `Uso de ${feature.replace(/_/g, " ")}`,
-      balanceBefore: total,
-      balanceAfter:  newTotal,
-    })
-    .returning();
+    const [updated] = await tx
+      .update(users)
+      .set(updateFields)
+      .where(eq(users.clerkId, clerkId))
+      .returning();
 
-  return {
-    success: true as const,
-    creditsUsed: cost,
-    newBalance: newTotal,
-    transactionId: tx.id,
-    user: updated,
-  };
+    const newTotal = total - cost;
+
+    const [creditTransaction] = await tx
+      .insert(creditsTransactions)
+      .values({
+        clerkUserId: clerkId,
+        amount: -cost,
+        type: "debit",
+        feature,
+        balanceType: isCreative ? "creative" : "general",
+        description: DEBIT_DESCRIPTIONS[feature] ?? `Uso de ${feature.replace(/_/g, " ")}`,
+        balanceBefore: total,
+        balanceAfter: newTotal,
+      })
+      .returning();
+
+    return {
+      success: true as const,
+      creditsUsed: cost,
+      newBalance: newTotal,
+      transactionId: creditTransaction.id,
+      user: updated,
+    };
+  });
 }
 
 export async function adjustCredits(
@@ -132,7 +150,7 @@ export async function adjustCredits(
   if (!user) return null;
 
   const balanceBefore = user.credits;
-  const balanceAfter  = Math.max(0, balanceBefore + amount);
+  const balanceAfter = Math.max(0, balanceBefore + amount);
 
   const [updated] = await db
     .update(users)
@@ -140,7 +158,7 @@ export async function adjustCredits(
     .where(eq(users.clerkId, clerkId))
     .returning();
 
-  const [tx] = await db
+  const [creditTransaction] = await db
     .insert(creditsTransactions)
     .values({
       clerkUserId: clerkId,
@@ -152,7 +170,7 @@ export async function adjustCredits(
     })
     .returning();
 
-  return { user: updated, transaction: tx };
+  return { user: updated, transaction: creditTransaction };
 }
 
 export async function getTransactionCount(clerkUserId: string) {
