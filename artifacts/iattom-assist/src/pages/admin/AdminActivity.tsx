@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { translateModule } from "@/lib/eventTranslations";
 import { useAuth } from "@clerk/react";
 import { useToast } from "@/hooks/use-toast";
-import { DomnBarChart, DomnLineChart } from "@/components/admin/AdminDomnCharts";
+import { DomnDonutChart, DomnLineChart } from "@/components/admin/AdminDomnCharts";
 
 const MODULE_COLORS: Record<string, string> = {
   campaign: "#fbbf24",
@@ -177,20 +177,18 @@ export function AdminActivity() {
         ))}
       </motion.div>
 
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
+        {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : <DomnLineChart data={dailyChart} title="Movimento da Plataforma" subtitle="Últimos 14 dias" />}
+      </motion.div>
+
       <div className="grid gap-6 lg:grid-cols-2">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
-          {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : <DomnLineChart data={dailyChart} title="Movimento da Plataforma" subtitle="Últimos 14 dias" />}
-        </motion.div>
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.17 }}>
-          {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : moduleChart.length ? <DomnBarChart data={moduleChart} title="Atividade por Módulo" subtitle="Distribuição operacional" /> : <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><div className="text-center"><Activity className="mx-auto mb-2 h-6 w-6 text-white/10"/><p className="text-xs text-muted-foreground">Sem dados suficientes.</p></div></Card>}
+          {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : moduleChart.length ? <DomnDonutChart data={moduleChart} title="Atividade por Módulo" subtitle="Distribuição operacional" centerLabel="Módulos" /> : <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><div className="text-center"><Activity className="mx-auto mb-2 h-6 w-6 text-white/10"/><p className="text-xs text-muted-foreground">Sem dados suficientes.</p></div></Card>}
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.22 }}>
+          {actionChart.length > 0 ? <DomnDonutChart data={actionChart} title="Atividade por Tipo de Ação" subtitle="Últimos 100 eventos" centerLabel="Ações" /> : <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><div className="text-center"><Activity className="mx-auto mb-2 h-6 w-6 text-white/10"/><p className="text-xs text-muted-foreground">Sem dados suficientes.</p></div></Card>}
         </motion.div>
       </div>
-
-      {actionChart.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.22 }}>
-          <DomnBarChart data={actionChart} title="Atividade por Tipo de Ação" subtitle="Top 9 · últimos 100 eventos" />
-        </motion.div>
-      )}
     </div>
   );
 }
