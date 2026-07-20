@@ -54,8 +54,8 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
         <div className="domn-line-stage">
           <svg viewBox={`0 0 ${width} ${height}`} onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); setTouching(true); select(e); }} onPointerMove={(e) => touching && select(e)} onPointerUp={(e) => { e.currentTarget.releasePointerCapture?.(e.pointerId); setTouching(false); setActiveIndex(null); }} onPointerCancel={() => { setTouching(false); setActiveIndex(null); }} onPointerLeave={() => !touching && setActiveIndex(null)}>
             <defs>
-              <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3fd7ff" stopOpacity="0.24"/><stop offset="55%" stopColor="#f4c95d" stopOpacity="0.12"/><stop offset="100%" stopColor="#ff5cc8" stopOpacity="0"/></linearGradient>
-              <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#3fd7ff"/><stop offset="48%" stopColor="#f4c95d"/><stop offset="100%" stopColor="#ff5cc8"/></linearGradient>
+              <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3fd7ff" stopOpacity="0.16"/><stop offset="62%" stopColor="#3fd7ff" stopOpacity="0.05"/><stop offset="100%" stopColor="#3fd7ff" stopOpacity="0"/></linearGradient>
+              <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#91f3ff"/><stop offset="65%" stopColor="#3fd7ff"/><stop offset="100%" stopColor="#64e6a6"/></linearGradient>
             </defs>
             {[0, .25, .5, .75, 1].map((step) => { const y = padding.top + innerHeight - step * innerHeight; return <line key={step} x1={padding.left} y1={y} x2={width - padding.right} y2={y} className="domn-grid"/>; })}
             {areaPath && <path d={areaPath} fill={`url(#${id}-area)`} className="domn-area"/>}
@@ -69,6 +69,41 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
           {active && <div className="domn-tooltip" style={{ left: `${(active.x / width) * 100}%` }}><span>{active.label}</span><strong>{numberFmt(active.value)}</strong></div>}
         </div>
       ) : <div className="domn-empty">Sem dados suficientes</div>}
+    </section>
+  );
+}
+
+export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total" }: { data: DomnBarPoint[]; title: string; subtitle: string; centerLabel?: string }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const normalized = useMemo(() => data.map((item, index) => ({ ...item, value: Math.max(0, Number(item.value || 0)), color: item.color || COLORS[index % COLORS.length] })), [data]);
+  const total = normalized.reduce((sum, item) => sum + item.value, 0);
+  let cursor = 0;
+  const segments = normalized.map((item) => {
+    const start = total > 0 ? (cursor / total) * 360 : 0;
+    cursor += item.value;
+    const end = total > 0 ? (cursor / total) * 360 : 0;
+    return `${item.color} ${start}deg ${end}deg`;
+  });
+  const active = activeIndex === null ? null : normalized[activeIndex];
+  const gradient = total > 0 ? `conic-gradient(${segments.join(", ")})` : "conic-gradient(#252525 0deg 360deg)";
+
+  return (
+    <section className="domn-chart-card domn-donut-card">
+      <header><div><span>{subtitle}</span><strong>{title}</strong></div></header>
+      {normalized.length ? (
+        <div className="domn-donut-layout">
+          <div className="domn-premium-donut" style={{ ["--donut-fill" as string]: gradient }}>
+            <div><small>{active?.label || centerLabel}</small><strong>{numberFmt(active?.value ?? total)}</strong></div>
+          </div>
+          <div className="domn-donut-legend">
+            {normalized.map((item, index) => (
+              <button type="button" className={activeIndex === index ? "active" : ""} onPointerDown={() => setActiveIndex(index)} onPointerEnter={() => setActiveIndex(index)} onPointerLeave={() => setActiveIndex(null)} onFocus={() => setActiveIndex(index)} onBlur={() => setActiveIndex(null)} key={item.label}>
+                <i style={{ background: item.color }} /><span>{item.label}</span><strong>{numberFmt(item.value)}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : <div className="domn-empty">Sem distribuição disponível</div>}
     </section>
   );
 }
