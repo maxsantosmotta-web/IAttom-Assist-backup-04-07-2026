@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AreaChart, Area, BarChart, Bar, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { useListAdminActivity, getListAdminActivityQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -15,21 +15,20 @@ import { translateModule } from "@/lib/eventTranslations";
 import { useAuth } from "@clerk/react";
 import { useToast } from "@/hooks/use-toast";
 
-/* ─── constants ─────────────────────────────────────────────────── */
 const MODULE_COLORS: Record<string, string> = {
-  campaign:           "#fbbf24",
-  content:            "#60a5fa",
-  creative:           "#a78bfa",
-  video_script:       "#fb7185",
-  product_discovery:  "#C9A84C",
+  campaign: "#fbbf24",
+  content: "#60a5fa",
+  creative: "#a78bfa",
+  video_script: "#fb7185",
+  product_discovery: "#22d3ee",
   product_validation: "#34d399",
-  marketing:          "#fb923c",
+  marketing: "#fb923c",
 };
+
 const FALLBACK_COLORS = [
-  "#C9A84C","#60a5fa","#a78bfa","#34d399","#fb7185","#fb923c","#fbbf24","#22d3ee",
+  "#22d3ee", "#a78bfa", "#34d399", "#fb7185", "#fbbf24", "#fb923c", "#60a5fa", "#C9A84C",
 ];
 
-/* ─── helpers ───────────────────────────────────────────────────── */
 function dayKey(d: Date) { return d.toISOString().slice(0, 10); }
 function shortDay(iso: string) {
   const [,, dd] = iso.split("-");
@@ -38,39 +37,34 @@ function shortDay(iso: string) {
   return `${dd}/${month}`;
 }
 
-/**
- * Normalizes a raw action string to a canonical PT-BR category.
- * Strips project-name suffixes (everything after ":") before matching.
- */
 function normalizeAction(action: string): string {
   const base = action.split(":")[0].trim();
-  if (/campaign.*creat|creat.*campaign|campanha.*cria/i.test(base))  return "Campanhas Criadas";
-  if (/campaign.*refin|block.*refin|bloco/i.test(base))              return "Blocos Refinados";
+  if (/campaign.*creat|creat.*campaign|campanha.*cria/i.test(base)) return "Campanhas Criadas";
+  if (/campaign.*refin|block.*refin|bloco/i.test(base)) return "Blocos Refinados";
   if (/content.*creat|creat.*content|content.*gen|gen.*content|conteúdo/i.test(base)) return "Conteúdos Criados";
-  if (/script.*creat|script.*gen|video.?script/i.test(base))         return "Scripts Gerados";
-  if (/creative.*gen|gen.*creative|criativo/i.test(base))            return "Criativos Gerados";
-  if (/creat.*project|project.*creat|projeto.*cri/i.test(base))      return "Projetos Criados";
-  if (/updat.*project|project.*updat|projeto.*atualiz/i.test(base))  return "Projetos Atualizados";
+  if (/script.*creat|script.*gen|video.?script/i.test(base)) return "Scripts Gerados";
+  if (/creative.*gen|gen.*creative|criativo/i.test(base)) return "Criativos Gerados";
+  if (/creat.*project|project.*creat|projeto.*cri/i.test(base)) return "Projetos Criados";
+  if (/updat.*project|project.*updat|projeto.*atualiz/i.test(base)) return "Projetos Atualizados";
   if (/complet.*project|project.*complet|projeto.*conclu/i.test(base)) return "Projetos Concluídos";
-  if (/validat|validação/i.test(base))                               return "Validações Executadas";
-  if (/discover|descoberta/i.test(base))                             return "Descobertas Executadas";
-  if (/marketing/i.test(base))                                       return "Marketing Gerado";
-  if (/prompt/i.test(base))                                          return "Prompts Criados";
-  if (/delet|exclu/i.test(base))                                     return "Itens Excluídos";
-  if (/restor|restaur/i.test(base))                                  return "Itens Restaurados";
+  if (/validat|validação/i.test(base)) return "Validações Executadas";
+  if (/discover|descoberta/i.test(base)) return "Descobertas Executadas";
+  if (/marketing/i.test(base)) return "Marketing Gerado";
+  if (/prompt/i.test(base)) return "Prompts Criados";
+  if (/delet|exclu/i.test(base)) return "Itens Excluídos";
+  if (/restor|restaur/i.test(base)) return "Itens Restaurados";
   return base.length > 0 ? base : action;
 }
 
-/* ─── tooltip ───────────────────────────────────────────────────── */
 const CustomTooltip = ({
   active, payload, label,
 }: { active?: boolean; payload?: Array<{ name: string; value: number; color?: string; fill?: string }>; label?: string }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
-      {label && <p className="text-muted-foreground mb-1 font-medium">{label}</p>}
+    <div className="rounded-xl border border-white/10 bg-[#080a0f]/95 px-3 py-2 text-xs shadow-2xl backdrop-blur-xl">
+      {label && <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">{label}</p>}
       {payload.map((p) => (
-        <p key={p.name} style={{ color: p.color ?? p.fill ?? "#C9A84C" }} className="font-semibold">
+        <p key={p.name} style={{ color: p.color ?? p.fill ?? "#C9A84C" }} className="font-semibold tabular-nums">
           {p.name}: {p.value}
         </p>
       ))}
@@ -79,8 +73,8 @@ const CustomTooltip = ({
 };
 
 const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
+const panelClass = "relative overflow-hidden border border-white/[0.07] bg-[#0a0d13] shadow-[inset_0_1px_0_rgba(255,255,255,0.025),0_24px_70px_rgba(0,0,0,0.22)]";
 
-/* ─── AdminActivity ─────────────────────────────────────────────── */
 export function AdminActivity() {
   const { getToken } = useAuth();
   const { toast } = useToast();
@@ -93,9 +87,13 @@ export function AdminActivity() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = filename; a.click();
+      a.href = url;
+      a.download = filename;
+      a.click();
       URL.revokeObjectURL(url);
-    } catch { toast({ title: "Erro ao exportar", variant: "destructive" }); }
+    } catch {
+      toast({ title: "Erro ao exportar", variant: "destructive" });
+    }
   }
 
   const { data: activity, isLoading, isFetching, refetch } = useListAdminActivity(
@@ -103,20 +101,21 @@ export function AdminActivity() {
     { query: { queryKey: getListAdminActivityQueryKey({ limit: 100 }), staleTime: 0 } },
   );
 
-  /* ── derived data ────────────────────────────────────────────── */
   const items = activity ?? [];
 
   const { kpis, dailyChart, moduleChart, actionChart } = useMemo(() => {
-    const now        = new Date();
-    const todayKey   = dayKey(now);
-    const week7ago   = new Date(now.getTime() - 7  * 86400000);
+    const now = new Date();
+    const todayKey = dayKey(now);
+    const week7ago = new Date(now.getTime() - 7 * 86400000);
     const month30ago = new Date(now.getTime() - 30 * 86400000);
 
-    let today = 0, week = 0, month = 0;
+    let today = 0;
+    let week = 0;
+    let month = 0;
     for (const it of items) {
       const d = new Date(it.createdAt);
       if (dayKey(d) === todayKey) today++;
-      if (d >= week7ago)   week++;
+      if (d >= week7ago) week++;
       if (d >= month30ago) month++;
     }
 
@@ -125,7 +124,6 @@ export function AdminActivity() {
       : 1;
     const avgDaily = week > 0 ? (week / Math.min(7, spanDays)).toFixed(1) : "0";
 
-    /* timeline: last 14 days */
     const dailyMap: Record<string, number> = {};
     const days14: string[] = [];
     for (let i = 13; i >= 0; i--) {
@@ -139,7 +137,6 @@ export function AdminActivity() {
     }
     const dailyChart = days14.map((k) => ({ date: shortDay(k), count: dailyMap[k] }));
 
-    /* by module — normalize key to lowercase to prevent "campaign" vs "Campaign" splits */
     const modMap: Record<string, { count: number; rawKey: string }> = {};
     for (const it of items) {
       const k = it.module.toLowerCase();
@@ -147,21 +144,22 @@ export function AdminActivity() {
       modMap[k].count++;
     }
     const moduleChart = Object.entries(modMap)
-      .sort((a, b) => b[1].count - a[1].count).slice(0, 8)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 8)
       .map(([k, { count, rawKey }], i) => ({
         name: translateModule(rawKey),
         count,
         fill: MODULE_COLORS[k] ?? MODULE_COLORS[rawKey] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
       }));
 
-    /* by action type — normalize to canonical categories to prevent per-project-name splits */
     const actionMap: Record<string, number> = {};
     for (const it of items) {
       const label = normalizeAction(it.action);
       actionMap[label] = (actionMap[label] ?? 0) + 1;
     }
     const actionChart = Object.entries(actionMap)
-      .sort((a, b) => b[1] - a[1]).slice(0, 9)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 9)
       .map(([name, count], i) => ({ name, count, fill: FALLBACK_COLORS[i % FALLBACK_COLORS.length] }));
 
     return { kpis: { today, week, month, avgDaily }, dailyChart, moduleChart, actionChart };
@@ -169,97 +167,113 @@ export function AdminActivity() {
 
   return (
     <div className="space-y-8">
-
-      {/* ── Header ───────────────────────────────────────────────── */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Monitoramento</p>
-            <h2 className="text-2xl font-bold text-white mb-1">Atividade da Plataforma</h2>
-            <p className="text-muted-foreground text-sm">Monitoramento visual das ações, execuções e movimentações da plataforma.</p>
+            <p className="mb-1 text-xs font-medium uppercase tracking-widest text-primary">Monitoramento</p>
+            <h2 className="mb-1 text-2xl font-bold text-white">Atividade da Plataforma</h2>
+            <p className="text-sm text-muted-foreground">Monitoramento visual das ações, execuções e movimentações da plataforma.</p>
           </div>
-          <div className="flex items-center gap-2 sm:shrink-0 sm:mt-1">
+          <div className="flex items-center gap-2 sm:mt-1 sm:shrink-0">
             <Button
-              size="sm" variant="outline"
-              onClick={() => void downloadCsv("/api/admin/export/activity", `atividade_${new Date().toISOString().slice(0,10)}.csv`)}
-              className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5"
+              size="sm"
+              variant="outline"
+              onClick={() => void downloadCsv("/api/admin/export/activity", `atividade_${new Date().toISOString().slice(0, 10)}.csv`)}
+              className="gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download className="h-3.5 w-3.5" />
               Exportar CSV
             </Button>
             <Button
-              size="sm" variant="outline"
-              onClick={() => void refetch()} disabled={isFetching}
-              className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5"
+              size="sm"
+              variant="outline"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+              className="gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
               Atualizar
             </Button>
           </div>
         </div>
       </motion.div>
 
-      {/* ── KPI Cards ────────────────────────────────────────────── */}
       <motion.div
-        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.06 }}
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
       >
         {([
-          { label: "Hoje",           value: isLoading ? null : kpis.today,    sub: "ações registradas",   icon: Zap,         color: "text-primary bg-primary/10 border-primary/20" },
-          { label: "Últimos 7 dias", value: isLoading ? null : kpis.week,     sub: "no período",          icon: CalendarDays,color: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
-          { label: "Últimos 30 dias",value: isLoading ? null : kpis.month,    sub: "no período",          icon: TrendingUp,  color: "text-purple-400 bg-purple-400/10 border-purple-400/20" },
-          { label: "Média Diária",   value: isLoading ? null : kpis.avgDaily, sub: "ações/dia (7 dias)",  icon: BarChart2,   color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
-        ] as const).map(({ label, value, sub, icon: Icon, color }) => (
-          <Card key={label} className="bg-[#111111] border-white/5 hover:border-white/10 transition-colors">
-            <CardContent className="p-5">
-              <div className={`w-9 h-9 rounded-lg border flex items-center justify-center mb-3 ${color}`}>
-                <Icon className="w-4 h-4" />
+          { label: "Hoje", value: isLoading ? null : kpis.today, sub: "ações registradas", icon: Zap, accent: "#fbbf24", color: "text-amber-300 bg-amber-400/10 border-amber-400/20" },
+          { label: "Últimos 7 dias", value: isLoading ? null : kpis.week, sub: "no período", icon: CalendarDays, accent: "#22d3ee", color: "text-cyan-300 bg-cyan-400/10 border-cyan-400/20" },
+          { label: "Últimos 30 dias", value: isLoading ? null : kpis.month, sub: "no período", icon: TrendingUp, accent: "#a78bfa", color: "text-violet-300 bg-violet-400/10 border-violet-400/20" },
+          { label: "Média Diária", value: isLoading ? null : kpis.avgDaily, sub: "ações/dia (7 dias)", icon: BarChart2, accent: "#34d399", color: "text-emerald-300 bg-emerald-400/10 border-emerald-400/20" },
+        ] as const).map(({ label, value, sub, icon: Icon, accent, color }) => (
+          <Card key={label} className={`${panelClass} group transition-colors hover:border-white/[0.12]`}>
+            <div className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}99, transparent)` }} />
+            <div className="absolute -right-8 -top-10 h-24 w-24 rounded-full opacity-10 blur-2xl transition-opacity group-hover:opacity-20" style={{ backgroundColor: accent }} />
+            <CardContent className="relative p-5">
+              <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg border ${color}`}>
+                <Icon className="h-4 w-4" />
               </div>
               {value === null
-                ? <Skeleton className="h-8 w-16 bg-white/5 mb-1" />
-                : <p className="text-2xl font-bold text-white mb-0.5">{value}</p>}
-              <p className="text-xs font-semibold text-white mb-0.5">{label}</p>
+                ? <Skeleton className="mb-1 h-8 w-16 bg-white/5" />
+                : <p className="mb-0.5 text-2xl font-bold tabular-nums text-white">{value}</p>}
+              <p className="mb-0.5 text-xs font-semibold text-white">{label}</p>
               <p className="text-xs text-muted-foreground">{sub}</p>
             </CardContent>
           </Card>
         ))}
       </motion.div>
 
-      {/* ── Charts row 1: Timeline + Módulos ─────────────────────── */}
-      <div className="grid lg:grid-cols-2 gap-6">
-
-        {/* Area: Movimento da Plataforma */}
+      <div className="grid gap-6 lg:grid-cols-2">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
-          <Card className="bg-[#111111] border-white/5 h-full">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-primary" />
+          <Card className={`${panelClass} h-full`}>
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent" />
+            <div className="absolute -right-20 -top-24 h-52 w-52 rounded-full bg-violet-500/10 blur-3xl" />
+            <CardHeader className="relative pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
+                <TrendingUp className="h-4 w-4 text-violet-300" />
                 Movimento da Plataforma
-                <span className="text-[10px] text-zinc-600 font-normal ml-auto">últimos 14 dias</span>
+                <span className="ml-auto text-[10px] font-normal text-zinc-600">últimos 14 dias</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative">
               {isLoading ? (
-                <Skeleton className="h-48 w-full bg-white/5 rounded-lg" />
+                <Skeleton className="h-52 w-full rounded-lg bg-white/5" />
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={dailyChart} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={dailyChart} margin={{ top: 14, right: 8, left: -20, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="actGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor="#a78bfa" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
+                      <linearGradient id="activityLine" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.55} />
+                        <stop offset="55%" stopColor="#7c3aed" stopOpacity={0.16} />
+                        <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
                       </linearGradient>
+                      <filter id="activityGlow" x="-30%" y="-30%" width="160%" height="160%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feMerge>
+                          <feMergeNode in="blur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#52525b" }} axisLine={false} tickLine={false} interval={1} />
-                    <YAxis tick={{ fontSize: 10, fill: "#52525b" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomTooltip />} />
+                    <CartesianGrid stroke="rgba(255,255,255,0.055)" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#5d606b" }} axisLine={false} tickLine={false} interval={1} />
+                    <YAxis tick={{ fontSize: 10, fill: "#5d606b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(167,139,250,0.22)", strokeDasharray: "4 4" }} />
                     <Area
-                      type="monotone" dataKey="count" stroke="#a78bfa" strokeWidth={2.5}
-                      fill="url(#actGrad)" name="Ações"
-                      dot={{ fill: "#a78bfa", r: 3, strokeWidth: 0 }}
-                      activeDot={{ r: 5, fill: "#a78bfa" }}
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#c4b5fd"
+                      strokeWidth={3}
+                      fill="url(#activityLine)"
+                      name="Ações"
+                      dot={{ fill: "#c4b5fd", r: 2.5, stroke: "#11131a", strokeWidth: 2 }}
+                      activeDot={{ r: 5, fill: "#ffffff", stroke: "#a78bfa", strokeWidth: 3 }}
+                      animationDuration={950}
+                      style={{ filter: "url(#activityGlow)" }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -268,32 +282,37 @@ export function AdminActivity() {
           </Card>
         </motion.div>
 
-        {/* Bar horizontal: Atividade por Módulo */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.17 }}>
-          <Card className="bg-[#111111] border-white/5 h-full">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-primary" />
+          <Card className={`${panelClass} h-full`}>
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" />
+            <div className="absolute -left-20 -bottom-24 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl" />
+            <CardHeader className="relative pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
+                <BarChart2 className="h-4 w-4 text-cyan-300" />
                 Atividade por Módulo
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative">
               {isLoading ? (
-                <Skeleton className="h-48 w-full bg-white/5 rounded-lg" />
+                <Skeleton className="h-52 w-full rounded-lg bg-white/5" />
               ) : moduleChart.length === 0 ? (
-                <div className="h-48 flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-white/10 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">Sem dados suficientes.</p>
+                <div className="flex h-52 items-center justify-center">
+                  <div className="text-center">
+                    <Activity className="mx-auto mb-2 h-6 w-6 text-white/10" />
+                    <p className="text-xs text-muted-foreground">Sem dados suficientes.</p>
+                  </div>
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={Math.max(180, moduleChart.length * 36)}>
-                  <BarChart data={moduleChart} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 10, fill: "#52525b" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={90} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="count" name="Ações" radius={[0, 4, 4, 0]}>
-                      {moduleChart.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                <ResponsiveContainer width="100%" height={Math.max(200, moduleChart.length * 40)}>
+                  <BarChart data={moduleChart} layout="vertical" margin={{ top: 6, right: 38, left: 10, bottom: 0 }}>
+                    <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: "#5d606b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={92} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.025)" }} />
+                    <Bar dataKey="count" name="Ações" radius={[0, 18, 18, 0]} maxBarSize={22} animationDuration={850}>
+                      {moduleChart.map((entry) => (
+                        <Cell key={entry.name} fill={entry.fill} stroke={entry.fill} strokeOpacity={0.45} />
+                      ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -303,26 +322,29 @@ export function AdminActivity() {
         </motion.div>
       </div>
 
-      {/* ── Chart: Atividade por Tipo de Ação ────────────────────── */}
       {actionChart.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.22 }}>
-          <Card className="bg-[#111111] border-white/5">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <Zap className="w-4 h-4 text-primary" />
+          <Card className={panelClass}>
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
+            <div className="absolute -right-16 -bottom-24 h-52 w-52 rounded-full bg-amber-400/[0.08] blur-3xl" />
+            <CardHeader className="relative pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
+                <Zap className="h-4 w-4 text-amber-300" />
                 Atividade por Tipo de Ação
-                <span className="text-[10px] text-zinc-600 font-normal ml-auto">top 9 · últimos 100 eventos</span>
+                <span className="ml-auto text-[10px] font-normal text-zinc-600">top 9 · últimos 100 eventos</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={Math.max(200, actionChart.length * 36)}>
-                <BarChart data={actionChart} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "#52525b" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={140} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Ocorrências" radius={[0, 4, 4, 0]}>
-                    {actionChart.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+            <CardContent className="relative">
+              <ResponsiveContainer width="100%" height={Math.max(220, actionChart.length * 40)}>
+                <BarChart data={actionChart} layout="vertical" margin={{ top: 6, right: 38, left: 10, bottom: 0 }}>
+                  <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: "#5d606b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={142} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.025)" }} />
+                  <Bar dataKey="count" name="Ocorrências" radius={[0, 18, 18, 0]} maxBarSize={22} animationDuration={900}>
+                    {actionChart.map((entry) => (
+                      <Cell key={entry.name} fill={entry.fill} stroke={entry.fill} strokeOpacity={0.45} />
+                    ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -330,7 +352,6 @@ export function AdminActivity() {
           </Card>
         </motion.div>
       )}
-
     </div>
   );
 }
