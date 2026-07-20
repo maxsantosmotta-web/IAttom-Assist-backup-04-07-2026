@@ -5,10 +5,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AreaChart, Area, BarChart, Bar, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from "recharts";
 import { useListAdminActivity, getListAdminActivityQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { translateModule } from "@/lib/eventTranslations";
@@ -56,41 +52,6 @@ function normalizeAction(action: string): string {
   return base.length > 0 ? base : action;
 }
 
-const CustomTooltip = ({
-  active, payload, label,
-}: { active?: boolean; payload?: Array<{ name: string; value: number; color?: string; fill?: string }>; label?: string }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-xl border border-white/10 bg-[#080a0f]/95 px-3 py-2 text-xs shadow-2xl backdrop-blur-xl">
-      {label && <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">{label}</p>}
-      {payload.map((p) => (
-        <p key={p.name} style={{ color: p.color ?? p.fill ?? "#C9A84C" }} className="font-semibold tabular-nums">
-          {p.name}: {p.value}
-        </p>
-      ))}
-    </div>
-  );
-};
-
-function LiveScanner({ color, duration = 6 }: { color: string; duration?: number }) {
-  return (
-    <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden rounded-[inherit]" aria-hidden="true">
-      <motion.div
-        className="absolute -inset-y-1 w-28 opacity-50 blur-xl"
-        style={{ background: `linear-gradient(90deg, transparent, ${color}33, ${color}66, ${color}22, transparent)` }}
-        animate={{ x: ["-160%", "780%"] }}
-        transition={{ duration, repeat: Infinity, ease: "linear", repeatDelay: 0.4 }}
-      />
-      <motion.div
-        className="absolute inset-x-0 top-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }}
-        animate={{ opacity: [0.25, 0.9, 0.25] }}
-        transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-      />
-    </div>
-  );
-}
-
 function LiveStatus() {
   return (
     <div className="flex items-center gap-2 text-[10px] font-medium text-emerald-300/80">
@@ -103,6 +64,79 @@ function LiveStatus() {
         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
       </span>
       monitoramento ativo
+    </div>
+  );
+}
+
+function OperationalPulse({ data }: { data: Array<{ date: string; count: number }> }) {
+  const width = 800;
+  const height = 220;
+  const padX = 18;
+  const padY = 24;
+  const max = Math.max(1, ...data.map((d) => d.count));
+  const points = data.map((d, i) => {
+    const x = padX + (i * (width - padX * 2)) / Math.max(1, data.length - 1);
+    const y = height - padY - (d.count / max) * (height - padY * 2);
+    return `${x},${y}`;
+  }).join(" ");
+  const total = data.reduce((sum, item) => sum + item.count, 0);
+  const last = data[data.length - 1]?.count ?? 0;
+
+  return (
+    <div className="relative h-[250px] overflow-hidden rounded-2xl border border-white/[0.06] bg-[#070b10]">
+      <div className="absolute inset-0 opacity-40" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px)", backgroundSize: "100% 44px, 64px 100%" }} />
+      <div className="absolute left-4 top-4 z-10 flex gap-6">
+        <div><p className="text-[9px] uppercase tracking-[0.18em] text-zinc-600">Eventos 14d</p><p className="text-xl font-black text-white">{total}</p></div>
+        <div><p className="text-[9px] uppercase tracking-[0.18em] text-zinc-600">Pulso atual</p><p className="text-xl font-black text-cyan-300">{last}</p></div>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-x-0 bottom-0 h-[220px] w-full" preserveAspectRatio="none">
+        <defs>
+          <filter id="pulseGlow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <linearGradient id="pulseStroke" x1="0" x2="1"><stop offset="0%" stopColor="#22d3ee"/><stop offset="55%" stopColor="#a78bfa"/><stop offset="100%" stopColor="#fbbf24"/></linearGradient>
+        </defs>
+        <polyline points={points} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="8" />
+        <motion.polyline
+          points={points}
+          fill="none"
+          stroke="url(#pulseStroke)"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          filter="url(#pulseGlow)"
+          strokeDasharray="18 12"
+          animate={{ strokeDashoffset: [0, -120] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+        />
+        <motion.circle cx={width - padX} cy={height - padY - (last / max) * (height - padY * 2)} r="6" fill="#22d3ee" animate={{ r: [4, 10, 4], opacity: [1, .2, 1] }} transition={{ duration: 1.8, repeat: Infinity }} />
+      </svg>
+      <motion.div className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-cyan-300/[0.12] to-transparent blur-xl" animate={{ left: ["-20%", "110%"] }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }} />
+      <div className="absolute bottom-3 left-4 right-4 flex justify-between text-[9px] text-zinc-700">{data.filter((_, i) => i === 0 || i === Math.floor(data.length / 2) || i === data.length - 1).map((d) => <span key={d.date}>{d.date}</span>)}</div>
+    </div>
+  );
+}
+
+function OperationalRanking({ items, emptyText }: { items: Array<{ name: string; count: number; fill: string }>; emptyText: string }) {
+  const max = Math.max(1, ...items.map((item) => item.count));
+  if (items.length === 0) return <div className="flex h-52 items-center justify-center text-xs text-muted-foreground">{emptyText}</div>;
+  return (
+    <div className="space-y-3">
+      {items.map((item, index) => {
+        const percent = Math.max(10, (item.count / max) * 100);
+        return (
+          <div key={item.name} className="group relative overflow-hidden rounded-xl border border-white/[0.055] bg-white/[0.018] px-3 py-3">
+            <div className="mb-2 flex items-center gap-3">
+              <span className="w-5 text-[10px] font-black text-zinc-700">{String(index + 1).padStart(2, "0")}</span>
+              <span className="flex-1 text-xs font-semibold text-zinc-300">{item.name}</span>
+              <span className="rounded-md border border-white/[0.07] bg-black/30 px-2 py-1 text-xs font-black tabular-nums text-white">{item.count}</span>
+            </div>
+            <div className="ml-8 h-2 overflow-hidden rounded-full bg-white/[0.045]">
+              <motion.div className="relative h-full rounded-full" style={{ background: `linear-gradient(90deg, ${item.fill}88, ${item.fill})`, boxShadow: `0 0 18px ${item.fill}55` }} initial={{ width: 0 }} animate={{ width: `${percent}%` }} transition={{ duration: .7, delay: index * .06 }}>
+                <motion.div className="absolute inset-y-0 w-14 bg-gradient-to-r from-transparent via-white/45 to-transparent" animate={{ left: ["-40%", "120%"] }} transition={{ duration: 2.8 + index * .2, repeat: Infinity, ease: "linear" }} />
+              </motion.div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -122,20 +156,14 @@ export function AdminActivity() {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast({ title: "Erro ao exportar", variant: "destructive" });
-    }
+      a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+    } catch { toast({ title: "Erro ao exportar", variant: "destructive" }); }
   }
 
   const { data: activity, isLoading, isFetching, refetch } = useListAdminActivity(
     { limit: 100 },
     { query: { queryKey: getListAdminActivityQueryKey({ limit: 100 }), staleTime: 0 } },
   );
-
   const items = activity ?? [];
 
   const { kpis, dailyChart, moduleChart, actionChart } = useMemo(() => {
@@ -143,60 +171,26 @@ export function AdminActivity() {
     const todayKey = dayKey(now);
     const week7ago = new Date(now.getTime() - 7 * 86400000);
     const month30ago = new Date(now.getTime() - 30 * 86400000);
-
-    let today = 0;
-    let week = 0;
-    let month = 0;
+    let today = 0, week = 0, month = 0;
     for (const it of items) {
       const d = new Date(it.createdAt);
       if (dayKey(d) === todayKey) today++;
       if (d >= week7ago) week++;
       if (d >= month30ago) month++;
     }
-
-    const spanDays = items.length
-      ? Math.max(1, Math.ceil((now.getTime() - new Date(items[items.length - 1].createdAt).getTime()) / 86400000))
-      : 1;
+    const spanDays = items.length ? Math.max(1, Math.ceil((now.getTime() - new Date(items[items.length - 1].createdAt).getTime()) / 86400000)) : 1;
     const avgDaily = week > 0 ? (week / Math.min(7, spanDays)).toFixed(1) : "0";
-
     const dailyMap: Record<string, number> = {};
     const days14: string[] = [];
-    for (let i = 13; i >= 0; i--) {
-      const k = dayKey(new Date(now.getTime() - i * 86400000));
-      days14.push(k);
-      dailyMap[k] = 0;
-    }
-    for (const it of items) {
-      const k = dayKey(new Date(it.createdAt));
-      if (k in dailyMap) dailyMap[k]++;
-    }
+    for (let i = 13; i >= 0; i--) { const k = dayKey(new Date(now.getTime() - i * 86400000)); days14.push(k); dailyMap[k] = 0; }
+    for (const it of items) { const k = dayKey(new Date(it.createdAt)); if (k in dailyMap) dailyMap[k]++; }
     const dailyChart = days14.map((k) => ({ date: shortDay(k), count: dailyMap[k] }));
-
     const modMap: Record<string, { count: number; rawKey: string }> = {};
-    for (const it of items) {
-      const k = it.module.toLowerCase();
-      if (!modMap[k]) modMap[k] = { count: 0, rawKey: it.module };
-      modMap[k].count++;
-    }
-    const moduleChart = Object.entries(modMap)
-      .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 8)
-      .map(([k, { count, rawKey }], i) => ({
-        name: translateModule(rawKey),
-        count,
-        fill: MODULE_COLORS[k] ?? MODULE_COLORS[rawKey] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
-      }));
-
+    for (const it of items) { const k = it.module.toLowerCase(); if (!modMap[k]) modMap[k] = { count: 0, rawKey: it.module }; modMap[k].count++; }
+    const moduleChart = Object.entries(modMap).sort((a, b) => b[1].count - a[1].count).slice(0, 8).map(([k, { count, rawKey }], i) => ({ name: translateModule(rawKey), count, fill: MODULE_COLORS[k] ?? MODULE_COLORS[rawKey] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length] }));
     const actionMap: Record<string, number> = {};
-    for (const it of items) {
-      const label = normalizeAction(it.action);
-      actionMap[label] = (actionMap[label] ?? 0) + 1;
-    }
-    const actionChart = Object.entries(actionMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 9)
-      .map(([name, count], i) => ({ name, count, fill: FALLBACK_COLORS[i % FALLBACK_COLORS.length] }));
-
+    for (const it of items) { const label = normalizeAction(it.action); actionMap[label] = (actionMap[label] ?? 0) + 1; }
+    const actionChart = Object.entries(actionMap).sort((a, b) => b[1] - a[1]).slice(0, 9).map(([name, count], i) => ({ name, count, fill: FALLBACK_COLORS[i % FALLBACK_COLORS.length] }));
     return { kpis: { today, week, month, avgDaily }, dailyChart, moduleChart, actionChart };
   }, [items]);
 
@@ -204,157 +198,26 @@ export function AdminActivity() {
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="mb-1 text-xs font-medium uppercase tracking-widest text-primary">Monitoramento</p>
-            <h2 className="mb-1 text-2xl font-bold text-white">Atividade da Plataforma</h2>
-            <p className="text-sm text-muted-foreground">Monitoramento visual das ações, execuções e movimentações da plataforma.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 sm:mt-1 sm:justify-end">
-            <LiveStatus />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void downloadCsv("/api/admin/export/activity", `atividade_${new Date().toISOString().slice(0, 10)}.csv`)}
-              className="gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Exportar CSV
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void refetch()}
-              disabled={isFetching}
-              className="gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
-              Atualizar
-            </Button>
-          </div>
+          <div><p className="mb-1 text-xs font-medium uppercase tracking-widest text-primary">Monitoramento</p><h2 className="mb-1 text-2xl font-bold text-white">Atividade da Plataforma</h2><p className="text-sm text-muted-foreground">Monitoramento visual das ações, execuções e movimentações da plataforma.</p></div>
+          <div className="flex flex-wrap items-center gap-3 sm:mt-1 sm:justify-end"><LiveStatus /><Button size="sm" variant="outline" onClick={() => void downloadCsv("/api/admin/export/activity", `atividade_${new Date().toISOString().slice(0, 10)}.csv`)} className="gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"><Download className="h-3.5 w-3.5" />Exportar CSV</Button><Button size="sm" variant="outline" onClick={() => void refetch()} disabled={isFetching} className="gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"><RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />Atualizar</Button></div>
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.06 }}
-        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
-      >
+      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.06 }} className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {([
           { label: "Hoje", value: isLoading ? null : kpis.today, sub: "ações registradas", icon: Zap, accent: "#fbbf24", color: "text-amber-300 bg-amber-400/10 border-amber-400/20" },
           { label: "Últimos 7 dias", value: isLoading ? null : kpis.week, sub: "no período", icon: CalendarDays, accent: "#22d3ee", color: "text-cyan-300 bg-cyan-400/10 border-cyan-400/20" },
           { label: "Últimos 30 dias", value: isLoading ? null : kpis.month, sub: "no período", icon: TrendingUp, accent: "#a78bfa", color: "text-violet-300 bg-violet-400/10 border-violet-400/20" },
           { label: "Média Diária", value: isLoading ? null : kpis.avgDaily, sub: "ações/dia (7 dias)", icon: BarChart2, accent: "#34d399", color: "text-emerald-300 bg-emerald-400/10 border-emerald-400/20" },
-        ] as const).map(({ label, value, sub, icon: Icon, accent, color }, index) => (
-          <Card key={label} className={`${panelClass} group transition-colors hover:border-white/[0.12]`}>
-            <LiveScanner color={accent} duration={7 + index} />
-            <div className="absolute -right-8 -top-10 h-24 w-24 rounded-full opacity-10 blur-2xl transition-opacity group-hover:opacity-20" style={{ backgroundColor: accent }} />
-            <CardContent className="relative z-[2] p-5">
-              <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg border ${color}`}>
-                <Icon className="h-4 w-4" />
-              </div>
-              {value === null
-                ? <Skeleton className="mb-1 h-8 w-16 bg-white/5" />
-                : <motion.p className="mb-0.5 text-2xl font-bold tabular-nums text-white" animate={{ opacity: [0.82, 1, 0.82] }} transition={{ duration: 3.2, repeat: Infinity }}>{value}</motion.p>}
-              <p className="mb-0.5 text-xs font-semibold text-white">{label}</p>
-              <p className="text-xs text-muted-foreground">{sub}</p>
-            </CardContent>
-          </Card>
-        ))}
+        ] as const).map(({ label, value, sub, icon: Icon, accent, color }) => <Card key={label} className={`${panelClass} group`}><div className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg,transparent,${accent},transparent)` }} /><CardContent className="relative p-5"><div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg border ${color}`}><Icon className="h-4 w-4" /></div>{value === null ? <Skeleton className="mb-1 h-8 w-16 bg-white/5" /> : <p className="mb-0.5 text-2xl font-bold tabular-nums text-white">{value}</p>}<p className="mb-0.5 text-xs font-semibold text-white">{label}</p><p className="text-xs text-muted-foreground">{sub}</p></CardContent></Card>)}
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
-          <Card className={`${panelClass} h-full`}>
-            <LiveScanner color="#a78bfa" duration={5.5} />
-            <div className="absolute -right-20 -top-24 h-52 w-52 rounded-full bg-violet-500/10 blur-3xl" />
-            <CardHeader className="relative z-[2] pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
-                <TrendingUp className="h-4 w-4 text-violet-300" />
-                Movimento da Plataforma
-                <span className="ml-auto text-[10px] font-normal text-zinc-600">últimos 14 dias</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="relative z-[2]">
-              {isLoading ? (
-                <Skeleton className="h-52 w-full rounded-lg bg-white/5" />
-              ) : (
-                <div className="relative">
-                  <motion.div
-                    className="pointer-events-none absolute inset-y-4 z-[3] w-px bg-gradient-to-b from-transparent via-violet-300 to-transparent shadow-[0_0_16px_rgba(167,139,250,0.9)]"
-                    animate={{ left: ["2%", "98%", "2%"] }}
-                    transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <ResponsiveContainer width="100%" height={220}>
-                    <AreaChart data={dailyChart} margin={{ top: 14, right: 8, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="activityLine" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.55} />
-                          <stop offset="55%" stopColor="#7c3aed" stopOpacity={0.16} />
-                          <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
-                        </linearGradient>
-                        <filter id="activityGlow" x="-30%" y="-30%" width="160%" height="160%">
-                          <feGaussianBlur stdDeviation="3" result="blur" />
-                          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                        </filter>
-                      </defs>
-                      <CartesianGrid stroke="rgba(255,255,255,0.055)" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#5d606b" }} axisLine={false} tickLine={false} interval={1} />
-                      <YAxis tick={{ fontSize: 10, fill: "#5d606b" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                      <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(167,139,250,0.22)", strokeDasharray: "4 4" }} />
-                      <Area type="monotone" dataKey="count" stroke="#c4b5fd" strokeWidth={3} fill="url(#activityLine)" name="Ações" dot={{ fill: "#c4b5fd", r: 2.5, stroke: "#11131a", strokeWidth: 2 }} activeDot={{ r: 5, fill: "#ffffff", stroke: "#a78bfa", strokeWidth: 3 }} animationDuration={950} style={{ filter: "url(#activityGlow)" }} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.17 }}>
-          <Card className={`${panelClass} h-full`}>
-            <LiveScanner color="#22d3ee" duration={5.8} />
-            <div className="absolute -left-20 -bottom-24 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl" />
-            <CardHeader className="relative z-[2] pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><BarChart2 className="h-4 w-4 text-cyan-300" />Atividade por Módulo</CardTitle></CardHeader>
-            <CardContent className="relative z-[2]">
-              {isLoading ? <Skeleton className="h-52 w-full rounded-lg bg-white/5" /> : moduleChart.length === 0 ? (
-                <div className="flex h-52 items-center justify-center"><div className="text-center"><Activity className="mx-auto mb-2 h-6 w-6 text-white/10" /><p className="text-xs text-muted-foreground">Sem dados suficientes.</p></div></div>
-              ) : (
-                <ResponsiveContainer width="100%" height={Math.max(200, moduleChart.length * 40)}>
-                  <BarChart data={moduleChart} layout="vertical" margin={{ top: 6, right: 38, left: 10, bottom: 0 }}>
-                    <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 10, fill: "#5d606b" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={92} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.025)" }} />
-                    <Bar dataKey="count" name="Ações" radius={[0, 18, 18, 0]} maxBarSize={22} animationDuration={850}>{moduleChart.map((entry) => <Cell key={entry.name} fill={entry.fill} stroke={entry.fill} strokeOpacity={0.45} />)}</Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
+        <Card className={`${panelClass} h-full`}><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><TrendingUp className="h-4 w-4 text-cyan-300" />Pulso Operacional<span className="ml-auto text-[10px] font-normal text-zinc-600">últimos 14 dias</span></CardTitle></CardHeader><CardContent>{isLoading ? <Skeleton className="h-[250px] w-full rounded-2xl bg-white/5" /> : <OperationalPulse data={dailyChart} />}</CardContent></Card>
+        <Card className={`${panelClass} h-full`}><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><BarChart2 className="h-4 w-4 text-cyan-300" />Ranking dos Módulos</CardTitle></CardHeader><CardContent>{isLoading ? <Skeleton className="h-60 w-full rounded-xl bg-white/5" /> : <OperationalRanking items={moduleChart} emptyText="Sem dados suficientes." />}</CardContent></Card>
       </div>
 
-      {actionChart.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.22 }}>
-          <Card className={panelClass}>
-            <LiveScanner color="#fbbf24" duration={6.2} />
-            <div className="absolute -right-16 -bottom-24 h-52 w-52 rounded-full bg-amber-400/[0.08] blur-3xl" />
-            <CardHeader className="relative z-[2] pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Zap className="h-4 w-4 text-amber-300" />Atividade por Tipo de Ação<span className="ml-auto text-[10px] font-normal text-zinc-600">top 9 · últimos 100 eventos</span></CardTitle></CardHeader>
-            <CardContent className="relative z-[2]">
-              <ResponsiveContainer width="100%" height={Math.max(220, actionChart.length * 40)}>
-                <BarChart data={actionChart} layout="vertical" margin={{ top: 6, right: 38, left: 10, bottom: 0 }}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "#5d606b" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: "#a1a1aa" }} axisLine={false} tickLine={false} width={142} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.025)" }} />
-                  <Bar dataKey="count" name="Ocorrências" radius={[0, 18, 18, 0]} maxBarSize={22} animationDuration={900}>{actionChart.map((entry) => <Cell key={entry.name} fill={entry.fill} stroke={entry.fill} strokeOpacity={0.45} />)}</Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
+      {actionChart.length > 0 && <Card className={panelClass}><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Activity className="h-4 w-4 text-amber-300" />Fluxo por Tipo de Ação<span className="ml-auto text-[10px] font-normal text-zinc-600">top 9 · últimos 100 eventos</span></CardTitle></CardHeader><CardContent><OperationalRanking items={actionChart} emptyText="Nenhuma atividade registrada." /></CardContent></Card>}
     </div>
   );
 }
