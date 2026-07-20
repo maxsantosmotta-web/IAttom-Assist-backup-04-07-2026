@@ -29,6 +29,7 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   const maxValue = Math.max(1, ...normalized.map((item) => item.value));
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
+  const baselineY = padding.top + innerHeight;
   const divisor = Math.max(1, normalized.length - 1);
   const points = normalized.map((item, index) => ({
     ...item,
@@ -36,7 +37,7 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
     y: padding.top + innerHeight - (item.value / maxValue) * innerHeight,
   }));
   const path = smoothPath(points);
-  const areaPath = points.length ? `${path} L ${points[points.length - 1].x} ${padding.top + innerHeight} L ${points[0].x} ${padding.top + innerHeight} Z` : "";
+  const areaPath = points.length ? `${path} L ${points[points.length - 1].x} ${baselineY} L ${points[0].x} ${baselineY} Z` : "";
   const active = activeIndex === null ? null : points[Math.min(activeIndex, Math.max(0, points.length - 1))];
   const latest = points[points.length - 1];
 
@@ -48,22 +49,26 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   }
 
   return (
-    <section className="domn-chart-card domn-line-card">
+    <section className="domn-chart-card domn-line-card domn-ambient-monitor">
       <header><div><span>{subtitle}</span><strong>{title}</strong></div><div className="domn-current"><small>{active?.label || latest?.label || "Agora"}</small><strong>{numberFmt(active?.value ?? latest?.value ?? 0)}</strong></div></header>
       {points.length ? (
         <div className="domn-line-stage">
           <svg viewBox={`0 0 ${width} ${height}`} onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); setTouching(true); select(e); }} onPointerMove={(e) => touching && select(e)} onPointerUp={(e) => { e.currentTarget.releasePointerCapture?.(e.pointerId); setTouching(false); setActiveIndex(null); }} onPointerCancel={() => { setTouching(false); setActiveIndex(null); }} onPointerLeave={() => !touching && setActiveIndex(null)}>
             <defs>
-              <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#214a4f" stopOpacity="0.09"/><stop offset="58%" stopColor="#163337" stopOpacity="0.025"/><stop offset="100%" stopColor="#0d0f13" stopOpacity="0"/></linearGradient>
-              <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#20383b"/><stop offset="70%" stopColor="#24494d"/><stop offset="100%" stopColor="#2e7772"/></linearGradient>
+              <linearGradient id={`${id}-mist`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#173f48" stopOpacity="0.34"/><stop offset="54%" stopColor="#102b32" stopOpacity="0.12"/><stop offset="100%" stopColor="#0d0f13" stopOpacity="0"/></linearGradient>
+              <linearGradient id={`${id}-trace`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#182f34"/><stop offset="72%" stopColor="#21484d"/><stop offset="100%" stopColor="#2e7772"/></linearGradient>
+              <filter id={`${id}-blur`} x="-20%" y="-30%" width="140%" height="170%"><feGaussianBlur stdDeviation="14"/></filter>
+              <filter id={`${id}-soft`} x="-20%" y="-30%" width="140%" height="170%"><feGaussianBlur stdDeviation="5"/></filter>
             </defs>
             {[0, .25, .5, .75, 1].map((step) => { const y = padding.top + innerHeight - step * innerHeight; return <line key={step} x1={padding.left} y1={y} x2={width - padding.right} y2={y} className="domn-grid"/>; })}
-            {areaPath && <path d={areaPath} fill={`url(#${id}-area)`} className="domn-area"/>}
-            {path && <path d={path} className="domn-halo"/>}
-            {path && <path d={path} stroke={`url(#${id}-line)`} className="domn-trace"/>}
-            {path && <path d={path} pathLength="1" className="domn-energy"/>}
-            {latest && <g className="domn-beat"><circle cx={latest.x} cy={latest.y} r="7" fill="rgba(100,230,166,.08)"/><circle cx={latest.x} cy={latest.y} r="3" fill="#64e6a6"/></g>}
-            {active && <g className="domn-active"><line x1={active.x} y1={padding.top} x2={active.x} y2={padding.top + innerHeight}/><circle cx={active.x} cy={active.y} r="7"/></g>}
+            <line x1={padding.left} y1={baselineY} x2={width - padding.right} y2={baselineY} className="domn-monitor-baseline" />
+            {areaPath && <path d={areaPath} fill={`url(#${id}-mist)`} filter={`url(#${id}-blur)`} className="domn-monitor-atmosphere"/>}
+            {areaPath && <path d={areaPath} fill={`url(#${id}-mist)`} filter={`url(#${id}-soft)`} className="domn-monitor-mist"/>}
+            {path && <path d={path} stroke={`url(#${id}-trace)`} className="domn-monitor-data-trace"/>}
+            {path && <path d={path} pathLength="1" className="domn-monitor-signal"/>}
+            <line x1={padding.left} y1={baselineY - 1} x2={width - padding.right} y2={baselineY - 1} pathLength="1" className="domn-monitor-base-signal" />
+            {latest && <g className="domn-beat"><circle cx={latest.x} cy={latest.y} r="7" fill="rgba(100,230,166,.07)"/><circle cx={latest.x} cy={latest.y} r="3" fill="#64e6a6"/></g>}
+            {active && <g className="domn-active"><line x1={active.x} y1={padding.top} x2={active.x} y2={baselineY}/><circle cx={active.x} cy={active.y} r="6"/></g>}
             {[0, Math.floor((points.length - 1) / 2), points.length - 1].filter((i, p, a) => i >= 0 && a.indexOf(i) === p).map((i) => <text key={i} x={points[i].x} y={height - 13} textAnchor="middle" className="domn-axis">{points[i].label}</text>)}
           </svg>
           {active && <div className="domn-tooltip" style={{ left: `${(active.x / width) * 100}%` }}><span>{active.label}</span><strong>{numberFmt(active.value)}</strong></div>}
