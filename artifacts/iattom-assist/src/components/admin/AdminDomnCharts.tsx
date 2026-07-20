@@ -4,7 +4,7 @@ import "./admin-domn-charts.css";
 export type DomnLinePoint = { label: string; value: number; secondaryValue?: number | null };
 export type DomnBarPoint = { label: string; value: number; color?: string };
 
-const COLORS = ["#f4c95d", "#3fd7ff", "#ff5cc8", "#64e6a6", "#9b82ff", "#ff9f5a", "#ff657f"];
+const COLORS = ["#d7b65d", "#4e9fd1", "#7fc5a5", "#8f7bc4", "#c78376", "#7086b8", "#b69a67"];
 const numberFmt = (value: number) => Number(value || 0).toLocaleString("pt-BR");
 
 function smoothPath(points: Array<{ x: number; y: number }>) {
@@ -29,7 +29,6 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   const maxValue = Math.max(1, ...normalized.map((item) => item.value));
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
-  const baselineY = padding.top + innerHeight;
   const divisor = Math.max(1, normalized.length - 1);
   const points = normalized.map((item, index) => ({
     ...item,
@@ -37,7 +36,8 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
     y: padding.top + innerHeight - (item.value / maxValue) * innerHeight,
   }));
   const path = smoothPath(points);
-  const areaPath = points.length ? `${path} L ${points[points.length - 1].x} ${baselineY} L ${points[0].x} ${baselineY} Z` : "";
+  const floor = padding.top + innerHeight;
+  const areaPath = points.length ? `${path} L ${points[points.length - 1].x} ${floor} L ${points[0].x} ${floor} Z` : "";
   const active = activeIndex === null ? null : points[Math.min(activeIndex, Math.max(0, points.length - 1))];
   const latest = points[points.length - 1];
 
@@ -49,26 +49,22 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   }
 
   return (
-    <section className="domn-chart-card domn-line-card domn-ambient-monitor">
+    <section className="domn-chart-card domn-line-card iattom-flow-chart">
       <header><div><span>{subtitle}</span><strong>{title}</strong></div><div className="domn-current"><small>{active?.label || latest?.label || "Agora"}</small><strong>{numberFmt(active?.value ?? latest?.value ?? 0)}</strong></div></header>
       {points.length ? (
         <div className="domn-line-stage">
           <svg viewBox={`0 0 ${width} ${height}`} onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); setTouching(true); select(e); }} onPointerMove={(e) => touching && select(e)} onPointerUp={(e) => { e.currentTarget.releasePointerCapture?.(e.pointerId); setTouching(false); setActiveIndex(null); }} onPointerCancel={() => { setTouching(false); setActiveIndex(null); }} onPointerLeave={() => !touching && setActiveIndex(null)}>
             <defs>
-              <linearGradient id={`${id}-mist`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#173f48" stopOpacity="0.34"/><stop offset="54%" stopColor="#102b32" stopOpacity="0.12"/><stop offset="100%" stopColor="#0d0f13" stopOpacity="0"/></linearGradient>
-              <linearGradient id={`${id}-trace`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#182f34"/><stop offset="72%" stopColor="#21484d"/><stop offset="100%" stopColor="#2e7772"/></linearGradient>
-              <filter id={`${id}-blur`} x="-20%" y="-30%" width="140%" height="170%"><feGaussianBlur stdDeviation="14"/></filter>
-              <filter id={`${id}-soft`} x="-20%" y="-30%" width="140%" height="170%"><feGaussianBlur stdDeviation="5"/></filter>
+              <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4e9fd1" stopOpacity="0.16"/><stop offset="52%" stopColor="#d7b65d" stopOpacity="0.07"/><stop offset="100%" stopColor="#0d0f13" stopOpacity="0"/></linearGradient>
+              <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#4e9fd1"/><stop offset="52%" stopColor="#d7b65d"/><stop offset="100%" stopColor="#7fc5a5"/></linearGradient>
             </defs>
             {[0, .25, .5, .75, 1].map((step) => { const y = padding.top + innerHeight - step * innerHeight; return <line key={step} x1={padding.left} y1={y} x2={width - padding.right} y2={y} className="domn-grid"/>; })}
-            <line x1={padding.left} y1={baselineY} x2={width - padding.right} y2={baselineY} className="domn-monitor-baseline" />
-            {areaPath && <path d={areaPath} fill={`url(#${id}-mist)`} filter={`url(#${id}-blur)`} className="domn-monitor-atmosphere"/>}
-            {areaPath && <path d={areaPath} fill={`url(#${id}-mist)`} filter={`url(#${id}-soft)`} className="domn-monitor-mist"/>}
-            {path && <path d={path} stroke={`url(#${id}-trace)`} className="domn-monitor-data-trace"/>}
-            {path && <path d={path} pathLength="1" className="domn-monitor-signal"/>}
-            <line x1={padding.left} y1={baselineY - 1} x2={width - padding.right} y2={baselineY - 1} pathLength="1" className="domn-monitor-base-signal" />
-            {latest && <g className="domn-beat"><circle cx={latest.x} cy={latest.y} r="7" fill="rgba(100,230,166,.07)"/><circle cx={latest.x} cy={latest.y} r="3" fill="#64e6a6"/></g>}
-            {active && <g className="domn-active"><line x1={active.x} y1={padding.top} x2={active.x} y2={baselineY}/><circle cx={active.x} cy={active.y} r="6"/></g>}
+            {areaPath && <path d={areaPath} fill={`url(#${id}-area)`} className="iattom-flow-area"/>}
+            {path && <path d={path} className="iattom-flow-halo"/>}
+            {path && <path d={path} stroke={`url(#${id}-line)`} className="iattom-flow-trace"/>}
+            {path && <path d={path} pathLength="1" className="iattom-flow-energy"/>}
+            {latest && <g className="iattom-flow-beat"><circle cx={latest.x} cy={latest.y} r="9"/><circle cx={latest.x} cy={latest.y} r="3.5"/></g>}
+            {active && <g className="domn-active"><line x1={active.x} y1={padding.top} x2={active.x} y2={floor}/><circle cx={active.x} cy={active.y} r="6"/></g>}
             {[0, Math.floor((points.length - 1) / 2), points.length - 1].filter((i, p, a) => i >= 0 && a.indexOf(i) === p).map((i) => <text key={i} x={points[i].x} y={height - 13} textAnchor="middle" className="domn-axis">{points[i].label}</text>)}
           </svg>
           {active && <div className="domn-tooltip" style={{ left: `${(active.x / width) * 100}%` }}><span>{active.label}</span><strong>{numberFmt(active.value)}</strong></div>}
@@ -83,17 +79,21 @@ export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total" }:
   const normalized = useMemo(() => data.map((item, index) => ({ ...item, value: Math.max(0, Number(item.value || 0)), color: item.color || COLORS[index % COLORS.length] })), [data]);
   const total = normalized.reduce((sum, item) => sum + item.value, 0);
   let cursor = 0;
-  const segments = normalized.map((item) => {
+  const segments: string[] = [];
+  normalized.forEach((item) => {
     const start = total > 0 ? (cursor / total) * 360 : 0;
     cursor += item.value;
     const end = total > 0 ? (cursor / total) * 360 : 0;
-    return `${item.color} ${start}deg ${end}deg`;
+    const span = Math.max(0, end - start);
+    const gap = Math.min(1.8, span / 5);
+    segments.push(`#151820 ${start}deg ${start + gap}deg`, `${item.color} ${start + gap}deg ${Math.max(start + gap, end - gap)}deg`, `#151820 ${Math.max(start + gap, end - gap)}deg ${end}deg`);
   });
   const active = activeIndex === null ? null : normalized[activeIndex];
   const gradient = total > 0 ? `conic-gradient(${segments.join(", ")})` : "conic-gradient(#252525 0deg 360deg)";
+  const variant = title.includes("Módulo") ? "module-ring" : "action-ring";
 
   return (
-    <section className="domn-chart-card domn-donut-card">
+    <section className={`domn-chart-card domn-donut-card iattom-segmented-ring ${variant}`}>
       <header><div><span>{subtitle}</span><strong>{title}</strong></div></header>
       {normalized.length ? (
         <div className="domn-donut-layout">
@@ -109,23 +109,6 @@ export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total" }:
           </div>
         </div>
       ) : <div className="domn-empty">Sem distribuição disponível</div>}
-    </section>
-  );
-}
-
-export function DomnBarChart({ data, title, subtitle }: { data: DomnBarPoint[]; title: string; subtitle: string }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const normalized = useMemo(() => data.map((item, index) => ({ ...item, value: Number(item.value || 0), color: item.color || COLORS[index % COLORS.length] })), [data]);
-  const maxValue = Math.max(1, ...normalized.map((item) => item.value));
-  const active = normalized[Math.min(activeIndex, Math.max(0, normalized.length - 1))];
-  return (
-    <section className="domn-chart-card domn-bar-card">
-      <header><div><span>{subtitle}</span><strong>{title}</strong></div>{active && <div className="domn-current"><small>{active.label}</small><strong>{numberFmt(active.value)}</strong></div>}</header>
-      {normalized.length ? <div className="domn-spectrum" style={{ ["--spectrum-count" as string]: normalized.length }}>
-        {normalized.map((item, index) => <button type="button" className={`domn-column${activeIndex === index ? " active" : ""}`} onPointerDown={() => setActiveIndex(index)} onPointerEnter={() => setActiveIndex(index)} onFocus={() => setActiveIndex(index)} key={item.label}>
-          <div className="domn-spectrum-bar" style={{ ["--bar-height" as string]: `${Math.max(item.value > 0 ? 6 : 3, (item.value / maxValue) * 150)}px`, ["--bar-color" as string]: item.color }}/><strong>{numberFmt(item.value)}</strong><small title={item.label}>{item.label}</small>
-        </button>)}
-      </div> : <div className="domn-empty">Sem dados registrados</div>}
     </section>
   );
 }
