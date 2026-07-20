@@ -54,15 +54,15 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
         <div className="domn-line-stage">
           <svg viewBox={`0 0 ${width} ${height}`} onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); setTouching(true); select(e); }} onPointerMove={(e) => touching && select(e)} onPointerUp={(e) => { e.currentTarget.releasePointerCapture?.(e.pointerId); setTouching(false); setActiveIndex(null); }} onPointerCancel={() => { setTouching(false); setActiveIndex(null); }} onPointerLeave={() => !touching && setActiveIndex(null)}>
             <defs>
-              <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3fd7ff" stopOpacity="0.16"/><stop offset="62%" stopColor="#3fd7ff" stopOpacity="0.05"/><stop offset="100%" stopColor="#3fd7ff" stopOpacity="0"/></linearGradient>
-              <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#91f3ff"/><stop offset="65%" stopColor="#3fd7ff"/><stop offset="100%" stopColor="#64e6a6"/></linearGradient>
+              <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#214a4f" stopOpacity="0.09"/><stop offset="58%" stopColor="#163337" stopOpacity="0.025"/><stop offset="100%" stopColor="#0d0f13" stopOpacity="0"/></linearGradient>
+              <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#20383b"/><stop offset="70%" stopColor="#24494d"/><stop offset="100%" stopColor="#2e7772"/></linearGradient>
             </defs>
             {[0, .25, .5, .75, 1].map((step) => { const y = padding.top + innerHeight - step * innerHeight; return <line key={step} x1={padding.left} y1={y} x2={width - padding.right} y2={y} className="domn-grid"/>; })}
             {areaPath && <path d={areaPath} fill={`url(#${id}-area)`} className="domn-area"/>}
             {path && <path d={path} className="domn-halo"/>}
             {path && <path d={path} stroke={`url(#${id}-line)`} className="domn-trace"/>}
             {path && <path d={path} pathLength="1" className="domn-energy"/>}
-            {latest && <g className="domn-beat"><circle cx={latest.x} cy={latest.y} r="8" fill="rgba(100,230,166,.16)"/><circle cx={latest.x} cy={latest.y} r="3.5" fill="#64e6a6"/></g>}
+            {latest && <g className="domn-beat"><circle cx={latest.x} cy={latest.y} r="7" fill="rgba(100,230,166,.08)"/><circle cx={latest.x} cy={latest.y} r="3" fill="#64e6a6"/></g>}
             {active && <g className="domn-active"><line x1={active.x} y1={padding.top} x2={active.x} y2={padding.top + innerHeight}/><circle cx={active.x} cy={active.y} r="7"/></g>}
             {[0, Math.floor((points.length - 1) / 2), points.length - 1].filter((i, p, a) => i >= 0 && a.indexOf(i) === p).map((i) => <text key={i} x={points[i].x} y={height - 13} textAnchor="middle" className="domn-axis">{points[i].label}</text>)}
           </svg>
