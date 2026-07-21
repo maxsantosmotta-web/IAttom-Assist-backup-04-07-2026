@@ -178,7 +178,7 @@ export function AdminActivity() {
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
-        {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : <DomnLineChart data={dailyChart} title="Movimento da Plataforma" subtitle="Últimos 30 dias" />}
+        {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : <DomnLineChart data={dailyChart} title="Crescimento de usuários" subtitle="Últimos 30 dias" />}
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-2">
