@@ -18,6 +18,22 @@ function smoothPath(points: Array<{ x: number; y: number }>) {
   }, "");
 }
 
+function buildVisualValues(values: number[]) {
+  const maximum = Math.max(0, ...values);
+  if (maximum <= 0) return values.map(() => 0);
+
+  // Preserve the real values for labels/tooltips while visually suppressing
+  // low background noise. This keeps the operational peaks clearly readable.
+  const noiseFloor = maximum * 0.2;
+  const usableRange = Math.max(1, maximum - noiseFloor);
+
+  return values.map((value) => {
+    if (value <= noiseFloor) return 0;
+    const normalized = (value - noiseFloor) / usableRange;
+    return Math.pow(normalized, 0.82) * maximum;
+  });
+}
+
 export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]; title: string; subtitle: string }) {
   const id = useId().replaceAll(":", "");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -27,13 +43,15 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   const padding = { top: 24, right: 24, bottom: 42, left: 42 };
   const normalized = useMemo(() => data.map((item) => ({ ...item, value: Number(item.value || 0) })), [data]);
   const maxValue = Math.max(1, ...normalized.map((item) => item.value));
+  const visualValues = useMemo(() => buildVisualValues(normalized.map((item) => item.value)), [normalized]);
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
   const divisor = Math.max(1, normalized.length - 1);
   const points = normalized.map((item, index) => ({
     ...item,
+    visualValue: visualValues[index] ?? 0,
     x: padding.left + (index / divisor) * innerWidth,
-    y: padding.top + innerHeight - (item.value / maxValue) * innerHeight,
+    y: padding.top + innerHeight - ((visualValues[index] ?? 0) / maxValue) * innerHeight,
   }));
   const path = smoothPath(points);
   const floor = padding.top + innerHeight;
@@ -55,15 +73,15 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
         <div className="domn-line-stage">
           <svg viewBox={`0 0 ${width} ${height}`} onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); setTouching(true); select(e); }} onPointerMove={(e) => touching && select(e)} onPointerUp={(e) => { e.currentTarget.releasePointerCapture?.(e.pointerId); setTouching(false); setActiveIndex(null); }} onPointerCancel={() => { setTouching(false); setActiveIndex(null); }} onPointerLeave={() => !touching && setActiveIndex(null)}>
             <defs>
-              <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f3c74f" stopOpacity="0.26"/><stop offset="58%" stopColor="#d7a92f" stopOpacity="0.10"/><stop offset="100%" stopColor="#0d0f13" stopOpacity="0"/></linearGradient>
-              <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#b98518"/><stop offset="48%" stopColor="#f0bd3d"/><stop offset="100%" stopColor="#ffd86a"/></linearGradient>
+              <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f6c93f" stopOpacity="0.46"/><stop offset="48%" stopColor="#d7a92f" stopOpacity="0.20"/><stop offset="100%" stopColor="#0d0f13" stopOpacity="0"/></linearGradient>
+              <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#ffc928"/><stop offset="48%" stopColor="#ffd84d"/><stop offset="100%" stopColor="#ffbf18"/></linearGradient>
             </defs>
             {[0, .25, .5, .75, 1].map((step) => { const y = padding.top + innerHeight - step * innerHeight; return <line key={step} x1={padding.left} y1={y} x2={width - padding.right} y2={y} className="domn-grid"/>; })}
             {areaPath && <path d={areaPath} fill={`url(#${id}-area)`} className="iattom-flow-area"/>}
             {path && <path d={path} className="iattom-flow-halo"/>}
             {path && <path d={path} stroke={`url(#${id}-line)`} className="iattom-flow-trace"/>}
             {path && <path d={path} pathLength="1" className="iattom-flow-energy"/>}
-            {latest && <g className="iattom-flow-beat"><circle cx={latest.x} cy={latest.y} r="10"/><circle cx={latest.x} cy={latest.y} r="4"/></g>}
+            {latest && <g className="iattom-flow-beat"><circle cx={latest.x} cy={latest.y} r="11"/><circle cx={latest.x} cy={latest.y} r="4.5"/></g>}
             {active && <g className="domn-active"><line x1={active.x} y1={padding.top} x2={active.x} y2={floor}/><circle cx={active.x} cy={active.y} r="6"/></g>}
             {[0, Math.floor((points.length - 1) / 2), points.length - 1].filter((i, p, a) => i >= 0 && a.indexOf(i) === p).map((i) => <text key={i} x={points[i].x} y={height - 13} textAnchor="middle" className="domn-axis">{points[i].label}</text>)}
           </svg>
