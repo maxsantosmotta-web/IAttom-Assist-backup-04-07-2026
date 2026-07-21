@@ -50,7 +50,10 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
 
   return (
     <section className="domn-chart-card domn-line-card">
-      <header><div><span>{subtitle}</span><strong>{title}</strong></div><div className="domn-current"><small>{active?.label || latest?.label || "Agora"}</small><strong>{numberFmt(active?.value ?? latest?.value ?? 0)}</strong></div></header>
+      <header>
+        <div><span>{subtitle}</span><strong>{title}</strong></div>
+        {active && <div className="domn-current"><small>{active.label}</small><strong>{numberFmt(active.value)}</strong></div>}
+      </header>
       {points.length ? (
         <div className="domn-line-stage">
           <svg
