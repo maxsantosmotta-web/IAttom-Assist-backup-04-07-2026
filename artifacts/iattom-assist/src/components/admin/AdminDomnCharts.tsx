@@ -56,11 +56,9 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
           <svg
             viewBox={`0 0 ${width} ${height}`}
             onPointerDown={(event) => { event.currentTarget.setPointerCapture?.(event.pointerId); setTouching(true); select(event); }}
-            onPointerEnter={(event) => { if (event.pointerType === "mouse") select(event); }}
-            onPointerMove={(event) => { if (touching || event.pointerType === "mouse") select(event); }}
-            onPointerUp={(event) => { event.currentTarget.releasePointerCapture?.(event.pointerId); setTouching(false); if (event.pointerType !== "mouse") setActiveIndex(null); }}
-            onPointerCancel={() => { setTouching(false); setActiveIndex(null); }}
-            onPointerLeave={() => { if (!touching) setActiveIndex(null); }}
+            onPointerMove={(event) => { if (touching) select(event); }}
+            onPointerUp={(event) => { event.currentTarget.releasePointerCapture?.(event.pointerId); setTouching(false); select(event); }}
+            onPointerCancel={() => { setTouching(false); }}
           >
             <defs>
               <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3fd7ff" stopOpacity="0.16"/><stop offset="62%" stopColor="#3fd7ff" stopOpacity="0.05"/><stop offset="100%" stopColor="#3fd7ff" stopOpacity="0"/></linearGradient>
