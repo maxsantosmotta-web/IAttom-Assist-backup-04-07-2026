@@ -52,7 +52,6 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
     <section className="domn-chart-card domn-line-card">
       <header>
         <div><span>{subtitle}</span><strong>{title}</strong></div>
-        {active && <div className="domn-current"><small>{active.label}</small><strong>{numberFmt(active.value)}</strong></div>}
       </header>
       {points.length ? (
         <div className="domn-line-stage">
