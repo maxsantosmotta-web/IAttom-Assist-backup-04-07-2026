@@ -8,16 +8,16 @@ const priceMap = `
 
 const STRIPE_PLAN_PRICE_IDS: Record<string, { monthly: string; annual: string }> = {
   pro: {
-    monthly: "price_1TunJ2AYtu5nLhAZPd1Ai0hD",
-    annual: "price_1TunNxAYtu5nLhAZw0frXi2Z",
+    monthly: "price_1TvgAOAYtu5nLhAZmgqhsTxJ",
+    annual: "price_1TvgDBAYtu5nLhAZsgenq5SJ",
   },
   business: {
-    monthly: "price_1TunQhAYtu5nLhAZu5QXWW31",
-    annual: "price_1TunROAYtu5nLhAZqhKUuslz",
+    monthly: "price_1TvgEwAYtu5nLhAZvWozumfH",
+    annual: "price_1TvgFWAYtu5nLhAZuT001wT5",
   },
   agency: {
-    monthly: "price_1TunTDAYtu5nLhAZDfzTn8Cm",
-    annual: "price_1TunTgAYtu5nLhAZ5nRh52J8",
+    monthly: "price_1TvgGHAYtu5nLhAZt4gYmBM5",
+    annual: "price_1TvgGgAYtu5nLhAZO8FYa6nK",
   },
 };`;
 
@@ -46,4 +46,4 @@ if (source.includes(oldHandler)) {
 }
 
 writeFileSync(modalUrl, source);
-console.log("Official monthly and annual Stripe price IDs applied to plan checkout");
+console.log("Temporary monthly and annual Stripe price IDs applied to plan checkout");
