@@ -21,12 +21,11 @@ const MODULE_COLORS: Record<string, string> = {
 };
 
 const FALLBACK_COLORS = ["#f4c95d", "#3fd7ff", "#ff5cc8", "#64e6a6", "#9b82ff", "#ff9f5a", "#ff657f"];
-const THIRTY_DAYS_MS = 30 * 86400000;
-const TIMELINE_BUCKETS = 72;
 
 function dayKey(d: Date) { return d.toISOString().slice(0, 10); }
-function shortDayFromDate(date: Date) {
-  const dd = String(date.getDate()).padStart(2, "0");
+function shortDay(iso: string) {
+  const [,, dd] = iso.split("-");
+  const date = new Date(`${iso}T12:00:00`);
   const month = date.toLocaleString("pt-BR", { month: "short" }).replace(".", "");
   return `${dd}/${month}`;
 }
@@ -48,6 +47,18 @@ function normalizeAction(action: string): string {
   if (/delet|exclu/i.test(base)) return "Itens Excluídos";
   if (/restor|restaur/i.test(base)) return "Itens Restaurados";
   return base.length > 0 ? base : action;
+}
+
+function LiveStatus() {
+  return (
+    <div className="flex items-center gap-2 text-[10px] font-medium text-emerald-300/80">
+      <span className="relative flex h-2 w-2">
+        <motion.span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400" animate={{ scale: [1, 2.2, 1], opacity: [0.85, 0, 0.85] }} transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }} />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+      </span>
+      monitoramento ativo
+    </div>
+  );
 }
 
 const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
@@ -89,10 +100,9 @@ export function AdminActivity() {
 
   const { kpis, dailyChart, moduleChart, actionChart } = useMemo(() => {
     const now = new Date();
-    const nowMs = now.getTime();
     const todayKey = dayKey(now);
-    const week7ago = new Date(nowMs - 7 * 86400000);
-    const month30ago = new Date(nowMs - THIRTY_DAYS_MS);
+    const week7ago = new Date(now.getTime() - 7 * 86400000);
+    const month30ago = new Date(now.getTime() - 30 * 86400000);
     let today = 0, week = 0, month = 0;
 
     for (const item of items) {
@@ -103,28 +113,22 @@ export function AdminActivity() {
     }
 
     const spanDays = items.length
-      ? Math.max(1, Math.ceil((nowMs - new Date(items[items.length - 1].createdAt).getTime()) / 86400000))
+      ? Math.max(1, Math.ceil((now.getTime() - new Date(items[items.length - 1].createdAt).getTime()) / 86400000))
       : 1;
     const avgDaily = week > 0 ? (week / Math.min(7, spanDays)).toFixed(1) : "0";
 
-    const timelineStart = nowMs - THIRTY_DAYS_MS;
-    const bucketSize = THIRTY_DAYS_MS / TIMELINE_BUCKETS;
-    const bucketValues = Array.from({ length: TIMELINE_BUCKETS }, () => 0);
-
-    for (const item of items) {
-      const eventTime = new Date(item.createdAt).getTime();
-      if (!Number.isFinite(eventTime) || eventTime < timelineStart || eventTime > nowMs) continue;
-      const bucketIndex = Math.min(
-        TIMELINE_BUCKETS - 1,
-        Math.max(0, Math.floor((eventTime - timelineStart) / bucketSize)),
-      );
-      bucketValues[bucketIndex] += 1;
+    const dailyMap: Record<string, number> = {};
+    const days14: string[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const key = dayKey(new Date(now.getTime() - i * 86400000));
+      days14.push(key);
+      dailyMap[key] = 0;
     }
-
-    const dailyChart = bucketValues.map((value, index) => {
-      const bucketTime = new Date(timelineStart + index * bucketSize);
-      return { label: shortDayFromDate(bucketTime), value };
-    });
+    for (const item of items) {
+      const key = dayKey(new Date(item.createdAt));
+      if (key in dailyMap) dailyMap[key]++;
+    }
+    const dailyChart = days14.map((key) => ({ label: shortDay(key), value: dailyMap[key] }));
 
     const moduleMap: Record<string, { count: number; rawKey: string }> = {};
     for (const item of items) {
@@ -164,6 +168,7 @@ export function AdminActivity() {
             <p className="text-sm text-muted-foreground">Monitoramento visual das ações, execuções e movimentações da plataforma.</p>
           </div>
           <div className="flex items-center gap-2 sm:mt-1 sm:shrink-0">
+            <LiveStatus />
             <Button size="sm" variant="outline" onClick={() => void downloadCsv("/api/admin/export/activity", `atividade_${new Date().toISOString().slice(0,10)}.csv`)} className="gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white">
               <Download className="h-3.5 w-3.5" /> Exportar CSV
             </Button>
@@ -193,7 +198,7 @@ export function AdminActivity() {
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
-        {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : <DomnLineChart data={dailyChart} title="Crescimento de usuários" subtitle="Últimos 30 dias" />}
+        {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : <DomnLineChart data={dailyChart} title="Movimento da Plataforma" subtitle="Últimos 14 dias" />}
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-2">
