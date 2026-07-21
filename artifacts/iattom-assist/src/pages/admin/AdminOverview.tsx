@@ -7,7 +7,6 @@ import {
   DollarSign,
   Percent,
   RefreshCw,
-  TrendingUp,
   UserCheck,
   Users,
   Zap,
@@ -22,7 +21,7 @@ import {
   useListAdminActivity,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DomnDonutChart, DomnLineChart } from "@/components/admin/AdminDomnCharts";
 
@@ -45,15 +44,6 @@ const PLAN_COLORS: Record<string, string> = {
 
 const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
 
-const PLAN_LABELS: Record<string, string> = {
-  free: "Free",
-  start: "Start",
-  premium: "Premium",
-  pro: "Pro",
-  business: "Premium",
-  agency: "Pro",
-};
-
 const FEATURE_NAME_MAP: Record<string, string> = {
   "Product Discovery": "Descoberta de Produtos",
   "Product Validation": "Validação de Produtos",
@@ -64,16 +54,6 @@ const FEATURE_NAME_MAP: Record<string, string> = {
   "Video Script": "Roteiro de Vídeo",
   Marketing: "Marketing",
 };
-
-interface SubscriptionRow {
-  id: number;
-  clerkId: string;
-  email: string;
-  name: string | null;
-  plan: string;
-  stripeSubscriptionStatus: string | null;
-  currentPeriodEnd: string | null;
-}
 
 interface GrowthStats {
   mrr: number;
@@ -187,8 +167,6 @@ export function AdminOverview() {
   const [growthStats, setGrowthStats] = useState<GrowthStats | null>(null);
   const [growthLoading, setGrowthLoading] = useState(true);
   const [growthTick, setGrowthTick] = useState(0);
-  const [subs, setSubs] = useState<SubscriptionRow[]>([]);
-  const [subsLoading, setSubsLoading] = useState(true);
 
   useEffect(() => {
     setGrowthLoading(true);
@@ -202,25 +180,6 @@ export function AdminOverview() {
         if (response.ok) setGrowthStats(await response.json() as GrowthStats);
       } finally {
         setGrowthLoading(false);
-      }
-    })();
-  }, [growthTick, getToken]);
-
-  useEffect(() => {
-    setSubsLoading(true);
-    (async () => {
-      try {
-        const token = await getToken();
-        const response = await fetch(`${BASE}/api/admin/subscriptions`, {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: "include",
-        });
-        if (response.ok) {
-          const payload = await response.json() as { subscriptions: SubscriptionRow[] };
-          setSubs(payload.subscriptions);
-        }
-      } finally {
-        setSubsLoading(false);
       }
     })();
   }, [growthTick, getToken]);
@@ -243,8 +202,8 @@ export function AdminOverview() {
 
   const planDonut = planDefinitions.map((plan) => {
     let value = 0;
-    if (growthStats) {
-      if (plan.label === "Free") value = growthStats.planBreakdown.free ?? 0;
+    if (growthStats && hasPaidSubscribers) {
+      if (plan.label === "Free") value = 0;
       if (plan.label === "Start") value = growthStats.planBreakdown.start ?? growthStats.planBreakdown.pro ?? 0;
       if (plan.label === "Premium") value = growthStats.planBreakdown.premium ?? growthStats.planBreakdown.business ?? 0;
       if (plan.label === "Pro") value = growthStats.planBreakdown.agency ?? 0;
@@ -317,35 +276,6 @@ export function AdminOverview() {
       </div>
 
       {analyticsLoading ? <Skeleton className="h-72 rounded-xl bg-white/5" /> : <DomnLineChart data={growthLine} title="Crescimento — Usuários e Projetos" subtitle="Evolução dos últimos meses" />}
-
-      <SectionLabel>Assinaturas</SectionLabel>
-      <Card className="border-white/[0.07] bg-[#0d1015]">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold text-white">
-            <CreditCard className="h-4 w-4 text-primary" /> Assinantes com Plano Pago
-            <span className="ml-auto text-[10px] font-normal text-zinc-600">{subs.length} registros</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {subsLoading ? <Skeleton className="h-24 bg-white/5" /> : subs.length === 0 ? (
-            <p className="py-8 text-center text-xs text-muted-foreground">Nenhuma assinatura registrada.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead><tr className="border-b border-white/5 text-zinc-600"><th className="py-3 pr-4 font-medium">Usuário</th><th className="py-3 pr-4 font-medium">Plano</th><th className="py-3 pr-4 font-medium">Status Stripe</th><th className="py-3 font-medium">Período Atual</th></tr></thead>
-                <tbody>{subs.map((sub) => (
-                  <tr key={sub.id} className="border-b border-white/[0.03] last:border-0">
-                    <td className="py-3 pr-4"><p className="font-medium text-white">{sub.name || "Sem nome"}</p><p className="text-zinc-600">{sub.email}</p></td>
-                    <td className="py-3 pr-4"><span className="rounded border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">{PLAN_LABELS[sub.plan] ?? sub.plan}</span></td>
-                    <td className="py-3 pr-4 text-zinc-500">{sub.stripeSubscriptionStatus || "sem assinatura"}</td>
-                    <td className="py-3 text-zinc-500">{sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString("pt-BR") : "—"}</td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <SectionLabel>Atividade</SectionLabel>
       <div className="grid gap-6 lg:grid-cols-2">
