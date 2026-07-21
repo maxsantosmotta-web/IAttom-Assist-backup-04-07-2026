@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, BarChart2, Zap, Users, DollarSign, Activity, AlertTriangle, GitBranch, RefreshCw } from "lucide-react";
+import { TrendingUp, Zap, Users, DollarSign, Activity, AlertTriangle, GitBranch, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,16 @@ const AMBER = "#fbbf24";
 
 const PIE_COLORS = [GOLD, PURPLE, EMERALD, BLUE];
 const FEATURE_COLORS = [GOLD, PURPLE, EMERALD, BLUE, ORANGE, ROSE, AMBER];
+const PLAN_COLORS: Record<string, string> = {
+  Start: BLUE,
+  Completo: EMERALD,
+  Premium: PURPLE,
+  Pro: GOLD,
+  START: BLUE,
+  COMPLETO: EMERALD,
+  PREMIUM: PURPLE,
+  PRO: GOLD,
+};
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -113,32 +123,6 @@ function StatTile({ label, value, sub, icon: Icon, color, glow }: { label: strin
   );
 }
 
-function LivePulse() {
-  return (
-    <span className="ml-auto flex items-center gap-1.5 text-[9px] font-medium text-emerald-300/75">
-      <span className="relative flex h-2 w-2">
-        <motion.span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400" animate={{ scale: [1, 2.1, 1], opacity: [0.8, 0, 0.8] }} transition={{ duration: 2, repeat: Infinity }} />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-      </span>
-      ao vivo
-    </span>
-  );
-}
-
-function LiveCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <Card className={`relative overflow-hidden border-white/[0.06] bg-[#0d0f13] ${className}`}>
-      <motion.div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-[-35%] w-[30%] bg-gradient-to-r from-transparent via-white/[0.025] to-transparent"
-        animate={{ x: ["0%", "460%"] }}
-        transition={{ duration: 5.8, repeat: Infinity, ease: "linear" }}
-      />
-      <div className="relative z-[1]">{children}</div>
-    </Card>
-  );
-}
-
 export function AdminAnalytics() {
   const { data: analytics, isLoading, isFetching: fetchingAnalytics, refetch: refetchAnalytics } = useGetAdminAnalytics();
   const { getToken } = useAuth();
@@ -182,37 +166,60 @@ export function AdminAnalytics() {
     })();
   }, [growthTick, getToken]);
 
-  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({ ...f, name: FEATURE_NAME_MAP[f.name] ?? f.name, fill: FEATURE_COLORS[i % FEATURE_COLORS.length] }));
+  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({
+    ...f,
+    name: FEATURE_NAME_MAP[f.name] ?? f.name,
+    fill: FEATURE_COLORS[i % FEATURE_COLORS.length],
+  }));
+
   const fixedPlanOrder = [
     { plan: "Start", key: "free" },
     { plan: "Completo", key: "business" },
     { plan: "Premium", key: "premium" },
     { plan: "Pro", key: "pro" },
   ];
+
   const planRevenueDisplay = fixedPlanOrder.map(({ plan, key }) => {
     const found = (analytics?.planRevenue ?? []).find((p) => p.plan?.toLowerCase() === key);
     return { plan, mrr: found?.mrr ?? 0, users: found?.users ?? 0 };
   });
+
   const hasPaidSubscribers = (growthStats?.activeSubscribers ?? 0) > 0;
   const planBar = growthStats && hasPaidSubscribers ? [
-    { name: "START", users: growthStats.planBreakdown.free, fill: "#60a5fa" },
-    { name: "COMPLETO", users: growthStats.planBreakdown.pro, fill: "#34d399" },
-    { name: "PREMIUM", users: growthStats.planBreakdown.business, fill: "#a78bfa" },
-    { name: "PRO", users: growthStats.planBreakdown.agency, fill: "#C9A84C" },
+    { name: "START", users: growthStats.planBreakdown.free },
+    { name: "COMPLETO", users: growthStats.planBreakdown.pro },
+    { name: "PREMIUM", users: growthStats.planBreakdown.business },
+    { name: "PRO", users: growthStats.planBreakdown.agency },
   ].filter((p) => p.users > 0) : [];
 
-  const planDistributionDonut = planBar.map((item, index) => ({
+  const planDistributionDonut = planBar.map((item) => ({
     label: item.name,
     value: item.users,
-    color: PIE_COLORS[index % PIE_COLORS.length],
+    color: PLAN_COLORS[item.name],
   }));
 
   const planRevenueDonut = planRevenueDisplay
     .filter((item) => item.mrr > 0)
-    .map((item, index) => ({
+    .map((item) => ({
       label: item.plan,
       value: item.mrr,
-      color: PIE_COLORS[index % PIE_COLORS.length],
+      color: PLAN_COLORS[item.plan],
+    }));
+
+  const featureUsageDonut = featureData
+    .filter((item) => Number(item.count || 0) > 0)
+    .map((item) => ({
+      label: item.name,
+      value: Number(item.count || 0),
+      color: item.fill,
+    }));
+
+  const featureSummaryDonut = featureData
+    .filter((item) => Number(item.percentage || 0) > 0)
+    .map((item) => ({
+      label: item.name,
+      value: Number(item.percentage || 0),
+      color: item.fill,
     }));
 
   return (
@@ -295,7 +302,13 @@ export function AdminAnalytics() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18 }}>
-          <LiveCard className="h-full"><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Zap className="h-4 w-4 text-primary" /> Uso por Recurso <LivePulse /></CardTitle></CardHeader><CardContent>{isLoading ? <Skeleton className="h-52 w-full rounded-lg bg-white/5" /> : !featureData.length ? <p className="py-10 text-center text-sm text-muted-foreground">Sem dados de uso ainda.</p> : <ResponsiveContainer width="100%" height={220}><BarChart data={featureData} layout="vertical" margin={{ top: 0, right: 30, left: 8, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} /><XAxis type="number" tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} /><YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#a1a1aa" }} width={90} axisLine={false} tickLine={false} /><Tooltip content={<CustomTooltip />} /><Bar dataKey="count" name="Ações" radius={[0,4,4,0]}>{featureData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}</Bar></BarChart></ResponsiveContainer>}</CardContent></LiveCard>
+          {isLoading ? (
+            <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" />
+          ) : featureUsageDonut.length ? (
+            <DomnDonutChart data={featureUsageDonut} title="Uso por Recurso" subtitle="Distribuição de ações" centerLabel="Ações" />
+          ) : (
+            <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><p className="text-sm text-muted-foreground">Sem dados de uso ainda.</p></Card>
+          )}
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
@@ -311,7 +324,7 @@ export function AdminAnalytics() {
 
       {!isLoading && analytics && analytics.featureUsage.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.25 }}>
-          <LiveCard><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><BarChart2 className="h-4 w-4 text-primary" /> Resumo de Uso dos Recursos <LivePulse /></CardTitle></CardHeader><CardContent><div className="space-y-2.5">{featureData.map((feature) => <div key={feature.name} className="flex items-center gap-3"><p className="w-36 shrink-0 truncate text-xs text-muted-foreground">{feature.name}</p><div className="h-2 flex-1 rounded-full bg-white/5"><div className="h-2 rounded-full transition-all duration-700" style={{ width: `${feature.percentage}%`, backgroundColor: feature.fill }} /></div><p className="w-10 shrink-0 text-right text-xs font-semibold text-white">{feature.percentage}%</p><p className="w-14 shrink-0 text-right text-xs text-muted-foreground">{feature.count} usos</p></div>)}</div></CardContent></LiveCard>
+          <DomnDonutChart data={featureSummaryDonut} title="Resumo de Uso dos Recursos" subtitle="Participação por recurso" centerLabel="Percentual" />
         </motion.div>
       )}
 
