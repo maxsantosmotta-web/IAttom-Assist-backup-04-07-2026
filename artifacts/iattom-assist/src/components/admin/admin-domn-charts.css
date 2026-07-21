@@ -33,6 +33,9 @@
 .iattom-flow-halo { fill: none; stroke: rgba(246,201,63,.38); stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; filter: blur(8px); opacity: .78; }
 .iattom-flow-trace { fill: none; stroke-width: 5.4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(255,216,106,.92)) drop-shadow(0 0 10px rgba(246,201,63,.62)); }
 .iattom-flow-energy { fill: none; stroke: rgba(255,244,184,.96); stroke-width: 1.8; stroke-linecap: round; stroke-dasharray: .018 .982; animation: iattom-flow-run 3.4s linear infinite; filter: drop-shadow(0 0 7px rgba(255,216,106,.88)); }
+.iattom-moving-point { pointer-events: none; }
+.iattom-moving-point-halo { fill: rgba(255,255,255,.18); filter: drop-shadow(0 0 9px rgba(255,255,255,.95)) drop-shadow(0 0 16px rgba(246,201,63,.75)); }
+.iattom-moving-point-core { fill: #fff; stroke: #fff8d2; stroke-width: 1.4; filter: drop-shadow(0 0 5px rgba(255,255,255,1)) drop-shadow(0 0 10px rgba(246,201,63,.95)); }
 .iattom-flow-beat { transform-box: fill-box; transform-origin: center; animation: iattom-beat 1.8s ease-in-out infinite; }
 .iattom-flow-beat circle:first-child { fill: rgba(246,201,63,.22); }
 .iattom-flow-beat circle:last-child { fill: #fff4b0; stroke: #f6c93f; stroke-width: 2; }
