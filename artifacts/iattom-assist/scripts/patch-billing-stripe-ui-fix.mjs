@@ -10,16 +10,16 @@ if (!source.includes(priceMapMarker)) {
   if (index === -1) throw new Error("IMAGE_PACKAGES marker not found");
   const map = `const STRIPE_BILLING_PRICE_IDS: Record<string, { monthly: string; annual: string }> = {
   pro: {
-    monthly: "price_1TunJ2AYtu5nLhAZPd1Ai0hD",
-    annual: "price_1TunNxAYtu5nLhAZw0frXi2Z",
+    monthly: "price_1TvgAOAYtu5nLhAZmgqhsTxJ",
+    annual: "price_1TvgDBAYtu5nLhAZsgenq5SJ",
   },
   business: {
-    monthly: "price_1TunQhAYtu5nLhAZu5QXWW31",
-    annual: "price_1TunROAYtu5nLhAZqhKUuslz",
+    monthly: "price_1TvgEwAYtu5nLhAZvWozumfH",
+    annual: "price_1TvgFWAYtu5nLhAZuT001wT5",
   },
   agency: {
-    monthly: "price_1TunTDAYtu5nLhAZDfzTn8Cm",
-    annual: "price_1TunTgAYtu5nLhAZ5nRh52J8",
+    monthly: "price_1TvgGHAYtu5nLhAZt4gYmBM5",
+    annual: "price_1TvgGgAYtu5nLhAZO8FYa6nK",
   },
 };
 
@@ -118,4 +118,4 @@ videoSection = videoSection
 source = source.slice(0, refreshedVideoStart) + videoSection + source.slice(videoEnd);
 
 writeFileSync(billingUrl, source);
-console.log("Billing annual checkout fixed; image packages lit; video packages remain brightly locked.");
+console.log("Billing temporary plan prices applied; image packages active; video packages locked.");
