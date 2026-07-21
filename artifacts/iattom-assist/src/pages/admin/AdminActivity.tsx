@@ -99,17 +99,17 @@ export function AdminActivity() {
     const avgDaily = week > 0 ? (week / Math.min(7, spanDays)).toFixed(1) : "0";
 
     const dailyMap: Record<string, number> = {};
-    const days14: string[] = [];
-    for (let i = 13; i >= 0; i--) {
+    const days30: string[] = [];
+    for (let i = 29; i >= 0; i--) {
       const key = dayKey(new Date(now.getTime() - i * 86400000));
-      days14.push(key);
+      days30.push(key);
       dailyMap[key] = 0;
     }
     for (const item of items) {
       const key = dayKey(new Date(item.createdAt));
       if (key in dailyMap) dailyMap[key]++;
     }
-    const dailyChart = days14.map((key) => ({ label: shortDay(key), value: dailyMap[key] }));
+    const dailyChart = days30.map((key) => ({ label: shortDay(key), value: dailyMap[key] }));
 
     const moduleMap: Record<string, { count: number; rawKey: string }> = {};
     for (const item of items) {
@@ -178,7 +178,7 @@ export function AdminActivity() {
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
-        {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : <DomnLineChart data={dailyChart} title="Movimento da Plataforma" subtitle="Últimos 14 dias" />}
+        {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : <DomnLineChart data={dailyChart} title="Movimento da Plataforma" subtitle="Últimos 30 dias" />}
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-2">
