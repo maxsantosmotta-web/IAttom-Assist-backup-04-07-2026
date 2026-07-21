@@ -29,23 +29,49 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   const maxValue = Math.max(1, ...normalized.map((item) => item.value));
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
+  const floor = padding.top + innerHeight;
   const divisor = Math.max(1, normalized.length - 1);
-  const points = normalized.map((item, index) => ({
+  const basePoints = normalized.map((item, index) => ({
     ...item,
     x: padding.left + (index / divisor) * innerWidth,
     y: padding.top + innerHeight - (item.value / maxValue) * innerHeight,
   }));
-  const path = smoothPath(points);
-  const floor = padding.top + innerHeight;
-  const areaPath = points.length ? `${path} L ${points[points.length - 1].x} ${floor} L ${points[0].x} ${floor} Z` : "";
+  const positiveIndexes = normalized.flatMap((item, index) => item.value > 0 ? [index] : []);
+  const firstPositive = positiveIndexes[0] ?? -1;
+  const lastPositive = positiveIndexes[positiveIndexes.length - 1] ?? -1;
+  const blockStart = firstPositive >= 0 ? Math.max(0, firstPositive - 1) : -1;
+  const blockEnd = lastPositive >= 0 ? Math.min(divisor, lastPositive + 1) : -1;
+  const requestedShift = innerWidth * 0.16;
+  const availableShift = blockStart >= 0 ? Math.max(0, basePoints[blockStart].x - padding.left - 10) : 0;
+  const blockShift = Math.min(requestedShift, availableShift);
+  const points = basePoints.map((point, index) => ({
+    ...point,
+    x: blockStart >= 0 && index >= blockStart && index <= blockEnd ? point.x - blockShift : point.x,
+  }));
+  const pathPoints = [...points];
+  if (blockShift > 0 && blockEnd === divisor && points.length) {
+    pathPoints.push({ ...points[points.length - 1], x: padding.left + innerWidth, y: floor });
+  }
+  const path = smoothPath(pathPoints);
+  const areaPath = pathPoints.length ? `${path} L ${pathPoints[pathPoints.length - 1].x} ${floor} L ${pathPoints[0].x} ${floor} Z` : "";
   const active = activeIndex === null ? null : points[Math.min(activeIndex, Math.max(0, points.length - 1))];
-  const latest = points[points.length - 1];
+  const latest = pathPoints[pathPoints.length - 1];
 
   function select(event: React.PointerEvent<SVGSVGElement>) {
     if (!points.length) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width)));
-    setActiveIndex(Math.round(ratio * (points.length - 1)));
+    const targetX = padding.left + ratio * innerWidth;
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    points.forEach((point, index) => {
+      const distance = Math.abs(point.x - targetX);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+    setActiveIndex(nearestIndex);
   }
 
   return (
@@ -75,7 +101,7 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
             )}
             {latest && <g className="iattom-flow-beat"><circle cx={latest.x} cy={latest.y} r="10"/><circle cx={latest.x} cy={latest.y} r="4"/></g>}
             {active && <g className="domn-active"><line x1={active.x} y1={padding.top} x2={active.x} y2={floor}/><circle cx={active.x} cy={active.y} r="6"/></g>}
-            {[0, Math.floor((points.length - 1) / 2), points.length - 1].filter((i, p, a) => i >= 0 && a.indexOf(i) === p).map((i) => <text key={i} x={points[i].x} y={height - 13} textAnchor="middle" className="domn-axis">{points[i].label}</text>)}
+            {[0, Math.floor((basePoints.length - 1) / 2), basePoints.length - 1].filter((i, p, a) => i >= 0 && a.indexOf(i) === p).map((i) => <text key={i} x={basePoints[i].x} y={height - 13} textAnchor="middle" className="domn-axis">{basePoints[i].label}</text>)}
           </svg>
           {active && <div className="domn-tooltip" style={{ left: `${(active.x / width) * 100}%` }}><span>{active.label}</span><strong>{numberFmt(active.value)}</strong></div>}
         </div>
