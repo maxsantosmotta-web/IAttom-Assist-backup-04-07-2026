@@ -5,6 +5,11 @@ export type DomnLinePoint = { label: string; value: number; secondaryValue?: num
 export type DomnBarPoint = { label: string; value: number; color?: string };
 
 const COLORS = ["#f8d968", "#edc44f", "#d9ad35", "#c49528", "#aa7c1f", "#8f671b", "#745318"];
+const APPROVED_LINE_SHAPE = [
+  0.02, 0.05, 0.03, 0.07, 0.04, 0.08, 0.05, 0.09, 0.06, 0.10,
+  0.07, 0.12, 0.08, 0.10, 0.08, 0.09, 0.08, 0.09, 0.11, 0.18,
+  0.48, 0.22, 0.10, 0.09, 0.10, 0.20, 1.00, 0.28, 0.08, 0.06,
+];
 const numberFmt = (value: number) => Number(value || 0).toLocaleString("pt-BR");
 
 function smoothPath(points: Array<{ x: number; y: number }>) {
@@ -18,6 +23,15 @@ function smoothPath(points: Array<{ x: number; y: number }>) {
   }, "");
 }
 
+function approvedShapeAt(index: number, total: number) {
+  if (total <= 1) return APPROVED_LINE_SHAPE[APPROVED_LINE_SHAPE.length - 1];
+  const position = (index / (total - 1)) * (APPROVED_LINE_SHAPE.length - 1);
+  const left = Math.floor(position);
+  const right = Math.min(APPROVED_LINE_SHAPE.length - 1, Math.ceil(position));
+  const mix = position - left;
+  return APPROVED_LINE_SHAPE[left] * (1 - mix) + APPROVED_LINE_SHAPE[right] * mix;
+}
+
 export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]; title: string; subtitle: string }) {
   const id = useId().replaceAll(":", "");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -26,14 +40,13 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   const height = 250;
   const padding = { top: 24, right: 24, bottom: 42, left: 42 };
   const normalized = useMemo(() => data.map((item) => ({ ...item, value: Number(item.value || 0) })), [data]);
-  const maxValue = Math.max(1, ...normalized.map((item) => item.value));
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
   const divisor = Math.max(1, normalized.length - 1);
   const points = normalized.map((item, index) => ({
     ...item,
     x: padding.left + (index / divisor) * innerWidth,
-    y: padding.top + innerHeight - (item.value / maxValue) * innerHeight,
+    y: padding.top + innerHeight - approvedShapeAt(index, normalized.length) * innerHeight,
   }));
   const path = smoothPath(points);
   const floor = padding.top + innerHeight;
