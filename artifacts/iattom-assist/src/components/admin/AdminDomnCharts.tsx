@@ -30,38 +30,11 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
   const divisor = Math.max(1, normalized.length - 1);
-  const peakIndex = Math.max(0, normalized.findIndex((item) => item.value === maxValue));
-  const localPeaks = normalized
-    .map((item, index) => ({ index, value: item.value }))
-    .filter(({ index, value }) => {
-      if (index <= 0 || index >= normalized.length - 1 || Math.abs(index - peakIndex) <= 3) return false;
-      return value > 0 && value >= normalized[index - 1].value && value > normalized[index + 1].value;
-    })
-    .sort((a, b) => b.value - a.value);
-  const secondaryPeakIndex = localPeaks[0]?.index ?? -1;
-
-  const rawRatios = normalized.map((_, index) => {
-    const base = index / divisor;
-    const distance = Math.abs(index - peakIndex);
-    const localShift = distance === 0 ? 0.115 : distance === 1 ? 0.082 : distance === 2 ? 0.045 : 0;
-    return Math.max(0, Math.min(1, base - localShift));
-  });
-  const visualRatios = rawRatios.map((ratio, index) => {
-    if (index === 0) return 0;
-    if (index === rawRatios.length - 1) return 1;
-    return Math.max(ratio, rawRatios[index - 1] + 0.004);
-  });
-
-  const points = normalized.map((item, index) => {
-    const visualValue = index === secondaryPeakIndex
-      ? Math.min(maxValue * 0.58, item.value * 1.18)
-      : item.value;
-    return {
-      ...item,
-      x: padding.left + visualRatios[index] * innerWidth,
-      y: padding.top + innerHeight - (visualValue / maxValue) * innerHeight,
-    };
-  });
+  const points = normalized.map((item, index) => ({
+    ...item,
+    x: padding.left + (index / divisor) * innerWidth,
+    y: padding.top + innerHeight - (item.value / maxValue) * innerHeight,
+  }));
   const path = smoothPath(points);
   const floor = padding.top + innerHeight;
   const areaPath = points.length ? `${path} L ${points[points.length - 1].x} ${floor} L ${points[0].x} ${floor} Z` : "";
@@ -72,17 +45,7 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
     if (!points.length) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width)));
-    const targetX = padding.left + ratio * innerWidth;
-    let nearestIndex = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-    points.forEach((point, index) => {
-      const distance = Math.abs(point.x - targetX);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestIndex = index;
-      }
-    });
-    setActiveIndex(nearestIndex);
+    setActiveIndex(Math.round(ratio * (points.length - 1)));
   }
 
   return (
