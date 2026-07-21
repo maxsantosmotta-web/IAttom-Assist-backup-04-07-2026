@@ -22,15 +22,12 @@ function buildVisualValues(values: number[]) {
   const maximum = Math.max(0, ...values);
   if (maximum <= 0) return values.map(() => 0);
 
-  // Preserve the real values for labels/tooltips while visually suppressing
-  // low background noise. This keeps the operational peaks clearly readable.
-  const noiseFloor = maximum * 0.2;
-  const usableRange = Math.max(1, maximum - noiseFloor);
-
   return values.map((value) => {
-    if (value <= noiseFloor) return 0;
-    const normalized = (value - noiseFloor) / usableRange;
-    return Math.pow(normalized, 0.82) * maximum;
+    if (value <= 0) return 0;
+    const normalized = value / maximum;
+    const emphasized = Math.pow(normalized, 0.62);
+    const minimumVisiblePeak = maximum * 0.28;
+    return Math.max(minimumVisiblePeak, emphasized * maximum);
   });
 }
 
