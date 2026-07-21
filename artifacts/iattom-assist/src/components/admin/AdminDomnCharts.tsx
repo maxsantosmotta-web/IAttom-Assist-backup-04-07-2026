@@ -31,6 +31,8 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   const innerHeight = height - padding.top - padding.bottom;
   const divisor = Math.max(1, normalized.length - 1);
   const peakIndex = Math.max(0, normalized.findIndex((item) => item.value === maxValue));
+  const secondaryPeakValue = Math.max(0, ...normalized.filter((_, index) => index !== peakIndex).map((item) => item.value));
+  const secondaryPeakIndex = secondaryPeakValue > 0 ? normalized.findIndex((item, index) => index !== peakIndex && item.value === secondaryPeakValue) : -1;
   const peakTargetRatio = 0.72;
   const visualRatio = (index: number) => {
     if (normalized.length <= 1) return 0;
@@ -38,11 +40,16 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
     if (index <= peakIndex) return (index / peakIndex) * peakTargetRatio;
     return peakTargetRatio + ((index - peakIndex) / (divisor - peakIndex)) * (1 - peakTargetRatio);
   };
-  const points = normalized.map((item, index) => ({
-    ...item,
-    x: padding.left + visualRatio(index) * innerWidth,
-    y: padding.top + innerHeight - (item.value / maxValue) * innerHeight,
-  }));
+  const points = normalized.map((item, index) => {
+    const visualValue = index === secondaryPeakIndex
+      ? Math.min(maxValue * 0.68, item.value * 1.22)
+      : item.value;
+    return {
+      ...item,
+      x: padding.left + visualRatio(index) * innerWidth,
+      y: padding.top + innerHeight - (visualValue / maxValue) * innerHeight,
+    };
+  });
   const path = smoothPath(points);
   const floor = padding.top + innerHeight;
   const areaPath = points.length ? `${path} L ${points[points.length - 1].x} ${floor} L ${points[0].x} ${floor} Z` : "";
