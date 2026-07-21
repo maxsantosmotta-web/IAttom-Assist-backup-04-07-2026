@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, BarChart2, PieChart as PieIcon, Zap, Users, DollarSign, Activity, AlertTriangle, GitBranch, RefreshCw } from "lucide-react";
+import { TrendingUp, BarChart2, Zap, Users, DollarSign, Activity, AlertTriangle, GitBranch, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  AreaChart, Area, BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { useGetAdminAnalytics } from "@workspace/api-client-react";
 import { useAuth } from "@clerk/react";
 import { Button } from "@/components/ui/button";
+import { DomnDonutChart } from "@/components/admin/AdminDomnCharts";
 
 const GOLD = "#C9A84C";
 const PURPLE = "#a78bfa";
@@ -58,29 +59,6 @@ const FEATURE_NAME_MAP: Record<string, string> = {
   marketing: "Marketing",
 };
 
-const PLAN_MRR_LABEL: Record<string, string> = {
-  free: "MRR Start", start: "MRR Start", Start: "MRR Start",
-  pro: "MRR Pro", Pro: "MRR Pro",
-  business: "MRR Completo", completo: "MRR Completo", Completo: "MRR Completo",
-  premium: "MRR Premium", Premium: "MRR Premium", agency: "MRR Pro",
-};
-
-const PieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-  if (percent < 0.05) return null;
-  const RADIAN = Math.PI / 180;
-  const radius = percent >= 0.99 ? 0 : innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = percent >= 0.99 ? cx : cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = percent >= 0.99 ? cy : cy + radius * Math.sin(-midAngle * RADIAN);
-  return <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600}>{`${(percent * 100).toFixed(0)}%`}</text>;
-};
-
-interface CreditAnalytics {
-  byFeature: Array<{ feature: string | null; total: number; ops: number }>;
-  byDay: Array<{ day: string; total: number }>;
-  byPlan: Array<{ plan: string; total: number; userCount: number }>;
-  days: number;
-}
-
 const FEATURE_PT: Record<string, string> = {
   campaign_creation: "Criar Campanha",
   creative_generator: "Gerar Criativo",
@@ -95,6 +73,13 @@ const FEATURE_PT: Record<string, string> = {
 const PLAN_PT_SHORT: Record<string, string> = {
   free: "Gratuito", pro: "Pro", business: "Completo", agency: "Agência",
 };
+
+interface CreditAnalytics {
+  byFeature: Array<{ feature: string | null; total: number; ops: number }>;
+  byDay: Array<{ day: string; total: number }>;
+  byPlan: Array<{ plan: string; total: number; userCount: number }>;
+  days: number;
+}
 
 interface GrowthStats {
   mrr: number;
@@ -208,7 +193,6 @@ export function AdminAnalytics() {
     const found = (analytics?.planRevenue ?? []).find((p) => p.plan?.toLowerCase() === key);
     return { plan, mrr: found?.mrr ?? 0, users: found?.users ?? 0 };
   });
-  const revenueData = planRevenueDisplay;
   const hasPaidSubscribers = (growthStats?.activeSubscribers ?? 0) > 0;
   const planBar = growthStats && hasPaidSubscribers ? [
     { name: "START", users: growthStats.planBreakdown.free, fill: "#60a5fa" },
@@ -216,6 +200,20 @@ export function AdminAnalytics() {
     { name: "PREMIUM", users: growthStats.planBreakdown.business, fill: "#a78bfa" },
     { name: "PRO", users: growthStats.planBreakdown.agency, fill: "#C9A84C" },
   ].filter((p) => p.users > 0) : [];
+
+  const planDistributionDonut = planBar.map((item, index) => ({
+    label: item.name,
+    value: item.users,
+    color: PIE_COLORS[index % PIE_COLORS.length],
+  }));
+
+  const planRevenueDonut = planRevenueDisplay
+    .filter((item) => item.mrr > 0)
+    .map((item, index) => ({
+      label: item.plan,
+      value: item.mrr,
+      color: PIE_COLORS[index % PIE_COLORS.length],
+    }));
 
   return (
     <div className="space-y-8">
@@ -275,14 +273,14 @@ export function AdminAnalytics() {
 
       {!growthLoading && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
-          <Card className="border-white/5 bg-[#111111]">
-            <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Users className="h-4 w-4 text-primary" /> Distribuição de Planos</CardTitle></CardHeader>
-            <CardContent>{planBar.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center"><div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.05] bg-white/[0.03]"><Users className="h-5 w-5 text-white/[0.15]" /></div><p className="mb-1.5 text-sm font-medium text-zinc-500">Nenhuma distribuição de planos ainda.</p><p className="max-w-xs text-xs leading-relaxed text-zinc-700">As assinaturas aparecerão aqui conforme os usuários escolherem seus planos.</p></div>
-            ) : (
-              <ResponsiveContainer width="100%" height={160}><BarChart data={planBar} margin={{ top: 4, right: 8, left: -20, bottom: 0 }} barCategoryGap="40%"><CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 11, fill: "#71717a" }} axisLine={false} tickLine={false} /><YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#71717a" }} axisLine={false} tickLine={false} /><Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} /><Bar dataKey="users" name="Usuários" radius={[4,4,0,0]} maxBarSize={52}>{planBar.map((entry, i) => <Cell key={i} fill={entry.fill} fillOpacity={0.9} />)}</Bar></BarChart></ResponsiveContainer>
-            )}</CardContent>
-          </Card>
+          {planDistributionDonut.length ? (
+            <DomnDonutChart data={planDistributionDonut} title="Distribuição de Planos" subtitle="Assinantes por plano" centerLabel="Usuários" />
+          ) : (
+            <Card className="border-white/5 bg-[#111111]">
+              <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Users className="h-4 w-4 text-primary" /> Distribuição de Planos</CardTitle></CardHeader>
+              <CardContent><div className="flex flex-col items-center justify-center py-10 text-center"><div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.05] bg-white/[0.03]"><Users className="h-5 w-5 text-white/[0.15]" /></div><p className="mb-1.5 text-sm font-medium text-zinc-500">Nenhuma distribuição de planos ainda.</p><p className="max-w-xs text-xs leading-relaxed text-zinc-700">As assinaturas aparecerão aqui conforme os usuários escolherem seus planos.</p></div></CardContent>
+            </Card>
+          )}
         </motion.div>
       )}
 
@@ -301,7 +299,13 @@ export function AdminAnalytics() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
-          <LiveCard className="h-full"><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><PieIcon className="h-4 w-4 text-primary" /> Receita por Plano <LivePulse /></CardTitle></CardHeader><CardContent>{isLoading ? <Skeleton className="h-52 w-full rounded-lg bg-white/5" /> : revenueData.length === 0 || revenueData.every((p) => p.mrr === 0) ? <div className="flex h-52 flex-col items-center justify-center"><p className="text-sm text-muted-foreground">Nenhum assinante pago ainda.</p><p className="mt-1 text-xs text-muted-foreground">Faça upgrade de usuários para ver a receita aqui.</p></div> : <><ResponsiveContainer width="100%" height={180}><PieChart><Pie data={planRevenueDisplay} dataKey="mrr" nameKey="plan" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={<PieLabel />}>{planRevenueDisplay.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="none" />)}</Pie><Tooltip content={<CustomTooltip />} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: "#71717a" }} /></PieChart></ResponsiveContainer><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">{planRevenueDisplay.map((p, i) => <div key={p.plan} className="text-center"><p className="text-sm font-bold" style={{ color: PIE_COLORS[i % PIE_COLORS.length] }}>${p.mrr.toLocaleString()}</p><p className="text-[10px] text-muted-foreground">{PLAN_MRR_LABEL[p.plan] ?? `${p.plan} MRR`}</p></div>)}</div></>}</CardContent></LiveCard>
+          {isLoading ? (
+            <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" />
+          ) : planRevenueDonut.length ? (
+            <DomnDonutChart data={planRevenueDonut} title="Receita por Plano" subtitle="Receita recorrente mensal" centerLabel="MRR" />
+          ) : (
+            <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><div className="text-center"><DollarSign className="mx-auto mb-2 h-6 w-6 text-white/10"/><p className="text-sm text-muted-foreground">Nenhum assinante pago ainda.</p><p className="mt-1 text-xs text-muted-foreground">Faça upgrade de usuários para ver a receita aqui.</p></div></Card>
+          )}
         </motion.div>
       </div>
 
