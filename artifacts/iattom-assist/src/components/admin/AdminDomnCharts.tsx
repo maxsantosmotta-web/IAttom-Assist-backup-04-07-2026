@@ -5,11 +5,6 @@ export type DomnLinePoint = { label: string; value: number; secondaryValue?: num
 export type DomnBarPoint = { label: string; value: number; color?: string };
 
 const COLORS = ["#f8d968", "#edc44f", "#d9ad35", "#c49528", "#aa7c1f", "#8f671b", "#745318"];
-const APPROVED_LINE_SHAPE = [
-  0.02, 0.05, 0.03, 0.07, 0.04, 0.08, 0.05, 0.09, 0.06, 0.10,
-  0.07, 0.12, 0.08, 0.10, 0.08, 0.09, 0.08, 0.09, 0.11, 0.18,
-  0.48, 0.22, 0.10, 0.09, 0.10, 0.20, 1.00, 0.28, 0.08, 0.06,
-];
 const numberFmt = (value: number) => Number(value || 0).toLocaleString("pt-BR");
 
 function smoothPath(points: Array<{ x: number; y: number }>) {
@@ -23,15 +18,6 @@ function smoothPath(points: Array<{ x: number; y: number }>) {
   }, "");
 }
 
-function approvedShapeAt(index: number, total: number) {
-  if (total <= 1) return APPROVED_LINE_SHAPE[APPROVED_LINE_SHAPE.length - 1];
-  const position = (index / (total - 1)) * (APPROVED_LINE_SHAPE.length - 1);
-  const left = Math.floor(position);
-  const right = Math.min(APPROVED_LINE_SHAPE.length - 1, Math.ceil(position));
-  const mix = position - left;
-  return APPROVED_LINE_SHAPE[left] * (1 - mix) + APPROVED_LINE_SHAPE[right] * mix;
-}
-
 export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]; title: string; subtitle: string }) {
   const id = useId().replaceAll(":", "");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -39,14 +25,15 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   const width = 760;
   const height = 250;
   const padding = { top: 24, right: 24, bottom: 42, left: 42 };
-  const normalized = useMemo(() => data.map((item) => ({ ...item, value: Number(item.value || 0) })), [data]);
+  const normalized = useMemo(() => data.map((item) => ({ ...item, value: Math.max(0, Number(item.value || 0)) })), [data]);
+  const maxValue = Math.max(1, ...normalized.map((item) => item.value));
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
   const divisor = Math.max(1, normalized.length - 1);
   const points = normalized.map((item, index) => ({
     ...item,
     x: padding.left + (index / divisor) * innerWidth,
-    y: padding.top + innerHeight - approvedShapeAt(index, normalized.length) * innerHeight,
+    y: padding.top + innerHeight - (item.value / maxValue) * innerHeight,
   }));
   const path = smoothPath(points);
   const floor = padding.top + innerHeight;
@@ -76,6 +63,16 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
             {path && <path d={path} className="iattom-flow-halo"/>}
             {path && <path d={path} stroke={`url(#${id}-line)`} className="iattom-flow-trace"/>}
             {path && <path d={path} pathLength="1" className="iattom-flow-energy"/>}
+            {path && (
+              <g className="iattom-moving-point" aria-hidden="true">
+                <circle r="10" className="iattom-moving-point-halo">
+                  <animateMotion dur="8s" repeatCount="indefinite" path={path} calcMode="linear" />
+                </circle>
+                <circle r="3.8" className="iattom-moving-point-core">
+                  <animateMotion dur="8s" repeatCount="indefinite" path={path} calcMode="linear" />
+                </circle>
+              </g>
+            )}
             {latest && <g className="iattom-flow-beat"><circle cx={latest.x} cy={latest.y} r="10"/><circle cx={latest.x} cy={latest.y} r="4"/></g>}
             {active && <g className="domn-active"><line x1={active.x} y1={padding.top} x2={active.x} y2={floor}/><circle cx={active.x} cy={active.y} r="6"/></g>}
             {[0, Math.floor((points.length - 1) / 2), points.length - 1].filter((i, p, a) => i >= 0 && a.indexOf(i) === p).map((i) => <text key={i} x={points[i].x} y={height - 13} textAnchor="middle" className="domn-axis">{points[i].label}</text>)}
