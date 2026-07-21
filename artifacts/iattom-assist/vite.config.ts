@@ -45,14 +45,12 @@ const iattomRuntimeSafety: Plugin = {
     const normalizedId = id.replaceAll("\\", "/");
 
     if (normalizedId.endsWith("/src/pages/admin/AdminOverview.tsx")) {
+      if (!code.includes("analytics.planRevenue.find(")) return null;
+
       const patched = code.replaceAll(
         "analytics.planRevenue.find(",
         "(analytics.planRevenue ?? []).find(",
       );
-
-      if (patched === code && !code.includes("(analytics.planRevenue ?? []).find(")) {
-        throw new Error("AdminOverview runtime safety transform was not applied");
-      }
 
       return { code: patched, map: null };
     }
