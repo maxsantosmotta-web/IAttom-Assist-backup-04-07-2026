@@ -21,17 +21,13 @@ const ORANGE = "#fb923c";
 const ROSE = "#fb7185";
 const AMBER = "#fbbf24";
 
-const PIE_COLORS = [GOLD, PURPLE, EMERALD, BLUE];
+const PIE_COLORS = [BLUE, EMERALD, PURPLE, GOLD];
 const FEATURE_COLORS = [GOLD, PURPLE, EMERALD, BLUE, ORANGE, ROSE, AMBER];
 const PLAN_COLORS: Record<string, string> = {
-  Start: BLUE,
-  Completo: EMERALD,
+  Free: BLUE,
+  Start: EMERALD,
   Premium: PURPLE,
   Pro: GOLD,
-  START: BLUE,
-  COMPLETO: EMERALD,
-  PREMIUM: PURPLE,
-  PRO: GOLD,
 };
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -81,7 +77,12 @@ const FEATURE_PT: Record<string, string> = {
 };
 
 const PLAN_PT_SHORT: Record<string, string> = {
-  free: "Gratuito", pro: "Pro", business: "Completo", agency: "Agência",
+  free: "Free",
+  start: "Start",
+  premium: "Premium",
+  pro: "Pro",
+  business: "Premium",
+  agency: "Pro",
 };
 
 interface CreditAnalytics {
@@ -104,7 +105,14 @@ interface GrowthStats {
   totalReferralCodes: number;
   totalReferralUses: number;
   creditsSpentThisMonth: number;
-  planBreakdown: { free: number; pro: number; business: number; agency: number };
+  planBreakdown: {
+    free: number;
+    start?: number;
+    premium?: number;
+    pro: number;
+    business: number;
+    agency: number;
+  };
 }
 
 function StatTile({ label, value, sub, icon: Icon, color, glow }: { label: string; value: string; sub?: string; icon: React.ElementType; color: string; glow: string }) {
@@ -172,55 +180,49 @@ export function AdminAnalytics() {
     fill: FEATURE_COLORS[i % FEATURE_COLORS.length],
   }));
 
-  const fixedPlanOrder = [
-    { plan: "Start", key: "free" },
-    { plan: "Completo", key: "business" },
-    { plan: "Premium", key: "premium" },
-    { plan: "Pro", key: "pro" },
+  const hasPaidSubscribers = (growthStats?.activeSubscribers ?? 0) > 0;
+  const planDefinitions = [
+    { label: "Free", color: PLAN_COLORS.Free },
+    { label: "Start", color: PLAN_COLORS.Start },
+    { label: "Premium", color: PLAN_COLORS.Premium },
+    { label: "Pro", color: PLAN_COLORS.Pro },
   ];
 
-  const planRevenueDisplay = fixedPlanOrder.map(({ plan, key }) => {
-    const found = (analytics?.planRevenue ?? []).find((p) => p.plan?.toLowerCase() === key);
-    return { plan, mrr: found?.mrr ?? 0, users: found?.users ?? 0 };
+  const revenueByLabel = new Map<string, number>();
+  if (hasPaidSubscribers) {
+    for (const item of analytics?.planRevenue ?? []) {
+      const key = item.plan?.toLowerCase();
+      if (key === "free") revenueByLabel.set("Free", item.mrr ?? 0);
+      if (key === "start") revenueByLabel.set("Start", item.mrr ?? 0);
+      if (key === "premium" || key === "business") revenueByLabel.set("Premium", item.mrr ?? 0);
+      if (key === "pro" || key === "agency") revenueByLabel.set("Pro", item.mrr ?? 0);
+    }
+  }
+
+  const planDistributionDonut = planDefinitions.map((plan) => {
+    let value = 0;
+    if (growthStats && hasPaidSubscribers) {
+      if (plan.label === "Free") value = 0;
+      if (plan.label === "Start") value = growthStats.planBreakdown.start ?? growthStats.planBreakdown.pro ?? 0;
+      if (plan.label === "Premium") value = growthStats.planBreakdown.premium ?? growthStats.planBreakdown.business ?? 0;
+      if (plan.label === "Pro") value = growthStats.planBreakdown.agency ?? 0;
+    }
+    return { label: plan.label, value, color: plan.color };
   });
 
-  const hasPaidSubscribers = (growthStats?.activeSubscribers ?? 0) > 0;
-  const planBar = growthStats && hasPaidSubscribers ? [
-    { name: "START", users: growthStats.planBreakdown.free },
-    { name: "COMPLETO", users: growthStats.planBreakdown.pro },
-    { name: "PREMIUM", users: growthStats.planBreakdown.business },
-    { name: "PRO", users: growthStats.planBreakdown.agency },
-  ].filter((p) => p.users > 0) : [];
-
-  const planDistributionDonut = planBar.map((item) => ({
-    label: item.name,
-    value: item.users,
-    color: PLAN_COLORS[item.name],
+  const planRevenueDonut = planDefinitions.map((plan) => ({
+    label: plan.label,
+    value: revenueByLabel.get(plan.label) ?? 0,
+    color: plan.color,
   }));
-
-  const planRevenueDonut = planRevenueDisplay
-    .filter((item) => item.mrr > 0)
-    .map((item) => ({
-      label: item.plan,
-      value: item.mrr,
-      color: PLAN_COLORS[item.plan],
-    }));
 
   const featureUsageDonut = featureData
     .filter((item) => Number(item.count || 0) > 0)
-    .map((item) => ({
-      label: item.name,
-      value: Number(item.count || 0),
-      color: item.fill,
-    }));
+    .map((item) => ({ label: item.name, value: Number(item.count || 0), color: item.fill }));
 
   const featureSummaryDonut = featureData
     .filter((item) => Number(item.percentage || 0) > 0)
-    .map((item) => ({
-      label: item.name,
-      value: Number(item.percentage || 0),
-      color: item.fill,
-    }));
+    .map((item) => ({ label: item.name, value: Number(item.percentage || 0), color: item.fill }));
 
   return (
     <div className="space-y-8">
@@ -240,9 +242,9 @@ export function AdminAnalytics() {
         <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Receita e Crescimento</p>
         {growthLoading ? <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[0,1,2,3].map((i) => <div key={i} className="h-24 rounded-xl skeleton-shimmer" />)}</div> : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatTile label="Receita Recorrente Mensal" value={`$${growthStats?.mrr?.toLocaleString() ?? 0}`} icon={DollarSign} color="text-amber-300" glow="rgba(245,180,35,.11)" />
+            <StatTile label="Receita Recorrente Mensal" value={`R$ ${(growthStats?.mrr ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} icon={DollarSign} color="text-amber-300" glow="rgba(245,180,35,.11)" />
             <StatTile label="Assinantes Pagos" value={(growthStats?.activeSubscribers ?? 0).toString()} sub={`de ${growthStats?.totalUsers ?? 0} usuários no total`} icon={Users} color="text-emerald-300" glow="rgba(16,185,129,.10)" />
-            <StatTile label="Taxa de Conversão" value={`${growthStats?.conversionRate ?? 0}%`} sub="Gratuito → Pago" icon={TrendingUp} color="text-amber-300" glow="rgba(245,180,35,.10)" />
+            <StatTile label="Taxa de Conversão" value={`${growthStats?.conversionRate ?? 0}%`} sub="Free → Pago" icon={TrendingUp} color="text-amber-300" glow="rgba(245,180,35,.10)" />
             <StatTile label="Taxa de Ativação" value={`${growthStats?.activationRate ?? 0}%`} sub={`${growthStats?.activatedCount ?? 0} usuários usaram IA`} icon={Activity} color="text-cyan-300" glow="rgba(34,211,238,.10)" />
           </div>
         )}
@@ -268,7 +270,7 @@ export function AdminAnalytics() {
               <div className="space-y-2">{growthStats.churnRisk.map((u) => (
                 <div key={u.clerkId} className="flex items-center gap-3">
                   <div className="min-w-0 flex-1"><p className="truncate font-mono text-xs text-zinc-400">{u.clerkId}</p></div>
-                  <Badge className={`px-2 text-[10px] capitalize ${u.plan === "pro" ? "border-primary/20 bg-primary/10 text-primary" : u.plan === "business" ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400" : "border-purple-500/20 bg-purple-500/10 text-purple-400"}`}>{PLAN_PT_SHORT[u.plan] ?? u.plan}</Badge>
+                  <Badge className="border-primary/20 bg-primary/10 px-2 text-[10px] capitalize text-primary">{PLAN_PT_SHORT[u.plan] ?? u.plan}</Badge>
                   <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-red-400" style={{ width: `${u.pct}%` }} /></div>
                   <span className="w-8 text-right text-[10px] font-semibold text-red-400">{u.pct}%</span>
                 </div>
@@ -280,14 +282,7 @@ export function AdminAnalytics() {
 
       {!growthLoading && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}>
-          {planDistributionDonut.length ? (
-            <DomnDonutChart data={planDistributionDonut} title="Distribuição de Planos" subtitle="Assinantes por plano" centerLabel="Usuários" />
-          ) : (
-            <Card className="border-white/5 bg-[#111111]">
-              <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Users className="h-4 w-4 text-primary" /> Distribuição de Planos</CardTitle></CardHeader>
-              <CardContent><div className="flex flex-col items-center justify-center py-10 text-center"><div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.05] bg-white/[0.03]"><Users className="h-5 w-5 text-white/[0.15]" /></div><p className="mb-1.5 text-sm font-medium text-zinc-500">Nenhuma distribuição de planos ainda.</p><p className="max-w-xs text-xs leading-relaxed text-zinc-700">As assinaturas aparecerão aqui conforme os usuários escolherem seus planos.</p></div></CardContent>
-            </Card>
-          )}
+          <DomnDonutChart data={planDistributionDonut} title="Distribuição de Planos" subtitle="Assinantes por plano" centerLabel="Usuários" />
         </motion.div>
       )}
 
@@ -302,23 +297,10 @@ export function AdminAnalytics() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18 }}>
-          {isLoading ? (
-            <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" />
-          ) : featureUsageDonut.length ? (
-            <DomnDonutChart data={featureUsageDonut} title="Uso por Recurso" subtitle="Distribuição de ações" centerLabel="Ações" />
-          ) : (
-            <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><p className="text-sm text-muted-foreground">Sem dados de uso ainda.</p></Card>
-          )}
+          {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : featureUsageDonut.length ? <DomnDonutChart data={featureUsageDonut} title="Uso por Recurso" subtitle="Distribuição de ações" centerLabel="Ações" /> : <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><p className="text-sm text-muted-foreground">Sem dados de uso ainda.</p></Card>}
         </motion.div>
-
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
-          {isLoading ? (
-            <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" />
-          ) : planRevenueDonut.length ? (
-            <DomnDonutChart data={planRevenueDonut} title="Receita por Plano" subtitle="Receita recorrente mensal" centerLabel="MRR" />
-          ) : (
-            <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><div className="text-center"><DollarSign className="mx-auto mb-2 h-6 w-6 text-white/10"/><p className="text-sm text-muted-foreground">Nenhum assinante pago ainda.</p><p className="mt-1 text-xs text-muted-foreground">Faça upgrade de usuários para ver a receita aqui.</p></div></Card>
-          )}
+          {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : <DomnDonutChart data={planRevenueDonut} title="Receita por Plano" subtitle="Receita recorrente mensal" centerLabel="MRR" />}
         </motion.div>
       </div>
 
@@ -336,7 +318,7 @@ export function AdminAnalytics() {
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {creditsData.byFeature.length > 0 && <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }}><Card className="h-full border-white/5 bg-[#111111]"><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Zap className="h-4 w-4 text-primary" /> Consumo por Módulo</CardTitle></CardHeader><CardContent><div className="space-y-2.5">{creditsData.byFeature.map((f, i) => { const label = FEATURE_PT[f.feature ?? ""] ?? f.feature ?? "Desconhecido"; const maxTotal = creditsData.byFeature[0]?.total ?? 1; const pct = Math.round((f.total / maxTotal) * 100); return <div key={f.feature ?? i} className="flex items-center gap-3"><p className="w-36 shrink-0 truncate text-xs text-muted-foreground">{label}</p><div className="h-2 flex-1 rounded-full bg-white/5"><div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: FEATURE_COLORS[i % FEATURE_COLORS.length] }} /></div><p className="w-12 shrink-0 text-right text-xs font-semibold text-white">{f.total.toLocaleString("pt-BR")}</p><p className="w-12 shrink-0 text-right text-xs text-muted-foreground">{f.ops} ops</p></div>; })}</div></CardContent></Card></motion.div>}
-            {creditsData.byPlan.length > 0 && <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.32 }}><Card className="h-full border-white/5 bg-[#111111]"><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Users className="h-4 w-4 text-primary" /> Consumo por Plano</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={180}><BarChart data={creditsData.byPlan.map((p) => ({ ...p, planLabel: PLAN_PT_SHORT[p.plan] ?? p.plan }))} margin={{ top: 4, right: 8, left: -16, bottom: 0 }} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} /><XAxis type="number" tick={{ fill: "#71717a", fontSize: 10 }} /><YAxis type="category" dataKey="planLabel" tick={{ fill: "#71717a", fontSize: 11 }} width={80} /><Tooltip content={<CustomTooltip />} /><Bar dataKey="total" name="Créditos" radius={[0,4,4,0]}>{creditsData.byPlan.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}</Bar></BarChart></ResponsiveContainer><div className="mt-2 grid grid-cols-2 gap-2">{creditsData.byPlan.map((p, i) => <div key={p.plan} className="flex items-center gap-2 text-xs"><span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} /><span className="truncate text-zinc-400">{PLAN_PT_SHORT[p.plan] ?? p.plan}</span><span className="ml-auto text-zinc-600">{p.userCount} usr</span></div>)}</div></CardContent></Card></motion.div>}
+            {creditsData.byPlan.length > 0 && <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.32 }}><Card className="h-full border-white/5 bg-[#111111]"><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Users className="h-4 w-4 text-primary" /> Consumo por Plano</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={180}><BarChart data={creditsData.byPlan.map((p) => ({ ...p, planLabel: PLAN_PT_SHORT[p.plan] ?? p.plan }))} margin={{ top: 4, right: 8, left: -16, bottom: 0 }} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} /><XAxis type="number" tick={{ fill: "#71717a", fontSize: 10 }} /><YAxis type="category" dataKey="planLabel" tick={{ fill: "#71717a", fontSize: 11 }} width={80} /><Tooltip content={<CustomTooltip />} /><Bar dataKey="total" name="Créditos" radius={[0,4,4,0]}>{creditsData.byPlan.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}</Bar></BarChart></ResponsiveContainer></CardContent></Card></motion.div>}
           </div>
           {creditsData.byDay.length > 0 && <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.34 }}><Card className="border-white/5 bg-[#111111]"><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm font-semibold text-white"><Activity className="h-4 w-4 text-primary" /> Consumo Diário de Créditos</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={180}><AreaChart data={creditsData.byDay.map((d) => ({ ...d, dayLabel: new Date(d.day).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) }))} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}><defs><linearGradient id="credGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={GOLD} stopOpacity={0.3} /><stop offset="95%" stopColor={GOLD} stopOpacity={0.02} /></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" /><XAxis dataKey="dayLabel" tick={{ fill: "#71717a", fontSize: 10 }} interval="preserveStartEnd" /><YAxis tick={{ fill: "#71717a", fontSize: 10 }} /><Tooltip content={<CustomTooltip />} /><Area type="monotone" dataKey="total" name="Créditos" stroke={GOLD} strokeWidth={2} fill="url(#credGrad)" dot={false} /></AreaChart></ResponsiveContainer></CardContent></Card></motion.div>}
         </>
