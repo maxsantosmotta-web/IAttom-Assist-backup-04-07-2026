@@ -33,46 +33,50 @@
 .domn-chart-card header strong { color: #f4f4f5; font-size: 14px; }
 .domn-current { display: grid; justify-items: end; }
 .domn-current small { color: #7c7f89; font-size: 10px; }
-.domn-current strong { color: #d7b65d !important; font-size: 18px !important; }
+.domn-current strong { color: #f6c93f !important; font-size: 18px !important; }
 
 .domn-line-stage { position: relative; z-index: 2; }
 .domn-line-stage svg { width: 100%; touch-action: none; cursor: crosshair; }
 .domn-grid { stroke: rgba(255,255,255,.045); stroke-width: 1; }
 .domn-axis { fill: #62656e; font-size: 10px; }
-.domn-active line { stroke: rgba(255,255,255,.18); stroke-dasharray: 4 4; }
-.domn-active circle { fill: #fff; stroke: #d7b65d; stroke-width: 2; }
+.domn-active line { stroke: rgba(246,201,63,.28); stroke-dasharray: 4 4; }
+.domn-active circle { fill: #fff6bf; stroke: #f6c93f; stroke-width: 3; }
 
-.iattom-flow-area { opacity: .72; }
+.iattom-flow-area {
+  opacity: .88;
+}
 .iattom-flow-halo {
   fill: none;
-  stroke: rgba(78,159,209,.20);
-  stroke-width: 11;
-  filter: blur(8px);
-  opacity: .6;
+  stroke: rgba(246,201,63,.48);
+  stroke-width: 24;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: blur(11px);
+  opacity: .92;
 }
 .iattom-flow-trace {
   fill: none;
-  stroke-width: 3.2;
+  stroke-width: 8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 5px rgba(78,159,209,.22));
+  filter: drop-shadow(0 0 4px rgba(255,216,106,.95)) drop-shadow(0 0 12px rgba(246,201,63,.72));
 }
 .iattom-flow-energy {
   fill: none;
-  stroke: rgba(255,255,255,.88);
-  stroke-width: 2.1;
+  stroke: rgba(255,242,171,.98);
+  stroke-width: 2.6;
   stroke-linecap: round;
   stroke-dasharray: .018 .982;
   animation: iattom-flow-run 3.4s linear infinite;
-  filter: drop-shadow(0 0 7px rgba(215,182,93,.72));
+  filter: drop-shadow(0 0 8px rgba(255,216,106,.95));
 }
 .iattom-flow-beat {
   transform-box: fill-box;
   transform-origin: center;
   animation: iattom-beat 1.8s ease-in-out infinite;
 }
-.iattom-flow-beat circle:first-child { fill: rgba(127,197,165,.12); }
-.iattom-flow-beat circle:last-child { fill: #7fc5a5; }
+.iattom-flow-beat circle:first-child { fill: rgba(246,201,63,.24); }
+.iattom-flow-beat circle:last-child { fill: #fff4b0; stroke: #f6c93f; stroke-width: 2; }
 
 .domn-tooltip {
   position: absolute;
