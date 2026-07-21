@@ -181,18 +181,18 @@ export function AdminActivity() {
 
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.06 }} className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {([
-          { label: "Hoje", value: isLoading ? null : kpis.today, sub: "ações registradas", icon: Zap, color: "text-amber-300 bg-amber-400/10 border-amber-300/20", glow: "rgba(245, 180, 35, .22)" },
-          { label: "Últimos 7 dias", value: isLoading ? null : kpis.week, sub: "no período", icon: CalendarDays, color: "text-cyan-300 bg-cyan-400/10 border-cyan-300/20", glow: "rgba(34, 211, 238, .2)" },
-          { label: "Últimos 30 dias", value: isLoading ? null : kpis.month, sub: "no período", icon: TrendingUp, color: "text-violet-300 bg-violet-400/10 border-violet-300/20", glow: "rgba(139, 92, 246, .2)" },
-          { label: "Média Diária", value: isLoading ? null : kpis.avgDaily, sub: "ações/dia (7 dias)", icon: BarChart2, color: "text-emerald-300 bg-emerald-400/10 border-emerald-300/20", glow: "rgba(16, 185, 129, .2)" },
+          { label: "Hoje", value: isLoading ? null : kpis.today, sub: "ações registradas", icon: Zap, color: "text-amber-300 bg-amber-400/10 border-amber-300/20", glow: "rgba(245, 180, 35, .11)" },
+          { label: "Últimos 7 dias", value: isLoading ? null : kpis.week, sub: "no período", icon: CalendarDays, color: "text-cyan-300 bg-cyan-400/10 border-cyan-300/20", glow: "rgba(34, 211, 238, .10)" },
+          { label: "Últimos 30 dias", value: isLoading ? null : kpis.month, sub: "no período", icon: TrendingUp, color: "text-violet-300 bg-violet-400/10 border-violet-300/20", glow: "rgba(139, 92, 246, .10)" },
+          { label: "Média Diária", value: isLoading ? null : kpis.avgDaily, sub: "ações/dia (7 dias)", icon: BarChart2, color: "text-emerald-300 bg-emerald-400/10 border-emerald-300/20", glow: "rgba(16, 185, 129, .10)" },
         ] as const).map(({ label, value, sub, icon: Icon, color, glow }) => (
           <Card
             key={label}
-            className="relative overflow-hidden border-white/[0.07] bg-[#0d1015] shadow-[inset_0_1px_0_rgba(255,255,255,.025),0_18px_45px_rgba(0,0,0,.24)] transition-colors hover:border-white/10"
-            style={{ backgroundImage: `radial-gradient(circle at 20% 18%, ${glow}, transparent 48%), linear-gradient(135deg, rgba(255,255,255,.018), transparent 55%)` }}
+            className="relative overflow-hidden border-white/[0.065] bg-[#0d1015] shadow-[inset_0_1px_0_rgba(255,255,255,.02),0_14px_36px_rgba(0,0,0,.20)] transition-colors hover:border-white/10"
+            style={{ backgroundImage: `radial-gradient(circle at 20% 18%, ${glow}, transparent 56%), linear-gradient(135deg, rgba(255,255,255,.012), transparent 60%)` }}
           >
             <CardContent className="relative p-5">
-              <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg border shadow-[0_0_20px_currentColor] ${color}`}><Icon className="h-4 w-4" /></div>
+              <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg border shadow-[0_0_10px_currentColor] ${color}`}><Icon className="h-4 w-4" /></div>
               {value === null ? <Skeleton className="mb-1 h-8 w-16 bg-white/5" /> : <p className="mb-0.5 text-2xl font-bold text-white">{value}</p>}
               <p className="mb-0.5 text-xs font-semibold text-white">{label}</p>
               <p className="text-xs text-muted-foreground">{sub}</p>
