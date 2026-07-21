@@ -51,9 +51,7 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
 
   return (
     <section className="domn-chart-card domn-line-card">
-      <header>
-        <div><span>{subtitle}</span><strong>{title}</strong></div>
-      </header>
+      <header><div><span>{subtitle}</span><strong>{title}</strong></div></header>
       {points.length ? (
         <div className="domn-line-stage">
           <svg viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
@@ -70,26 +68,12 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
             {latest && <g className="domn-beat"><circle cx={latest.x} cy={latest.y} r="8" fill="rgba(100,230,166,.16)"/><circle cx={latest.x} cy={latest.y} r="3.5" fill="#64e6a6"/></g>}
             {[0, Math.floor((points.length - 1) / 2), points.length - 1].filter((i, p, a) => i >= 0 && a.indexOf(i) === p).map((i) => <text key={i} x={points[i].x} y={height - 13} textAnchor="middle" className="domn-axis">{points[i].label}</text>)}
           </svg>
-
           <div className="domn-recharts-overlay">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={normalized} margin={padding}>
-                <XAxis dataKey="label" hide />
-                <YAxis domain={[0, maxValue]} hide />
-                <Tooltip
-                  content={<ActivityTooltip />}
-                  cursor={{ stroke: "rgba(255,255,255,.28)", strokeDasharray: "4 4" }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  name="Movimentos"
-                  stroke="transparent"
-                  strokeWidth={1}
-                  dot={false}
-                  activeDot={{ r: 7, fill: "#ffffff", stroke: "#3fd7ff", strokeWidth: 3 }}
-                  isAnimationActive={false}
-                />
+                <XAxis dataKey="label" hide /><YAxis domain={[0, maxValue]} hide />
+                <Tooltip content={<ActivityTooltip />} cursor={{ stroke: "rgba(255,255,255,.28)", strokeDasharray: "4 4" }} />
+                <Line type="monotone" dataKey="value" name="Movimentos" stroke="transparent" strokeWidth={1} dot={false} activeDot={{ r: 7, fill: "#ffffff", stroke: "#3fd7ff", strokeWidth: 3 }} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -103,15 +87,17 @@ export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total" }:
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const normalized = useMemo(() => data.map((item, index) => ({ ...item, value: Math.max(0, Number(item.value || 0)), color: item.color || COLORS[index % COLORS.length] })), [data]);
   const total = normalized.reduce((sum, item) => sum + item.value, 0);
+  const visualValues = total > 0 ? normalized.map((item) => item.value) : normalized.map(() => 1);
+  const visualTotal = visualValues.reduce((sum, value) => sum + value, 0);
   let cursor = 0;
-  const segments = normalized.map((item) => {
-    const start = total > 0 ? (cursor / total) * 360 : 0;
-    cursor += item.value;
-    const end = total > 0 ? (cursor / total) * 360 : 0;
+  const segments = normalized.map((item, index) => {
+    const start = visualTotal > 0 ? (cursor / visualTotal) * 360 : 0;
+    cursor += visualValues[index];
+    const end = visualTotal > 0 ? (cursor / visualTotal) * 360 : 0;
     return `${item.color} ${start}deg ${end}deg`;
   });
   const active = activeIndex === null ? null : normalized[activeIndex];
-  const gradient = total > 0 ? `conic-gradient(${segments.join(", ")})` : "conic-gradient(#252525 0deg 360deg)";
+  const gradient = normalized.length ? `conic-gradient(${segments.join(", ")})` : "conic-gradient(#252525 0deg 360deg)";
 
   return (
     <section className="domn-chart-card domn-donut-card">
