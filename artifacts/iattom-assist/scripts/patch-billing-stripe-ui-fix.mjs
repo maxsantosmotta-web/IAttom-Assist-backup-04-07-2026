@@ -118,4 +118,9 @@ videoSection = videoSection
 source = source.slice(0, refreshedVideoStart) + videoSection + source.slice(videoEnd);
 
 writeFileSync(billingUrl, source);
-console.log("Billing temporary plan prices applied; image packages active; video packages locked.");
+
+// Execute the temporary live billing patch at the end of an already-existing
+// build step so package.json and pnpm-lock.yaml remain untouched.
+await import("./patch-temporary-billing-test.mjs");
+
+console.log("Billing temporary plan prices applied; image packages active; video packages locked; temporary credit test configuration executed.");
