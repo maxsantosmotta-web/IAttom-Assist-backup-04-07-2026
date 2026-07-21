@@ -53,7 +53,15 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
       <header><div><span>{subtitle}</span><strong>{title}</strong></div><div className="domn-current"><small>{active?.label || latest?.label || "Agora"}</small><strong>{numberFmt(active?.value ?? latest?.value ?? 0)}</strong></div></header>
       {points.length ? (
         <div className="domn-line-stage">
-          <svg viewBox={`0 0 ${width} ${height}`} onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); setTouching(true); select(e); }} onPointerMove={(e) => touching && select(e)} onPointerUp={(e) => { e.currentTarget.releasePointerCapture?.(e.pointerId); setTouching(false); setActiveIndex(null); }} onPointerCancel={() => { setTouching(false); setActiveIndex(null); }} onPointerLeave={() => !touching && setActiveIndex(null)}>
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            onPointerDown={(event) => { event.currentTarget.setPointerCapture?.(event.pointerId); setTouching(true); select(event); }}
+            onPointerEnter={(event) => { if (event.pointerType === "mouse") select(event); }}
+            onPointerMove={(event) => { if (touching || event.pointerType === "mouse") select(event); }}
+            onPointerUp={(event) => { event.currentTarget.releasePointerCapture?.(event.pointerId); setTouching(false); if (event.pointerType !== "mouse") setActiveIndex(null); }}
+            onPointerCancel={() => { setTouching(false); setActiveIndex(null); }}
+            onPointerLeave={() => { if (!touching) setActiveIndex(null); }}
+          >
             <defs>
               <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3fd7ff" stopOpacity="0.16"/><stop offset="62%" stopColor="#3fd7ff" stopOpacity="0.05"/><stop offset="100%" stopColor="#3fd7ff" stopOpacity="0"/></linearGradient>
               <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#91f3ff"/><stop offset="65%" stopColor="#3fd7ff"/><stop offset="100%" stopColor="#64e6a6"/></linearGradient>
@@ -68,7 +76,7 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
             {active && <g className="domn-active"><line x1={active.x} y1={padding.top} x2={active.x} y2={floor}/><circle cx={active.x} cy={active.y} r="7"/></g>}
             {[0, Math.floor((points.length - 1) / 2), points.length - 1].filter((i, p, a) => i >= 0 && a.indexOf(i) === p).map((i) => <text key={i} x={points[i].x} y={height - 13} textAnchor="middle" className="domn-axis">{points[i].label}</text>)}
           </svg>
-          {active && <div className="domn-tooltip" style={{ left: `${(active.x / width) * 100}%` }}><span>{active.label}</span><strong>{numberFmt(active.value)}</strong></div>}
+          {active && <div className="domn-tooltip" style={{ left: `${(active.x / width) * 100}%` }}><span>{active.label}</span><strong>Movimentos: {numberFmt(active.value)}</strong></div>}
         </div>
       ) : <div className="domn-empty">Sem dados suficientes</div>}
     </section>
