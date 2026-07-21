@@ -21,12 +21,13 @@ const MODULE_COLORS: Record<string, string> = {
 };
 
 const FALLBACK_COLORS = ["#f4c95d", "#3fd7ff", "#ff5cc8", "#64e6a6", "#9b82ff", "#ff9f5a", "#ff657f"];
+const THIRTY_DAYS_MS = 30 * 86400000;
+const TIMELINE_BUCKETS = 72;
 
 function dayKey(d: Date) { return d.toISOString().slice(0, 10); }
-function shortDay(iso: string) {
-  const [,, dd] = iso.split("-");
-  const d = new Date(`${iso}T12:00:00`);
-  const month = d.toLocaleString("pt-BR", { month: "short" }).replace(".", "");
+function shortDayFromDate(date: Date) {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const month = date.toLocaleString("pt-BR", { month: "short" }).replace(".", "");
   return `${dd}/${month}`;
 }
 
@@ -74,16 +75,24 @@ export function AdminActivity() {
 
   const { data: activity, isLoading, isFetching, refetch } = useListAdminActivity(
     { limit: 100 },
-    { query: { queryKey: getListAdminActivityQueryKey({ limit: 100 }), staleTime: 0 } },
+    {
+      query: {
+        queryKey: getListAdminActivityQueryKey({ limit: 100 }),
+        staleTime: 0,
+        refetchInterval: 15000,
+        refetchIntervalInBackground: true,
+      },
+    },
   );
 
   const items = activity ?? [];
 
   const { kpis, dailyChart, moduleChart, actionChart } = useMemo(() => {
     const now = new Date();
+    const nowMs = now.getTime();
     const todayKey = dayKey(now);
-    const week7ago = new Date(now.getTime() - 7 * 86400000);
-    const month30ago = new Date(now.getTime() - 30 * 86400000);
+    const week7ago = new Date(nowMs - 7 * 86400000);
+    const month30ago = new Date(nowMs - THIRTY_DAYS_MS);
     let today = 0, week = 0, month = 0;
 
     for (const item of items) {
@@ -94,22 +103,28 @@ export function AdminActivity() {
     }
 
     const spanDays = items.length
-      ? Math.max(1, Math.ceil((now.getTime() - new Date(items[items.length - 1].createdAt).getTime()) / 86400000))
+      ? Math.max(1, Math.ceil((nowMs - new Date(items[items.length - 1].createdAt).getTime()) / 86400000))
       : 1;
     const avgDaily = week > 0 ? (week / Math.min(7, spanDays)).toFixed(1) : "0";
 
-    const dailyMap: Record<string, number> = {};
-    const days30: string[] = [];
-    for (let i = 29; i >= 0; i--) {
-      const key = dayKey(new Date(now.getTime() - i * 86400000));
-      days30.push(key);
-      dailyMap[key] = 0;
-    }
+    const timelineStart = nowMs - THIRTY_DAYS_MS;
+    const bucketSize = THIRTY_DAYS_MS / TIMELINE_BUCKETS;
+    const bucketValues = Array.from({ length: TIMELINE_BUCKETS }, () => 0);
+
     for (const item of items) {
-      const key = dayKey(new Date(item.createdAt));
-      if (key in dailyMap) dailyMap[key]++;
+      const eventTime = new Date(item.createdAt).getTime();
+      if (!Number.isFinite(eventTime) || eventTime < timelineStart || eventTime > nowMs) continue;
+      const bucketIndex = Math.min(
+        TIMELINE_BUCKETS - 1,
+        Math.max(0, Math.floor((eventTime - timelineStart) / bucketSize)),
+      );
+      bucketValues[bucketIndex] += 1;
     }
-    const dailyChart = days30.map((key) => ({ label: shortDay(key), value: dailyMap[key] }));
+
+    const dailyChart = bucketValues.map((value, index) => {
+      const bucketTime = new Date(timelineStart + index * bucketSize);
+      return { label: shortDayFromDate(bucketTime), value };
+    });
 
     const moduleMap: Record<string, { count: number; rawKey: string }> = {};
     for (const item of items) {
