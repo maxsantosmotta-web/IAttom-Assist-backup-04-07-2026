@@ -1,4 +1,5 @@
 import { useId, useMemo, useState } from "react";
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import "./admin-domn-charts.css";
 
 export type DomnLinePoint = { label: string; value: number; secondaryValue?: number | null };
@@ -18,10 +19,18 @@ function smoothPath(points: Array<{ x: number; y: number }>) {
   }, "");
 }
 
+function ActivityTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-xs shadow-xl">
+      {label && <p className="text-muted-foreground mb-1 font-medium">{label}</p>}
+      <p className="font-semibold text-cyan-300">Movimentos: {numberFmt(payload[0]?.value ?? 0)}</p>
+    </div>
+  );
+}
+
 export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]; title: string; subtitle: string }) {
   const id = useId().replaceAll(":", "");
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [touching, setTouching] = useState(false);
   const width = 760;
   const height = 250;
   const padding = { top: 24, right: 24, bottom: 42, left: 42 };
@@ -38,17 +47,7 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   const path = smoothPath(points);
   const floor = padding.top + innerHeight;
   const areaPath = points.length ? `${path} L ${points[points.length - 1].x} ${floor} L ${points[0].x} ${floor} Z` : "";
-  const active = activeIndex === null ? null : points[Math.min(activeIndex, Math.max(0, points.length - 1))];
   const latest = points[points.length - 1];
-  const tooltipSide = active && active.x > width * 0.66 ? "left" : "right";
-  const tooltipTop = active ? Math.max(14, Math.min(82, (active.y / height) * 100)) : 0;
-
-  function select(event: React.PointerEvent<SVGSVGElement>) {
-    if (!points.length) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width)));
-    setActiveIndex(Math.round(ratio * (points.length - 1)));
-  }
 
   return (
     <section className="domn-chart-card domn-line-card">
@@ -57,23 +56,7 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
       </header>
       {points.length ? (
         <div className="domn-line-stage">
-          <svg
-            viewBox={`0 0 ${width} ${height}`}
-            onPointerDown={(event) => {
-              event.currentTarget.setPointerCapture?.(event.pointerId);
-              setTouching(true);
-              select(event);
-            }}
-            onPointerMove={(event) => {
-              if (touching) select(event);
-            }}
-            onPointerUp={(event) => {
-              event.currentTarget.releasePointerCapture?.(event.pointerId);
-              setTouching(false);
-              select(event);
-            }}
-            onPointerCancel={() => setTouching(false)}
-          >
+          <svg viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
             <defs>
               <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3fd7ff" stopOpacity="0.16"/><stop offset="62%" stopColor="#3fd7ff" stopOpacity="0.05"/><stop offset="100%" stopColor="#3fd7ff" stopOpacity="0"/></linearGradient>
               <linearGradient id={`${id}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#91f3ff"/><stop offset="65%" stopColor="#3fd7ff"/><stop offset="100%" stopColor="#64e6a6"/></linearGradient>
@@ -85,18 +68,31 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
             {path && <path d={path} pathLength="1" className="domn-energy"/>}
             {path && <g className="domn-moving-point" aria-hidden="true"><circle r="10" className="domn-moving-point-halo"><animateMotion dur="8s" repeatCount="indefinite" path={path} calcMode="linear"/></circle><circle r="3.8" className="domn-moving-point-core"><animateMotion dur="8s" repeatCount="indefinite" path={path} calcMode="linear"/></circle></g>}
             {latest && <g className="domn-beat"><circle cx={latest.x} cy={latest.y} r="8" fill="rgba(100,230,166,.16)"/><circle cx={latest.x} cy={latest.y} r="3.5" fill="#64e6a6"/></g>}
-            {active && <g className="domn-active"><line x1={active.x} y1={padding.top} x2={active.x} y2={floor}/><circle cx={active.x} cy={active.y} r="7"/></g>}
             {[0, Math.floor((points.length - 1) / 2), points.length - 1].filter((i, p, a) => i >= 0 && a.indexOf(i) === p).map((i) => <text key={i} x={points[i].x} y={height - 13} textAnchor="middle" className="domn-axis">{points[i].label}</text>)}
           </svg>
-          {active && (
-            <div
-              className={`domn-tooltip domn-tooltip-${tooltipSide}`}
-              style={{ left: `${(active.x / width) * 100}%`, top: `${tooltipTop}%` }}
-            >
-              <span>{active.label}</span>
-              <div className="domn-tooltip-value"><i /><strong>Movimentos: {numberFmt(active.value)}</strong></div>
-            </div>
-          )}
+
+          <div className="domn-recharts-overlay">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={normalized} margin={padding}>
+                <XAxis dataKey="label" hide />
+                <YAxis domain={[0, maxValue]} hide />
+                <Tooltip
+                  content={<ActivityTooltip />}
+                  cursor={{ stroke: "rgba(255,255,255,.28)", strokeDasharray: "4 4" }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  name="Movimentos"
+                  stroke="transparent"
+                  strokeWidth={1}
+                  dot={false}
+                  activeDot={{ r: 7, fill: "#ffffff", stroke: "#3fd7ff", strokeWidth: 3 }}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       ) : <div className="domn-empty">Sem dados suficientes</div>}
     </section>
