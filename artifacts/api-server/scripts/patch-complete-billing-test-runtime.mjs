@@ -98,10 +98,28 @@ rewriteOneTimeCheckout(
 );
 
 service = service
-  .replace('success_url: `${billingUrl}?payment=success`,', 'success_url: `${billingUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`,')
+  .replace(/const APP_ORIGIN =[\s\S]*?const BASE_PATH =/, `const APP_ORIGIN = (process.env.APP_PUBLIC_URL || "https://iattomassist.com.br").replace(/\\\/$/, "");\n\nconst BASE_PATH =`)
+  .replaceAll('success_url: `${billingUrl}?payment=success`,', 'success_url: `${billingUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`,')
   .replaceAll('success_url: `${billingUrl}?payment=credits_success`,', 'success_url: `${billingUrl}?payment=credits_success&session_id={CHECKOUT_SESSION_ID}`,')
-  .replace('success_url: `${billingUrl}?payment=video_success`,', 'success_url: `${billingUrl}?payment=video_success&session_id={CHECKOUT_SESSION_ID}`,');
+  .replaceAll('success_url: `${billingUrl}?payment=video_success`,', 'success_url: `${billingUrl}?payment=video_success&session_id={CHECKOUT_SESSION_ID}`,');
 write(stripeServicePath, service);
+
+const creditsRoutePath = new URL("../src/routes/credits.ts", import.meta.url);
+let creditsRoute = read(creditsRoutePath);
+if (!creditsRoute.includes('getUncachableStripeClient')) {
+  creditsRoute = creditsRoute.replace(
+    'import { getOrCreateUserFromClerk } from "../lib/userSync";',
+    'import { getOrCreateUserFromClerk } from "../lib/userSync";\nimport { getUncachableStripeClient } from "../lib/stripeClient";\nimport { reconcileCheckoutSession } from "../lib/webhookHandlers";',
+  );
+}
+
+const balanceAnchor = `  const plan = user.plan as keyof typeof PLAN_CREDITS;`;
+if (!creditsRoute.includes("recover pending paid package sessions")) {
+  const recoveryBlock = `  // Best-effort recovery for paid package sessions when Stripe could not return to the app.\n  // Reconciliation is idempotent through stripeSessionId, so repeated balance reads never duplicate credits.\n  if (user.stripeCustomerId) {\n    try {\n      const stripe = await getUncachableStripeClient();\n      const sessions = await stripe.checkout.sessions.list({ customer: user.stripeCustomerId, limit: 10 });\n      const recoverable = sessions.data.filter((session) => {\n        const type = session.metadata?.type;\n        return session.mode === "payment"\n          && session.payment_status === "paid"\n          && session.metadata?.clerkUserId === clerkUserId\n          && ["credit_pack", "credit_purchase", "creative_pack"].includes(type ?? "");\n      });\n      for (const session of recoverable) {\n        await reconcileCheckoutSession(session.id);\n      }\n      if (recoverable.length > 0) {\n        const [refreshed] = await db.select().from(users).where(eq(users.clerkId, clerkUserId));\n        if (refreshed) user = refreshed;\n      }\n    } catch (recoveryError) {\n      req.log.warn({ recoveryError, clerkUserId }, "credits/balance: paid package recovery failed");\n    }\n  }\n\n`;
+  if (!creditsRoute.includes(balanceAnchor)) throw new Error("credits balance anchor not found");
+  creditsRoute = creditsRoute.replace(balanceAnchor, recoveryBlock + balanceAnchor);
+}
+write(creditsRoutePath, creditsRoute);
 
 const webhookPath = new URL("../src/lib/webhookHandlers.ts", import.meta.url);
 let webhook = read(webhookPath);
@@ -129,4 +147,4 @@ webhook = webhook
   );
 write(webhookPath, webhook);
 
-console.log("Complete billing test runtime applied last: temporary package values override official Stripe catalog prices.");
+console.log("Complete billing test runtime applied last: public Stripe returns, temporary prices and paid package recovery are aligned.");
