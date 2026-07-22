@@ -100,6 +100,12 @@ if (!source.includes('getUncachableStripeClient')) {
     'import { reconcileCheckoutSession } from "../lib/webhookHandlers.js";\nimport { getUncachableStripeClient } from "../lib/stripeClient.js";',
   );
 }
+if (!source.includes('creditsTransactions')) {
+  source = source.replace(
+    'import { db, users } from "@workspace/db";',
+    'import { db, users, creditsTransactions } from "@workspace/db";',
+  );
+}
 
 const latestMarker = 'router.post(\n  "/stripe/reconcile-latest"';
 if (!source.includes(latestMarker)) {
@@ -113,26 +119,94 @@ if (!source.includes(latestMarker)) {
   async (req: Request, res: Response) => {
     const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
     const [user] = await db.select().from(users).where(eq(users.clerkId, clerkUserId));
-    if (!user?.stripeCustomerId) {
-      return res.status(404).json({ error: "Cliente Stripe não encontrado" });
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
     }
 
     try {
       const stripe = await getUncachableStripeClient();
-      const sessions = await stripe.checkout.sessions.list({
-        customer: user.stripeCustomerId,
-        limit: 10,
-      });
-      const latest = sessions.data.find(
-        (session) => session.mode === "subscription" && session.status === "complete" && Boolean(session.subscription),
-      );
-      if (!latest) {
-        return res.status(404).json({ error: "Assinatura concluída não encontrada" });
+      let customerId = user.stripeCustomerId;
+
+      if (!customerId) {
+        const customers = await stripe.customers.list({ email: user.email, limit: 20 });
+        const customer = customers.data.find((item) => item.metadata?.clerkUserId === clerkUserId) ?? customers.data[0];
+        if (!customer) {
+          return res.status(404).json({ error: "Cliente Stripe não encontrado" });
+        }
+        customerId = customer.id;
+        await db.update(users)
+          .set({ stripeCustomerId: customerId, updatedAt: new Date() })
+          .where(eq(users.clerkId, clerkUserId));
       }
-      const result = await reconcileCheckoutSession(latest.id);
-      return res.json(result);
+
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "all",
+        limit: 20,
+      });
+      const active = subscriptions.data
+        .filter((subscription) => subscription.status === "active" || subscription.status === "trialing")
+        .sort((a, b) => b.created - a.created)[0];
+
+      if (!active) {
+        return res.status(404).json({ error: "Assinatura ativa não encontrada" });
+      }
+
+      const firstItem = active.items.data[0];
+      let planKey = active.metadata?.planKey || (firstItem ? ALLOWED_PLAN_PRICE_IDS.get(firstItem.price.id) : undefined);
+
+      if (!planKey && firstItem) {
+        const productId = typeof firstItem.price.product === "string"
+          ? firstItem.price.product
+          : firstItem.price.product.id;
+        const product = await stripe.products.retrieve(productId);
+        planKey = product.metadata?.plan;
+      }
+
+      if (planKey !== "pro" && planKey !== "business" && planKey !== "agency") {
+        return res.status(422).json({ error: "Plano da assinatura não identificado" });
+      }
+
+      const balanceBefore = user.credits ?? 0;
+      await db.update(users)
+        .set({
+          plan: planKey,
+          credits: 20,
+          creativeCredits: 40,
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: active.id,
+          stripeSubscriptionStatus: active.status,
+          planSelected: true,
+          helpMessagesUsed: 0,
+          helpUsedResetAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.clerkId, clerkUserId));
+
+      if (balanceBefore !== 20) {
+        await db.insert(creditsTransactions).values({
+          clerkUserId,
+          amount: 20 - balanceBefore,
+          type: "credit",
+          description: "Assinatura paga reconciliada — créditos do plano ativados",
+          balanceBefore,
+          balanceAfter: 20,
+        });
+      }
+
+      req.log.info(
+        { clerkUserId, customerId, subscriptionId: active.id, planKey },
+        "Active Stripe subscription reconciled directly",
+      );
+      return res.json({
+        ok: true,
+        plan: planKey,
+        credits: 20,
+        creativeCredits: 40,
+        subscriptionId: active.id,
+      });
     } catch (err) {
-      req.log.error({ err }, "Latest checkout reconciliation failed");
+      req.log.error({ err, clerkUserId }, "Latest checkout reconciliation failed");
       return res.status(500).json({ error: "Falha ao reconciliar a assinatura" });
     }
   },
@@ -158,7 +232,16 @@ webhook = webhook
   pro: 40,
   business: 40,
   agency: 40,
-};`);
+};`)
+  .replace(
+    "    const sync = await getStripeSync();\n    await sync.processWebhook(payload, signature);",
+    `    try {
+      const sync = await getStripeSync();
+      await sync.processWebhook(payload, signature);
+    } catch (syncError) {
+      logger.warn({ syncError }, "Stripe auxiliary sync failed; continuing IAttom billing logic");
+    }`,
+  );
 fs.writeFileSync(webhookPath, webhook);
 
 const stripeServicePath = new URL("../src/lib/stripeService.ts", import.meta.url);
@@ -169,4 +252,58 @@ stripeService = stripeService
   .replace('success_url: `${billingUrl}?payment=video_success`,', 'success_url: `${billingUrl}?payment=video_success&session_id={CHECKOUT_SESSION_ID}`,');
 fs.writeFileSync(stripeServicePath, stripeService);
 
-console.log("Temporary Stripe plans, checkout reconciliation, and 20+40 test credits applied");
+const authRoutesPath = new URL("../src/routes/authRoutes.ts", import.meta.url);
+let authRoutes = fs.readFileSync(authRoutesPath, "utf8");
+if (!authRoutes.includes('getUncachableStripeClient')) {
+  authRoutes = authRoutes.replace(
+    'import { sendOtpEmail } from "../lib/email";',
+    'import { sendOtpEmail } from "../lib/email";\nimport { getUncachableStripeClient } from "../lib/stripeClient.js";',
+  );
+}
+const oldProtection = `  const protectedPaidStatuses = new Set(["active", "trialing", "past_due"]);
+  const hasProtectedPaidSubscription =
+    user.plan !== "free" &&
+    !!user.stripeSubscriptionId &&
+    !!user.stripeSubscriptionStatus &&
+    protectedPaidStatuses.has(user.stripeSubscriptionStatus);
+
+  if (hasProtectedPaidSubscription) {
+    res.status(409).json({ error: "Active paid subscription cannot be replaced by FREE." });
+    return;
+  }`;
+const newProtection = `  const protectedPaidStatuses = new Set(["active", "trialing", "past_due"]);
+  const hasProtectedPaidSubscription =
+    !!user.stripeSubscriptionId &&
+    !!user.stripeSubscriptionStatus &&
+    protectedPaidStatuses.has(user.stripeSubscriptionStatus);
+
+  if (hasProtectedPaidSubscription) {
+    res.status(409).json({ error: "Assinatura paga ativa não pode ser substituída pelo FREE." });
+    return;
+  }
+
+  if (user.stripeCustomerId) {
+    try {
+      const stripe = await getUncachableStripeClient();
+      const subscriptions = await stripe.subscriptions.list({ customer: user.stripeCustomerId, status: "all", limit: 10 });
+      const hasActiveStripeSubscription = subscriptions.data.some(
+        (subscription) => subscription.status === "active" || subscription.status === "trialing" || subscription.status === "past_due",
+      );
+      if (hasActiveStripeSubscription) {
+        res.status(409).json({ error: "Existe uma assinatura paga ativa no Stripe. Atualize o faturamento para sincronizar." });
+        return;
+      }
+    } catch (err) {
+      req.log.error({ err, clerkUserId }, "Could not verify Stripe subscription before FREE selection");
+      res.status(503).json({ error: "Não foi possível verificar sua assinatura. Tente novamente." });
+      return;
+    }
+  }`;
+if (authRoutes.includes(oldProtection)) {
+  authRoutes = authRoutes.replace(oldProtection, newProtection);
+} else if (!authRoutes.includes("hasActiveStripeSubscription")) {
+  throw new Error("FREE plan protection marker not found");
+}
+fs.writeFileSync(authRoutesPath, authRoutes);
+
+console.log("Stripe plans, direct reconciliation, paid-plan protection, and 20+40 test credits applied");
