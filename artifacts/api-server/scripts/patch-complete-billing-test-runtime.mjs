@@ -29,9 +29,9 @@ routes = routes
   { id: "credits_1500", credits: 1500, unitAmountBrl: 60, name: "Pacote 1.500 Créditos", displayPrice: "R$ 0,60" },
 ] as const;`)
   .replace(/const CREATIVE_PACKAGES = \[[\s\S]*?\] as const;/, `const CREATIVE_PACKAGES = [
-  { id: "creative_20", creativeCredits: 200, unitAmountBrl: 50, name: "Criativo 20", displayPrice: "R$ 0,50" },
-  { id: "creative_35", creativeCredits: 350, unitAmountBrl: 55, name: "Criativo 35", displayPrice: "R$ 0,55" },
-  { id: "creative_50", creativeCredits: 500, unitAmountBrl: 60, name: "Criativo 50", displayPrice: "R$ 0,60" },
+  { id: "creative_20", creativeCredits: 20, unitAmountBrl: 50, name: "Pacote 20 Créditos Criativos", displayPrice: "R$ 0,50" },
+  { id: "creative_35", creativeCredits: 35, unitAmountBrl: 55, name: "Pacote 35 Créditos Criativos", displayPrice: "R$ 0,55" },
+  { id: "creative_50", creativeCredits: 50, unitAmountBrl: 60, name: "Pacote 50 Créditos Criativos", displayPrice: "R$ 0,60" },
 ] as const;`)
   .replace(/pkg\.priceId,/g, "pkg.unitAmountBrl,");
 write(stripeRoutePath, routes);
@@ -98,7 +98,7 @@ rewriteOneTimeCheckout(
 );
 
 service = service
-  .replace(/const APP_ORIGIN =[\s\S]*?const BASE_PATH =/, `const APP_ORIGIN = (process.env.APP_PUBLIC_URL || "https://iattomassist.com.br").replace(/\\\/$/, "");\n\nconst BASE_PATH =`)
+  .replace(/const APP_ORIGIN =[\s\S]*?const BASE_PATH =/, `const APP_ORIGIN = "https://iattomassist.com.br";\n\nconst BASE_PATH =`)
   .replaceAll('success_url: `${billingUrl}?payment=success`,', 'success_url: `${billingUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`,')
   .replaceAll('success_url: `${billingUrl}?payment=credits_success`,', 'success_url: `${billingUrl}?payment=credits_success&session_id={CHECKOUT_SESSION_ID}`,')
   .replaceAll('success_url: `${billingUrl}?payment=video_success`,', 'success_url: `${billingUrl}?payment=video_success&session_id={CHECKOUT_SESSION_ID}`,');
@@ -147,4 +147,4 @@ webhook = webhook
   );
 write(webhookPath, webhook);
 
-console.log("Complete billing test runtime applied last: public Stripe returns, temporary prices and paid package recovery are aligned.");
+console.log("Complete billing test runtime applied: exact general and creative package credits, fixed public Stripe return and recovery.");
