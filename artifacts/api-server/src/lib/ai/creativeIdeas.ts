@@ -101,6 +101,47 @@ interface LLMOutputRaw {
   visualAnchor?: string;
 }
 
+interface ParsedCreativeInput {
+  productName: string;
+  creativeBrief: string;
+  isProfessionalBrief: boolean;
+}
+
+const PROFESSIONAL_BRIEF_MARKERS = /(?:^|\n)\s*(?:contexto|instruções? de imagem|instrucoes? de imagem|critérios? de qualidade|criterios? de qualidade|paleta|composição|composicao|iluminação|iluminacao)\s*:/i;
+
+function parseCreativeInput(rawPrompt: string): ParsedCreativeInput {
+  const normalized = semanticNormalize(rawPrompt).trim();
+  const isProfessionalBrief = normalized.length > 320 || PROFESSIONAL_BRIEF_MARKERS.test(normalized);
+
+  if (!isProfessionalBrief) {
+    return {
+      productName: normalized,
+      creativeBrief: "",
+      isProfessionalBrief: false,
+    };
+  }
+
+  const firstMeaningfulLine = normalized
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean) ?? normalized;
+
+  const separatorMatch = firstMeaningfulLine.match(/(?:—|–|\||:)\s*(.+)$/);
+  let productName = (separatorMatch?.[1] ?? firstMeaningfulLine)
+    .replace(/^(?:imagem|foto|criativo|anúncio|anuncio)\s+(?:publicitária|publicitaria|publicitário|publicitario)?\s*(?:premium)?\s*[-—–:]?\s*/i, "")
+    .replace(/[.!;]+$/, "")
+    .trim();
+
+  if (!productName) productName = firstMeaningfulLine.trim();
+  if (productName.length > 140) productName = productName.slice(0, 140).trim();
+
+  return {
+    productName,
+    creativeBrief: normalized,
+    isProfessionalBrief: true,
+  };
+}
+
 function safeParseJson(raw: string): LLMOutputRaw | null {
   if (!raw?.trim()) return null;
   try { return JSON.parse(raw.trim()) as LLMOutputRaw; } catch { /* try next */ }
@@ -122,7 +163,9 @@ export async function streamCreativeIdeas(
   setupSSE(res);
   sendSSE(res, { type: "start" });
 
-  const productName = semanticNormalize(params.prompt).trim();
+  const parsedInput = parseCreativeInput(params.prompt);
+  const productName = parsedInput.productName;
+  const creativeBrief = parsedInput.creativeBrief;
   const platform = params.platform;
   const selectedFormats = params.selectedFormats.slice(0, 3);
   const numConcepts = selectedFormats.length;
@@ -134,10 +177,20 @@ export async function streamCreativeIdeas(
   }
 
   if (process.env.NODE_ENV !== "production") {
-    logger.info({ productName, platform, selectedFormats }, "[creativeIdeas] generating");
+    logger.info(
+      {
+        productName,
+        professionalBrief: parsedInput.isProfessionalBrief,
+        briefLength: creativeBrief.length,
+        platform,
+        selectedFormats,
+      },
+      "[creativeIdeas] generating",
+    );
   }
 
   // Motor de Interpretação e Especialistas (BLOCO 1.5)
+  // Recebe somente o nome curto do produto para preservar a lógica atual de qualidade.
   const refinedCtx = buildRefinedContext(productName, platform);
 
   const formatList = selectedFormats
@@ -182,15 +235,19 @@ Retorne APENAS JSON puro sem markdown:
     .map((fmt, i) => `Conceito ${i + 1}: ${getFormatLabel(platform, fmt)} — ${getCompositionHint(platform, fmt)}`)
     .join("\n");
 
+  const briefSection = creativeBrief
+    ? `\nBRIEFING PROFISSIONAL DO USUÁRIO — preserve as instruções relevantes sem repetir o texto literalmente:\n${creativeBrief}\n`
+    : "";
+
   const userPrompt = `PRODUTO: "${productName}"
 ${refinedCtx.userEnhancement}
-
+${briefSection}
 Gere ${numConcepts} criativo${numConcepts === 1 ? "" : "s"} visual${numConcepts === 1 ? "" : "is"} premium para ${platformLabel}.
 
 Formatos e composições obrigatórias:
 ${formatDetails}
 
-INSTRUÇÃO: O imagePrompt de cada conceito deve iniciar com "${productName}". Aplique as diretrizes do especialista e adapte a composição ao enquadramento de cada formato.`;
+INSTRUÇÃO: O imagePrompt de cada conceito deve iniciar com "${productName}". Aplique as diretrizes do especialista, preserve o briefing profissional quando fornecido e adapte a composição ao enquadramento de cada formato.`;
 
   try {
     let llmOutput: LLMOutputRaw | null = null;
