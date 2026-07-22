@@ -60,6 +60,104 @@ if (source.includes(oldCheckout)) {
   throw new Error("Billing checkout handler marker not found");
 }
 
+const oldPaymentEffect = `  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    if (payment === "success") {
+      toast({ title: "Pagamento realizado", description: "Seu plano foi ativado. Créditos adicionados à sua conta." });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (payment === "credits_success") {
+      toast({ title: "Créditos adicionados", description: "Seus créditos foram somados ao saldo da conta." });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (payment === "video_success") {
+      toast({ title: "Pacote de vídeos adicionado", description: "Seus vídeos foram adicionados ao saldo da conta." });
+      window.history.replaceState({}, "", window.location.pathname);
+      fetch("/api/videos/balance", { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => setVideoBalance((d as { videoBalance: number }).videoBalance ?? 0))
+        .catch(() => {});
+    } else if (payment === "canceled") {
+      toast({ title: "Checkout cancelado", description: "Nenhuma cobrança foi realizada." });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [location]);`;
+
+const newPaymentEffect = `  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const sessionId = params.get("session_id");
+
+    if (payment === "success") {
+      const reconcile = async () => {
+        try {
+          const endpoint = sessionId ? "/api/stripe/reconcile-session" : "/api/stripe/reconcile-latest";
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: sessionId ? JSON.stringify({ sessionId }) : JSON.stringify({}),
+          });
+          const payload = await response.json() as { ok?: boolean; error?: string; message?: string };
+          if (!response.ok || payload.ok === false) {
+            throw new Error(payload.error ?? payload.message ?? "Falha ao ativar a assinatura");
+          }
+          await Promise.all([refetchSub(), refetchMe(), refetchCredits()]);
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: getGetStripeSubscriptionQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getGetCreditsBalanceQueryKey() }),
+          ]);
+          toast({ title: "Pagamento confirmado", description: "Plano ativado e créditos adicionados à sua conta." });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Falha ao ativar a assinatura";
+          toast({ title: "Pagamento confirmado, ativação pendente", description: message, variant: "destructive" });
+        } finally {
+          window.history.replaceState({}, "", window.location.pathname);
+        }
+      };
+      void reconcile();
+    } else if (payment === "credits_success") {
+      toast({ title: "Créditos adicionados", description: "Seus créditos foram somados ao saldo da conta." });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (payment === "video_success") {
+      toast({ title: "Pacote de vídeos adicionado", description: "Seus vídeos foram adicionados ao saldo da conta." });
+      window.history.replaceState({}, "", window.location.pathname);
+      fetch("/api/videos/balance", { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => setVideoBalance((d as { videoBalance: number }).videoBalance ?? 0))
+        .catch(() => {});
+    } else if (payment === "canceled") {
+      toast({ title: "Checkout cancelado", description: "Nenhuma cobrança foi realizada." });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [location]);`;
+
+if (source.includes(oldPaymentEffect)) {
+  source = source.replace(oldPaymentEffect, newPaymentEffect);
+} else if (!source.includes('"/api/stripe/reconcile-latest"')) {
+  throw new Error("Billing payment reconciliation effect marker not found");
+}
+
+const refreshNeedle = '  const handleBillingRefresh = () => { void refetchPlans(); void refetchSub(); void refetchMe(); void refetchCredits(); };';
+const refreshReplacement = `  const handleBillingRefresh = async () => {
+    try {
+      await fetch("/api/stripe/reconcile-latest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+    } catch {
+      // Refresh still proceeds even when there is no completed Stripe session.
+    }
+    await Promise.all([refetchPlans(), refetchSub(), refetchMe(), refetchCredits()]);
+  };`;
+if (source.includes(refreshNeedle)) {
+  source = source.replace(refreshNeedle, refreshReplacement);
+} else if (!source.includes('await fetch("/api/stripe/reconcile-latest"')) {
+  throw new Error("Billing refresh reconciliation marker not found");
+}
+
 const imageStart = source.indexOf("{/* ── Pacotes de Imagem (Criativos)");
 const videoStart = source.indexOf("{/* ── Pacotes de Vídeo", imageStart);
 if (imageStart === -1 || videoStart === -1) throw new Error("Package section markers not found");
@@ -138,8 +236,6 @@ source = source.slice(0, refreshedVideoStart) + videoSection + source.slice(vide
 
 writeFileSync(billingUrl, source);
 
-// Execute the temporary live billing patch at the end of an already-existing
-// build step so package.json and pnpm-lock.yaml remain untouched.
 await import("./patch-temporary-billing-test.mjs");
 
-console.log("Billing checkout now sends the exact backend JSON body directly; temporary prices and credit tests remain enabled.");
+console.log("Billing checkout and post-payment reconciliation applied; temporary prices and credit tests remain enabled.");
