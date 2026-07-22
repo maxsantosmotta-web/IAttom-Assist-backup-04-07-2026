@@ -8,7 +8,6 @@ import {
   PackagePlus,
   Percent,
   RefreshCw,
-  TrendingUp,
   Users,
   WalletCards,
 } from "lucide-react";
@@ -163,7 +162,13 @@ export function AdminFinance() {
           <StatTile label="Créditos Consumidos" value={String(growth?.creditsSpentThisMonth ?? 0)} sub="consumo no mês atual" icon={WalletCards} color="text-violet-300" glow="rgba(139,92,246,.10)" loading={growthLoading} />
           <StatTile label="Execuções Totais" value={String(stats?.totalActions ?? 0)} sub="operações realizadas na plataforma" icon={BadgeDollarSign} color="text-amber-300" glow="rgba(245,180,35,.10)" loading={statsLoading} />
           {growthLoading ? <Skeleton className="h-[220px] rounded-xl bg-white/5" /> : (
-            <DomnDonutChart data={activationData} title="Ativação" subtitle="Usuários que iniciaram o uso" centerLabel={`${activation}%`} />
+            <DomnDonutChart
+              data={activationData}
+              title="Ativação"
+              subtitle="Usuários que iniciaram o uso"
+              centerLabel="Ativação"
+              centerValue={`${activation}%`}
+            />
           )}
         </div>
       </div>
