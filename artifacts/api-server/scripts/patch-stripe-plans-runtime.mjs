@@ -11,16 +11,16 @@ if (start === -1 || end === -1) {
 
 const replacement = `const PLAN_PRICE_IDS = {
   pro: {
-    monthly: "price_1TunJ2AYtu5nLhAZPd1Ai0hD",
-    annual: "price_1TunNxAYtu5nLhAZw0frXi2Z",
+    monthly: "price_1TvgAOAYtu5nLhAZmgqhsTxJ",
+    annual: "price_1TvgDBAYtu5nLhAZsgenq5SJ",
   },
   business: {
-    monthly: "price_1TunQhAYtu5nLhAZu5QXWW31",
-    annual: "price_1TunROAYtu5nLhAZqhKUuslz",
+    monthly: "price_1TvgEwAYtu5nLhAZvWozumfH",
+    annual: "price_1TvgFWAYtu5nLhAZuT001wT5",
   },
   agency: {
-    monthly: "price_1TunTDAYtu5nLhAZDfzTn8Cm",
-    annual: "price_1TunTgAYtu5nLhAZ5nRh52J8",
+    monthly: "price_1TvgGHAYtu5nLhAZt4gYmBM5",
+    annual: "price_1TvgGgAYtu5nLhAZO8FYa6nK",
   },
 } as const;
 
@@ -38,7 +38,7 @@ router.get("/stripe/diagnostics", async (_req: Request, res: Response) => {
     stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
     webhookSecretConfigured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
     appPublicUrlConfigured: Boolean(process.env.APP_PUBLIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN),
-    source: "official_price_ids",
+    source: "temporary_live_test_price_ids",
     plans: { start: true, premium: true, pro: true },
     error: null,
   });
@@ -53,18 +53,18 @@ router.get("/stripe/plans", async (_req: Request, res: Response) => {
     },
     {
       planKey: "pro", name: "START", description: "Plano de entrada do IAttom Assist",
-      credits: PLAN_CREDITS.pro, amount: 6900, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.pro.monthly,
-      features: ["500 créditos/mês", "Acesso aos módulos essenciais", "Projetos ilimitados", "Histórico completo", "Suporte padrão"],
+      credits: 20, amount: 50, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.pro.monthly,
+      features: ["20 créditos gerais", "40 créditos de imagem", "Acesso aos módulos do plano", "Suporte padrão"],
     },
     {
       planKey: "business", name: "PREMIUM", description: "Mais recursos, créditos e capacidade operacional",
-      credits: PLAN_CREDITS.business, amount: 15900, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.business.monthly,
-      features: ["2.000 créditos/mês", "Acesso a todos os módulos", "Análises avançadas", "Automações premium", "Suporte prioritário"],
+      credits: 20, amount: 50, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.business.monthly,
+      features: ["20 créditos gerais", "40 créditos de imagem", "Recursos do plano", "Suporte prioritário"],
     },
     {
       planKey: "agency", name: "PRO", description: "Maior volume, recursos avançados e operação completa",
-      credits: PLAN_CREDITS.agency, amount: 29900, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.agency.monthly,
-      features: ["10.000 créditos/mês", "Acesso total da plataforma", "Recursos avançados", "Prioridade máxima", "Suporte dedicado"],
+      credits: 20, amount: 50, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.agency.monthly,
+      features: ["20 créditos gerais", "40 créditos de imagem", "Recursos avançados", "Suporte dedicado"],
     },
   ];
 
@@ -95,4 +95,4 @@ if (source.includes(checkoutNeedle)) {
 }
 
 fs.writeFileSync(path, source);
-console.log("Official IAttom Stripe plan prices applied");
+console.log("Temporary IAttom Stripe test plan prices and checkout whitelist applied");
