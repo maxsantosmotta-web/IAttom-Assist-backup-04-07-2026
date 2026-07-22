@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   CreditCard,
@@ -9,12 +9,6 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "@clerk/react";
-import {
-  getGetAdminStatsQueryKey,
-  getListAdminActivityQueryKey,
-  useGetAdminStats,
-  useListAdminActivity,
-} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,21 +20,47 @@ const PURPLE = "#a78bfa";
 const EMERALD = "#34d399";
 const ROSE = "#fb7185";
 
-interface GrowthStats {
+interface FinancialMovement {
+  id: string;
+  type: "subscription" | "credit_pack" | "creative_pack" | "video_pack";
+  label: string;
+  userName: string | null;
+  userEmail: string;
+  plan: string;
+  amountCents: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+}
+
+interface FinancialSummary {
   mrr: number;
+  revenueThisMonth: number;
+  packageRevenueThisMonth: number;
   activeSubscribers: number;
   totalUsers: number;
   conversionRate: number;
-  activationRate: number;
-  creditsSpentThisMonth: number;
   planBreakdown: {
     free: number;
-    start?: number;
-    premium?: number;
     pro: number;
     business: number;
     agency: number;
   };
+  mrrByPlan: {
+    free: number;
+    pro: number;
+    business: number;
+    agency: number;
+  };
+  recentMovements: FinancialMovement[];
+}
+
+function formatMoney(value: number, currency = "BRL"): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: 2,
+  }).format(value);
 }
 
 function StatTile({ label, value, sub, icon: Icon, color, glow, loading = false }: {
@@ -69,58 +89,54 @@ function StatTile({ label, value, sub, icon: Icon, color, glow, loading = false 
 
 export function AdminFinance() {
   const { getToken } = useAuth();
-  const [growth, setGrowth] = useState<GrowthStats | null>(null);
-  const [growthLoading, setGrowthLoading] = useState(true);
+  const [summary, setSummary] = useState<FinancialSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [tick, setTick] = useState(0);
 
-  const { data: stats, isLoading: statsLoading, isFetching: statsFetching, refetch: refetchStats } =
-    useGetAdminStats({ query: { queryKey: getGetAdminStatsQueryKey(), staleTime: 0 } });
-  const { data: activity, isFetching: activityFetching, refetch: refetchActivity } =
-    useListAdminActivity(
-      { limit: 200 },
-      { query: { queryKey: getListAdminActivityQueryKey({ limit: 200 }), staleTime: 0 } },
-    );
-
   useEffect(() => {
-    setGrowthLoading(true);
+    let cancelled = false;
+    setLoading(true);
+
     (async () => {
       try {
         const token = await getToken();
-        const response = await fetch(`${BASE}/api/admin/growth-stats`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const response = await fetch(`${BASE}/api/admin/financial-summary`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: "include",
         });
-        if (response.ok) setGrowth(await response.json() as GrowthStats);
+        if (!response.ok) throw new Error(`Financial summary failed: ${response.status}`);
+        const data = await response.json() as FinancialSummary;
+        if (!cancelled) setSummary(data);
+      } catch {
+        if (!cancelled) setSummary(null);
       } finally {
-        setGrowthLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     })();
+
+    return () => { cancelled = true; };
   }, [getToken, tick]);
 
-  const planData = [
-    { label: "Free", value: growth?.planBreakdown.free ?? 0, color: GOLD },
-    { label: "Start", value: growth?.planBreakdown.start ?? growth?.planBreakdown.pro ?? 0, color: EMERALD },
-    { label: "Premium", value: growth?.planBreakdown.premium ?? growth?.planBreakdown.business ?? 0, color: PURPLE },
-    { label: "Pro", value: growth?.planBreakdown.agency ?? 0, color: ROSE },
-  ];
-
-  const activation = Math.max(0, Math.min(100, growth?.activationRate ?? 0));
-  const operationalData = [
-    { label: "Créditos Consumidos", value: growth?.creditsSpentThisMonth ?? 0, color: PURPLE },
-    { label: "Execuções Totais", value: stats?.totalActions ?? 0, color: GOLD },
-    { label: "Ativação (%)", value: activation, color: EMERALD },
-  ];
-
-  const financialActivity = useMemo(() => (activity ?? []).filter((item) =>
-    /pagamento|assinatura|plano|crédito|credito|stripe|checkout|cancel|pacote/i.test(`${item.action} ${item.details ?? ""}`),
-  ).slice(0, 12), [activity]);
-
   const refresh = () => {
-    void refetchStats();
-    void refetchActivity();
+    setRefreshing(true);
     setTick((value) => value + 1);
   };
-  const refreshing = statsFetching || activityFetching || growthLoading;
+
+  const planData = [
+    { label: "FREE", value: summary?.planBreakdown.free ?? 0, color: GOLD },
+    { label: "START", value: summary?.planBreakdown.pro ?? 0, color: EMERALD },
+    { label: "PREMIUM", value: summary?.planBreakdown.business ?? 0, color: PURPLE },
+    { label: "PRO", value: summary?.planBreakdown.agency ?? 0, color: ROSE },
+  ];
+
+  const revenueData = [
+    { label: "Receita recorrente", value: summary?.mrr ?? 0, color: GOLD },
+    { label: "Pacotes avulsos", value: summary?.packageRevenueThisMonth ?? 0, color: PURPLE },
+  ];
 
   return (
     <div className="space-y-8">
@@ -129,44 +145,40 @@ export function AdminFinance() {
           <div>
             <p className="mb-1 text-xs font-medium uppercase tracking-widest text-primary">Painel Administrativo</p>
             <h2 className="mb-1 text-2xl font-bold text-white">Financeiro</h2>
-            <p className="text-sm text-muted-foreground">Receita, assinaturas, planos e movimentações financeiras em uma única tela.</p>
+            <p className="text-sm text-muted-foreground">Receita, assinaturas, planos e movimentações confirmadas pelo Stripe.</p>
           </div>
-          <Button size="sm" variant="outline" onClick={refresh} disabled={refreshing} className="gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white sm:mt-1 sm:shrink-0">
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Atualizar
+          <Button size="sm" variant="outline" onClick={refresh} disabled={loading || refreshing} className="gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white sm:mt-1 sm:shrink-0">
+            <RefreshCw className={`h-3.5 w-3.5 ${(loading || refreshing) ? "animate-spin" : ""}`} /> Atualizar
           </Button>
         </div>
       </motion.div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Receita Mensal" value={`R$ ${(growth?.mrr ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="receita recorrente confirmada" icon={DollarSign} color="text-amber-300" glow="rgba(245,180,35,.11)" loading={growthLoading} />
-        <StatTile label="Planos Pagos" value={String(growth?.activeSubscribers ?? 0)} sub="assinaturas ativas" icon={CreditCard} color="text-emerald-300" glow="rgba(16,185,129,.10)" loading={growthLoading} />
-        <StatTile label="Conversão" value={`${growth?.conversionRate ?? 0}%`} sub="usuários convertidos em pagantes" icon={Percent} color="text-violet-300" glow="rgba(139,92,246,.10)" loading={growthLoading} />
-        <StatTile label="Usuários" value={String(growth?.totalUsers ?? stats?.totalUsers ?? 0)} sub="base total cadastrada" icon={Users} color="text-rose-300" glow="rgba(251,113,133,.10)" loading={growthLoading && statsLoading} />
+        <StatTile label="Receita do mês" value={formatMoney(summary?.revenueThisMonth ?? 0)} sub="assinaturas e pacotes pagos" icon={DollarSign} color="text-amber-300" glow="rgba(245,180,35,.11)" loading={loading} />
+        <StatTile label="Receita recorrente mensal" value={formatMoney(summary?.mrr ?? 0)} sub="assinaturas ativas" icon={CreditCard} color="text-emerald-300" glow="rgba(16,185,129,.10)" loading={loading} />
+        <StatTile label="Assinantes pagos" value={String(summary?.activeSubscribers ?? 0)} sub="assinaturas ativas confirmadas" icon={Users} color="text-violet-300" glow="rgba(139,92,246,.10)" loading={loading} />
+        <StatTile label="Conversão" value={`${summary?.conversionRate ?? 0}%`} sub="usuários convertidos em pagantes" icon={Percent} color="text-rose-300" glow="rgba(251,113,133,.10)" loading={loading} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          {growthLoading ? <Skeleton className="h-[330px] rounded-xl bg-white/5" /> : (
-            <DomnDonutChart
-              data={planData}
-              title="Distribuição Financeira por Plano"
-              subtitle="Assinaturas e usuários por categoria"
-              centerLabel="Planos"
-              fixedColorStructure
-            />
-          )}
-        </div>
-        <div>
-          {(growthLoading || statsLoading) ? <Skeleton className="h-[330px] rounded-xl bg-white/5" /> : (
-            <DomnDonutChart
-              data={operationalData}
-              title="Indicadores Operacionais"
-              subtitle="Créditos, execuções e ativação"
-              centerLabel="Indicadores"
-              fixedColorStructure
-            />
-          )}
-        </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {loading ? <Skeleton className="h-[330px] rounded-xl bg-white/5" /> : (
+          <DomnDonutChart
+            data={planData}
+            title="Distribuição por Plano"
+            subtitle="Assinaturas ativas e usuários FREE"
+            centerLabel="Planos"
+            fixedColorStructure
+          />
+        )}
+        {loading ? <Skeleton className="h-[330px] rounded-xl bg-white/5" /> : (
+          <DomnDonutChart
+            data={revenueData}
+            title="Composição da Receita"
+            subtitle="Receita recorrente e pacotes pagos no mês"
+            centerLabel="Receita"
+            fixedColorStructure
+          />
+        )}
       </div>
 
       <Card
@@ -179,23 +191,29 @@ export function AdminFinance() {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">Movimentações financeiras recentes</h3>
-            <p className="text-xs text-zinc-600">Pagamentos, planos, créditos, pacotes e cancelamentos registrados na atividade.</p>
+            <p className="text-xs text-zinc-600">Assinaturas e pacotes efetivamente pagos.</p>
           </div>
         </div>
-        {financialActivity.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-white/10 bg-black/10 px-4 py-8 text-center text-xs text-zinc-600">Nenhuma movimentação financeira registrada ainda.</div>
+
+        {loading ? (
+          <Skeleton className="h-28 w-full bg-white/5" />
+        ) : !summary?.recentMovements.length ? (
+          <div className="rounded-lg border border-dashed border-white/10 bg-black/10 px-4 py-8 text-center text-xs text-zinc-600">Nenhuma movimentação financeira paga registrada neste mês.</div>
         ) : (
           <div className="divide-y divide-white/[0.05]">
-            {financialActivity.map((item, index) => (
-              <div key={`${item.action}-${index}`} className="flex items-start justify-between gap-4 py-3">
+            {summary.recentMovements.map((item, index) => (
+              <div key={item.id} className="flex items-start justify-between gap-4 py-3">
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: [GOLD, EMERALD, PURPLE, ROSE][index % 4] }} />
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-medium text-zinc-200">{item.action}</p>
-                    {item.details && <p className="mt-0.5 line-clamp-2 text-[10px] text-zinc-600">{item.details}</p>}
+                    <p className="truncate text-xs font-medium text-zinc-200">{item.label}</p>
+                    <p className="mt-0.5 truncate text-[10px] text-zinc-600">{item.userName || item.userEmail} · {item.plan} · {item.status}</p>
                   </div>
                 </div>
-                <span className="shrink-0 text-[10px] text-zinc-700">{item.createdAt ? new Date(item.createdAt).toLocaleString("pt-BR") : ""}</span>
+                <div className="shrink-0 text-right">
+                  <p className="text-xs font-semibold text-zinc-200">{formatMoney(item.amountCents / 100, item.currency)}</p>
+                  <p className="mt-0.5 text-[10px] text-zinc-700">{new Date(item.createdAt).toLocaleString("pt-BR")}</p>
+                </div>
               </div>
             ))}
           </div>
