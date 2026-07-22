@@ -83,11 +83,11 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   );
 }
 
-export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total" }: { data: DomnBarPoint[]; title: string; subtitle: string; centerLabel?: string }) {
+export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total", fixedColorStructure = false }: { data: DomnBarPoint[]; title: string; subtitle: string; centerLabel?: string; fixedColorStructure?: boolean }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const normalized = useMemo(() => data.map((item, index) => ({ ...item, value: Math.max(0, Number(item.value || 0)), color: item.color || COLORS[index % COLORS.length] })), [data]);
   const total = normalized.reduce((sum, item) => sum + item.value, 0);
-  const visualValues = total > 0 ? normalized.map((item) => item.value) : normalized.map(() => 1);
+  const visualValues = fixedColorStructure ? normalized.map(() => 1) : total > 0 ? normalized.map((item) => item.value) : normalized.map(() => 1);
   const visualTotal = visualValues.reduce((sum, value) => sum + value, 0);
   let cursor = 0;
   const segments = normalized.map((item, index) => {
