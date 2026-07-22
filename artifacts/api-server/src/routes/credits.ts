@@ -21,6 +21,45 @@ import {
 
 const router: IRouter = Router();
 
+const LEGACY_CREATIVE_PLAN_GRANTS: Record<string, number> = {
+  pro: 100,
+  business: 150,
+  agency: 250,
+};
+
+async function normalizeLegacyCreativeBalance(
+  clerkUserId: string,
+  user: typeof users.$inferSelect,
+): Promise<typeof users.$inferSelect> {
+  const plan = user.plan as keyof typeof PLAN_CREATIVE_CREDITS;
+  const intendedGrant = PLAN_CREATIVE_CREDITS[plan] ?? 0;
+  const legacyGrant = LEGACY_CREATIVE_PLAN_GRANTS[plan] ?? intendedGrant;
+  const legacyExcess = Math.max(0, legacyGrant - intendedGrant);
+
+  if (legacyExcess <= 0 || user.creativeCredits <= intendedGrant) return user;
+
+  const balanceBefore = user.creativeCredits;
+  const balanceAfter = Math.max(0, balanceBefore - legacyExcess);
+
+  const [updated] = await db
+    .update(users)
+    .set({ creativeCredits: balanceAfter, updatedAt: new Date() })
+    .where(eq(users.clerkId, clerkUserId))
+    .returning();
+
+  await db.insert(creditsTransactions).values({
+    clerkUserId,
+    amount: balanceAfter - balanceBefore,
+    type: "adjustment",
+    balanceType: "creative",
+    description: "Correção única de franquia criativa antiga, preservando o consumo realizado",
+    balanceBefore,
+    balanceAfter,
+  });
+
+  return updated ?? { ...user, creativeCredits: balanceAfter };
+}
+
 router.get("/credits/balance", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   let [user] = await db.select().from(users).where(eq(users.clerkId, clerkUserId));
@@ -30,6 +69,8 @@ router.get("/credits/balance", requireAuth, async (req, res): Promise<void> => {
     if (!created) { res.status(500).json({ error: "Failed to resolve user from Clerk" }); return; }
     user = created;
   }
+
+  user = await normalizeLegacyCreativeBalance(clerkUserId, user);
 
   const plan = user.plan as keyof typeof PLAN_CREDITS;
   const planLimit = PLAN_CREDITS[plan] ?? PLAN_CREDITS.free;
