@@ -155,9 +155,7 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
-                {insufficient?.isCreative
-                  ? "Suas imagens disponíveis acabaram. Adquira um pacote de imagens no Faturamento para continuar gerando."
-                  : "Faça um upgrade de plano ou adquira um pacote avulso de crédito."}
+                Faça um upgrade de plano ou adquira um pacote avulso.
               </p>
             )}
             <Button
