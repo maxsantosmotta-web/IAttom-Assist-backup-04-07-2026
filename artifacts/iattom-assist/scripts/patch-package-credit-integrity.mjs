@@ -51,10 +51,6 @@ function walk(dir) {
       const original = source;
       source = convertCreativeDisplays(source)
         .replaceAll(
-          "Você está no plano mais alto. Contate o suporte para adicionar mais créditos.",
-          "Suas imagens disponíveis acabaram. Adquira um pacote de imagens no Faturamento para continuar gerando.",
-        )
-        .replaceAll(
           "Seus créditos de criativo acabaram. Adquira um pacote de créditos criativos no Faturamento para continuar gerando imagens.",
           "Suas imagens disponíveis acabaram. Adquira um pacote de imagens no Faturamento para continuar gerando.",
         )
