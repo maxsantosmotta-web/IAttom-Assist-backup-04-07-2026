@@ -34,10 +34,29 @@ const newCheckout = `    const officialPriceId = STRIPE_BILLING_PRICE_IDS[planKe
       toast({ title: "Preço indisponível", description: "O plano selecionado ainda não está disponível para compra.", variant: "destructive" });
       return;
     }
-    checkout.mutate({ data: { priceId: selectedPriceId, planKey } });`;
+
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ priceId: selectedPriceId, planKey }),
+      });
+      const payload = await response.json() as { url?: string; error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? \`HTTP \${response.status}\`);
+      }
+      if (!payload.url) {
+        throw new Error("Checkout sem URL de redirecionamento");
+      }
+      window.location.href = payload.url;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro desconhecido";
+      toast({ title: "Não foi possível iniciar o upgrade", description: message, variant: "destructive" });
+    }`;
 if (source.includes(oldCheckout)) {
   source = source.replace(oldCheckout, newCheckout);
-} else if (!source.includes("const officialPriceId = STRIPE_BILLING_PRICE_IDS")) {
+} else if (!source.includes('fetch("/api/stripe/checkout"')) {
   throw new Error("Billing checkout handler marker not found");
 }
 
@@ -123,4 +142,4 @@ writeFileSync(billingUrl, source);
 // build step so package.json and pnpm-lock.yaml remain untouched.
 await import("./patch-temporary-billing-test.mjs");
 
-console.log("Billing temporary plan prices applied; image packages active; video packages locked; temporary credit test configuration executed.");
+console.log("Billing checkout now sends the exact backend JSON body directly; temporary prices and credit tests remain enabled.");
