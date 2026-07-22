@@ -81,15 +81,15 @@ const replacement = `router.get(
         return res.status(422).json({ error: "Plano da assinatura ativa não identificado" });
       }
 
-      const needsSync =
+      const subscriptionChanged =
         user.plan !== planKey ||
-        user.credits !== 20 ||
-        user.creativeCredits !== 40 ||
+        user.stripeSubscriptionId !== activeSubscription.id;
+
+      const metadataChanged =
         user.stripeCustomerId !== activeCustomerId ||
-        user.stripeSubscriptionId !== activeSubscription.id ||
         user.stripeSubscriptionStatus !== activeSubscription.status;
 
-      if (needsSync) {
+      if (subscriptionChanged) {
         const balanceBefore = user.credits ?? 0;
         await db.update(users)
           .set({
@@ -111,7 +111,7 @@ const replacement = `router.get(
             clerkUserId,
             amount: 20 - balanceBefore,
             type: "credit",
-            description: "Assinatura Stripe ativa sincronizada automaticamente",
+            description: "Assinatura Stripe ativada ou plano alterado",
             balanceBefore,
             balanceAfter: 20,
           });
@@ -119,8 +119,16 @@ const replacement = `router.get(
 
         req.log.info(
           { clerkUserId, customerId: activeCustomerId, subscriptionId: activeSubscription.id, planKey },
-          "Paid subscription auto-healed from Stripe",
+          "Paid subscription activated from Stripe",
         );
+      } else if (metadataChanged) {
+        await db.update(users)
+          .set({
+            stripeCustomerId: activeCustomerId,
+            stripeSubscriptionStatus: activeSubscription.status,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.clerkId, clerkUserId));
       }
 
       const currentPeriodEnd = Number(activeSubscription.current_period_end ?? 0);
@@ -144,4 +152,4 @@ const replacement = `router.get(
 
 source = source.slice(0, routeStart) + replacement + source.slice(routeEnd);
 fs.writeFileSync(stripeRoutePath, source);
-console.log("Stripe subscription route now auto-heals paid plans directly from Stripe");
+console.log("Stripe subscription sync preserves already-consumed plan and creative credits");
