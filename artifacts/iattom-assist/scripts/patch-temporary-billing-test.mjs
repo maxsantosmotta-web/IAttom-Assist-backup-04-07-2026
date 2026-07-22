@@ -8,14 +8,6 @@ function write(url, source) {
   writeFileSync(url, source);
 }
 
-function replaceRequired(source, search, replacement, label) {
-  if (!source.includes(search)) {
-    if (source.includes(replacement)) return source;
-    throw new Error(`Temporary billing patch marker not found: ${label}`);
-  }
-  return source.replace(search, replacement);
-}
-
 const frontendCreditsUrl = new URL("../src/lib/credits.ts", import.meta.url);
 let frontendCredits = read(frontendCreditsUrl);
 frontendCredits = frontendCredits
@@ -128,4 +120,28 @@ billing = billing
   .replace('images: 50, price: "R$ 89,00"', 'images: 50, price: "R$ 0,60"');
 write(billingUrl, billing);
 
-console.log("Temporary billing test configuration applied: paid plans 20 general + 40 image credits; live test Price IDs enabled.");
+const creditsPageUrl = new URL("../src/pages/dashboard/Credits.tsx", import.meta.url);
+let creditsPage = read(creditsPageUrl);
+creditsPage = creditsPage
+  .replace(
+    `  const upgradePlans = balance
+    ? (Object.keys(PLAN_CREDITS) as Array<keyof typeof PLAN_CREDITS>).filter(
+        (p) => PLAN_CREDITS[p] > (PLAN_CREDITS[balance.plan as keyof typeof PLAN_CREDITS] ?? 0),
+      )
+    : [];`,
+    `  const PLAN_HIERARCHY = ["free", "pro", "business", "agency"] as const;
+  const currentPlanKey = (balance?.plan && PLAN_HIERARCHY.includes(balance.plan as typeof PLAN_HIERARCHY[number]))
+    ? balance.plan as typeof PLAN_HIERARCHY[number]
+    : "free";
+  const currentPlanIndex = PLAN_HIERARCHY.indexOf(currentPlanKey);
+  const upgradePlans = PLAN_HIERARCHY.slice(currentPlanIndex + 1);`,
+  )
+  .replace(
+    `  const PLAN_DISPLAY_NAMES: Record<string, string> = { free: "START", pro: "COMPLETO", business: "PREMIUM", agency: "PRO" };
+  const currentPlanDisplay = balance?.plan ? (PLAN_DISPLAY_NAMES[balance.plan] ?? balance.plan) : "START";`,
+    `  const PLAN_DISPLAY_NAMES: Record<string, string> = { free: "FREE", pro: "START", business: "PREMIUM", agency: "PRO" };
+  const currentPlanDisplay = PLAN_DISPLAY_NAMES[currentPlanKey];`,
+  );
+write(creditsPageUrl, creditsPage);
+
+console.log("Temporary billing test configuration applied with correct plan labels and upgrade hierarchy");
