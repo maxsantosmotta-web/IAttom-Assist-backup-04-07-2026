@@ -57,12 +57,17 @@ gate = replaceRequired(
   "creative insufficient body",
 );
 
-gate = replaceRequired(
-  gate,
-  '                Você está no plano mais alto. Contate o suporte para adicionar mais créditos.',
-  '                {insufficient?.isCreative\n                  ? "Suas imagens disponíveis acabaram. Adquira um pacote de imagens no Faturamento para continuar gerando."\n                  : "Você está no plano mais alto. Adquira créditos avulsos no Faturamento para continuar."}',
-  "insufficient footer guidance",
-);
+const oldFooter = '                Você está no plano mais alto. Contate o suporte para adicionar mais créditos.';
+const rewrittenFooter = '                Suas imagens disponíveis acabaram. Adquira um pacote de imagens no Faturamento para continuar gerando.';
+const finalFooter = '                {insufficient?.isCreative\n                  ? "Suas imagens disponíveis acabaram. Adquira um pacote de imagens no Faturamento para continuar gerando."\n                  : "Você está no plano mais alto. Adquira créditos avulsos no Faturamento para continuar."}';
+
+if (gate.includes(oldFooter)) {
+  gate = gate.replace(oldFooter, finalFooter);
+} else if (gate.includes(rewrittenFooter)) {
+  gate = gate.replace(rewrittenFooter, finalFooter);
+} else {
+  throw new Error("Required image-unit anchor not found: insufficient footer guidance");
+}
 
 fs.writeFileSync(gatePath, gate);
 
