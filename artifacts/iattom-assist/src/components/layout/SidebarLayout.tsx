@@ -312,17 +312,16 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
                 <p className="text-[10px] text-red-400 mt-1 font-medium">Créditos baixos</p>
               )}
             </div>
-            {/* Créditos de Criativo */}
+            {/* Quantidade de imagens */}
             {creativePlanLimit > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
                     <span className="w-3 h-3 text-violet-400 text-[10px] font-black flex items-center justify-center">✦</span>
-                    <span className="text-[11px] text-zinc-500 font-semibold tracking-wide">Criativos</span>
+                    <span className="text-[11px] text-zinc-500 font-semibold tracking-wide">Imagens</span>
                   </div>
                   <span className={`text-[11px] font-bold tabular-nums ${creativeTextColor}`}>
-                    {creativeBalance.toLocaleString()}
-                    <span className="text-zinc-700 font-normal"> / {creativePlanLimit.toLocaleString()}</span>
+                    {Math.floor(creativeBalance / 10).toLocaleString()}
                   </span>
                 </div>
                 <div className="h-1 rounded-full bg-white/[0.05] overflow-hidden">
@@ -332,7 +331,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
                   />
                 </div>
                 {isLowCreativeCredit && (
-                  <p className="text-[10px] text-red-400 mt-1 font-medium">Criativos baixos</p>
+                  <p className="text-[10px] text-red-400 mt-1 font-medium">Imagens baixas</p>
                 )}
               </div>
             )}
