@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
+  Activity,
+  BadgeDollarSign,
   CreditCard,
   DollarSign,
   PackagePlus,
   Percent,
   RefreshCw,
   Users,
+  WalletCards,
 } from "lucide-react";
 import { useAuth } from "@clerk/react";
 import {
@@ -68,41 +71,33 @@ function StatTile({ label, value, sub, icon: Icon, color, glow, loading = false 
   );
 }
 
-function CompactMetricChart({
-  label,
-  sub,
-  value,
-  ring,
-  glow,
-  loading = false,
-}: {
-  label: string;
-  sub: string;
-  value: string;
-  ring: string;
-  glow: string;
-  loading?: boolean;
-}) {
+function CompactActivationChart({ value, loading = false }: { value: number; loading?: boolean }) {
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-white/[0.07] bg-[#0d1015] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,.025),0_18px_45px_rgba(0,0,0,.22)]"
-      style={{ backgroundImage: `radial-gradient(circle at 20% 18%, ${glow}, transparent 48%), linear-gradient(135deg, rgba(255,255,255,.018), transparent 55%)` }}
+      className="relative overflow-hidden rounded-xl border border-white/[0.07] bg-[#0d1015] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.025),0_18px_45px_rgba(0,0,0,.22)]"
+      style={{ backgroundImage: "radial-gradient(circle at 18% 16%, rgba(34,211,238,.12), transparent 48%), linear-gradient(135deg, rgba(255,255,255,.014), transparent 55%)" }}
     >
-      <div className="flex items-center gap-4">
-        {loading ? (
-          <Skeleton className="h-20 w-20 shrink-0 rounded-full bg-white/5" />
-        ) : (
-          <div className="relative h-20 w-20 shrink-0 rounded-full p-[7px] shadow-[0_0_26px_rgba(255,255,255,.05)]" style={{ background: ring }}>
-            <div className="grid h-full w-full place-items-center rounded-full border border-white/[0.08] bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,.08),rgba(13,16,21,.94)_68%)]">
-              <span className="text-xl font-bold text-white">{value}</span>
+      {loading ? (
+        <Skeleton className="h-[82px] w-full rounded-lg bg-white/5" />
+      ) : (
+        <div className="flex items-center gap-4">
+          <div
+            className="relative grid h-16 w-16 shrink-0 place-items-center rounded-full p-[6px] shadow-[0_0_20px_rgba(34,211,238,.16)]"
+            style={{ background: `conic-gradient(from 210deg, ${CYAN}, ${EMERALD}, ${PURPLE}, ${ROSE}, ${CYAN})` }}
+          >
+            <div className="grid h-full w-full place-items-center rounded-full border border-white/[0.08] bg-[#11151b]/90 backdrop-blur-sm">
+              <span className="text-base font-bold text-white">{value}%</span>
             </div>
           </div>
-        )}
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-white">{label}</p>
-          <p className="mt-1 text-[11px] leading-4 text-zinc-600">{sub}</p>
+          <div className="min-w-0">
+            <div className="mb-1 flex items-center gap-2 text-cyan-300">
+              <Activity className="h-4 w-4" />
+              <p className="text-xs font-semibold text-white">Ativação</p>
+            </div>
+            <p className="text-[10px] leading-4 text-zinc-600">Usuários que iniciaram o uso</p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -145,7 +140,6 @@ export function AdminFinance() {
   ];
 
   const activation = Math.max(0, Math.min(100, growth?.activationRate ?? 0));
-  const activationDegrees = Math.max(8, Math.round((activation / 100) * 360));
 
   const financialActivity = useMemo(() => (activity ?? []).filter((item) =>
     /pagamento|assinatura|plano|crédito|credito|stripe|checkout|cancel|pacote/i.test(`${item.action} ${item.details ?? ""}`),
@@ -180,43 +174,23 @@ export function AdminFinance() {
         <StatTile label="Usuários" value={String(growth?.totalUsers ?? stats?.totalUsers ?? 0)} sub="base total cadastrada" icon={Users} color="text-rose-300" glow="rgba(251,113,133,.10)" loading={growthLoading && statsLoading} />
       </div>
 
-      <div>
-        {growthLoading ? <Skeleton className="h-[330px] rounded-xl bg-white/5" /> : (
-          <DomnDonutChart
-            data={planData}
-            title="Distribuição Financeira por Plano"
-            subtitle="Assinaturas e usuários por categoria"
-            centerLabel="Planos"
-            fixedColorStructure
-          />
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <CompactMetricChart
-          label="Créditos Consumidos"
-          sub="Consumo registrado no mês atual"
-          value={String(growth?.creditsSpentThisMonth ?? 0)}
-          ring={`conic-gradient(from 210deg, ${PURPLE}, ${ROSE}, ${CYAN}, ${PURPLE})`}
-          glow="rgba(139,92,246,.12)"
-          loading={growthLoading}
-        />
-        <CompactMetricChart
-          label="Execuções Totais"
-          sub="Operações realizadas na plataforma"
-          value={String(stats?.totalActions ?? 0)}
-          ring={`conic-gradient(from 210deg, ${GOLD}, ${ROSE}, ${PURPLE}, ${GOLD})`}
-          glow="rgba(245,180,35,.12)"
-          loading={statsLoading}
-        />
-        <CompactMetricChart
-          label="Ativação"
-          sub="Usuários que iniciaram o uso"
-          value={`${activation}%`}
-          ring={`conic-gradient(${EMERALD} 0deg ${activationDegrees}deg, ${CYAN} ${activationDegrees}deg 210deg, ${PURPLE} 210deg 300deg, ${ROSE} 300deg 360deg)`}
-          glow="rgba(34,211,238,.12)"
-          loading={growthLoading}
-        />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {growthLoading ? <Skeleton className="h-[330px] rounded-xl bg-white/5" /> : (
+            <DomnDonutChart
+              data={planData}
+              title="Distribuição Financeira por Plano"
+              subtitle="Assinaturas e usuários por categoria"
+              centerLabel="Planos"
+              fixedColorStructure
+            />
+          )}
+        </div>
+        <div className="grid gap-4">
+          <StatTile label="Créditos Consumidos" value={String(growth?.creditsSpentThisMonth ?? 0)} sub="consumo no mês atual" icon={WalletCards} color="text-violet-300" glow="rgba(139,92,246,.10)" loading={growthLoading} />
+          <StatTile label="Execuções Totais" value={String(stats?.totalActions ?? 0)} sub="operações realizadas na plataforma" icon={BadgeDollarSign} color="text-amber-300" glow="rgba(245,180,35,.10)" loading={statsLoading} />
+          <CompactActivationChart value={activation} loading={growthLoading} />
+        </div>
       </div>
 
       <Card
