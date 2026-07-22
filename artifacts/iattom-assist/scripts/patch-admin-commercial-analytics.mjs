@@ -4,22 +4,12 @@ const fileUrl = new URL("../src/pages/admin/AdminAnalytics.tsx", import.meta.url
 let source = readFileSync(fileUrl, "utf8");
 
 source = source.replace(
-  /const PLAN_DISPLAY_NAMES: Record<string, string> = \{[\s\S]*?\n\};/,
-  `const PLAN_DISPLAY_NAMES: Record<string, string> = {
-  free: "FREE",
-  pro: "START",
-  business: "PREMIUM",
-  agency: "PRO",
-};`,
-);
-
-source = source.replace(
-  /const PLAN_MRR_LABEL: Record<string, string> = \{[\s\S]*?\n\};/,
-  `const PLAN_MRR_LABEL: Record<string, string> = {
-  free: "MRR FREE",
-  pro: "MRR START",
-  business: "MRR PREMIUM",
-  agency: "MRR PRO",
+  /const PLAN_COLORS: Record<string, string> = \{[\s\S]*?\n\};/,
+  `const PLAN_COLORS: Record<string, string> = {
+  Free: GOLD,
+  Start: EMERALD,
+  Premium: PURPLE,
+  Pro: ROSE,
 };`,
 );
 
@@ -33,40 +23,61 @@ source = source.replace(
 };`,
 );
 
-source = source.replace(
-  /  const FIXED_PLAN_ORDER = \[[\s\S]*?  const revenueData = planRevenueDisplay;/,
-  `  const PLAN_MONTHLY_PRICES: Record<string, number> = {
-    free: 0,
-    pro: 69,
-    business: 159,
-    agency: 299,
+const growthInterfaceBefore = `  planBreakdown: {
+    free: number;
+    start?: number;
+    premium?: number;
+    pro: number;
+    business: number;
+    agency: number;
   };
-  const planRevenueDisplay = [
-    { plan: "FREE", key: "free" },
-    { plan: "START", key: "pro" },
-    { plan: "PREMIUM", key: "business" },
-    { plan: "PRO", key: "agency" },
-  ].map(({ plan, key }) => {
-    const users = growthStats?.planBreakdown?.[key as keyof GrowthStats["planBreakdown"]] ?? 0;
-    return { plan, users, mrr: users * (PLAN_MONTHLY_PRICES[key] ?? 0) };
-  });
-  const revenueData = planRevenueDisplay;`,
+}`;
+const growthInterfaceAfter = `  planBreakdown: {
+    free: number;
+    start?: number;
+    premium?: number;
+    pro: number;
+    business: number;
+    agency: number;
+  };
+  mrrByPlan: {
+    free: number;
+    pro: number;
+    business: number;
+    agency: number;
+  };
+}`;
+if (source.includes(growthInterfaceBefore)) {
+  source = source.replace(growthInterfaceBefore, growthInterfaceAfter);
+}
+
+source = source.replace(
+  /  const hasPaidSubscribers = \(growthStats\?\.activeSubscribers \?\? 0\) > 0;\n/,
+  "",
 );
 
 source = source.replace(
-  `        { name: "START",    users: growthStats.planBreakdown.free,     fill: "#60a5fa" },
-        { name: "COMPLETO", users: growthStats.planBreakdown.pro,      fill: "#34d399" },
-        { name: "PREMIUM",  users: growthStats.planBreakdown.business, fill: "#a78bfa" },
-        { name: "PRO",      users: growthStats.planBreakdown.agency,   fill: "#C9A84C" },`,
-  `        { name: "FREE",    users: growthStats.planBreakdown.free,     fill: "#60a5fa" },
-        { name: "START",   users: growthStats.planBreakdown.pro,      fill: "#34d399" },
-        { name: "PREMIUM", users: growthStats.planBreakdown.business, fill: "#a78bfa" },
-        { name: "PRO",     users: growthStats.planBreakdown.agency,   fill: "#C9A84C" },`,
+  /  const revenueByLabel = new Map<string, number>\(\);[\s\S]*?\n  }\n\n  const planDistributionDonut/,
+  `  const revenueByLabel = new Map<string, number>([
+    ["Free", growthStats?.mrrByPlan?.free ?? 0],
+    ["Start", growthStats?.mrrByPlan?.pro ?? 0],
+    ["Premium", growthStats?.mrrByPlan?.business ?? 0],
+    ["Pro", growthStats?.mrrByPlan?.agency ?? 0],
+  ]);
+
+  const planDistributionDonut`,
 );
 
 source = source.replace(
-  'value={`$${growthStats?.mrr?.toLocaleString() ?? 0}`}',
-  'value={(growthStats?.mrr ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}',
+  /  const planDistributionDonut = planDefinitions\.map\(\(plan\) => \{[\s\S]*?\n  \}\);/,
+  `  const planDistributionDonut = planDefinitions.map((plan) => {
+    let value = 0;
+    if (plan.label === "Free") value = growthStats?.planBreakdown.free ?? 0;
+    if (plan.label === "Start") value = growthStats?.planBreakdown.pro ?? 0;
+    if (plan.label === "Premium") value = growthStats?.planBreakdown.business ?? 0;
+    if (plan.label === "Pro") value = growthStats?.planBreakdown.agency ?? 0;
+    return { label: plan.label, value, color: plan.color };
+  });`,
 );
 
 source = source.replace(
@@ -75,4 +86,4 @@ source = source.replace(
 );
 
 writeFileSync(fileUrl, source);
-console.log("Admin commercial analytics guard applied.");
+console.log("Admin analytics now uses the unified financial source with fixed plan colors.");
