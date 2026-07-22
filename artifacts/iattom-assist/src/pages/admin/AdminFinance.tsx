@@ -1,15 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Activity,
-  BadgeDollarSign,
   CreditCard,
   DollarSign,
   PackagePlus,
   Percent,
   RefreshCw,
   Users,
-  WalletCards,
 } from "lucide-react";
 import { useAuth } from "@clerk/react";
 import {
@@ -28,7 +25,6 @@ const GOLD = "#C9A84C";
 const PURPLE = "#a78bfa";
 const EMERALD = "#34d399";
 const ROSE = "#fb7185";
-const CYAN = "#22d3ee";
 
 interface GrowthStats {
   mrr: number;
@@ -71,37 +67,6 @@ function StatTile({ label, value, sub, icon: Icon, color, glow, loading = false 
   );
 }
 
-function CompactActivationChart({ value, loading = false }: { value: number; loading?: boolean }) {
-  return (
-    <div
-      className="relative overflow-hidden rounded-xl border border-white/[0.07] bg-[#0d1015] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.025),0_18px_45px_rgba(0,0,0,.22)]"
-      style={{ backgroundImage: "radial-gradient(circle at 18% 16%, rgba(34,211,238,.12), transparent 48%), linear-gradient(135deg, rgba(255,255,255,.014), transparent 55%)" }}
-    >
-      {loading ? (
-        <Skeleton className="h-[82px] w-full rounded-lg bg-white/5" />
-      ) : (
-        <div className="flex items-center gap-4">
-          <div
-            className="relative grid h-16 w-16 shrink-0 place-items-center rounded-full p-[6px] shadow-[0_0_20px_rgba(34,211,238,.16)]"
-            style={{ background: `conic-gradient(from 210deg, ${CYAN}, ${EMERALD}, ${PURPLE}, ${ROSE}, ${CYAN})` }}
-          >
-            <div className="grid h-full w-full place-items-center rounded-full border border-white/[0.08] bg-[#11151b]/90 backdrop-blur-sm">
-              <span className="text-base font-bold text-white">{value}%</span>
-            </div>
-          </div>
-          <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-2 text-cyan-300">
-              <Activity className="h-4 w-4" />
-              <p className="text-xs font-semibold text-white">Ativação</p>
-            </div>
-            <p className="text-[10px] leading-4 text-zinc-600">Usuários que iniciaram o uso</p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function AdminFinance() {
   const { getToken } = useAuth();
   const [growth, setGrowth] = useState<GrowthStats | null>(null);
@@ -140,6 +105,11 @@ export function AdminFinance() {
   ];
 
   const activation = Math.max(0, Math.min(100, growth?.activationRate ?? 0));
+  const operationalData = [
+    { label: "Créditos Consumidos", value: growth?.creditsSpentThisMonth ?? 0, color: PURPLE },
+    { label: "Execuções Totais", value: stats?.totalActions ?? 0, color: GOLD },
+    { label: "Ativação (%)", value: activation, color: EMERALD },
+  ];
 
   const financialActivity = useMemo(() => (activity ?? []).filter((item) =>
     /pagamento|assinatura|plano|crédito|credito|stripe|checkout|cancel|pacote/i.test(`${item.action} ${item.details ?? ""}`),
@@ -186,10 +156,16 @@ export function AdminFinance() {
             />
           )}
         </div>
-        <div className="grid gap-4">
-          <StatTile label="Créditos Consumidos" value={String(growth?.creditsSpentThisMonth ?? 0)} sub="consumo no mês atual" icon={WalletCards} color="text-violet-300" glow="rgba(139,92,246,.10)" loading={growthLoading} />
-          <StatTile label="Execuções Totais" value={String(stats?.totalActions ?? 0)} sub="operações realizadas na plataforma" icon={BadgeDollarSign} color="text-amber-300" glow="rgba(245,180,35,.10)" loading={statsLoading} />
-          <CompactActivationChart value={activation} loading={growthLoading} />
+        <div>
+          {(growthLoading || statsLoading) ? <Skeleton className="h-[330px] rounded-xl bg-white/5" /> : (
+            <DomnDonutChart
+              data={operationalData}
+              title="Indicadores Operacionais"
+              subtitle="Créditos, execuções e ativação"
+              centerLabel="Indicadores"
+              fixedColorStructure
+            />
+          )}
         </div>
       </div>
 
