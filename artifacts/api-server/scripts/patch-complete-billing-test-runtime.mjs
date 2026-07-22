@@ -3,9 +3,25 @@ import fs from "node:fs";
 function read(path) { return fs.readFileSync(path, "utf8"); }
 function write(path, source) { fs.writeFileSync(path, source); }
 
+const creditsPath = new URL("../src/lib/credits.ts", import.meta.url);
+let credits = read(creditsPath);
+credits = credits
+  .replace(/export const PLAN_CREDITS = \{[\s\S]*?\} as const;/, `export const PLAN_CREDITS = {
+  free: 0,
+  pro: 20,
+  business: 20,
+  agency: 20,
+} as const;`)
+  .replace(/export const PLAN_CREATIVE_CREDITS = \{[\s\S]*?\} as const;/, `export const PLAN_CREATIVE_CREDITS = {
+  free: 0,
+  pro: 40,
+  business: 40,
+  agency: 40,
+} as const;`);
+write(creditsPath, credits);
+
 const stripeRoutePath = new URL("../src/routes/stripe.ts", import.meta.url);
 let routes = read(stripeRoutePath);
-
 routes = routes
   .replace(/const CREDIT_PACKAGES = \[[\s\S]*?\] as const;/, `const CREDIT_PACKAGES = [
   { id: "credits_300", credits: 300, priceId: "price_1TvgKKAYtu5nLhAZXhkAJgGT", name: "Pacote 300 Créditos", displayPrice: "R$ 0,50" },
@@ -18,12 +34,10 @@ routes = routes
   { id: "creative_50", creativeCredits: 500, priceId: "price_1TvgNkAYtu5nLhAZAz3wtyBX", name: "Criativo 50", displayPrice: "R$ 0,60" },
 ] as const;`)
   .replace(/pkg\.unitAmountBrl,/g, "pkg.priceId,");
-
 write(stripeRoutePath, routes);
 
 const stripeServicePath = new URL("../src/lib/stripeService.ts", import.meta.url);
 let service = read(stripeServicePath);
-
 service = service
   .replaceAll("  unitAmountBrl: number,\n  packageName: string,", "  priceId: string,\n  packageName: string,")
   .replace(/line_items: \[\n      \{\n        price_data: \{\n          currency: "brl",\n          unit_amount: unitAmountBrl,\n          product_data: \{\n            name: packageName,\n            description: `\$\{credits\.toLocaleString\("pt-BR"\)\} créditos — compra avulsa \(não expiram\)`,\n          \},\n        \},\n        quantity: 1,\n      \},\n    \],/, "line_items: [{ price: priceId, quantity: 1 }],")
@@ -31,7 +45,6 @@ service = service
   .replace('success_url: `${billingUrl}?payment=success`,', 'success_url: `${billingUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`,')
   .replaceAll('success_url: `${billingUrl}?payment=credits_success`,', 'success_url: `${billingUrl}?payment=credits_success&session_id={CHECKOUT_SESSION_ID}`,')
   .replace('success_url: `${billingUrl}?payment=video_success`,', 'success_url: `${billingUrl}?payment=video_success&session_id={CHECKOUT_SESSION_ID}`,');
-
 write(stripeServicePath, service);
 
 const webhookPath = new URL("../src/lib/webhookHandlers.ts", import.meta.url);
@@ -60,4 +73,4 @@ webhook = webhook
   );
 write(webhookPath, webhook);
 
-console.log("Complete billing test runtime applied: all plans and one-time packages use Stripe Price IDs and session reconciliation.");
+console.log("Complete billing test runtime applied: plan limits, all plans and one-time packages use the same test configuration and session reconciliation.");
