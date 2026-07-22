@@ -50,7 +50,7 @@ service = service
           unit_amount: unitAmountBrl,
           product_data: {
             name: packageName,
-            description: \`${credits.toLocaleString("pt-BR")} créditos — compra avulsa (não expiram)\`,
+            description: \`\${credits.toLocaleString("pt-BR")} créditos — compra avulsa (não expiram)\`,
           },
         },
         quantity: 1,
@@ -65,7 +65,7 @@ service = service
           unit_amount: unitAmountBrl,
           product_data: {
             name: packageName,
-            description: \`${creativeCredits} créditos criativos — compra avulsa (não expiram)\`,
+            description: \`\${creativeCredits} créditos criativos — compra avulsa (não expiram)\`,
           },
         },
         quantity: 1,
