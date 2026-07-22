@@ -29,9 +29,9 @@ routes = routes
   { id: "credits_1500", credits: 1500, unitAmountBrl: 60, name: "Pacote 1.500 Créditos", displayPrice: "R$ 0,60" },
 ] as const;`)
   .replace(/const CREATIVE_PACKAGES = \[[\s\S]*?\] as const;/, `const CREATIVE_PACKAGES = [
-  { id: "creative_20", creativeCredits: 20, unitAmountBrl: 50, name: "Pacote 20 Créditos Criativos", displayPrice: "R$ 0,50" },
-  { id: "creative_35", creativeCredits: 35, unitAmountBrl: 55, name: "Pacote 35 Créditos Criativos", displayPrice: "R$ 0,55" },
-  { id: "creative_50", creativeCredits: 50, unitAmountBrl: 60, name: "Pacote 50 Créditos Criativos", displayPrice: "R$ 0,60" },
+  { id: "creative_20", creativeCredits: 200, unitAmountBrl: 50, name: "Pacote 20 Imagens", displayPrice: "R$ 0,50" },
+  { id: "creative_35", creativeCredits: 350, unitAmountBrl: 55, name: "Pacote 35 Imagens", displayPrice: "R$ 0,55" },
+  { id: "creative_50", creativeCredits: 500, unitAmountBrl: 60, name: "Pacote 50 Imagens", displayPrice: "R$ 0,60" },
 ] as const;`)
   .replace(/pkg\.priceId,/g, "pkg.unitAmountBrl,");
 write(stripeRoutePath, routes);
@@ -89,7 +89,7 @@ rewriteOneTimeCheckout(
           unit_amount: unitAmountBrl,
           product_data: {
             name: packageName,
-            description: \`\${creativeCredits} créditos criativos — compra avulsa (não expiram)\`,
+            description: \`\${Math.floor(creativeCredits / 10)} imagens — compra avulsa (não expiram)\`,
           },
         },
         quantity: 1,
@@ -147,4 +147,4 @@ webhook = webhook
   );
 write(webhookPath, webhook);
 
-console.log("Complete billing test runtime applied: exact general and creative package credits, fixed public Stripe return and recovery.");
+console.log("Complete billing test runtime applied: image packages remain 200/350/500 internal credits and are sold as 20/35/50 image units.");
