@@ -70,8 +70,6 @@ router.get("/credits/balance", requireAuth, async (req, res): Promise<void> => {
     user = created;
   }
 
-  user = await normalizeLegacyCreativeBalance(clerkUserId, user);
-
   const plan = user.plan as keyof typeof PLAN_CREDITS;
   const planLimit = PLAN_CREDITS[plan] ?? PLAN_CREDITS.free;
   const creativePlanLimit = PLAN_CREATIVE_CREDITS[plan] ?? PLAN_CREATIVE_CREDITS.free;
