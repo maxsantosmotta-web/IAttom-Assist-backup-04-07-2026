@@ -83,7 +83,7 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
   );
 }
 
-export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total", fixedColorStructure = false }: { data: DomnBarPoint[]; title: string; subtitle: string; centerLabel?: string; fixedColorStructure?: boolean }) {
+export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total", centerValue, fixedColorStructure = false }: { data: DomnBarPoint[]; title: string; subtitle: string; centerLabel?: string; centerValue?: string | number; fixedColorStructure?: boolean }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const normalized = useMemo(() => data.map((item, index) => ({ ...item, value: Math.max(0, Number(item.value || 0)), color: item.color || COLORS[index % COLORS.length] })), [data]);
   const total = normalized.reduce((sum, item) => sum + item.value, 0);
@@ -98,6 +98,7 @@ export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total", f
   });
   const active = activeIndex === null ? null : normalized[activeIndex];
   const gradient = normalized.length ? `conic-gradient(${segments.join(", ")})` : "conic-gradient(#252525 0deg 360deg)";
+  const displayedValue = active ? numberFmt(active.value) : centerValue ?? numberFmt(total);
 
   return (
     <section className="domn-chart-card domn-donut-card">
@@ -105,7 +106,7 @@ export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total", f
       {normalized.length ? (
         <div className="domn-donut-layout">
           <div className="domn-premium-donut" style={{ ["--donut-fill" as string]: gradient }}>
-            <div><small>{active?.label || centerLabel}</small><strong>{numberFmt(active?.value ?? total)}</strong></div>
+            <div><small>{active?.label || centerLabel}</small><strong>{displayedValue}</strong></div>
           </div>
           <div className="domn-donut-legend">
             {normalized.map((item, index) => (
