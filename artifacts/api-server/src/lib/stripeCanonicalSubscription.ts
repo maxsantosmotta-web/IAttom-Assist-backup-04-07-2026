@@ -109,12 +109,12 @@ export async function handleCanonicalSubscriptionChange(
 
     const previousPlan = locked.plan;
     const planChanged = previousPlan !== targetPlan;
-    const generalDelta = planChanged
-      ? Math.max(0, PLAN_CREDITS[targetPlan] - PLAN_CREDITS[previousPlan])
-      : 0;
-    const creativeDelta = planChanged
-      ? Math.max(0, PLAN_CREATIVE_CREDITS[targetPlan] - PLAN_CREATIVE_CREDITS[previousPlan])
-      : 0;
+
+    // Em um upgrade real, preserve o saldo restante e some a franquia completa
+    // do novo plano. Eventos repetidos não duplicam o crédito porque, após o
+    // primeiro processamento, o plano salvo já é o targetPlan e planChanged=false.
+    const generalDelta = planChanged ? PLAN_CREDITS[targetPlan] : 0;
+    const creativeDelta = planChanged ? PLAN_CREATIVE_CREDITS[targetPlan] : 0;
 
     const generalBefore = Number(locked.credits);
     const creativeBefore = Number(locked.creative_credits);
