@@ -98,7 +98,7 @@ rewriteOneTimeCheckout(
 );
 
 service = service
-  .replace(/const APP_ORIGIN =[\s\S]*?const BASE_PATH =/, `const APP_ORIGIN = "https://iattomassist.com.br";\n\nconst BASE_PATH =`)
+  .replace(/const APP_ORIGIN =[\s\S]*?const BASE_PATH =/, `const APP_ORIGIN = "https://www.iattomassist.com.br";\n\nconst BASE_PATH =`)
   .replaceAll('success_url: `${billingUrl}?payment=success`,', 'success_url: `${billingUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`,')
   .replaceAll('success_url: `${billingUrl}?payment=credits_success`,', 'success_url: `${billingUrl}?payment=credits_success&session_id={CHECKOUT_SESSION_ID}`,')
   .replaceAll('success_url: `${billingUrl}?payment=video_success`,', 'success_url: `${billingUrl}?payment=video_success&session_id={CHECKOUT_SESSION_ID}`,');
