@@ -13,7 +13,7 @@ const APP_ORIGIN = isLocalRuntime
     (process.env.REPLIT_DOMAINS
       ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
       : "http://localhost:80")
-  : "https://iattomassist.com.br";
+  : "https://www.iattomassist.com.br";
 
 const BASE_PATH = (process.env.BASE_PATH ?? "/").replace(/\/$/, "");
 
