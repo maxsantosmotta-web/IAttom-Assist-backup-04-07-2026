@@ -2,16 +2,18 @@ import { eq } from "drizzle-orm";
 import { db, users } from "@workspace/db";
 import { getUncachableStripeClient } from "./stripeClient.js";
 
+const isLocalRuntime =
+  process.env.NODE_ENV !== "production" &&
+  !process.env.RAILWAY_ENVIRONMENT &&
+  !process.env.RAILWAY_PROJECT_ID;
+
 const configuredOrigin = process.env.APP_PUBLIC_URL?.replace(/\/$/, "");
-const APP_ORIGIN =
-  configuredOrigin === "https://iattomassist.com.br" ||
-  configuredOrigin === "http://iattomassist.com.br"
-    ? "https://iattomassist.com.br"
-    : configuredOrigin
-    ? configuredOrigin
-    : process.env.REPLIT_DOMAINS
-    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
-    : "http://localhost:80";
+const APP_ORIGIN = isLocalRuntime
+  ? configuredOrigin ??
+    (process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+      : "http://localhost:80")
+  : "https://iattomassist.com.br";
 
 const BASE_PATH = (process.env.BASE_PATH ?? "/").replace(/\/$/, "");
 
