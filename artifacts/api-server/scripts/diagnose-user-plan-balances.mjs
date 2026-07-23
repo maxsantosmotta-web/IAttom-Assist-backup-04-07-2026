@@ -1,5 +1,5 @@
-import pg from "pg";
 import Stripe from "stripe";
+import { pool } from "@workspace/db";
 
 const emailArg = process.argv.find((arg) => arg.startsWith("--email="));
 const email = emailArg?.slice("--email=".length).trim().toLowerCase();
@@ -8,10 +8,8 @@ if (!email) {
   process.exit(2);
 }
 
-if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL não configurada");
 if (!process.env.STRIPE_SECRET_KEY) throw new Error("STRIPE_SECRET_KEY não configurada");
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 try {
