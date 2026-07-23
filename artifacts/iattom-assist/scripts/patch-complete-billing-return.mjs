@@ -26,22 +26,26 @@ if (start === -1 || end === -1) {
       return;
     }
 
-    if (payment !== "success" && payment !== "credits_success" && payment !== "video_success") return;
+    const isCheckoutReturn = payment === "success" || payment === "credits_success" || payment === "video_success";
+    const isUpgradeReturn = payment === "upgrade_success";
+    if (!isCheckoutReturn && !isUpgradeReturn) return;
 
     let cancelled = false;
     const reconcileReturn = async () => {
       try {
-        if (!sessionId) throw new Error("Sessão de pagamento não encontrada no retorno do Stripe.");
+        if (isCheckoutReturn) {
+          if (!sessionId) throw new Error("Sessão de pagamento não encontrada no retorno do Stripe.");
 
-        const response = await fetch("/api/stripe/reconcile-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ sessionId }),
-        });
-        const result = await response.json() as { ok?: boolean; message?: string; error?: string };
-        if (!response.ok || result.ok === false) {
-          throw new Error(result.error ?? result.message ?? "Falha ao confirmar o pagamento.");
+          const response = await fetch("/api/stripe/reconcile-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ sessionId }),
+          });
+          const result = await response.json() as { ok?: boolean; message?: string; error?: string };
+          if (!response.ok || result.ok === false) {
+            throw new Error(result.error ?? result.message ?? "Falha ao confirmar o pagamento.");
+          }
         }
 
         await Promise.all([
@@ -54,6 +58,8 @@ if (start === -1 || end === -1) {
         if (cancelled) return;
         if (payment === "success") {
           toast({ title: "Pagamento confirmado", description: "Plano e créditos aplicados à sua conta." });
+        } else if (payment === "upgrade_success") {
+          toast({ title: "Upgrade confirmado", description: "Seu plano e seus saldos foram atualizados sem criar outra assinatura." });
         } else if (payment === "credits_success") {
           toast({ title: "Compra confirmada", description: "O pacote foi somado ao saldo extra da sua conta." });
         } else {
@@ -84,4 +90,4 @@ if (start === -1 || end === -1) {
   fs.writeFileSync(billingPath, source);
 }
 
-console.log("All Stripe billing returns now reconcile their checkout session before showing success.");
+console.log("Stripe checkout and upgrade returns refresh plan and balances without manual reload.");
