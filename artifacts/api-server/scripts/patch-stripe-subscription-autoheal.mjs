@@ -31,8 +31,10 @@ const replacement = `router.get(
         if (!customer.deleted) customerIds.add(customer.id);
       }
 
+      const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, business: 2, agency: 3 };
       let activeSubscription: any = null;
       let activeCustomerId: string | null = null;
+      let activePlanKey: string | null = null;
 
       for (const customerId of customerIds) {
         const subscriptions = await stripe.subscriptions.list({
@@ -40,16 +42,35 @@ const replacement = `router.get(
           status: "all",
           limit: 100,
         });
-        const active = subscriptions.data
-          .filter((subscription) => subscription.status === "active" || subscription.status === "trialing")
-          .sort((a, b) => b.created - a.created)[0];
-        if (active && (!activeSubscription || active.created > activeSubscription.created)) {
-          activeSubscription = active;
-          activeCustomerId = customerId;
+
+        for (const subscription of subscriptions.data) {
+          if (subscription.status !== "active" && subscription.status !== "trialing" && subscription.status !== "past_due") continue;
+
+          const firstItem = subscription.items.data[0];
+          let planKey = subscription.metadata?.planKey ||
+            (firstItem ? ALLOWED_PLAN_PRICE_IDS.get(firstItem.price.id) : undefined);
+
+          if (!planKey && firstItem) {
+            const productId = typeof firstItem.price.product === "string"
+              ? firstItem.price.product
+              : firstItem.price.product.id;
+            const product = await stripe.products.retrieve(productId);
+            planKey = product.metadata?.plan;
+          }
+
+          if (planKey !== "pro" && planKey !== "business" && planKey !== "agency") continue;
+
+          const candidateRank = PLAN_RANK[planKey] ?? -1;
+          const activeRank = activePlanKey ? (PLAN_RANK[activePlanKey] ?? -1) : -1;
+          if (!activeSubscription || candidateRank > activeRank || (candidateRank === activeRank && subscription.created > activeSubscription.created)) {
+            activeSubscription = subscription;
+            activeCustomerId = customerId;
+            activePlanKey = planKey;
+          }
         }
       }
 
-      if (!activeSubscription || !activeCustomerId) {
+      if (!activeSubscription || !activeCustomerId || !activePlanKey) {
         return res.json({
           hasSubscription: false,
           status: null,
@@ -61,71 +82,20 @@ const replacement = `router.get(
         });
       }
 
-      const firstItem = activeSubscription.items.data[0];
-      let planKey = activeSubscription.metadata?.planKey ||
-        (firstItem ? ALLOWED_PLAN_PRICE_IDS.get(firstItem.price.id) : undefined);
-
-      if (!planKey && firstItem) {
-        const productId = typeof firstItem.price.product === "string"
-          ? firstItem.price.product
-          : firstItem.price.product.id;
-        const product = await stripe.products.retrieve(productId);
-        planKey = product.metadata?.plan;
-      }
-
-      if (planKey !== "pro" && planKey !== "business" && planKey !== "agency") {
-        req.log.error(
-          { clerkUserId, subscriptionId: activeSubscription.id, priceId: firstItem?.price?.id, planKey },
-          "Active Stripe subscription plan could not be identified",
-        );
-        return res.status(422).json({ error: "Plano da assinatura ativa não identificado" });
-      }
-
-      const subscriptionChanged =
-        user.plan !== planKey ||
-        user.stripeSubscriptionId !== activeSubscription.id;
-
       const metadataChanged =
+        user.plan !== activePlanKey ||
         user.stripeCustomerId !== activeCustomerId ||
+        user.stripeSubscriptionId !== activeSubscription.id ||
         user.stripeSubscriptionStatus !== activeSubscription.status;
 
-      if (subscriptionChanged) {
-        const balanceBefore = user.credits ?? 0;
+      if (metadataChanged) {
         await db.update(users)
           .set({
-            plan: planKey,
-            credits: 20,
-            creativeCredits: 40,
+            plan: activePlanKey as "pro" | "business" | "agency",
             stripeCustomerId: activeCustomerId,
             stripeSubscriptionId: activeSubscription.id,
             stripeSubscriptionStatus: activeSubscription.status,
             planSelected: true,
-            helpMessagesUsed: 0,
-            helpUsedResetAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(users.clerkId, clerkUserId));
-
-        if (balanceBefore !== 20) {
-          await db.insert(creditsTransactions).values({
-            clerkUserId,
-            amount: 20 - balanceBefore,
-            type: "credit",
-            description: "Assinatura Stripe ativada ou plano alterado",
-            balanceBefore,
-            balanceAfter: 20,
-          });
-        }
-
-        req.log.info(
-          { clerkUserId, customerId: activeCustomerId, subscriptionId: activeSubscription.id, planKey },
-          "Paid subscription activated from Stripe",
-        );
-      } else if (metadataChanged) {
-        await db.update(users)
-          .set({
-            stripeCustomerId: activeCustomerId,
-            stripeSubscriptionStatus: activeSubscription.status,
             updatedAt: new Date(),
           })
           .where(eq(users.clerkId, clerkUserId));
@@ -135,7 +105,7 @@ const replacement = `router.get(
       return res.json({
         hasSubscription: true,
         status: activeSubscription.status,
-        planKey,
+        planKey: activePlanKey,
         currentPeriodEnd: currentPeriodEnd > 0 ? new Date(currentPeriodEnd * 1000).toISOString() : null,
         cancelAtPeriodEnd: Boolean(activeSubscription.cancel_at_period_end),
         stripeCustomerId: activeCustomerId,
@@ -152,4 +122,4 @@ const replacement = `router.get(
 
 source = source.slice(0, routeStart) + replacement + source.slice(routeEnd);
 fs.writeFileSync(stripeRoutePath, source);
-console.log("Stripe subscription sync preserves already-consumed plan and creative credits");
+console.log("Stripe subscription lookup selects the highest active plan without overwriting balances");
