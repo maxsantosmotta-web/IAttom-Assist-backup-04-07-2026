@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, users } from "@workspace/db";
 import { getUncachableStripeClient } from "./stripeClient.js";
 import { createCheckoutSession, ensureStripeCustomer } from "./stripeService.js";
+import { handleCanonicalSubscriptionChange } from "./stripeCanonicalSubscription.js";
 
 const PRODUCTION_ORIGIN = "https://www.iattomassist.com.br";
 const BASE_PATH = (process.env.BASE_PATH ?? "/").replace(/\/$/, "");
@@ -141,6 +142,8 @@ export async function createOrUpgradeStripeSubscription(
     proration_behavior: "none",
     payment_behavior: "error_if_incomplete",
   });
+
+  await handleCanonicalSubscriptionChange(updated);
 
   const returnUrl = new URL(`${BILLING_URL}?payment=upgrade_success`);
   returnUrl.searchParams.set("subscription_id", updated.id);
