@@ -141,7 +141,7 @@ function StatTile`,
 
   const planRevenueDonut = revenuePlanDefinitions.map((plan) => {
     let value = 0;
-    if (plan.label === "Start") value = growthStats?.mrrByPlan?.pro ?? 0;
+    if (plan.label === "Start") value = growthStats?.mrrByPlan?.pro ?? growthStats?.mrr ?? 0;
     if (plan.label === "Premium") value = growthStats?.mrrByPlan?.business ?? 0;
     if (plan.label === "Pro") value = growthStats?.mrrByPlan?.agency ?? 0;
     return { label: plan.label, value, color: plan.color };
@@ -238,16 +238,30 @@ function normalizeAction`,
     "",
   );
 
-  source = source.replace(
-    /  const planDonut = planDefinitions\.map\(\(plan\) => \{[\s\S]*?\n  \}\);/,
-    `  const planDonut = planDefinitions.map((plan) => {
+  const oldPlanDonut = `  const planDonut = planDefinitions.map((plan) => {
+    let value = 0;
+    if (growthStats && hasPaidSubscribers) {
+      if (plan.label === "Free") value = 0;
+      if (plan.label === "Start") value = growthStats.planBreakdown.start ?? growthStats.planBreakdown.pro ?? 0;
+      if (plan.label === "Premium") value = growthStats.planBreakdown.premium ?? growthStats.planBreakdown.business ?? 0;
+      if (plan.label === "Pro") value = growthStats.planBreakdown.agency ?? 0;
+    }
+    return { label: plan.label, value, color: plan.color };
+  });`;
+
+  const newPlanDonut = `  const planDonut = planDefinitions.map((plan) => {
     let value = 0;
     if (plan.label === "Free") value = registeredPlans?.planBreakdown.free ?? 0;
     if (plan.label === "Start") value = registeredPlans?.planBreakdown.pro ?? 0;
     if (plan.label === "Premium") value = registeredPlans?.planBreakdown.business ?? 0;
     if (plan.label === "Pro") value = registeredPlans?.planBreakdown.agency ?? 0;
     return { label: plan.label, value, color: plan.color };
-  });`,
+  });`;
+
+  source = source.replace(oldPlanDonut, newPlanDonut);
+  source = source.replace(
+    /  const planDonut = planDefinitions\.map\(\(plan\) => \{[\s\S]*?\n  \}\);/,
+    newPlanDonut,
   );
 
   source = source.replace(
