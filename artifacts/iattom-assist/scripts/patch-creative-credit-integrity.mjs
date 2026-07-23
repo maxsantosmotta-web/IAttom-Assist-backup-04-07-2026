@@ -9,13 +9,17 @@ source = source.replace(
 );
 
 source = source.replace(
-  `  const runGenerate = (charge: () => void) => {\n    chargedFeatureRef.current = featureKey;\n    generate("/api/ai/creative-ideas", {`,
-  `  const runGenerate = (charge: () => void) => {\n    generate("/api/ai/creative-ideas", {`,
+  `  const runGenerate = (charge: () => void) => {\n    chargedFeatureRef.current = featureKey;\n    generate("/api/ai/creative-ideas", {\n      prompt,\n      platform,\n      selectedFormats,\n    }).then((res) => {\n      if (res !== null) charge();\n    });\n  };`,
+  `  const runGenerate = (_charge: () => void) => {\n    void generate("/api/ai/creative-ideas", {\n      prompt,\n      platform,\n      selectedFormats,\n    });\n  };`,
 );
 
 if (source.includes("refundCalledRef") || source.includes("chargedFeatureRef")) {
-  throw new Error("Creative credit refund patch did not fully apply");
+  throw new Error("Creative credit integrity patch did not remove legacy client refund state");
+}
+
+if (!source.includes('const runGenerate = (_charge: () => void) => {') || source.includes("if (res !== null) charge();")) {
+  throw new Error("Creative credit integrity patch did not disable duplicate client charge");
 }
 
 fs.writeFileSync(path, source);
-console.log("Creative credits now charge only after successful generation; failed generations cannot add balance");
+console.log("Creative images are charged only by the server after successful generation; client duplicate charge is disabled");
