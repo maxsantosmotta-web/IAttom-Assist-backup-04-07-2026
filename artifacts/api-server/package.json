@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
-    "build": "node ./scripts/patch-admin-user-balances.mjs && node ./scripts/patch-stripe-catalog-runtime.mjs && node ./scripts/patch-stripe-plans-runtime.mjs && node ./scripts/patch-stripe-subscription-autoheal.mjs && node ./scripts/patch-complete-billing-test-runtime.mjs && node ./scripts/patch-stripe-single-subscription-upgrade-runtime.mjs && node ./scripts/patch-stripe-canonical-subscription-runtime.mjs && node ./scripts/patch-creative-server-charge.mjs && node ./build.mjs",
+    "build": "node ./scripts/patch-admin-user-balances.mjs && node ./scripts/patch-stripe-catalog-runtime.mjs && node ./scripts/patch-stripe-plans-runtime.mjs && node ./scripts/patch-stripe-subscription-autoheal.mjs && node ./scripts/patch-complete-billing-test-runtime.mjs && node ./scripts/patch-stripe-single-subscription-upgrade-runtime.mjs && node ./scripts/patch-stripe-canonical-subscription-runtime.mjs && node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -22,7 +22,7 @@
     "express": "^5",
     "express-rate-limit": "^8.5.2",
     "google-auth-library": "^10.7.0",
-    "http-proxy-middleware": "^3.0.5",
+    "http-proxy-middleware": "^3.5.2",
     "pino": "^9",
     "pino-http": "^10",
     "resend": "^4.0.0",
