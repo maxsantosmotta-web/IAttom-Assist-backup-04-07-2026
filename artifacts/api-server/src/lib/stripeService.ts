@@ -2,9 +2,13 @@ import { eq } from "drizzle-orm";
 import { db, users } from "@workspace/db";
 import { getUncachableStripeClient } from "./stripeClient.js";
 
+const configuredOrigin = process.env.APP_PUBLIC_URL?.replace(/\/$/, "");
 const APP_ORIGIN =
-  process.env.APP_PUBLIC_URL
-    ? process.env.APP_PUBLIC_URL.replace(/\/$/, "")
+  configuredOrigin === "https://iattomassist.com.br" ||
+  configuredOrigin === "http://iattomassist.com.br"
+    ? "https://iattomassist.com.br"
+    : configuredOrigin
+    ? configuredOrigin
     : process.env.REPLIT_DOMAINS
     ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
     : "http://localhost:80";
@@ -52,7 +56,7 @@ export async function createCheckoutSession(
     payment_method_types: ["card"],
     line_items: [{ price: priceId, quantity: 1 }],
     mode: "subscription",
-    success_url: `${billingUrl}?payment=success`,
+    success_url: `${billingUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${billingUrl}?payment=canceled`,
     client_reference_id: clerkUserId,
     subscription_data: {
@@ -94,7 +98,7 @@ export async function createCreditPurchaseCheckoutSession(
       },
     ],
     mode: "payment",
-    success_url: `${billingUrl}?payment=credits_success`,
+    success_url: `${billingUrl}?payment=credits_success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${billingUrl}?payment=canceled`,
     client_reference_id: clerkUserId,
     metadata: {
@@ -140,7 +144,7 @@ export async function createCreativePurchaseCheckoutSession(
       },
     ],
     mode: "payment",
-    success_url: `${billingUrl}?payment=credits_success`,
+    success_url: `${billingUrl}?payment=credits_success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${billingUrl}?payment=canceled`,
     client_reference_id: clerkUserId,
     metadata: {
@@ -185,7 +189,7 @@ export async function createVideoPackCheckoutSession(
       },
     ],
     mode: "payment",
-    success_url: `${billingUrl}?payment=video_success`,
+    success_url: `${billingUrl}?payment=video_success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${billingUrl}?payment=canceled`,
     client_reference_id: clerkUserId,
     metadata: {
@@ -223,8 +227,8 @@ export async function createFreeStartCheckoutSession(
       },
     ],
     mode: "subscription",
-    success_url: `${billingUrl}?payment=success`,
-    cancel_url:  `${billingUrl}?payment=canceled`,
+    success_url: `${billingUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${billingUrl}?payment=canceled`,
     client_reference_id: clerkUserId,
     subscription_data: {
       metadata: { clerkUserId, planKey: "free" },
