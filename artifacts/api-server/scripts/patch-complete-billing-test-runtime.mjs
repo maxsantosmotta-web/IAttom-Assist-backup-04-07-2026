@@ -72,7 +72,7 @@ rewriteOneTimeCheckout(
           unit_amount: unitAmountBrl,
           product_data: {
             name: packageName,
-            description: \`${credits.toLocaleString("pt-BR")} créditos — compra avulsa (não expiram)\`,
+            description: \`\${credits.toLocaleString("pt-BR")} créditos — compra avulsa (não expiram)\`,
           },
         },
         quantity: 1,
@@ -89,7 +89,7 @@ rewriteOneTimeCheckout(
           unit_amount: unitAmountBrl,
           product_data: {
             name: packageName,
-            description: \`${Math.floor(creativeCredits / 10)} imagens — compra avulsa (não expiram)\`,
+            description: \`\${Math.floor(creativeCredits / 10)} imagens — compra avulsa (não expiram)\`,
           },
         },
         quantity: 1,
