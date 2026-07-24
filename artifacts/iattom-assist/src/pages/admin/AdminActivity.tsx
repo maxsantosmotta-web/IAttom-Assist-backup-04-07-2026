@@ -112,10 +112,7 @@ export function AdminActivity() {
       if (date >= month30ago) month++;
     }
 
-    const spanDays = items.length
-      ? Math.max(1, Math.ceil((now.getTime() - new Date(items[items.length - 1].createdAt).getTime()) / 86400000))
-      : 1;
-    const avgDaily = week > 0 ? (week / Math.min(7, spanDays)).toFixed(1) : "0";
+    const avgDaily = week > 0 ? (week / 7).toFixed(1) : "0";
 
     const dailyMap: Record<string, number> = {};
     const days14: string[] = [];
