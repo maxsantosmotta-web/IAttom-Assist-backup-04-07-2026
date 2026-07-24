@@ -107,7 +107,7 @@ async function handleSubscriptionChange(
         clerkUserId: user.clerkId,
         amount: balanceAfter - balanceBefore,
         type: "credit",
-        description: `${planKey.charAt(0).toUpperCase() + planKey.slice(1)} plan subscription activated`,
+        description: "Assinatura ativada",
         balanceBefore,
         balanceAfter,
       });
@@ -145,7 +145,7 @@ async function handleSubscriptionChange(
         clerkUserId: user.clerkId,
         amount: balanceAfter - balanceBefore,
         type: "adjustment",
-        description: `Subscription ${status} — reverted to free plan`,
+        description: "Assinatura encerrada — plano alterado para FREE",
         balanceBefore,
         balanceAfter,
       });
@@ -196,7 +196,7 @@ async function handleSubscriptionDeleted(
       clerkUserId: user.clerkId,
       amount: balanceAfter - balanceBefore,
       type: "adjustment",
-      description: "Subscription canceled — reverted to free plan",
+      description: "Assinatura cancelada — plano alterado para FREE",
       balanceBefore,
       balanceAfter,
     });
