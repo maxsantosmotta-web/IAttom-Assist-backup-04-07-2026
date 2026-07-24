@@ -104,17 +104,33 @@ export async function handleCanonicalSubscriptionChange(
           WHERE clerk_id = ${clerkUserId}
           FOR UPDATE`,
     );
-    const locked = lockedResult.rows[0] as LockedUserBalances | undefined;
+    const locked = lockedResult.rows[0] as unknown as LockedUserBalances | undefined;
     if (!locked) return;
 
     const previousPlan = locked.plan;
     const planChanged = previousPlan !== targetPlan;
 
-    // Em um upgrade real, preserve o saldo restante e some a franquia completa
-    // do novo plano. Eventos repetidos não duplicam o crédito porque, após o
-    // primeiro processamento, o plano salvo já é o targetPlan e planChanged=false.
-    const generalDelta = planChanged ? PLAN_CREDITS[targetPlan] : 0;
-    const creativeDelta = planChanged ? PLAN_CREATIVE_CREDITS[targetPlan] : 0;
+    const itemPriceId = subscription.items.data[0]?.price.id ?? "unknown";
+    const changeKey = `subscription:${subscription.id}:${itemPriceId}:${targetPlan}`;
+
+    const [existingGeneral] = await tx
+      .select({ id: creditsTransactions.id })
+      .from(creditsTransactions)
+      .where(eq(creditsTransactions.stripeSessionId, `${changeKey}:general`))
+      .limit(1);
+
+    const [existingCreative] = await tx
+      .select({ id: creditsTransactions.id })
+      .from(creditsTransactions)
+      .where(eq(creditsTransactions.stripeSessionId, `${changeKey}:creative`))
+      .limit(1);
+
+    const generalDelta =
+      planChanged || !existingGeneral ? PLAN_CREDITS[targetPlan] : 0;
+    const creativeDelta =
+      planChanged || !existingCreative
+        ? PLAN_CREATIVE_CREDITS[targetPlan]
+        : 0;
 
     const generalBefore = Number(locked.credits);
     const creativeBefore = Number(locked.creative_credits);
@@ -134,9 +150,6 @@ export async function handleCanonicalSubscriptionChange(
         updatedAt: new Date(),
       })
       .where(eq(users.clerkId, clerkUserId));
-
-    const itemPriceId = subscription.items.data[0]?.price.id ?? "unknown";
-    const changeKey = `subscription:${subscription.id}:${itemPriceId}:${targetPlan}`;
 
     if (generalDelta > 0) {
       await tx.insert(creditsTransactions).values({

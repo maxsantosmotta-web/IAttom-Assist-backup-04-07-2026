@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, users, creditsTransactions, videoTransactions } from "@workspace/db";
 import { getStripeSync, getUncachableStripeClient } from "./stripeClient.js";
 import { logger } from "./logger.js";
+import { handleCanonicalSubscriptionChange } from "./stripeCanonicalSubscription.js";
 
 const PLAN_CREDITS: Record<string, number> = {
   free: 0,
@@ -345,12 +346,22 @@ async function handlePackagePurchase(
   }
 }
 
-export async function reconcileCheckoutSession(sessionId: string): Promise<{ ok: boolean; message: string }> {
+export async function reconcileCheckoutSession(
+  sessionId: string,
+  expectedClerkUserId: string,
+): Promise<{ ok: boolean; message: string }> {
   const stripe = await getUncachableStripeClient();
   const session = await stripe.checkout.sessions.retrieve(sessionId);
 
   if (session.status !== "complete") {
     return { ok: false, message: `Session status is ${session.status}, not complete` };
+  }
+
+  if (
+    !session.client_reference_id ||
+    session.client_reference_id !== expectedClerkUserId
+  ) {
+    return { ok: false, message: "Checkout session does not belong to the authenticated user" };
   }
 
   if (session.mode === "subscription" && session.subscription) {
@@ -359,7 +370,15 @@ export async function reconcileCheckoutSession(sessionId: string): Promise<{ ok:
         ? session.subscription
         : session.subscription.id;
     const sub = await stripe.subscriptions.retrieve(subId);
-    await handleSubscriptionChange(sub);
+
+    if (
+      sub.metadata?.clerkUserId &&
+      sub.metadata.clerkUserId !== expectedClerkUserId
+    ) {
+      return { ok: false, message: "Subscription does not belong to the authenticated user" };
+    }
+
+    await handleCanonicalSubscriptionChange(sub);
     return { ok: true, message: `Subscription ${subId} reconciled` };
   }
 
@@ -397,7 +416,7 @@ export class WebhookHandlers {
       switch (event.type) {
         case "customer.subscription.created":
         case "customer.subscription.updated":
-          await handleSubscriptionChange(
+          await handleCanonicalSubscriptionChange(
             event.data.object as Stripe.Subscription,
           );
           break;
@@ -416,7 +435,7 @@ export class WebhookHandlers {
                 ? session.subscription
                 : session.subscription.id;
             const sub = await stripe.subscriptions.retrieve(subId);
-            await handleSubscriptionChange(sub);
+            await handleCanonicalSubscriptionChange(sub);
           }
           break;
         }

@@ -301,9 +301,44 @@ export function Billing() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
-    if (payment === "success") {
-      toast({ title: "Pagamento realizado", description: "Seu plano foi ativado. Créditos adicionados à sua conta." });
-      window.history.replaceState({}, "", window.location.pathname);
+    const sessionId = params.get("session_id");
+
+    if (payment === "success" && sessionId) {
+      void (async () => {
+        try {
+          const response = await fetch("/api/stripe/reconcile-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ sessionId }),
+          });
+
+          const result = await response.json() as { ok?: boolean; message?: string };
+
+          if (!response.ok || result.ok === false) {
+            throw new Error(result.message ?? "Falha ao reconciliar pagamento");
+          }
+
+          await Promise.all([
+            refetchSub(),
+            refetchMe(),
+            refetchCredits(),
+          ]);
+
+          toast({
+            title: "Pagamento realizado",
+            description: "Seu plano foi ativado e os benefícios foram adicionados à sua conta.",
+          });
+
+          window.history.replaceState({}, "", window.location.pathname);
+        } catch {
+          toast({
+            title: "Pagamento aprovado",
+            description: "A liberação dos benefícios ainda está sendo finalizada. Use o botão Atualizar em alguns instantes.",
+            variant: "destructive",
+          });
+        }
+      })();
     } else if (payment === "credits_success") {
       toast({ title: "Créditos adicionados", description: "Seus créditos foram somados ao saldo da conta." });
       window.history.replaceState({}, "", window.location.pathname);
@@ -318,7 +353,7 @@ export function Billing() {
       toast({ title: "Checkout cancelado", description: "Nenhuma cobrança foi realizada." });
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [location]);
+  }, [location, refetchCredits, refetchMe, refetchSub, toast]);
 
   const currentPlan  = me?.plan ?? "free";
   const hasActiveSub = subscription?.hasSubscription === true;

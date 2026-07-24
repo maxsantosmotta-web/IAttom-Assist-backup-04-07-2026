@@ -403,8 +403,10 @@ router.post(
     if (!sessionId) {
       return res.status(400).json({ error: "sessionId required" });
     }
+    const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
+
     try {
-      const result = await reconcileCheckoutSession(sessionId);
+      const result = await reconcileCheckoutSession(sessionId, clerkUserId);
       return res.json(result);
     } catch (err) {
       req.log.error({ err }, "Reconcile session failed");
