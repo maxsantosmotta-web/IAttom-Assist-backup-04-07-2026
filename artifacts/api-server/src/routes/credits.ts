@@ -111,8 +111,13 @@ router.get("/credits/transactions", requireAuth, async (req, res): Promise<void>
     db.select({ credits: users.credits, extraCredits: users.extraCredits }).from(users).where(eq(users.clerkId, clerkUserId)),
   ]);
 
+  const compatibleTransactions = txList.map((transaction) => ({
+    ...transaction,
+    feature: transaction.feature ?? undefined,
+  }));
+
   res.json(ListCreditTransactionsResponse.parse({
-    transactions: txList,
+    transactions: compatibleTransactions,
     total,
     balance: (userRow?.credits ?? 0) + (userRow?.extraCredits ?? 0),
   }));
