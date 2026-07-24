@@ -20,7 +20,7 @@ function featureLabel(feature: string | null, description: string): string {
   if (raw.includes("video_script") || raw.includes("script")) return "video_script";
   if (raw.includes("content") || raw.includes("conteúdo") || raw.includes("conteudo")) return "content";
   if (raw.includes("creative") || raw.includes("imagem")) return "creative";
-  return "outros";
+  return "Consumo legado sem identificação";
 }
 
 function monthKey(date: Date): string {
@@ -113,6 +113,10 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
     count: Number(row.count),
     percentage: Math.round((Number(row.count) / totalActions) * 100),
   }));
+  const percentageTotal = featureUsage.reduce((sum, item) => sum + item.percentage, 0);
+  if (featureUsage.length > 0 && percentageTotal !== 100) {
+    featureUsage[0].percentage += 100 - percentageTotal;
+  }
 
   const planCounts = new Map(planRows.map((row) => [row.plan, Number(row.count)]));
   const planRevenue = [
