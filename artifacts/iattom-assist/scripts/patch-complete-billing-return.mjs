@@ -87,7 +87,56 @@ if (start === -1 || end === -1) {
   }, [location]);`;
 
   source = source.slice(0, start) + replacement + source.slice(end + endMarker.length);
-  fs.writeFileSync(billingPath, source);
 }
 
-console.log("Stripe checkout and upgrade returns refresh plan and balances without manual reload.");
+const refreshPattern = /  const handleBillingRefresh = (?:async )?\(\) => \{[\s\S]*?\n  \};/;
+const refreshReplacement = `  const handleBillingRefresh = async () => {
+    try {
+      const response = await fetch("/api/stripe/reconcile-latest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+      const result = await response.json() as {
+        ok?: boolean;
+        message?: string;
+        generalGranted?: number;
+        creativeGranted?: number;
+      };
+
+      if (!response.ok || result.ok === false) {
+        throw new Error(result.message ?? "Falha ao reconciliar a assinatura.");
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetStripeSubscriptionQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetCreditsBalanceQueryKey() }),
+      ]);
+      await Promise.all([refetchPlans(), refetchSub(), refetchMe(), refetchCredits()]);
+
+      const granted = (result.generalGranted ?? 0) + (result.creativeGranted ?? 0);
+      toast({
+        title: granted > 0 ? "Franquias atualizadas" : "Faturamento atualizado",
+        description: result.message ?? "Plano e saldos conferidos com sucesso.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao atualizar o faturamento.";
+      console.error("Billing manual reconciliation failed", error);
+      toast({
+        title: "Não foi possível atualizar",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };`;
+
+if (refreshPattern.test(source)) {
+  source = source.replace(refreshPattern, refreshReplacement);
+} else if (!source.includes('fetch("/api/stripe/reconcile-latest"')) {
+  throw new Error("Billing refresh reconciliation marker not found");
+}
+
+fs.writeFileSync(billingPath, source);
+console.log("Stripe checkout return and manual billing refresh expose the real reconciliation result.");
