@@ -44,7 +44,7 @@ const newCheckout = `    const officialPriceId = STRIPE_BILLING_PRICE_IDS[planKe
       });
       const payload = await response.json() as { url?: string; error?: string };
       if (!response.ok) {
-        throw new Error(payload.error ?? \`HTTP \${response.status}\`);
+        throw new Error(payload.error ?? `HTTP ${response.status}`);
       }
       if (!payload.url) {
         throw new Error("Checkout sem URL de redirecionamento");
@@ -134,7 +134,10 @@ const newPaymentEffect = `  useEffect(() => {
 
 if (source.includes(oldPaymentEffect)) {
   source = source.replace(oldPaymentEffect, newPaymentEffect);
-} else if (!source.includes('"/api/stripe/reconcile-latest"')) {
+} else if (
+  !source.includes('"/api/stripe/reconcile-latest"') &&
+  !source.includes('"/api/stripe/reconcile-session"')
+) {
   throw new Error("Billing payment reconciliation effect marker not found");
 }
 
