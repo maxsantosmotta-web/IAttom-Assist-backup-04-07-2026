@@ -55,6 +55,7 @@ interface FinancialMovement {
 interface FinancialSummary {
   mrr: number;
   revenueThisMonth: number;
+  subscriptionRevenueThisMonth: number;
   packageRevenueThisMonth: number;
   activeSubscribers: number;
   totalUsers: number;
@@ -168,8 +169,8 @@ export function AdminFinance() {
   ];
 
   const revenueData = [
-    { label: "Receita recorrente", value: summary?.mrr ?? 0, color: GOLD },
-    { label: "Pacotes avulsos", value: summary?.packageRevenueThisMonth ?? 0, color: PURPLE },
+    { label: "Assinaturas pagas no mês", value: summary?.subscriptionRevenueThisMonth ?? 0, color: GOLD },
+    { label: "Pacotes avulsos pagos no mês", value: summary?.packageRevenueThisMonth ?? 0, color: PURPLE },
   ];
 
   const movements = summary?.recentMovements ?? [];
@@ -256,7 +257,7 @@ export function AdminFinance() {
           <DomnDonutChart data={planData} title="Distribuição por Plano" subtitle="Assinaturas ativas e usuários FREE" centerLabel="Planos" fixedColorStructure />
         )}
         {loading ? <Skeleton className="h-[330px] rounded-xl bg-white/5" /> : (
-          <DomnDonutChart data={revenueData} title="Composição da Receita" subtitle="Receita recorrente e pacotes pagos no mês" centerLabel="Receita" fixedColorStructure />
+          <DomnDonutChart data={revenueData} title="Composição da Receita" subtitle="Valores pagos em assinaturas e pacotes no mês" centerLabel="Receita" fixedColorStructure />
         )}
       </div>
 
