@@ -66,7 +66,6 @@ function invoicePlanName(invoice: any, fallbackPlan: string): string {
     ...((invoice.lines?.data ?? []).flatMap((line: any) => [
       line.metadata?.plan,
       line.price?.metadata?.plan,
-      typeof line.price?.product === "object" ? line.price.product?.metadata?.plan : null,
     ])),
   ];
 
@@ -79,7 +78,6 @@ function invoicePlanName(invoice: any, fallbackPlan: string): string {
     line.description,
     line.price?.nickname,
     line.price?.lookup_key,
-    typeof line.price?.product === "object" ? line.price.product?.name : null,
   ]);
 
   for (const candidate of textCandidates) {
@@ -160,11 +158,7 @@ router.get("/admin/financial-summary", requireAdmin, async (req, res): Promise<v
 
     const [subscriptions, invoices, checkoutSessions] = await Promise.all([
       stripe.subscriptions.list({ status: "all", limit: 100 }).autoPagingToArray({ limit: 1000 }),
-      stripe.invoices.list({
-        created: { gte: createdGte },
-        limit: 100,
-        expand: ["data.lines.data.price.product"],
-      }).autoPagingToArray({ limit: 1000 }),
+      stripe.invoices.list({ created: { gte: createdGte }, limit: 100 }).autoPagingToArray({ limit: 1000 }),
       stripe.checkout.sessions.list({ created: { gte: createdGte }, limit: 100 }).autoPagingToArray({ limit: 1000 }),
     ]);
 
