@@ -47,16 +47,17 @@ fs.writeFileSync(webhookPath, source);
 const stripeRoutePath = new URL("../src/routes/stripe.ts", import.meta.url);
 let stripeRoute = fs.readFileSync(stripeRoutePath, "utf8");
 
+const reconcileImport = 'import { reconcileCheckoutSession } from "../lib/webhookHandlers.js";';
 const stripeClientImport = 'import { getUncachableStripeClient } from "../lib/stripeClient.js";';
+const canonicalRouteImport = 'import { handleCanonicalSubscriptionChange } from "../lib/stripeCanonicalSubscription.js";';
+
 if (!stripeRoute.includes(stripeClientImport)) {
-  const reconcileImport = 'import { reconcileCheckoutSession } from "../lib/webhookHandlers.js";';
   if (!stripeRoute.includes(reconcileImport)) {
     throw new Error("Stripe reconcile import anchor not found");
   }
   stripeRoute = stripeRoute.replace(reconcileImport, `${reconcileImport}\n${stripeClientImport}`);
 }
 
-const canonicalRouteImport = 'import { handleCanonicalSubscriptionChange } from "../lib/stripeCanonicalSubscription.js";';
 if (!stripeRoute.includes(canonicalRouteImport)) {
   if (!stripeRoute.includes(stripeClientImport)) {
     throw new Error("Stripe client import anchor not found");
@@ -64,14 +65,7 @@ if (!stripeRoute.includes(canonicalRouteImport)) {
   stripeRoute = stripeRoute.replace(stripeClientImport, `${stripeClientImport}\n${canonicalRouteImport}`);
 }
 
-const latestRouteMarker = '"/stripe/reconcile-latest"';
-if (!stripeRoute.includes(latestRouteMarker)) {
-  const portalMarker = 'router.post(\n  "/stripe/portal",';
-  if (!stripeRoute.includes(portalMarker)) {
-    throw new Error("Stripe portal route marker not found");
-  }
-
-  const latestRoute = `router.post(
+const canonicalLatestRoute = `router.post(
   "/stripe/reconcile-latest",
   requireAuth,
   async (req: Request, res: Response) => {
@@ -101,19 +95,52 @@ if (!stripeRoute.includes(latestRouteMarker)) {
         return res.status(403).json({ ok: false, message: "Assinatura não pertence ao usuário autenticado" });
       }
 
-      await handleCanonicalSubscriptionChange(subscription);
-      return res.json({ ok: true, message: "Assinatura e franquias reconciliadas" });
+      if (
+        subscription.metadata?.clerkUserId &&
+        subscription.metadata.clerkUserId !== clerkUserId
+      ) {
+        return res.status(403).json({ ok: false, message: "Metadados da assinatura não pertencem ao usuário autenticado" });
+      }
+
+      const result = await handleCanonicalSubscriptionChange(subscription);
+      if (!result.ok) {
+        return res.status(422).json(result);
+      }
+
+      return res.json(result);
     } catch (err) {
-      req.log.error({ err }, "Reconcile latest subscription failed");
-      return res.status(500).json({ ok: false, error: "Reconciliation failed" });
+      req.log.error({ err, clerkUserId }, "Reconcile latest subscription failed");
+      const message = err instanceof Error ? err.message : "Falha desconhecida";
+      return res.status(500).json({ ok: false, message });
     }
   },
 );
 
 `;
 
-  stripeRoute = stripeRoute.replace(portalMarker, latestRoute + portalMarker);
+const latestStart = stripeRoute.indexOf('router.post(\n  "/stripe/reconcile-latest"');
+const reconcileSessionMarker = 'router.post(\n  "/stripe/reconcile-session",';
+const reconcileSessionStart = stripeRoute.indexOf(reconcileSessionMarker);
+
+if (reconcileSessionStart === -1) {
+  throw new Error("Reconcile session route marker not found");
+}
+
+if (latestStart === -1) {
+  stripeRoute =
+    stripeRoute.slice(0, reconcileSessionStart) +
+    canonicalLatestRoute +
+    stripeRoute.slice(reconcileSessionStart);
+} else {
+  const latestEnd = stripeRoute.indexOf(reconcileSessionMarker, latestStart);
+  if (latestEnd === -1) {
+    throw new Error("Existing reconcile-latest route end marker not found");
+  }
+  stripeRoute =
+    stripeRoute.slice(0, latestStart) +
+    canonicalLatestRoute +
+    stripeRoute.slice(latestEnd);
 }
 
 fs.writeFileSync(stripeRoutePath, stripeRoute);
-console.log("Stripe canonical webhooks and active subscription reconciliation are enabled");
+console.log("Stripe canonical webhooks and active subscription reconciliation are enforced in the final runtime");
