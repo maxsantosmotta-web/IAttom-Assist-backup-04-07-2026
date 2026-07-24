@@ -169,19 +169,50 @@ router.post("/credits/refund", requireAuth, async (req, res): Promise<void> => {
     res.json({ ok: true, refunded: 0 });
     return;
   }
+
   const isCreative = CREATIVE_FEATURES.has(featureKey);
+
   try {
-    if (isCreative) {
-      await db
-        .update(users)
-        .set({ creativeCredits: sql`${users.creativeCredits} + ${cost}` })
-        .where(eq(users.clerkId, clerkUserId));
-    } else {
-      await db
-        .update(users)
-        .set({ credits: sql`${users.credits} + ${cost}` })
-        .where(eq(users.clerkId, clerkUserId));
-    }
+    await db.transaction(async (tx) => {
+      const [user] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.clerkId, clerkUserId))
+        .for("update");
+
+      if (!user) throw new Error("User not found");
+
+      const balanceBefore = isCreative
+        ? user.creativeCredits + (user.extraCreativeCredits ?? 0)
+        : user.credits + (user.extraCredits ?? 0);
+      const balanceAfter = balanceBefore + cost;
+
+      if (isCreative) {
+        await tx
+          .update(users)
+          .set({ creativeCredits: sql`${users.creativeCredits} + ${cost}` })
+          .where(eq(users.clerkId, clerkUserId));
+      } else {
+        await tx
+          .update(users)
+          .set({ credits: sql`${users.credits} + ${cost}` })
+          .where(eq(users.clerkId, clerkUserId));
+      }
+
+      await tx.insert(creditsTransactions).values({
+        clerkUserId,
+        amount: cost,
+        type: "refund",
+        feature: featureKey,
+        balanceType: isCreative ? "creative" : "general",
+        description: isCreative
+          ? `Estorno de ${cost / 10} imagem${cost / 10 !== 1 ? "s" : ""} por falha técnica`
+          : `Estorno de ${cost} créditos por falha técnica`,
+        balanceBefore,
+        balanceAfter,
+      });
+    });
+
     req.log.info({ clerkUserId, feature: featureKey, cost, isCreative }, "credits: reembolso por falha técnica");
     res.json({ ok: true, refunded: cost });
   } catch (err) {
