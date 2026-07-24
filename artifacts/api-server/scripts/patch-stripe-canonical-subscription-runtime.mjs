@@ -56,6 +56,14 @@ if (!stripeRoute.includes(stripeClientImport)) {
   stripeRoute = stripeRoute.replace(reconcileImport, `${reconcileImport}\n${stripeClientImport}`);
 }
 
+const canonicalRouteImport = 'import { handleCanonicalSubscriptionChange } from "../lib/stripeCanonicalSubscription.js";';
+if (!stripeRoute.includes(canonicalRouteImport)) {
+  if (!stripeRoute.includes(stripeClientImport)) {
+    throw new Error("Stripe client import anchor not found");
+  }
+  stripeRoute = stripeRoute.replace(stripeClientImport, `${stripeClientImport}\n${canonicalRouteImport}`);
+}
+
 const latestRouteMarker = '"/stripe/reconcile-latest"';
 if (!stripeRoute.includes(latestRouteMarker)) {
   const portalMarker = 'router.post(\n  "/stripe/portal",';
@@ -71,35 +79,32 @@ if (!stripeRoute.includes(latestRouteMarker)) {
 
     try {
       const [user] = await db
-        .select({ stripeCustomerId: users.stripeCustomerId })
+        .select({
+          stripeCustomerId: users.stripeCustomerId,
+          stripeSubscriptionId: users.stripeSubscriptionId,
+        })
         .from(users)
         .where(eq(users.clerkId, clerkUserId));
 
-      if (!user?.stripeCustomerId) {
-        return res.status(404).json({ ok: false, message: "Cliente Stripe não encontrado" });
+      if (!user?.stripeCustomerId || !user.stripeSubscriptionId) {
+        return res.status(404).json({ ok: false, message: "Assinatura Stripe não encontrada" });
       }
 
       const stripe = await getUncachableStripeClient();
-      const sessions = await stripe.checkout.sessions.list({
-        customer: user.stripeCustomerId,
-        limit: 20,
-      });
+      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+      const subscriptionCustomerId =
+        typeof subscription.customer === "string"
+          ? subscription.customer
+          : subscription.customer.id;
 
-      const session = sessions.data.find(
-        (item) =>
-          item.status === "complete" &&
-          item.mode === "subscription" &&
-          item.client_reference_id === clerkUserId,
-      );
-
-      if (!session) {
-        return res.status(404).json({ ok: false, message: "Pagamento concluído não encontrado" });
+      if (subscriptionCustomerId !== user.stripeCustomerId) {
+        return res.status(403).json({ ok: false, message: "Assinatura não pertence ao usuário autenticado" });
       }
 
-      const result = await reconcileCheckoutSession(session.id, clerkUserId);
-      return res.json(result);
+      await handleCanonicalSubscriptionChange(subscription);
+      return res.json({ ok: true, message: "Assinatura e franquias reconciliadas" });
     } catch (err) {
-      req.log.error({ err }, "Reconcile latest session failed");
+      req.log.error({ err }, "Reconcile latest subscription failed");
       return res.status(500).json({ ok: false, error: "Reconciliation failed" });
     }
   },
@@ -111,4 +116,4 @@ if (!stripeRoute.includes(latestRouteMarker)) {
 }
 
 fs.writeFileSync(stripeRoutePath, stripeRoute);
-console.log("Stripe canonical webhooks and latest completed checkout reconciliation are active");
+console.log("Stripe canonical webhooks and active subscription reconciliation are enabled");
