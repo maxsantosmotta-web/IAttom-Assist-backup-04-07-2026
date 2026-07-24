@@ -9,7 +9,7 @@ const start = source.indexOf(startMarker);
 const end = start === -1 ? -1 : source.indexOf(endMarker, start);
 
 if (start === -1 || end === -1) {
-  if (!source.includes("Billing return reconciliation failed")) {
+  if (!source.includes('fetch("/api/stripe/reconcile-session"')) {
     throw new Error("Billing return effect markers not found");
   }
 } else {
