@@ -24,6 +24,7 @@ import { analyzeReference } from "../lib/ai/analyzeReference.js";
 
 const router: IRouter = Router();
 
+// Protege a geração de imagens contra briefings excessivamente longos sem alterar o texto salvo pelo usuário.
 const MAX_CREATIVE_PROMPT_LENGTH = 1800;
 const CREATIVE_PROMPT_END_LENGTH = 350;
 
