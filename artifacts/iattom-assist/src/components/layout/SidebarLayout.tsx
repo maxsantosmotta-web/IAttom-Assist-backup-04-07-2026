@@ -63,6 +63,11 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [helpUsage, setHelpUsage] = useState<{
+    used: number;
+    limit: number;
+    remaining: number;
+  } | null>(null);
   const [helpOpen, setHelpOpen] = useState(
     () => sessionStorage.getItem("iattom_help_open") === "1"
   );
@@ -108,6 +113,41 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { setIsMobileOpen(false); }, [location]);
 
+  useEffect(() => {
+    if (!isSignedIn) {
+      setHelpUsage(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadHelpUsage = () => {
+      fetch(`${basePath}/api/help/usage`, { credentials: "include" })
+        .then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json() as Promise<{
+            used: number;
+            limit: number;
+            remaining: number;
+          }>;
+        })
+        .then((data) => {
+          if (!cancelled) setHelpUsage(data);
+        })
+        .catch(() => {
+          if (!cancelled) setHelpUsage(null);
+        });
+    };
+
+    loadHelpUsage();
+    const intervalId = window.setInterval(loadHelpUsage, 15_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [isSignedIn, helpOpen]);
+
   // Bloco 4: persist Help panel state across refresh
   useEffect(() => {
     sessionStorage.setItem("iattom_help_open", helpOpen ? "1" : "0");
@@ -147,6 +187,11 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const creativeBarColor = getCreditBarColor(creativePct);
   const creativeTextColor = getCreditColor(creativePct);
   const isLowCreativeCredit = creditsData?.lowCreativeCredit ?? false;
+  const helpRemaining = helpUsage?.remaining ?? 0;
+  const helpLimit = helpUsage?.limit ?? 0;
+  const helpPct = helpLimit > 0 ? (helpRemaining / helpLimit) * 100 : 0;
+  const helpBarColor = getCreditBarColor(helpPct);
+  const helpTextColor = getCreditColor(helpPct);
 
   const SidebarContent = () => (
     <>
@@ -333,6 +378,32 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
                 {isLowCreativeCredit && (
                   <p className="text-[10px] text-red-400 mt-1 font-medium">Imagens baixas</p>
                 )}
+              </div>
+            )}
+
+            {/* Franquia do IAttom Help */}
+            {helpLimit > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <HelpCircle className="w-3 h-3 text-sky-400" />
+                    <span className="text-[11px] text-zinc-500 font-semibold tracking-wide">
+                      IAttom Help
+                    </span>
+                  </div>
+                  <span className={`text-[11px] font-bold tabular-nums ${helpTextColor}`}>
+                    {helpRemaining.toLocaleString()}
+                    <span className="text-zinc-700 font-normal">
+                      {" / "}{helpLimit.toLocaleString()}
+                    </span>
+                  </span>
+                </div>
+                <div className="h-1 rounded-full bg-white/[0.05] overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${helpBarColor}`}
+                    style={{ width: `${Math.min(helpPct, 100)}%` }}
+                  />
+                </div>
               </div>
             )}
           </Link>
