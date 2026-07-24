@@ -9,27 +9,27 @@ canonicalSource = canonicalSource.replace(legacyKeyLine, "");
 const legacyGrantBlock = `    const [existingGeneralCurrent] = await tx
       .select({ id: creditsTransactions.id })
       .from(creditsTransactions)
-      .where(eq(creditsTransactions.stripeSessionId, \`${changeKey}:general\`))
+      .where(eq(creditsTransactions.stripeSessionId, \`\${changeKey}:general\`))
       .limit(1);
     const [existingGeneralLegacy] = existingGeneralCurrent
       ? [existingGeneralCurrent]
       : await tx
           .select({ id: creditsTransactions.id })
           .from(creditsTransactions)
-          .where(eq(creditsTransactions.stripeSessionId, \`${legacyChangeKey}:general\`))
+          .where(eq(creditsTransactions.stripeSessionId, \`\${legacyChangeKey}:general\`))
           .limit(1);
 
     const [existingCreativeCurrent] = await tx
       .select({ id: creditsTransactions.id })
       .from(creditsTransactions)
-      .where(eq(creditsTransactions.stripeSessionId, \`${changeKey}:creative\`))
+      .where(eq(creditsTransactions.stripeSessionId, \`\${changeKey}:creative\`))
       .limit(1);
     const [existingCreativeLegacy] = existingCreativeCurrent
       ? [existingCreativeCurrent]
       : await tx
           .select({ id: creditsTransactions.id })
           .from(creditsTransactions)
-          .where(eq(creditsTransactions.stripeSessionId, \`${legacyChangeKey}:creative\`))
+          .where(eq(creditsTransactions.stripeSessionId, \`\${legacyChangeKey}:creative\`))
           .limit(1);
 
     const existingGeneral = existingGeneralCurrent ?? existingGeneralLegacy;
@@ -38,13 +38,13 @@ const legacyGrantBlock = `    const [existingGeneralCurrent] = await tx
 const periodGrantBlock = `    const [existingGeneral] = await tx
       .select({ id: creditsTransactions.id })
       .from(creditsTransactions)
-      .where(eq(creditsTransactions.stripeSessionId, \`${changeKey}:general\`))
+      .where(eq(creditsTransactions.stripeSessionId, \`\${changeKey}:general\`))
       .limit(1);
 
     const [existingCreative] = await tx
       .select({ id: creditsTransactions.id })
       .from(creditsTransactions)
-      .where(eq(creditsTransactions.stripeSessionId, \`${changeKey}:creative\`))
+      .where(eq(creditsTransactions.stripeSessionId, \`\${changeKey}:creative\`))
       .limit(1);`;
 
 if (canonicalSource.includes(legacyGrantBlock)) {
