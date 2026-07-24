@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { and, eq, desc, count } from "drizzle-orm";
-import { db, projectsTable, historyTable } from "@workspace/db";
+import { and, count, eq, isNull } from "drizzle-orm";
+import { db, historyTable, savedItemsTable } from "@workspace/db";
 import { GetDashboardSummaryResponse } from "@workspace/api-zod";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 
@@ -9,39 +9,24 @@ const router: IRouter = Router();
 router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
 
-  const [totalResult] = await db
-    .select({ count: count() })
-    .from(projectsTable)
-    .where(eq(projectsTable.clerkUserId, clerkUserId));
+  const [[projects], [actions]] = await Promise.all([
+    db
+      .select({ count: count() })
+      .from(savedItemsTable)
+      .where(and(eq(savedItemsTable.clerkUserId, clerkUserId), isNull(savedItemsTable.deletedAt))),
+    db
+      .select({ count: count() })
+      .from(historyTable)
+      .where(and(eq(historyTable.clerkUserId, clerkUserId), isNull(historyTable.deletedAt))),
+  ]);
 
-  const [activeResult] = await db
-    .select({ count: count() })
-    .from(projectsTable)
-    .where(and(eq(projectsTable.clerkUserId, clerkUserId), eq(projectsTable.status, "in_progress")));
-
-  const [completedResult] = await db
-    .select({ count: count() })
-    .from(projectsTable)
-    .where(and(eq(projectsTable.clerkUserId, clerkUserId), eq(projectsTable.status, "completed")));
-
-  const [totalActionsResult] = await db
-    .select({ count: count() })
-    .from(historyTable)
-    .where(eq(historyTable.clerkUserId, clerkUserId));
-
-  const recentProjects = await db
-    .select()
-    .from(projectsTable)
-    .where(eq(projectsTable.clerkUserId, clerkUserId))
-    .orderBy(desc(projectsTable.updatedAt))
-    .limit(5);
-
+  const totalProjects = projects.count;
   const summary = {
-    totalProjects: totalResult.count,
-    activeProjects: activeResult.count,
-    completedProjects: completedResult.count,
-    totalActions: totalActionsResult.count,
-    recentProjects,
+    totalProjects,
+    activeProjects: 0,
+    completedProjects: totalProjects,
+    totalActions: actions.count,
+    recentProjects: [],
   };
 
   res.json(GetDashboardSummaryResponse.parse(summary));
