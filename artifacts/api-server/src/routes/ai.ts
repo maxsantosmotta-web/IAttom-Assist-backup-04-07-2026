@@ -24,6 +24,28 @@ import { analyzeReference } from "../lib/ai/analyzeReference.js";
 
 const router: IRouter = Router();
 
+const MAX_CREATIVE_PROMPT_LENGTH = 1800;
+const CREATIVE_PROMPT_END_LENGTH = 350;
+
+function compactCreativePrompt(prompt: string): string {
+  const normalized = prompt
+    .replace(/```[a-z]*\s*/gi, "")
+    .replace(/```/g, "")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (normalized.length <= MAX_CREATIVE_PROMPT_LENGTH) return normalized;
+
+  const endLength = Math.min(CREATIVE_PROMPT_END_LENGTH, normalized.length);
+  const startLength = MAX_CREATIVE_PROMPT_LENGTH - endLength - 5;
+  const start = normalized.slice(0, startLength).trimEnd();
+  const end = normalized.slice(-endLength).trimStart();
+
+  return `${start}\n...\n${end}`;
+}
+
 const aiRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 15,
@@ -115,7 +137,12 @@ router.post("/ai/creative-ideas", requireAuth, requirePlan(["pro", "business", "
   }
   const ac = new AbortController();
   req.on("close", () => ac.abort());
-  await streamCreativeIdeas(parsed.data, res, clerkUserId, ac.signal);
+  await streamCreativeIdeas(
+    { ...parsed.data, prompt: compactCreativePrompt(parsed.data.prompt) },
+    res,
+    clerkUserId,
+    ac.signal,
+  );
 });
 
 // PREMIUM + PRO
