@@ -3,6 +3,16 @@ import fs from "node:fs";
 const appPath = new URL("../src/App.tsx", import.meta.url);
 let source = fs.readFileSync(appPath, "utf8");
 
+source = source
+  .replace(
+    'import { useEffect, useRef, useState, lazy, Suspense } from "react";',
+    'import { useEffect, useRef, useState, lazy, Suspense, type ReactNode } from "react";',
+  )
+  .replace(
+    'import { ClerkProvider, Show, useClerk, AuthenticateWithRedirectCallback } from "@clerk/react";',
+    'import { ClerkProvider, Show, useClerk, useUser, AuthenticateWithRedirectCallback } from "@clerk/react";',
+  );
+
 const oldBlock = `function ClerkQueryInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
@@ -15,16 +25,17 @@ const oldBlock = `function ClerkQueryInvalidator() {
   return null;
 }`;
 
-const newBlock = `const BROWSER_STATE_OWNER_KEY = "iattom_browser_owner_v1";
+const previousPatchedBlockStart = 'const BROWSER_STATE_OWNER_KEY = "iattom_browser_owner_v1";';
+const previousPatchedBlockEnd = '\n\nconst BLOCKED_MSG =';
+
+const strongBlock = `const BROWSER_STATE_OWNER_KEY = "iattom_browser_owner_v1";
 
 function clearUserScopedBrowserState(): void {
   try {
     const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key): key is string => Boolean(key));
     for (const key of keys) {
-      if (key.startsWith("iattom_") && key !== BROWSER_STATE_OWNER_KEY) {
-        localStorage.removeItem(key);
-      }
+      if (key.startsWith("iattom_") && key !== BROWSER_STATE_OWNER_KEY) localStorage.removeItem(key);
     }
   } catch { /* armazenamento indisponível */ }
 
@@ -37,43 +48,59 @@ function clearUserScopedBrowserState(): void {
   } catch { /* armazenamento indisponível */ }
 }
 
-function ClerkQueryInvalidator() {
-  const { addListener } = useClerk();
+function BrowserUserBoundary({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn, user } = useUser();
   const qc = useQueryClient();
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
+  const [, forceRender] = useState(0);
+  const userId = isLoaded && isSignedIn ? (user?.id ?? null) : null;
 
-  useEffect(() => addListener(({ user }) => {
-    const userId = user?.id ?? null;
-    let storedOwner: string | null = null;
+  let storedOwner: string | null = null;
+  try { storedOwner = localStorage.getItem(BROWSER_STATE_OWNER_KEY); } catch { /* armazenamento indisponível */ }
+
+  const ownerMatches = isLoaded && (userId ? storedOwner === userId : storedOwner === null);
+
+  useEffect(() => {
+    if (!isLoaded || ownerMatches) return;
+
+    clearUserScopedBrowserState();
     try {
-      storedOwner = localStorage.getItem(BROWSER_STATE_OWNER_KEY);
+      if (userId) localStorage.setItem(BROWSER_STATE_OWNER_KEY, userId);
+      else localStorage.removeItem(BROWSER_STATE_OWNER_KEY);
     } catch { /* armazenamento indisponível */ }
 
-    // Sem proprietário gravado também é tratado como migração insegura:
-    // limpa estados antigos uma única vez antes de vincular este navegador à conta atual.
-    if (userId && storedOwner !== userId) {
-      clearUserScopedBrowserState();
-      try { localStorage.setItem(BROWSER_STATE_OWNER_KEY, userId); } catch { /* ignore */ }
-      qc.clear();
-    } else if (!userId && storedOwner) {
-      clearUserScopedBrowserState();
-      try { localStorage.removeItem(BROWSER_STATE_OWNER_KEY); } catch { /* ignore */ }
-      qc.clear();
-    } else if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
-      qc.clear();
-    }
+    qc.clear();
+    forceRender((value) => value + 1);
+  }, [isLoaded, ownerMatches, qc, userId]);
 
-    prevUserIdRef.current = userId;
-  }), [addListener, qc]);
-
-  return null;
+  if (!isLoaded || !ownerMatches) return <LoadingScreen />;
+  return <>{children}</>;
 }`;
 
 if (source.includes(oldBlock)) {
-  source = source.replace(oldBlock, newBlock);
-} else if (!source.includes("BROWSER_STATE_OWNER_KEY") || !source.includes("clearUserScopedBrowserState")) {
-  throw new Error("Clerk browser-state isolation marker not found");
+  source = source.replace(oldBlock, strongBlock);
+} else {
+  const start = source.indexOf(previousPatchedBlockStart);
+  const end = start === -1 ? -1 : source.indexOf(previousPatchedBlockEnd, start);
+  if (start === -1 || end === -1) throw new Error("Clerk browser-state isolation marker not found");
+  source = source.slice(0, start) + strongBlock + source.slice(end);
+}
+
+source = source.replace('      <ClerkQueryInvalidator />\n', "");
+source = source.replace(
+  '      <ErrorBoundary resetKey={location}><Switch>',
+  '      <BrowserUserBoundary><ErrorBoundary resetKey={location}><Switch>',
+);
+source = source.replace(
+  '      </Switch></ErrorBoundary>\n      <Toaster />',
+  '      </Switch></ErrorBoundary></BrowserUserBoundary>\n      <Toaster />',
+);
+
+if (!source.includes("function BrowserUserBoundary") || !source.includes("<BrowserUserBoundary><ErrorBoundary")) {
+  throw new Error("Browser user boundary was not installed");
+}
+if (source.includes("<ClerkQueryInvalidator />")) {
+  throw new Error("Legacy post-mount user invalidator is still active");
 }
 
 fs.writeFileSync(appPath, source);
-console.log("Browser state is isolated and cleared whenever the authenticated account changes");
+console.log("Dashboard mounting is blocked until browser state belongs to the authenticated account");
