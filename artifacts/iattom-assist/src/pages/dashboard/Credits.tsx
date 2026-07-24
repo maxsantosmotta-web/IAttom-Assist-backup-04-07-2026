@@ -79,8 +79,13 @@ export function Credits() {
       )
     : [];
 
-  const PLAN_DISPLAY_NAMES: Record<string, string> = { free: "START", pro: "COMPLETO", business: "PREMIUM", agency: "PRO" };
-  const currentPlanDisplay = balance?.plan ? (PLAN_DISPLAY_NAMES[balance.plan] ?? balance.plan) : "START";
+  const PLAN_DISPLAY_NAMES: Record<string, string> = {
+    free: "FREE",
+    pro: "START",
+    business: "PREMIUM",
+    agency: "PRO",
+  };
+  const currentPlanDisplay = balance?.plan ? (PLAN_DISPLAY_NAMES[balance.plan] ?? balance.plan) : "FREE";
 
   return (
     <div className="space-y-8">
@@ -209,9 +214,9 @@ export function Credits() {
               <p className="text-xs text-muted-foreground mt-1">Use um dos módulos para ver seu histórico aqui.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[620px] overflow-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-[#111111]">
                   <tr className="border-b border-white/5">
                     <th className="text-left px-5 py-3 text-xs text-muted-foreground font-medium">Data</th>
                     <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Descrição</th>
