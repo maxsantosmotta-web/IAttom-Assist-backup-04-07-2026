@@ -74,6 +74,15 @@ interface GrowthStats {
   };
 }
 
+interface FinancialSummary {
+  mrr: number;
+  revenueThisMonth: number;
+}
+
+interface CreditAnalytics {
+  byDay: Array<{ day: string; total: number }>;
+}
+
 function normalizeAction(action: string): string {
   const base = action.split(":")[0].trim();
   if (/creative|criativo/i.test(base)) return "Criativos Gerados";
@@ -152,6 +161,10 @@ function CompactMetric({ label, value, icon: Icon, color, glow }: {
   );
 }
 
+function formatMoney(value: number): string {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 export function AdminOverview() {
   const { getToken } = useAuth();
 
@@ -165,6 +178,8 @@ export function AdminOverview() {
   );
 
   const [growthStats, setGrowthStats] = useState<GrowthStats | null>(null);
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
+  const [generalCreditsSpent, setGeneralCreditsSpent] = useState(0);
   const [growthLoading, setGrowthLoading] = useState(true);
   const [growthTick, setGrowthTick] = useState(0);
 
@@ -173,11 +188,19 @@ export function AdminOverview() {
     (async () => {
       try {
         const token = await getToken();
-        const response = await fetch(`${BASE}/api/admin/growth-stats`, {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: "include",
-        });
-        if (response.ok) setGrowthStats(await response.json() as GrowthStats);
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const [growthResponse, financialResponse, creditsResponse] = await Promise.all([
+          fetch(`${BASE}/api/admin/growth-stats`, { headers, credentials: "include" }),
+          fetch(`${BASE}/api/admin/financial-summary`, { headers, credentials: "include" }),
+          fetch(`${BASE}/api/admin/credits-analytics`, { headers, credentials: "include" }),
+        ]);
+
+        if (growthResponse.ok) setGrowthStats(await growthResponse.json() as GrowthStats);
+        if (financialResponse.ok) setFinancialSummary(await financialResponse.json() as FinancialSummary);
+        if (creditsResponse.ok) {
+          const credits = await creditsResponse.json() as CreditAnalytics;
+          setGeneralCreditsSpent((credits.byDay ?? []).reduce((sum, item) => sum + Number(item.total || 0), 0));
+        }
       } finally {
         setGrowthLoading(false);
       }
@@ -269,10 +292,11 @@ export function AdminOverview() {
       </div>
 
       <SectionLabel>Análises</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <PremiumMetric label="Execuções" value={String(stats?.totalActions ?? 0)} sub="total entre todos os usuários" icon={Zap} color="text-purple-300" glow="rgba(139,92,246,.11)" loading={statsLoading} />
-        <PremiumMetric label="Receita Mensal" value={`R$ ${(growthStats?.mrr ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} sub="receita recorrente confirmada" icon={DollarSign} color="text-amber-300" glow="rgba(245,180,35,.11)" loading={growthLoading} />
-        <PremiumMetric label="Consumo / Mês" value={String(growthStats?.creditsSpentThisMonth ?? 0)} sub="créditos gastos este mês" icon={Activity} color="text-orange-300" glow="rgba(251,146,60,.11)" loading={growthLoading} />
+        <PremiumMetric label="Receita do Mês" value={formatMoney(financialSummary?.revenueThisMonth ?? 0)} sub="assinaturas e pacotes pagos" icon={DollarSign} color="text-emerald-300" glow="rgba(16,185,129,.11)" loading={growthLoading} />
+        <PremiumMetric label="Receita Recorrente" value={formatMoney(financialSummary?.mrr ?? growthStats?.mrr ?? 0)} sub="assinaturas ativas" icon={CreditCard} color="text-amber-300" glow="rgba(245,180,35,.11)" loading={growthLoading} />
+        <PremiumMetric label="Consumo Geral / 30d" value={generalCreditsSpent.toLocaleString("pt-BR")} sub="sem incluir imagens" icon={Activity} color="text-orange-300" glow="rgba(251,146,60,.11)" loading={growthLoading} />
       </div>
 
       {analyticsLoading ? <Skeleton className="h-72 rounded-xl bg-white/5" /> : <DomnLineChart data={growthLine} title="Crescimento — Usuários e Projetos" subtitle="Evolução dos últimos meses" />}
