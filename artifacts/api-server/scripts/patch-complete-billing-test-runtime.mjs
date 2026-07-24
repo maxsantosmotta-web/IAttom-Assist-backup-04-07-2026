@@ -154,4 +154,5 @@ webhook = webhook
   );
 write(webhookPath, webhook);
 
+// Deployment trigger only: no runtime behavior change.
 console.log("Complete billing test runtime applied: package recovery is user-bound and balance reads are refreshed after reconciliation.");
