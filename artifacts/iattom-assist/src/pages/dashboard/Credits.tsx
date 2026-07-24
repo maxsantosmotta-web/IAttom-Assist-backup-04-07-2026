@@ -90,6 +90,23 @@ function isTechnicalMaintenanceDescription(desc: string): boolean {
   ].some((marker) => lower.includes(marker));
 }
 
+function isCreativeTransaction(tx: { balanceType?: string | null; description?: string }): boolean {
+  return tx.balanceType === "creative" || /imagem|criativo/i.test(tx.description ?? "");
+}
+
+function formatTransactionAmount(tx: { amount: number; balanceType?: string | null; description?: string }): string {
+  const creative = isCreativeTransaction(tx);
+  const value = creative ? tx.amount / 10 : tx.amount;
+  const unit = creative ? (Math.abs(value) === 1 ? " imagem" : " imagens") : " créditos";
+  return `${value >= 0 ? "+" : ""}${value.toLocaleString("pt-BR")}${unit}`;
+}
+
+function formatTransactionBalance(tx: { balanceAfter: number; balanceType?: string | null; description?: string }): string {
+  const creative = isCreativeTransaction(tx);
+  const value = creative ? tx.balanceAfter / 10 : tx.balanceAfter;
+  return `${value.toLocaleString("pt-BR")} ${creative ? (Math.abs(value) === 1 ? "imagem" : "imagens") : "créditos"}`;
+}
+
 const txTypeLabels: Record<string, string> = {
   initial: "inicial",
   credit: "crédito",
@@ -119,9 +136,9 @@ export function Credits() {
     query: { queryKey: getGetCreditsBalanceQueryKey(), staleTime: 0 },
   });
 
-  const { data: txData, isLoading: txLoading, isFetching: fetchingTx, refetch: refetchTx } = useListCreditTransactions(
+  const { data: txData, isLoading: txLoading, isFetching: fetchingTx, isError: txError, refetch: refetchTx } = useListCreditTransactions(
     {},
-    { query: { queryKey: getListCreditTransactionsQueryKey() } },
+    { query: { queryKey: getListCreditTransactionsQueryKey(), staleTime: 0 } },
   );
 
   const percentage = balance?.percentage ?? 0;
@@ -135,9 +152,9 @@ export function Credits() {
     : [];
 
   const currentPlanDisplay = balance?.plan ? (planDisplayNames[balance.plan] ?? balance.plan) : "FREE";
-  const visibleTransactions = txData?.transactions.filter(
+  const visibleTransactions = (txData?.transactions.filter(
     (tx) => !isTechnicalMaintenanceDescription(tx.description),
-  ) ?? [];
+  ) ?? []).slice(0, 10);
 
   return (
     <div className="space-y-8">
@@ -259,16 +276,22 @@ export function Credits() {
                 <Skeleton key={i} className="h-10 w-full bg-white/5" />
               ))}
             </div>
+          ) : txError ? (
+            <div className="py-16 text-center">
+              <Zap className="w-8 h-8 text-red-400/30 mx-auto mb-3" />
+              <p className="text-sm text-red-300">Não foi possível carregar o histórico.</p>
+              <button onClick={() => void refetchTx()} className="text-xs text-primary mt-2 hover:underline">Tentar novamente</button>
+            </div>
           ) : !visibleTransactions.length ? (
             <div className="py-16 text-center">
               <Zap className="w-8 h-8 text-white/10 mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">Nenhuma transação ainda.</p>
-              <p className="text-xs text-muted-foreground mt-1">Use um dos módulos para ver seu histórico aqui.</p>
+              <p className="text-xs text-muted-foreground mt-1">Compras, upgrades e consumos aparecerão aqui.</p>
             </div>
           ) : (
-            <div className="max-h-[620px] overflow-auto">
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-[#111111]">
+                <thead>
                   <tr className="border-b border-white/5">
                     <th className="text-left px-5 py-3 text-xs text-muted-foreground font-medium">Data</th>
                     <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Descrição</th>
@@ -313,11 +336,10 @@ export function Credits() {
                           tx.amount >= 0 ? "text-emerald-400" : "text-red-400"
                         }`}
                       >
-                        {tx.amount >= 0 ? "+" : ""}
-                        {tx.amount}
+                        {formatTransactionAmount(tx as typeof tx & { balanceType?: string | null })}
                       </td>
                       <td className="px-5 py-3 text-right font-mono text-sm text-white tabular-nums">
-                        {tx.balanceAfter}
+                        {formatTransactionBalance(tx as typeof tx & { balanceType?: string | null })}
                       </td>
                     </tr>
                   ))}
