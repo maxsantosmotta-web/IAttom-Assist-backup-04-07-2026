@@ -4,7 +4,7 @@ import {
   Search, CheckCircle, Megaphone, FileText, Sparkles, Video,
   ArrowRight, TrendingUp, Layers, Zap, Clock, FolderOpen,
   Trophy, BarChart2, BookMarked,
-  Award, RefreshCw,
+  RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,7 +76,7 @@ const ACHIEVEMENTS = [
   { id: "five_actions", label: "Em Ritmo", desc: "Completou 5 execuções", icon: TrendingUp, color: "text-amber-400 bg-amber-400/10 border-amber-400/20", check: (s: { totalActions: number }) => s.totalActions >= 5 },
   { id: "ten_actions", label: "Avançado", desc: "Completou 10 execuções", icon: Trophy, color: "text-purple-400 bg-purple-400/10 border-purple-400/20", check: (s: { totalActions: number }) => s.totalActions >= 10 },
   { id: "three_projects", label: "Prolífico", desc: "Criou 3 ou mais projetos", icon: Layers, color: "text-blue-400 bg-blue-400/10 border-blue-400/20", check: (s: { totalProjects: number }) => s.totalProjects >= 3 },
-  { id: "completed_project", label: "Finalizador", desc: "Concluiu seu primeiro projeto", icon: Award, color: "text-rose-400 bg-rose-400/10 border-rose-400/20", check: (s: { completedProjects: number }) => s.completedProjects >= 1 },
+  { id: "first_image_project", label: "Visual", desc: "Salvou seu primeiro projeto com imagem", icon: Sparkles, color: "text-rose-400 bg-rose-400/10 border-rose-400/20", check: (s: { completedProjects: number }) => s.completedProjects >= 1 },
 ];
 
 export function DashboardHome() {
@@ -112,8 +112,8 @@ export function DashboardHome() {
 
   const statCards = [
     { label: "Projetos", value: summary?.totalProjects ?? 0, icon: Layers, color: "text-primary", bg: "bg-primary/10 border-primary/20" },
-    { label: "Em Andamento", value: summary?.activeProjects ?? 0, icon: TrendingUp, color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20" },
-    { label: "Concluídos", value: summary?.completedProjects ?? 0, icon: CheckCircle, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" },
+    { label: "Com Vídeos", value: summary?.activeProjects ?? 0, icon: Video, color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20" },
+    { label: "Com Imagens", value: summary?.completedProjects ?? 0, icon: Sparkles, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" },
     { label: "Execuções", value: summary?.totalActions ?? 0, icon: Zap, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },
   ];
 
