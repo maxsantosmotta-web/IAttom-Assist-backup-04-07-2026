@@ -19,7 +19,7 @@ import { translateAction, translateModule } from "@/lib/eventTranslations";
 const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
 
 const planLabels: Record<string, string> = {
-  free: "Gratuito",
+  free: "FREE",
   pro: "START",
   business: "PREMIUM",
   agency: "PRO",
@@ -274,7 +274,7 @@ export function AdminUsers() {
           <SelectTrigger className="w-40 bg-[#111111] border-white/5"><SelectValue placeholder="Todos os planos" /></SelectTrigger>
           <SelectContent className="bg-[#111111] border-white/10">
             <SelectItem value="all">Todos os planos</SelectItem>
-            <SelectItem value="free">Gratuito</SelectItem>
+            <SelectItem value="free">FREE</SelectItem>
             <SelectItem value="pro">START</SelectItem>
             <SelectItem value="business">PREMIUM</SelectItem>
             <SelectItem value="agency">PRO</SelectItem>
@@ -333,7 +333,7 @@ export function AdminUsers() {
           <DialogHeader><DialogTitle>Editar usuário</DialogTitle><p className="text-xs text-muted-foreground">{editingUser?.email}</p></DialogHeader>
           <div className="space-y-4 py-2">
             <div><Label>Função</Label><Select value={editState.role} onValueChange={(value) => setEditState((state) => ({ ...state, role: value as Role }))}><SelectTrigger className="bg-[#0a0a0a] border-white/10"><SelectValue /></SelectTrigger><SelectContent className="bg-[#111111] border-white/10"><SelectItem value="user">Usuário</SelectItem><SelectItem value="admin">Admin</SelectItem></SelectContent></Select></div>
-            <div><Label>Plano</Label><Select value={editState.plan} onValueChange={(value) => setEditState((state) => ({ ...state, plan: value as Plan }))}><SelectTrigger className="bg-[#0a0a0a] border-white/10"><SelectValue /></SelectTrigger><SelectContent className="bg-[#111111] border-white/10"><SelectItem value="free">Gratuito</SelectItem><SelectItem value="pro">START</SelectItem><SelectItem value="business">PREMIUM</SelectItem><SelectItem value="agency">PRO</SelectItem></SelectContent></Select></div>
+            <div><Label>Plano</Label><Select value={editState.plan} onValueChange={(value) => setEditState((state) => ({ ...state, plan: value as Plan }))}><SelectTrigger className="bg-[#0a0a0a] border-white/10"><SelectValue /></SelectTrigger><SelectContent className="bg-[#111111] border-white/10"><SelectItem value="free">FREE</SelectItem><SelectItem value="pro">START</SelectItem><SelectItem value="business">PREMIUM</SelectItem><SelectItem value="agency">PRO</SelectItem></SelectContent></Select></div>
           </div>
           <DialogFooter><Button variant="ghost" onClick={() => setEditingUser(null)}>Cancelar</Button><Button onClick={saveUser} disabled={updateUser.isPending}>{updateUser.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}</Button></DialogFooter>
         </DialogContent>
