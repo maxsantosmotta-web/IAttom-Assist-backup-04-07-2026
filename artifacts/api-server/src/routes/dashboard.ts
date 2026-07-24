@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNull, sql } from "drizzle-orm";
 import { db, historyTable, savedItemsTable } from "@workspace/db";
 import { GetDashboardSummaryResponse } from "@workspace/api-zod";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
@@ -11,7 +11,16 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
 
   const [[projects], [actions]] = await Promise.all([
     db
-      .select({ count: count() })
+      .select({
+        count: count(),
+        withImages: sql<number>`count(*) filter (
+          where ${savedItemsTable.hasImages} = true
+            or coalesce(${savedItemsTable.imagesData}, '') not in ('', '[]')
+        )::int`,
+        withVideos: sql<number>`count(*) filter (
+          where coalesce(${savedItemsTable.videosData}, '') not in ('', '[]')
+        )::int`,
+      })
       .from(savedItemsTable)
       .where(and(eq(savedItemsTable.clerkUserId, clerkUserId), isNull(savedItemsTable.deletedAt))),
     db
@@ -20,11 +29,10 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
       .where(and(eq(historyTable.clerkUserId, clerkUserId), isNull(historyTable.deletedAt))),
   ]);
 
-  const totalProjects = projects.count;
   const summary = {
-    totalProjects,
-    activeProjects: 0,
-    completedProjects: totalProjects,
+    totalProjects: projects.count,
+    activeProjects: projects.withVideos ?? 0,
+    completedProjects: projects.withImages ?? 0,
     totalActions: actions.count,
     recentProjects: [],
   };
