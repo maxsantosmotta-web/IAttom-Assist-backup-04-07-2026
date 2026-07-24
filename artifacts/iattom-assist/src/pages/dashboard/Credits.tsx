@@ -20,19 +20,74 @@ const featureLabels: Record<string, string> = {
   content: "Criar Conteúdo",
   creative: "Criar Imagem e Vídeo",
   video_script: "Scripts de Vídeo",
+  prompt_creation: "Criar Prompt",
 };
 
 const descriptionTranslations: Record<string, string> = {
-  "Used product discovery feature": "Uso do Buscador de Produtos",
-  "Used product validation feature": "Uso do Validador de Produtos",
-  "Used campaign feature": "Uso do Criador de Campanha",
-  "Used content feature": "Uso do Criador de Conteúdo",
-  "Used creative feature": "Uso do Criar Imagem e Vídeo",
-  "Used video script feature": "Uso do Gerador de Scripts",
+  "Used product discovery feature": "Busca de produto",
+  "Used product validation feature": "Validação de produto",
+  "Used campaign feature": "Criação de campanha",
+  "Used content feature": "Criação de conteúdo",
+  "Used creative feature": "Criação de imagem",
+  "Used video script feature": "Criação de roteiro",
 };
 
+const planDisplayNames: Record<string, string> = {
+  free: "FREE",
+  pro: "START",
+  business: "PREMIUM",
+  agency: "PRO",
+};
+
+function getPlanDisplayName(value: string): string {
+  return planDisplayNames[value.toLowerCase()] ?? value.toUpperCase();
+}
+
 function translateDescription(desc: string): string {
-  return descriptionTranslations[desc] ?? desc;
+  const exact = descriptionTranslations[desc];
+  if (exact) return exact;
+
+  const normalized = desc.trim();
+  const lower = normalized.toLowerCase();
+
+  if (lower.includes("plan subscription activated")) {
+    const planKey = lower.split(" plan subscription activated")[0]?.trim() ?? "";
+    return `Assinatura ${getPlanDisplayName(planKey)}`;
+  }
+
+  if (lower.includes("upgrade")) {
+    const destination =
+      lower.includes("agency") || lower.includes(" pro") ? "PRO" :
+      lower.includes("business") || lower.includes("premium") ? "PREMIUM" :
+      lower.includes("start") ? "START" :
+      "";
+    return destination ? `Upgrade para ${destination}` : "Upgrade de plano";
+  }
+
+  if (lower.includes("compra de créditos avulsos")) return "Compra de créditos";
+  if (lower.includes("compra de criativos avulsos")) return "Compra de imagens";
+  if (lower.includes("compra de pacote de vídeos")) return "Compra de vídeos";
+  if (lower.includes("uso do gerador criativo")) return "Criação de imagem";
+  if (lower.includes("uso do criador de campanha")) return "Criação de campanha";
+  if (lower.includes("uso do validador de produtos")) return "Validação de produto";
+  if (lower.includes("uso do buscador de produtos")) return "Busca de produto";
+  if (lower.includes("criação de prompt")) return "Criação de prompt";
+  if (lower.includes("refund") || lower.includes("reembolso") || lower.includes("estorno")) return "Reembolso";
+
+  return normalized;
+}
+
+function isTechnicalMaintenanceDescription(desc: string): boolean {
+  const lower = desc.toLowerCase();
+  return [
+    "ajuste administrativo",
+    "correção única",
+    "franquia criativa antiga",
+    "sincronizada automaticamente",
+    "sincronizada auto",
+    "reparo técnico",
+    "maintenance",
+  ].some((marker) => lower.includes(marker));
 }
 
 const txTypeLabels: Record<string, string> = {
@@ -79,13 +134,10 @@ export function Credits() {
       )
     : [];
 
-  const PLAN_DISPLAY_NAMES: Record<string, string> = {
-    free: "FREE",
-    pro: "START",
-    business: "PREMIUM",
-    agency: "PRO",
-  };
-  const currentPlanDisplay = balance?.plan ? (PLAN_DISPLAY_NAMES[balance.plan] ?? balance.plan) : "FREE";
+  const currentPlanDisplay = balance?.plan ? (planDisplayNames[balance.plan] ?? balance.plan) : "FREE";
+  const visibleTransactions = txData?.transactions.filter(
+    (tx) => !isTechnicalMaintenanceDescription(tx.description),
+  ) ?? [];
 
   return (
     <div className="space-y-8">
@@ -197,7 +249,7 @@ export function Credits() {
             Histórico de Transações
           </h3>
           {txData && (
-            <span className="text-xs text-muted-foreground">{txData.total} total</span>
+            <span className="text-xs text-muted-foreground">{visibleTransactions.length} movimentações</span>
           )}
         </div>
         <Card className="bg-[#111111] border-white/5 overflow-hidden">
@@ -207,7 +259,7 @@ export function Credits() {
                 <Skeleton key={i} className="h-10 w-full bg-white/5" />
               ))}
             </div>
-          ) : !txData?.transactions.length ? (
+          ) : !visibleTransactions.length ? (
             <div className="py-16 text-center">
               <Zap className="w-8 h-8 text-white/10 mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">Nenhuma transação ainda.</p>
@@ -226,7 +278,7 @@ export function Credits() {
                   </tr>
                 </thead>
                 <tbody>
-                  {txData.transactions.map((tx) => (
+                  {visibleTransactions.map((tx) => (
                     <tr
                       key={tx.id}
                       className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
