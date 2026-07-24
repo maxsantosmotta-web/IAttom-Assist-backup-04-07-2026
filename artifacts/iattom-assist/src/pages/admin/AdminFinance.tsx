@@ -92,6 +92,7 @@ export function AdminFinance() {
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAllMovements, setShowAllMovements] = useState(false);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -137,6 +138,9 @@ export function AdminFinance() {
     { label: "Receita recorrente", value: summary?.mrr ?? 0, color: GOLD },
     { label: "Pacotes avulsos", value: summary?.packageRevenueThisMonth ?? 0, color: PURPLE },
   ];
+
+  const movements = summary?.recentMovements ?? [];
+  const visibleMovements = showAllMovements ? movements : movements.slice(0, 10);
 
   return (
     <div className="space-y-8">
@@ -185,23 +189,34 @@ export function AdminFinance() {
         className="relative overflow-hidden border-white/[0.07] bg-[#0d1015] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.025),0_18px_45px_rgba(0,0,0,.22)]"
         style={{ backgroundImage: "radial-gradient(circle at 8% 0%, rgba(201,168,76,.09), transparent 38%), linear-gradient(135deg, rgba(255,255,255,.014), transparent 55%)" }}
       >
-        <div className="mb-4 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-400/20 bg-amber-400/10 text-amber-300">
-            <PackagePlus className="h-4 w-4" />
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-400/20 bg-amber-400/10 text-amber-300">
+              <PackagePlus className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white">Movimentações financeiras recentes</h3>
+              <p className="text-xs text-zinc-600">Assinaturas e pacotes efetivamente pagos.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-white">Movimentações financeiras recentes</h3>
-            <p className="text-xs text-zinc-600">Assinaturas e pacotes efetivamente pagos.</p>
-          </div>
+          {movements.length > 10 && (
+            <button
+              type="button"
+              onClick={() => setShowAllMovements((value) => !value)}
+              className="shrink-0 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+            >
+              {showAllMovements ? "Mostrar recentes" : `Ver todas (${movements.length})`}
+            </button>
+          )}
         </div>
 
         {loading ? (
           <Skeleton className="h-28 w-full bg-white/5" />
-        ) : !summary?.recentMovements.length ? (
+        ) : !movements.length ? (
           <div className="rounded-lg border border-dashed border-white/10 bg-black/10 px-4 py-8 text-center text-xs text-zinc-600">Nenhuma movimentação financeira paga registrada neste mês.</div>
         ) : (
-          <div className="divide-y divide-white/[0.05]">
-            {summary.recentMovements.map((item, index) => (
+          <div className={`${showAllMovements ? "max-h-[620px] overflow-y-auto pr-1" : ""} divide-y divide-white/[0.05]`}>
+            {visibleMovements.map((item, index) => (
               <div key={item.id} className="flex items-start justify-between gap-4 py-3">
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: [GOLD, EMERALD, PURPLE, ROSE][index % 4] }} />
