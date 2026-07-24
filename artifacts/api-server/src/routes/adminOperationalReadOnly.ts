@@ -159,6 +159,7 @@ router.get("/admin/credits-analytics", requireAdmin, async (req, res): Promise<v
 
   const rows = await db
     .select({
+      clerkUserId: creditsTransactions.clerkUserId,
       amount: creditsTransactions.amount,
       feature: creditsTransactions.feature,
       description: creditsTransactions.description,
@@ -201,7 +202,7 @@ router.get("/admin/credits-analytics", requireAdmin, async (req, res): Promise<v
 
     const plan = generalByPlan.get(row.plan) ?? { total: 0, users: new Set<string>() };
     plan.total += absolute;
-    plan.users.add(`${row.plan}:${row.createdAt.toISOString()}`);
+    plan.users.add(row.clerkUserId);
     generalByPlan.set(row.plan, plan);
   }
 
