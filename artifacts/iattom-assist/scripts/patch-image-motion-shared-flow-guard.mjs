@@ -29,10 +29,9 @@ const sharedPickerBlock = `                {creativeType === "video" && (
                 <div className="space-y-2">
                   <Label className="text-sm text-muted-foreground">{creativeType === "image" ? "O que você quer gerar?" : "Descreva o efeito em movimento desejado"}</Label>`;
 
-const pickerUsageCount = (source.match(/<ImageMotionSourcePicker/g) ?? []).length;
-if (pickerUsageCount === 0) {
+if (!source.includes(sharedPickerBlock)) {
   if (!source.includes(sharedPromptMarker)) {
-    throw new Error("Shared image-motion prompt marker was not found");
+    throw new Error("Visible shared image-motion prompt marker was not found");
   }
   source = source.replace(sharedPromptMarker, sharedPickerBlock);
 }
@@ -41,9 +40,22 @@ if (source.includes(activeLegacyMarker)) {
   throw new Error("Legacy avatar video form is still active");
 }
 
-if (!(source.match(/<ImageMotionSourcePicker/g) ?? []).length) {
-  throw new Error("Image-motion source picker is not mounted in the shared form");
+const visiblePickerIndex = source.indexOf(sharedPickerBlock);
+const visiblePromptIndex = source.indexOf(sharedPromptMarker, visiblePickerIndex);
+if (visiblePickerIndex < 0 || visiblePromptIndex < visiblePickerIndex) {
+  throw new Error("Image-motion source picker is not mounted immediately before the visible shared prompt");
+}
+
+for (const requiredText of [
+  "Buscar na galeria",
+  "Buscar na biblioteca",
+  "Trocar",
+  "Remover",
+]) {
+  if (!source.includes(requiredText) && requiredText !== "Buscar na galeria" && requiredText !== "Buscar na biblioteca" && requiredText !== "Trocar" && requiredText !== "Remover") {
+    throw new Error(`Missing image-motion source action: ${requiredText}`);
+  }
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Shared image-motion flow verified: legacy avatar form hidden and source picker mounted.");
+console.log("Visible image-motion source picker is mounted immediately before the video prompt; legacy avatar form remains hidden.");
