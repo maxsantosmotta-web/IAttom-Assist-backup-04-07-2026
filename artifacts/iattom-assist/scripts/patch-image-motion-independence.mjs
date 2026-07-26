@@ -14,8 +14,17 @@ replaceRequired(
   `  const [imageMotionResetSignal, setImageMotionResetSignal] = useState(0);
   const [imageMotionPrompt, setImageMotionPrompt] = useState(() => {
     try { return localStorage.getItem("iattom_image_motion_prompt_v1") ?? ""; } catch { return ""; }
+  });
+  const [imageMotionPlatform, setImageMotionPlatform] = useState<PlatformKey | "">(() => {
+    try { return (localStorage.getItem("iattom_image_motion_platform_v1") as PlatformKey | null) ?? ""; } catch { return ""; }
+  });
+  const [imageMotionFormats, setImageMotionFormats] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("iattom_image_motion_formats_v1");
+      return raw ? JSON.parse(raw) as string[] : [];
+    } catch { return []; }
   });`,
-  "independent image-motion prompt state",
+  "independent image-motion state",
 );
 
 replaceRequired(
@@ -34,34 +43,94 @@ replaceRequired(
 );
 
 replaceRequired(
-  `                  <Button
-                    type="button"
-                    disabled
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary disabled:text-primary-foreground disabled:opacity-40"
-                  >
-                    <Video className="w-4 h-4 mr-2" /> Gerar Vídeo
-                  </Button>`,
-  `                  <Button
-                    type="button"
-                    disabled={!imageMotionSource || !imageMotionPrompt.trim() || !platform || selectedFormats.length === 0 || isGenerating}
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary disabled:text-primary-foreground disabled:opacity-40"
-                  >
-                    <Video className="w-4 h-4 mr-2" /> Gerar Vídeo
-                  </Button>`,
+  `                        onClick={() => setPlatform(p.key)}
+                        className={\`py-2.5 px-2 rounded-lg border text-xs font-medium transition-colors text-center \${
+                          platform === p.key`,
+  `                        onClick={() => {
+                          if (creativeType === "image") {
+                            setPlatform(p.key);
+                          } else {
+                            setImageMotionPlatform(p.key);
+                            setImageMotionFormats([]);
+                            try {
+                              localStorage.setItem("iattom_image_motion_platform_v1", p.key);
+                              localStorage.removeItem("iattom_image_motion_formats_v1");
+                            } catch { /* ignore */ }
+                          }
+                        }}
+                        className={\`py-2.5 px-2 rounded-lg border text-xs font-medium transition-colors text-center \${
+                          (creativeType === "image" ? platform : imageMotionPlatform) === p.key`,
+  "independent platform binding",
+);
+
+replaceRequired(
+  `                  {platform && (
+                    <motion.div
+                      key={platform}`,
+  `                  {(creativeType === "image" ? platform : imageMotionPlatform) && (
+                    <motion.div
+                      key={creativeType === "image" ? platform : imageMotionPlatform}`,
+  "independent format visibility",
+);
+
+replaceRequired(
+  `                          {selectedFormats.length} de {currentPlatformFormats.length} selecionado{selectedFormats.length !== 1 ? "s" : ""}`,
+  `                          {(creativeType === "image" ? selectedFormats : imageMotionFormats).length} de {(creativeType === "image" ? currentPlatformFormats : (PLATFORMS.find((item) => item.key === imageMotionPlatform)?.formats ?? [])).length} selecionado{(creativeType === "image" ? selectedFormats : imageMotionFormats).length !== 1 ? "s" : ""}`,
+  "independent format counter",
+);
+
+replaceRequired(
+  `                        {currentPlatformFormats.map((f) => {
+                          const isSelected = selectedFormats.includes(f.key);
+                          const isDisabled = !isSelected && selectedFormats.length >= MAX_FORMATS;`,
+  `                        {(creativeType === "image" ? currentPlatformFormats : (PLATFORMS.find((item) => item.key === imageMotionPlatform)?.formats ?? [])).map((f) => {
+                          const activeFormats = creativeType === "image" ? selectedFormats : imageMotionFormats;
+                          const isSelected = activeFormats.includes(f.key);
+                          const isDisabled = !isSelected && activeFormats.length >= MAX_FORMATS;`,
+  "independent format options",
+);
+
+replaceRequired(
+  `                              onClick={() => toggleFormat(f.key)}`,
+  `                              onClick={() => {
+                                if (creativeType === "image") {
+                                  toggleFormat(f.key);
+                                } else {
+                                  setImageMotionFormats((current) => {
+                                    const next = current.includes(f.key)
+                                      ? current.filter((key) => key !== f.key)
+                                      : current.length < MAX_FORMATS ? [...current, f.key] : current;
+                                    try { localStorage.setItem("iattom_image_motion_formats_v1", JSON.stringify(next)); } catch { /* ignore */ }
+                                    return next;
+                                  });
+                                }
+                              }}`,
+  "independent format toggle",
+);
+
+replaceRequired(
+  `disabled={!imageMotionSource || !imageMotionPrompt.trim() || !platform || selectedFormats.length === 0 || isGenerating}`,
+  `disabled={!imageMotionSource || !imageMotionPrompt.trim() || !imageMotionPlatform || imageMotionFormats.length === 0 || isGenerating}`,
   "independent image-motion button readiness",
 );
 
 source = source.replace(
-  `if (creativeType === "video") { setImageMotionSource(null); setImageMotionResetSignal((value) => value + 1); }`,
   `if (creativeType === "video") { setImageMotionSource(null); setImageMotionPrompt(""); try { localStorage.removeItem("iattom_image_motion_prompt_v1"); } catch { /* ignore */ } setImageMotionResetSignal((value) => value + 1); }`,
+  `if (creativeType === "video") { setImageMotionSource(null); setImageMotionPrompt(""); setImageMotionPlatform(""); setImageMotionFormats([]); try { localStorage.removeItem("iattom_image_motion_prompt_v1"); localStorage.removeItem("iattom_image_motion_platform_v1"); localStorage.removeItem("iattom_image_motion_formats_v1"); } catch { /* ignore */ } setImageMotionResetSignal((value) => value + 1); }`,
 );
 
 if (!source.includes(`value={creativeType === "image" ? prompt : imageMotionPrompt}`)) {
   throw new Error("Image and image-motion prompts are still sharing the same state");
 }
-if (!source.includes(`disabled={!imageMotionSource || !imageMotionPrompt.trim() || !platform || selectedFormats.length === 0 || isGenerating}`)) {
+if (!source.includes(`(creativeType === "image" ? platform : imageMotionPlatform) === p.key`)) {
+  throw new Error("Image and image-motion platforms are still sharing the same state");
+}
+if (!source.includes(`creativeType === "image" ? selectedFormats : imageMotionFormats`)) {
+  throw new Error("Image and image-motion formats are still sharing the same state");
+}
+if (!source.includes(`disabled={!imageMotionSource || !imageMotionPrompt.trim() || !imageMotionPlatform || imageMotionFormats.length === 0 || isGenerating}`)) {
   throw new Error("Gerar Vídeo readiness does not use independent image-motion fields");
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Image and video-with-image now share layout only; prompt and readiness states are independent.");
+console.log("Image and video-with-image share layout only; prompt, platform and formats are fully independent.");
