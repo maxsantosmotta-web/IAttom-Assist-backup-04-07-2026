@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Image as ImageIcon, Loader2, RefreshCw, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, Loader2, RefreshCw, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { deleteProjectAssets, loadProjectAssets, saveProjectAssets } from "@/lib/assetStorage";
 import { useSavedItems, type AssetData, type SavedItemRecord } from "@/hooks/useSavedItems";
@@ -36,6 +36,8 @@ function inferMime(label: string): "image/png" | "image/jpeg" {
 export function ImageMotionSourcePicker({ value, onChange, disabled = false, resetSignal = 0 }: ImageMotionSourcePickerProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [choosingSource, setChoosingSource] = useState(false);
   const [assets, setAssets] = useState<Array<{ project: SavedItemRecord; asset: AssetData }>>([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
   const [error, setError] = useState("");
@@ -59,6 +61,9 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
   useEffect(() => {
     if (resetSignal <= 0) return;
     onChange(null);
+    setChoosingSource(false);
+    setRemoveConfirmOpen(false);
+    setLibraryOpen(false);
     setError("");
     void deleteProjectAssets(DRAFT_PROJECT_ID).catch(() => {});
   }, [resetSignal]);
@@ -75,12 +80,15 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
 
   const selectSource = (next: ImageMotionSource) => {
     setError("");
+    setChoosingSource(false);
     onChange(next);
     void persist(next).catch(() => {});
   };
 
-  const removeSource = () => {
+  const confirmRemoveSource = () => {
     onChange(null);
+    setChoosingSource(false);
+    setRemoveConfirmOpen(false);
     setError("");
     if (fileRef.current) fileRef.current.value = "";
     void deleteProjectAssets(DRAFT_PROJECT_ID).catch(() => {});
@@ -125,18 +133,27 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
     }
   };
 
+  const showSourceChoices = !value || choosingSource;
+
   return (
     <div className="space-y-3">
       <Label className="text-sm text-muted-foreground">Imagem-base</Label>
 
-      {!value ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Button type="button" variant="outline" disabled={disabled} onClick={() => fileRef.current?.click()} className="border-white/10 bg-[#0a0a0a] text-zinc-300">
-            <Upload className="w-4 h-4 mr-2" /> Buscar na galeria
-          </Button>
-          <Button type="button" variant="outline" disabled={disabled} onClick={() => void openLibrary()} className="border-white/10 bg-[#0a0a0a] text-zinc-300">
-            <ImageIcon className="w-4 h-4 mr-2" /> Buscar na biblioteca
-          </Button>
+      {showSourceChoices ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Button type="button" variant="outline" disabled={disabled} onClick={() => fileRef.current?.click()} className="border-white/10 bg-[#0a0a0a] text-zinc-300">
+              <Upload className="w-4 h-4 mr-2" /> Buscar na galeria
+            </Button>
+            <Button type="button" variant="outline" disabled={disabled} onClick={() => void openLibrary()} className="border-white/10 bg-[#0a0a0a] text-zinc-300">
+              <ImageIcon className="w-4 h-4 mr-2" /> Buscar na biblioteca
+            </Button>
+          </div>
+          {value && choosingSource && (
+            <Button type="button" variant="ghost" disabled={disabled} onClick={() => setChoosingSource(false)} className="w-full text-zinc-400 hover:text-zinc-200">
+              <ArrowLeft className="w-4 h-4 mr-2" /> Voltar para a imagem atual
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -144,10 +161,10 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
             <img src={`data:${value.mimeType};base64,${value.base64}`} alt="Prévia da imagem-base" className="w-full h-auto object-contain" />
           </div>
           <div className="flex flex-wrap justify-center gap-3">
-            <Button type="button" variant="outline" disabled={disabled} onClick={() => fileRef.current?.click()} className="border-white/10 text-zinc-300">
+            <Button type="button" variant="outline" disabled={disabled} onClick={() => setChoosingSource(true)} className="border-white/10 text-zinc-300">
               <RefreshCw className="w-4 h-4 mr-2" /> Trocar
             </Button>
-            <Button type="button" variant="outline" disabled={disabled} onClick={removeSource} className="border-red-500/20 text-red-300 hover:bg-red-500/10">
+            <Button type="button" variant="outline" disabled={disabled} onClick={() => setRemoveConfirmOpen(true)} className="border-red-500/20 text-red-300 hover:bg-red-500/10">
               <Trash2 className="w-4 h-4 mr-2" /> Remover
             </Button>
           </div>
@@ -155,7 +172,17 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
         </div>
       )}
 
-      <input ref={fileRef} type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" className="hidden" disabled={disabled} onChange={(event) => handleFile(event.target.files?.[0])} />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+        className="hidden"
+        disabled={disabled}
+        onChange={(event) => {
+          handleFile(event.target.files?.[0]);
+          event.currentTarget.value = "";
+        }}
+      />
       {error && <p className="text-xs text-red-400">{error}</p>}
 
       <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
@@ -163,6 +190,9 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
           <DialogHeader>
             <DialogTitle className="text-white">Buscar na biblioteca</DialogTitle>
           </DialogHeader>
+          <Button type="button" variant="ghost" onClick={() => setLibraryOpen(false)} className="w-fit px-0 text-zinc-400 hover:text-zinc-200">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
+          </Button>
           {loadingLibrary ? (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /> Carregando imagens...</div>
           ) : assets.length === 0 ? (
@@ -185,6 +215,23 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
               ))}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={removeConfirmOpen} onOpenChange={setRemoveConfirmOpen}>
+        <DialogContent className="max-w-md bg-[#111111] border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-white">Remover imagem-base?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-zinc-400">A imagem será retirada desta operação. A plataforma, os formatos e a descrição serão mantidos.</p>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button type="button" variant="outline" onClick={() => setRemoveConfirmOpen(false)} className="border-white/10 text-zinc-300">
+              Cancelar
+            </Button>
+            <Button type="button" onClick={confirmRemoveSource} className="bg-red-600 text-white hover:bg-red-700">
+              <Trash2 className="w-4 h-4 mr-2" /> Confirmar remoção
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
