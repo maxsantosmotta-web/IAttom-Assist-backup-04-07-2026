@@ -57,8 +57,19 @@ let creative = readFileSync(creativeUrl, "utf8");
 creative = replaceRequired(
   creative,
   `import { Sparkles, Loader2, RefreshCw, AlertCircle, Image, Save, Download, Video, ChevronRight } from "lucide-react";`,
-  `import { Sparkles, Loader2, RefreshCw, AlertCircle, Image, Save, Download, Video, ChevronRight, Lock } from "lucide-react";`,
-  "creative lock import",
+  `import { Sparkles, Loader2, RefreshCw, AlertCircle, Image, Save, Download, Video, ChevronRight, Lock } from "lucide-react";
+import { ImageMotionTestDialog } from "@/components/creative/ImageMotionTestDialog";`,
+  "creative lock and image motion imports",
+);
+
+creative = replaceRequired(
+  creative,
+  `export function CreativeGenerator() {
+  const { planSlug, isAdmin } = useUserAccess();`,
+  `export function CreativeGenerator() {
+  const { planSlug, isAdmin } = useUserAccess();
+  const [imageMotionTestOpen, setImageMotionTestOpen] = useState(false);`,
+  "image motion dialog state",
 );
 
 creative = replaceRequired(
@@ -92,19 +103,32 @@ creative = replaceRequired(
               </button>`,
   `              <button
                 type="button"
-                disabled
-                aria-disabled="true"
-                title="Geração de vídeo em breve"
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium bg-[#0a0a0a] text-zinc-600 border-white/[0.06] cursor-not-allowed"
+                disabled={!isAdmin}
+                aria-disabled={!isAdmin}
+                title={isAdmin ? "Abrir teste administrativo" : "Geração de vídeo com imagem em breve"}
+                onClick={() => { if (isAdmin) setImageMotionTestOpen(true); }}
+                className={\`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium bg-[#0a0a0a] text-zinc-600 border-white/[0.06] \${isAdmin ? "cursor-pointer hover:border-primary/30 hover:text-zinc-400" : "cursor-not-allowed"}\`}
               >
                 <Lock className="w-4 h-4" />
                 Vídeo com Imagem
                 <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-500">Em breve</span>
               </button>`,
-  "creative video tab lock",
+  "creative video tab admin test entry",
+);
+
+creative = replaceRequired(
+  creative,
+  `  return (
+    <>
+    <div className="space-y-6">`,
+  `  return (
+    <>
+    <ImageMotionTestDialog open={imageMotionTestOpen} onOpenChange={setImageMotionTestOpen} />
+    <div className="space-y-6">`,
+  "image motion test dialog mount",
 );
 
 creative = creative.replaceAll(`setCreativeType("video");`, `setCreativeType("image");`);
 
 writeFileSync(creativeUrl, creative);
-console.log("Video packages and generation are locked as coming soon.");
+console.log("Video packages remain locked; isolated admin image motion test flow is mounted.");
