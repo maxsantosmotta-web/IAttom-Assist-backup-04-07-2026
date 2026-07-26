@@ -15,15 +15,8 @@ replaceRequired(
   const [imageMotionPrompt, setImageMotionPrompt] = useState(() => {
     try { return localStorage.getItem("iattom_image_motion_prompt_v1") ?? ""; } catch { return ""; }
   });
-  const [imageMotionPlatform, setImageMotionPlatform] = useState<PlatformKey | "">(() => {
-    try { return (localStorage.getItem("iattom_image_motion_platform_v1") as PlatformKey | null) ?? ""; } catch { return ""; }
-  });
-  const [imageMotionFormats, setImageMotionFormats] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem("iattom_image_motion_formats_v1");
-      return raw ? JSON.parse(raw) as string[] : [];
-    } catch { return []; }
-  });`,
+  const [imageMotionPlatform, setImageMotionPlatform] = useState<PlatformKey | "">("");
+  const [imageMotionFormats, setImageMotionFormats] = useState<string[]>([]);`,
   "independent image-motion state",
 );
 
@@ -48,14 +41,13 @@ replaceRequired(
                           platform === p.key`,
   `                        onClick={() => {
                           if (creativeType === "image") {
-                            setPlatform(p.key);
+                            const nextPlatform = platform === p.key ? "" : p.key;
+                            setPlatform(nextPlatform);
+                            setSelectedFormats([]);
                           } else {
-                            setImageMotionPlatform(p.key);
+                            const nextPlatform = imageMotionPlatform === p.key ? "" : p.key;
+                            setImageMotionPlatform(nextPlatform);
                             setImageMotionFormats([]);
-                            try {
-                              localStorage.setItem("iattom_image_motion_platform_v1", p.key);
-                              localStorage.removeItem("iattom_image_motion_formats_v1");
-                            } catch { /* ignore */ }
                           }
                         }}
                         className={\`py-2.5 px-2 rounded-lg border text-xs font-medium transition-colors text-center \${
@@ -96,13 +88,9 @@ replaceRequired(
                                 if (creativeType === "image") {
                                   toggleFormat(f.key);
                                 } else {
-                                  setImageMotionFormats((current) => {
-                                    const next = current.includes(f.key)
-                                      ? current.filter((key) => key !== f.key)
-                                      : current.length < MAX_FORMATS ? [...current, f.key] : current;
-                                    try { localStorage.setItem("iattom_image_motion_formats_v1", JSON.stringify(next)); } catch { /* ignore */ }
-                                    return next;
-                                  });
+                                  setImageMotionFormats((current) => current.includes(f.key)
+                                    ? current.filter((key) => key !== f.key)
+                                    : current.length < MAX_FORMATS ? [...current, f.key] : current);
                                 }
                               }}`,
   "independent format toggle",
@@ -139,15 +127,21 @@ source = source.replace(
 if (!source.includes(`value={creativeType === "image" ? prompt : imageMotionPrompt}`)) {
   throw new Error("Image and image-motion prompts are still sharing the same state");
 }
-if (!source.includes(`(creativeType === "image" ? platform : imageMotionPlatform) === p.key`)) {
-  throw new Error("Image and image-motion platforms are still sharing the same state");
+if (!source.includes(`const nextPlatform = platform === p.key ? "" : p.key;`)) {
+  throw new Error("Image platform does not toggle on second click");
+}
+if (!source.includes(`const nextPlatform = imageMotionPlatform === p.key ? "" : p.key;`)) {
+  throw new Error("Image-motion platform does not toggle on second click");
 }
 if (!source.includes(`creativeType === "image" ? selectedFormats : imageMotionFormats`)) {
   throw new Error("Image and image-motion formats are still sharing the same state");
+}
+if (source.includes(`localStorage.setItem("iattom_image_motion_platform_v1"`) || source.includes(`localStorage.setItem("iattom_image_motion_formats_v1"`)) {
+  throw new Error("Image-motion platform or formats must not persist after refresh");
 }
 if (!source.includes(independentReadiness)) {
   throw new Error("Gerar Vídeo readiness does not use independent image-motion fields");
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Image and video-with-image share layout only; prompt, platform and formats are fully independent.");
+console.log("Platform and format buttons now toggle consistently and reset after a real refresh in both modes.");
