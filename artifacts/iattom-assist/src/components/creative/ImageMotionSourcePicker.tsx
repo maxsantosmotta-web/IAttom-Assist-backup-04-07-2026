@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Image as ImageIcon, Loader2, RefreshCw, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { deleteProjectAssets, loadProjectAssets, saveProjectAssets } from "@/lib/assetStorage";
 import { useSavedItems, type AssetData, type SavedItemRecord } from "@/hooks/useSavedItems";
@@ -219,19 +219,13 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
       </Dialog>
 
       <Dialog open={removeConfirmOpen} onOpenChange={setRemoveConfirmOpen}>
-        <DialogContent className="max-w-md bg-[#111111] border-white/10">
+        <DialogContent className="max-w-sm bg-[#111111] border-white/10">
           <DialogHeader>
-            <DialogTitle className="text-white">Remover imagem-base?</DialogTitle>
+            <DialogTitle className="text-white">Confirmar remoção</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-zinc-400">A imagem será retirada desta operação. A plataforma, os formatos e a descrição serão mantidos.</p>
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button type="button" variant="outline" onClick={() => setRemoveConfirmOpen(false)} className="border-white/10 text-zinc-300">
-              Cancelar
-            </Button>
-            <Button type="button" onClick={confirmRemoveSource} className="bg-red-600 text-white hover:bg-red-700">
-              <Trash2 className="w-4 h-4 mr-2" /> Confirmar remoção
-            </Button>
-          </DialogFooter>
+          <Button type="button" onClick={confirmRemoveSource} className="w-full">
+            Continuar
+          </Button>
         </DialogContent>
       </Dialog>
     </div>
