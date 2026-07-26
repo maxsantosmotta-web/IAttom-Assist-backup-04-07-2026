@@ -57,16 +57,19 @@ let creative = readFileSync(creativeUrl, "utf8");
 creative = replaceRequired(
   creative,
   `import { Sparkles, Loader2, RefreshCw, AlertCircle, Image, Save, Download, Video, ChevronRight } from "lucide-react";`,
-  `import { Sparkles, Loader2, RefreshCw, AlertCircle, Image, Save, Download, Video, ChevronRight, Lock } from "lucide-react";`,
-  "creative lock import",
+  `import { Sparkles, Loader2, RefreshCw, AlertCircle, Image, Save, Download, Video, ChevronRight, Lock } from "lucide-react";
+import { ImageMotionSourcePicker, type ImageMotionSource } from "@/components/creative/ImageMotionSourcePicker";`,
+  "creative motion imports",
 );
 
 creative = replaceRequired(
   creative,
   `  const [videoBalance, setVideoBalance] = useState<number | null>(null);`,
   `  const [videoBalance, setVideoBalance] = useState<number | null>(null);
-  const canOpenImageMotion = isAdmin || (videoBalance ?? 0) > 0;`,
-  "image motion access state",
+  const canOpenImageMotion = isAdmin || (videoBalance ?? 0) > 0;
+  const [imageMotionSource, setImageMotionSource] = useState<ImageMotionSource | null>(null);
+  const [imageMotionResetSignal, setImageMotionResetSignal] = useState(0);`,
+  "image motion access and source state",
 );
 
 creative = replaceRequired(
@@ -126,6 +129,24 @@ creative = replaceRequired(
 
 creative = replaceRequired(
   creative,
+  `                {/* Prompt */}
+                <div className="space-y-2">`,
+  `                {creativeType === "video" && (
+                  <ImageMotionSourcePicker
+                    value={imageMotionSource}
+                    onChange={setImageMotionSource}
+                    disabled={isGenerating}
+                    resetSignal={imageMotionResetSignal}
+                  />
+                )}
+
+                {/* Prompt */}
+                <div className="space-y-2">`,
+  "image motion source picker",
+);
+
+creative = replaceRequired(
+  creative,
   `<Label className="text-sm text-muted-foreground">O que você quer gerar?</Label>
                   <Input
                     placeholder="Ex: Moto premium em rua neon noturna"`,
@@ -155,7 +176,7 @@ creative = replaceRequired(
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4 mr-2" />
-                          Gerar {selectedFormats.length <= 1 ? "Imagem" : \`\${selectedFormats.length} Imagens\`}
+                          Gerar {selectedFormats.length <= 1 ? "Imagem" : \`${selectedFormats.length} Imagens\`}
                         </>
                       )}
                     </Button>
@@ -180,7 +201,7 @@ creative = replaceRequired(
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4 mr-2" />
-                            Gerar {selectedFormats.length <= 1 ? "Imagem" : \`\${selectedFormats.length} Imagens\`}
+                            Gerar {selectedFormats.length <= 1 ? "Imagem" : \`${selectedFormats.length} Imagens\`}
                           </>
                         )}
                       </Button>
@@ -188,7 +209,7 @@ creative = replaceRequired(
                   </CreditsGate>
                 ) : (
                   <Button type="button" disabled className="w-full bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed">
-                    <Video className="w-4 h-4 mr-2" /> Selecione a imagem-base para continuar
+                    <Video className="w-4 h-4 mr-2" /> {imageMotionSource ? "Integração da geração será conectada na próxima etapa" : "Selecione a imagem-base para continuar"}
                   </Button>
                 )}`,
   "mode-specific generate action",
@@ -201,9 +222,14 @@ creative = replaceRequired(
   "disable legacy avatar video form",
 );
 
+creative = creative.replace(
+  `onClick={() => { reset(); setRestoredResult(null); clearModuleState("creative"); }}`,
+  `onClick={() => { reset(); setRestoredResult(null); clearModuleState("creative"); if (creativeType === "video") { setImageMotionSource(null); setImageMotionResetSignal((value) => value + 1); } }}`,
+);
+
 if (creative.includes("ImageMotionTestDialog") || creative.includes("imageMotionTestOpen")) {
   throw new Error("Separated image motion test dialog must not be mounted");
 }
 
 writeFileSync(creativeUrl, creative);
-console.log("Criar Imagem e Vídeo now uses one shared form; legacy avatar form remains disabled.");
+console.log("Shared flow now supports gallery/library image-base selection with preview, replace, remove and persistence.");
