@@ -1,0 +1,120 @@
+import { Router, type IRouter } from "express";
+import { eq } from "drizzle-orm";
+import { db, users } from "@workspace/db";
+import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
+import {
+  getImageMotionResult,
+  getImageMotionStatus,
+  submitImageMotion,
+  type ImageMotionFormat,
+} from "../lib/falImageMotionClient.js";
+
+const router: IRouter = Router();
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_PROMPT_LENGTH = 1200;
+
+function decodeImageDataUrl(value: unknown): { dataUrl: string; bytes: number } | null {
+  if (typeof value !== "string") return null;
+  const match = value.match(/^data:(image\/(?:png|jpe?g));base64,([A-Za-z0-9+/=]+)$/i);
+  if (!match) return null;
+  const encoded = match[2] ?? "";
+  const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
+  const bytes = Math.floor((encoded.length * 3) / 4) - padding;
+  return { dataUrl: value, bytes };
+}
+
+async function requireAdminTestAccess(req: AuthenticatedRequest): Promise<boolean> {
+  const [user] = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.clerkId, req.clerkUserId));
+  return user?.role === "admin";
+}
+
+router.post("/image-motion/submit", requireAuth, async (req, res): Promise<void> => {
+  const authReq = req as AuthenticatedRequest;
+  if (!(await requireAdminTestAccess(authReq))) {
+    res.status(403).json({ error: "Fluxo disponível apenas para teste administrativo." });
+    return;
+  }
+
+  const image = decodeImageDataUrl((req.body as { imageDataUrl?: unknown }).imageDataUrl);
+  if (!image) {
+    res.status(400).json({ error: "Envie uma imagem PNG, JPG ou JPEG válida." });
+    return;
+  }
+  if (image.bytes > MAX_IMAGE_BYTES) {
+    res.status(413).json({ error: "A imagem deve ter no máximo 8 MB." });
+    return;
+  }
+
+  const rawPrompt = (req.body as { prompt?: unknown }).prompt;
+  if (typeof rawPrompt !== "string" || !rawPrompt.trim()) {
+    res.status(400).json({ error: "Descreva o efeito em movimento desejado." });
+    return;
+  }
+  const prompt = rawPrompt.trim();
+  if (prompt.length > MAX_PROMPT_LENGTH) {
+    res.status(400).json({ error: `A descrição deve ter no máximo ${MAX_PROMPT_LENGTH} caracteres.` });
+    return;
+  }
+
+  const rawFormat = (req.body as { format?: unknown }).format;
+  if (rawFormat !== "feed" && rawFormat !== "story") {
+    res.status(400).json({ error: "Formato inválido. Escolha Feed ou Story." });
+    return;
+  }
+  const format = rawFormat as ImageMotionFormat;
+
+  try {
+    const submission = await submitImageMotion({
+      imageDataUrl: image.dataUrl,
+      prompt,
+      format,
+      duration: "6s",
+    });
+    res.status(202).json({ requestId: submission.requestId, duration: 6, format });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    req.log.error({ err: error }, "image-motion submit failed");
+    if (message === "FAL_KEY_NOT_CONFIGURED") {
+      res.status(503).json({ error: "A chave da nova IA ainda não foi configurada no servidor." });
+      return;
+    }
+    res.status(502).json({ error: "Não foi possível enviar a imagem para processamento." });
+  }
+});
+
+router.get("/image-motion/status/:requestId", requireAuth, async (req, res): Promise<void> => {
+  const authReq = req as AuthenticatedRequest;
+  if (!(await requireAdminTestAccess(authReq))) {
+    res.status(403).json({ error: "Fluxo disponível apenas para teste administrativo." });
+    return;
+  }
+
+  try {
+    const status = await getImageMotionStatus(String(req.params.requestId ?? ""));
+    res.json(status);
+  } catch (error) {
+    req.log.error({ err: error }, "image-motion status failed");
+    res.status(502).json({ error: "Não foi possível consultar o processamento." });
+  }
+});
+
+router.get("/image-motion/result/:requestId", requireAuth, async (req, res): Promise<void> => {
+  const authReq = req as AuthenticatedRequest;
+  if (!(await requireAdminTestAccess(authReq))) {
+    res.status(403).json({ error: "Fluxo disponível apenas para teste administrativo." });
+    return;
+  }
+
+  try {
+    const result = await getImageMotionResult(String(req.params.requestId ?? ""));
+    res.json(result);
+  } catch (error) {
+    req.log.error({ err: error }, "image-motion result failed");
+    res.status(502).json({ error: "Não foi possível recuperar o vídeo gerado." });
+  }
+});
+
+export default router;
