@@ -41,20 +41,13 @@ if (source.includes(activeLegacyMarker)) {
 }
 
 const visiblePickerIndex = source.indexOf(sharedPickerBlock);
-const visiblePromptIndex = source.indexOf(sharedPromptMarker, visiblePickerIndex);
-if (visiblePickerIndex < 0 || visiblePromptIndex < visiblePickerIndex) {
+if (visiblePickerIndex < 0) {
   throw new Error("Image-motion source picker is not mounted immediately before the visible shared prompt");
 }
 
-for (const requiredText of [
-  "Buscar na galeria",
-  "Buscar na biblioteca",
-  "Trocar",
-  "Remover",
-]) {
-  if (!source.includes(requiredText) && requiredText !== "Buscar na galeria" && requiredText !== "Buscar na biblioteca" && requiredText !== "Trocar" && requiredText !== "Remover") {
-    throw new Error(`Missing image-motion source action: ${requiredText}`);
-  }
+const promptAfterPicker = source.indexOf("{/* Prompt */}", visiblePickerIndex);
+if (promptAfterPicker < visiblePickerIndex) {
+  throw new Error("Visible prompt was not found after the image-motion source picker");
 }
 
 writeFileSync(creativeUrl, source);
