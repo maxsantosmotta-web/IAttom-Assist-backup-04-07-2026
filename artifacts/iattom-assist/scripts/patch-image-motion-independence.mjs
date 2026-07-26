@@ -108,11 +108,28 @@ replaceRequired(
   "independent format toggle",
 );
 
-replaceRequired(
-  `disabled={!imageMotionSource || !imageMotionPrompt.trim() || !platform || selectedFormats.length === 0 || isGenerating}`,
-  `disabled={!imageMotionSource || !imageMotionPrompt.trim() || !imageMotionPlatform || imageMotionFormats.length === 0 || isGenerating}`,
-  "independent image-motion button readiness",
-);
+const independentReadiness = `disabled={!imageMotionSource || !imageMotionPrompt.trim() || !imageMotionPlatform || imageMotionFormats.length === 0 || isGenerating}`;
+if (!source.includes(independentReadiness)) {
+  const sharedReadiness = `disabled={!imageMotionSource || !imageMotionPrompt.trim() || !platform || selectedFormats.length === 0 || isGenerating}`;
+  const protectedButton = `                  <Button
+                    type="button"
+                    disabled
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary disabled:text-primary-foreground disabled:opacity-40"
+                  >`;
+  const activeButton = `                  <Button
+                    type="button"
+                    ${independentReadiness}
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary disabled:text-primary-foreground disabled:opacity-40"
+                  >`;
+
+  if (source.includes(sharedReadiness)) {
+    source = source.replace(sharedReadiness, independentReadiness);
+  } else if (source.includes(protectedButton)) {
+    source = source.replace(protectedButton, activeButton);
+  } else {
+    throw new Error("Gerar Vídeo button marker was not found");
+  }
+}
 
 source = source.replace(
   `if (creativeType === "video") { setImageMotionSource(null); setImageMotionPrompt(""); try { localStorage.removeItem("iattom_image_motion_prompt_v1"); } catch { /* ignore */ } setImageMotionResetSignal((value) => value + 1); }`,
@@ -128,7 +145,7 @@ if (!source.includes(`(creativeType === "image" ? platform : imageMotionPlatform
 if (!source.includes(`creativeType === "image" ? selectedFormats : imageMotionFormats`)) {
   throw new Error("Image and image-motion formats are still sharing the same state");
 }
-if (!source.includes(`disabled={!imageMotionSource || !imageMotionPrompt.trim() || !imageMotionPlatform || imageMotionFormats.length === 0 || isGenerating}`)) {
+if (!source.includes(independentReadiness)) {
   throw new Error("Gerar Vídeo readiness does not use independent image-motion fields");
 }
 
