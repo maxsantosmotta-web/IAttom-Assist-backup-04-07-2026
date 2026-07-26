@@ -63,15 +63,10 @@ creative = replaceRequired(
 
 creative = replaceRequired(
   creative,
-  `  const [creativeType, setCreativeType] = useState<CreativeType>(() => {
-    try {
-      const saved = localStorage.getItem("iattom_creative_tab_v1");
-      if (saved === "video") return "video";
-    } catch { /* ignore */ }
-    return "image";
-  });`,
-  `  const [creativeType, setCreativeType] = useState<CreativeType>("image");`,
-  "creative initial image tab",
+  `  const [videoBalance, setVideoBalance] = useState<number | null>(null);`,
+  `  const [videoBalance, setVideoBalance] = useState<number | null>(null);
+  const canOpenImageMotion = isAdmin || (videoBalance ?? 0) > 0;`,
+  "image motion access state",
 );
 
 creative = replaceRequired(
@@ -92,23 +87,123 @@ creative = replaceRequired(
               </button>`,
   `              <button
                 type="button"
-                disabled
-                aria-disabled="true"
-                title="Geração de vídeo com imagem em breve"
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium bg-[#0a0a0a] text-zinc-600 border-white/[0.06] cursor-not-allowed"
+                disabled={!canOpenImageMotion}
+                aria-disabled={!canOpenImageMotion}
+                title={canOpenImageMotion ? "Usar imagem com efeitos em movimento" : "Adquira um pacote de vídeo para liberar"}
+                onClick={() => {
+                  if (!canOpenImageMotion) return;
+                  setCreativeType("video");
+                  try { localStorage.setItem("iattom_creative_tab_v1", "video"); } catch { /* ignore */ }
+                }}
+                className={\`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-colors \${
+                  creativeType === "video"
+                    ? "bg-primary/15 text-primary border-primary/30"
+                    : canOpenImageMotion
+                    ? "bg-[#0a0a0a] text-zinc-500 border-white/[0.08] hover:border-white/20 hover:text-zinc-300"
+                    : "bg-[#0a0a0a] text-zinc-600 border-white/[0.06] cursor-not-allowed"
+                }\`}
               >
-                <Lock className="w-4 h-4" />
+                {!canOpenImageMotion ? <Lock className="w-4 h-4" /> : <Video className="w-4 h-4" />}
                 Vídeo com Imagem
-                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-500">Em breve</span>
+                {!canOpenImageMotion && <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-500">Bloqueado</span>}
               </button>`,
-  "creative video tab locked without duplicate dialog",
+  "shared image motion selector",
 );
 
-creative = creative.replaceAll(`setCreativeType("video");`, `setCreativeType("image");`);
+creative = replaceRequired(
+  creative,
+  `{creativeType === "image" && (`,
+  `{(creativeType === "image" || creativeType === "video") && (`,
+  "shared creative form condition",
+);
+
+creative = replaceRequired(
+  creative,
+  `key="image-form"`,
+  `key={creativeType === "image" ? "image-form" : "image-motion-form"}`,
+  "shared creative form key",
+);
+
+creative = replaceRequired(
+  creative,
+  `<Label className="text-sm text-muted-foreground">O que você quer gerar?</Label>
+                  <Input
+                    placeholder="Ex: Moto premium em rua neon noturna"`,
+  `<Label className="text-sm text-muted-foreground">{creativeType === "image" ? "O que você quer gerar?" : "Descreva o efeito em movimento desejado"}</Label>
+                  <Input
+                    placeholder={creativeType === "image" ? "Ex: Moto premium em rua neon noturna" : "Ex: fumaça saindo dos pneus e luzes refletindo na lataria"}`,
+  "shared prompt copy",
+);
+
+creative = replaceRequired(
+  creative,
+  `                {/* Botão de geração */}
+                <CreditsGate
+                  feature={featureKey}
+                  onSuccess={runGenerate}
+                  disabled={!canGenerate || isGenerating}
+                  hideCostBadge
+                >
+                  {({ trigger, isLoading }) => (
+                    <Button
+                      onClick={trigger}
+                      disabled={isLoading || isGenerating || !canGenerate}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
+                    >
+                      {isLoading || isGenerating ? (
+                        <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Gerando...</>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Gerar {selectedFormats.length <= 1 ? "Imagem" : \`\${selectedFormats.length} Imagens\`}
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </CreditsGate>`,
+  `                {/* Botão de geração */}
+                {creativeType === "image" ? (
+                  <CreditsGate
+                    feature={featureKey}
+                    onSuccess={runGenerate}
+                    disabled={!canGenerate || isGenerating}
+                    hideCostBadge
+                  >
+                    {({ trigger, isLoading }) => (
+                      <Button
+                        onClick={trigger}
+                        disabled={isLoading || isGenerating || !canGenerate}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
+                      >
+                        {isLoading || isGenerating ? (
+                          <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Gerando...</>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Gerar {selectedFormats.length <= 1 ? "Imagem" : \`\${selectedFormats.length} Imagens\`}
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </CreditsGate>
+                ) : (
+                  <Button type="button" disabled className="w-full bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed">
+                    <Video className="w-4 h-4 mr-2" /> Selecione a imagem-base para continuar
+                  </Button>
+                )}`,
+  "mode-specific generate action",
+);
+
+creative = replaceRequired(
+  creative,
+  `{creativeType === "video" && (`,
+  `{false && creativeType === "video" && (`,
+  "disable legacy avatar video form",
+);
 
 if (creative.includes("ImageMotionTestDialog") || creative.includes("imageMotionTestOpen")) {
   throw new Error("Separated image motion test dialog must not be mounted");
 }
 
 writeFileSync(creativeUrl, creative);
-console.log("Video packages remain locked; separated image motion test dialog was removed.");
+console.log("Criar Imagem e Vídeo now uses one shared form; legacy avatar form remains disabled.");
