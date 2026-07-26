@@ -98,7 +98,7 @@ creative = replaceRequired(
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium bg-[#0a0a0a] text-zinc-600 border-white/[0.06] cursor-not-allowed"
               >
                 <Lock className="w-4 h-4" />
-                Vídeo
+                Vídeo com Imagem
                 <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-500">Em breve</span>
               </button>`,
   "creative video tab lock",
