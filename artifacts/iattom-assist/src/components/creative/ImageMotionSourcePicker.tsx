@@ -36,7 +36,6 @@ function inferMime(label: string): "image/png" | "image/jpeg" {
 export function ImageMotionSourcePicker({ value, onChange, disabled = false, resetSignal = 0 }: ImageMotionSourcePickerProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
-  const [projects, setProjects] = useState<SavedItemRecord[]>([]);
   const [assets, setAssets] = useState<Array<{ project: SavedItemRecord; asset: AssetData }>>([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
   const [error, setError] = useState("");
@@ -55,7 +54,7 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
         });
       })
       .catch(() => {});
-  }, []); // restore once
+  }, []);
 
   useEffect(() => {
     if (resetSignal <= 0) return;
@@ -117,7 +116,6 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
     setError("");
     try {
       const items = (await getItems()).filter((item) => !item.deletedAt && item.hasImages);
-      setProjects(items);
       const loaded = await Promise.all(items.map(async (project) => ({ project, assets: await getItemAssets(project.id) })));
       setAssets(loaded.flatMap(({ project, assets: projectAssets }) => projectAssets.map((asset) => ({ project, asset }))));
     } catch {
