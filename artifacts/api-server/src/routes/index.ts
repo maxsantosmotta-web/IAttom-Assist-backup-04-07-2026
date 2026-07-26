@@ -35,6 +35,7 @@ import savedItemsRouter from "./savedItems.js";
 import kiwifyOAuthExperimentRouter from "./kiwifyOAuthExperiment.js";
 import helpRouter from "./help.js";
 import videosRouter from "./videos.js";
+import imageMotionRouter from "./imageMotion.js";
 
 const router: IRouter = Router();
 
@@ -74,5 +75,6 @@ router.use(savedItemsRouter);
 router.use(kiwifyOAuthExperimentRouter);
 router.use(helpRouter);
 router.use(videosRouter);
+router.use(imageMotionRouter);
 
 export default router;
