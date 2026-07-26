@@ -208,8 +208,12 @@ creative = replaceRequired(
                     )}
                   </CreditsGate>
                 ) : (
-                  <Button type="button" disabled className="w-full bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed">
-                    <Video className="w-4 h-4 mr-2" /> {imageMotionSource ? "Integração da geração será conectada na próxima etapa" : "Selecione a imagem-base para continuar"}
+                  <Button
+                    type="button"
+                    disabled
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-primary disabled:text-primary-foreground disabled:opacity-40"
+                  >
+                    <Video className="w-4 h-4 mr-2" /> Gerar Vídeo
                   </Button>
                 )}`,
   "mode-specific generate action",
@@ -232,4 +236,4 @@ if (creative.includes("ImageMotionTestDialog") || creative.includes("imageMotion
 }
 
 writeFileSync(creativeUrl, creative);
-console.log("Shared flow now supports gallery/library image-base selection with preview, replace, remove and persistence.");
+console.log("Shared flow uses the standard Gerar Vídeo button style while image-motion execution remains protected until provider connection.");
