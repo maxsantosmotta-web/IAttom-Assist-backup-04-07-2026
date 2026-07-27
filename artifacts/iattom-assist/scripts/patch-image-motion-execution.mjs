@@ -111,7 +111,63 @@ if (!executionSource.includes(`videosData: "1"`)) {
   if (!executionSource.includes(libraryMarker)) throw new Error("Image-motion library success marker was not found");
   executionSource = executionSource.replace(libraryMarker, localLibrarySync);
 }
+
+const legacyRestore = `        setPhase(saved.phase === "submitting" ? "processing" : saved.phase);
+        setPending(Array.isArray(saved.pending) ? saved.pending : []);
+        setResults(Array.isArray(saved.results) ? saved.results : []);
+        setError(saved.error || "");`;
+const resilientRestore = `        const restoredPending = Array.isArray(saved.pending) ? saved.pending : [];
+        const hasPendingRequest = restoredPending.length > 0;
+        setPhase(hasPendingRequest && (saved.phase === "submitting" || saved.phase === "error") ? "processing" : saved.phase);
+        setPending(restoredPending);
+        setResults(Array.isArray(saved.results) ? saved.results : []);
+        setError(hasPendingRequest ? "" : (saved.error || ""));`;
+if (executionSource.includes(legacyRestore)) {
+  executionSource = executionSource.replace(legacyRestore, resilientRestore);
+}
+
+const legacyStatusFailure = `      if (!statusResponse.ok) throw new Error(await readError(statusResponse, "Não foi possível consultar o processamento."));`;
+const resilientStatusFailure = `      if (!statusResponse.ok) {
+        const statusMessage = await readError(statusResponse, "Não foi possível consultar o processamento.");
+        if (statusResponse.status === 429 || /muitas requisições|aguarde um momento|rate limit/i.test(statusMessage)) {
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+          continue;
+        }
+        throw new Error(statusMessage);
+      }`;
+if (executionSource.includes(legacyStatusFailure)) {
+  executionSource = executionSource.replace(legacyStatusFailure, resilientStatusFailure);
+}
+
+const legacyCompletedBlock = `      if (status.status === "COMPLETED") {
+        const resultResponse = await fetch(\`/api/image-motion/result/\${encodeURIComponent(item.requestId)}\`, { credentials: "include" });
+        if (!resultResponse.ok) throw new Error(await readError(resultResponse, "Não foi possível recuperar o vídeo gerado."));
+        const result = await resultResponse.json() as Omit<MotionResult, "format">;
+        if (!result.videoUrl) throw new Error("A IA não retornou o arquivo do vídeo.");
+        return { ...result, format: item.format };
+      }`;
+const resilientCompletedBlock = `      if (status.status === "COMPLETED") {
+        const resultResponse = await fetch(\`/api/image-motion/result/\${encodeURIComponent(item.requestId)}\`, { credentials: "include" });
+        if (!resultResponse.ok) {
+          const resultMessage = await readError(resultResponse, "Não foi possível recuperar o vídeo gerado.");
+          if (resultResponse.status === 429 || /ainda está sendo liberado|muitas requisições|aguarde um momento|rate limit/i.test(resultMessage)) {
+            await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+            continue;
+          }
+          throw new Error(resultMessage);
+        }
+        const result = await resultResponse.json() as Omit<MotionResult, "format">;
+        if (!result.videoUrl) throw new Error("A IA não retornou o arquivo do vídeo.");
+        return { ...result, format: item.format };
+      }`;
+if (executionSource.includes(legacyCompletedBlock)) {
+  executionSource = executionSource.replace(legacyCompletedBlock, resilientCompletedBlock);
+}
+
 if (!executionSource.includes(`videosData: "1"`)) throw new Error("Image-motion project is not synchronized with the visible Library");
+if (!executionSource.includes("hasPendingRequest") || !executionSource.includes("resultResponse.status === 429") || !executionSource.includes("statusResponse.status === 429")) {
+  throw new Error("Image-motion temporary rate-limit recovery was not installed");
+}
 writeFileSync(executionUrl, executionSource);
 
-console.log("Image-motion execution preserves the visible flow and synchronizes saved video projects with the Library.");
+console.log("Image-motion execution preserves pending requests, tolerates temporary provider limits, and synchronizes saved videos with the Library.");
