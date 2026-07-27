@@ -260,18 +260,12 @@ export function ImageMotionSourcePicker({ value, onChange, onExit, disabled = fa
 
       <Dialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
         <DialogContent className="max-w-sm bg-[#111111] border-white/10">
-          <DialogHeader>
-            <DialogTitle className="text-white">Sair desta operação?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-zinc-400 leading-relaxed">
-            A imagem selecionada e os dados preenchidos serão removidos apenas deste rascunho. Nenhum projeto da Biblioteca será excluído.
-          </p>
           <div className="grid grid-cols-1 gap-2">
-            <Button type="button" variant="ghost" onClick={() => setExitConfirmOpen(false)} disabled={isExiting} className="w-full text-zinc-400 hover:text-white">
-              Continuar editando
-            </Button>
             <Button type="button" onClick={() => void confirmExit()} disabled={isExiting} className="w-full">
-              {isExiting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saindo...</> : "Sair sem preservar"}
+              {isExiting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saindo...</> : "Sair"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setExitConfirmOpen(false)} disabled={isExiting} className="w-full text-zinc-400 hover:text-white">
+              Continuar
             </Button>
           </div>
         </DialogContent>
