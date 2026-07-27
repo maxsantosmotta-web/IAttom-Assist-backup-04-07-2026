@@ -11,25 +11,35 @@ if (!source.includes(`import { ImageMotionExecution } from "@/components/creativ
   source = source.replace(pickerImport, executionImport);
 }
 
-const onChangeMarker = `                     onChange={setImageMotionSource}`;
-const exitAction = `${onChangeMarker}
-                     onExit={() => {
-                       setImageMotionSource(null);
-                       setImageMotionPrompt("");
-                       setImageMotionPlatform("");
-                       setImageMotionFormats([]);
-                       setImageMotionResetSignal((value) => value + 1);
-                       try {
-                         localStorage.removeItem("iattom_image_motion_prompt_v1");
-                         localStorage.removeItem("iattom_image_motion_platform_v1");
-                         localStorage.removeItem("iattom_image_motion_formats_v1");
-                         localStorage.removeItem("iattom_image_motion_execution_v1");
-                       } catch { /* ignore */ }
-                     }}`;
+const exitAction = `onExit={() => {
+                        setImageMotionSource(null);
+                        setImageMotionPrompt("");
+                        setImageMotionPlatform("");
+                        setImageMotionFormats([]);
+                        setImageMotionResetSignal((value) => value + 1);
+                        try {
+                          localStorage.removeItem("iattom_image_motion_prompt_v1");
+                          localStorage.removeItem("iattom_image_motion_platform_v1");
+                          localStorage.removeItem("iattom_image_motion_formats_v1");
+                          localStorage.removeItem("iattom_image_motion_execution_v1");
+                        } catch { /* ignore */ }
+                      }}`;
 
 if (!source.includes("onExit={() =>")) {
-  if (!source.includes(onChangeMarker)) throw new Error("Visible image-motion picker onChange marker was not found");
-  source = source.replace(onChangeMarker, exitAction);
+  const pickerStart = source.indexOf("<ImageMotionSourcePicker");
+  if (pickerStart < 0) throw new Error("Visible image-motion picker was not found");
+
+  const pickerEnd = source.indexOf("/>", pickerStart);
+  if (pickerEnd < 0) throw new Error("Visible image-motion picker closing marker was not found");
+
+  const pickerBlock = source.slice(pickerStart, pickerEnd + 2);
+  const onChangeMarker = "onChange={setImageMotionSource}";
+  if (!pickerBlock.includes(onChangeMarker)) {
+    throw new Error("Visible image-motion picker onChange marker was not found inside the picker block");
+  }
+
+  const updatedPickerBlock = pickerBlock.replace(onChangeMarker, `${onChangeMarker}\n                      ${exitAction}`);
+  source = source.slice(0, pickerStart) + updatedPickerBlock + source.slice(pickerEnd + 2);
 }
 
 const executionPanel = `                  <ImageMotionExecution
