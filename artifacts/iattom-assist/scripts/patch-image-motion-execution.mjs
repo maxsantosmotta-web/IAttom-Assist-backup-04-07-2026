@@ -11,24 +11,46 @@ if (!source.includes(`import { ImageMotionExecution } from "@/components/creativ
   source = source.replace(pickerImport, executionImport);
 }
 
+const onChangeMarker = `                     onChange={setImageMotionSource}`;
+const exitAction = `${onChangeMarker}
+                     onExit={() => {
+                       setImageMotionSource(null);
+                       setImageMotionPrompt("");
+                       setImageMotionPlatform("");
+                       setImageMotionFormats([]);
+                       setImageMotionResetSignal((value) => value + 1);
+                       try {
+                         localStorage.removeItem("iattom_image_motion_prompt_v1");
+                         localStorage.removeItem("iattom_image_motion_platform_v1");
+                         localStorage.removeItem("iattom_image_motion_formats_v1");
+                         localStorage.removeItem("iattom_image_motion_execution_v1");
+                       } catch { /* ignore */ }
+                     }}`;
+
+if (!source.includes("onExit={() =>")) {
+  if (!source.includes(onChangeMarker)) throw new Error("Visible image-motion picker onChange marker was not found");
+  source = source.replace(onChangeMarker, exitAction);
+}
+
 const executionPanel = `                  <ImageMotionExecution
-                    source={imageMotionSource}
-                    prompt={imageMotionPrompt}
-                    platform={imageMotionPlatform}
-                    formats={imageMotionFormats}
-                    onNew={() => {
-                      setImageMotionSource(null);
-                      setImageMotionPrompt("");
-                      setImageMotionPlatform("");
-                      setImageMotionFormats([]);
-                      setImageMotionResetSignal((value) => value + 1);
-                      try {
-                        localStorage.removeItem("iattom_image_motion_prompt_v1");
-                        localStorage.removeItem("iattom_image_motion_platform_v1");
-                        localStorage.removeItem("iattom_image_motion_formats_v1");
-                      } catch { /* ignore */ }
-                    }}
-                  />`;
+                     source={imageMotionSource}
+                     prompt={imageMotionPrompt}
+                     platform={imageMotionPlatform}
+                     formats={imageMotionFormats}
+                     onNew={() => {
+                       setImageMotionSource(null);
+                       setImageMotionPrompt("");
+                       setImageMotionPlatform("");
+                       setImageMotionFormats([]);
+                       setImageMotionResetSignal((value) => value + 1);
+                       try {
+                         localStorage.removeItem("iattom_image_motion_prompt_v1");
+                         localStorage.removeItem("iattom_image_motion_platform_v1");
+                         localStorage.removeItem("iattom_image_motion_formats_v1");
+                         localStorage.removeItem("iattom_image_motion_execution_v1");
+                       } catch { /* ignore */ }
+                     }}
+                   />`;
 
 if (!source.includes("<ImageMotionExecution")) {
   const label = `<Video className="w-4 h-4 mr-2" /> Gerar Vídeo`;
@@ -51,6 +73,8 @@ if (!source.includes("<ImageMotionExecution")) {
   source = source.slice(0, buttonStart) + executionPanel + source.slice(buttonEnd);
 }
 
+if (!source.includes("<ImageMotionSourcePicker")) throw new Error("Image motion source picker was removed from the visible flow");
+if (!source.includes("onExit={() =>")) throw new Error("Image motion exit action was not connected");
 if (!source.includes("<ImageMotionExecution")) throw new Error("Image motion execution panel was not mounted");
 if (!source.includes("source={imageMotionSource}")) throw new Error("Image motion source was not connected to execution");
 if (!source.includes("prompt={imageMotionPrompt}")) throw new Error("Image motion prompt was not connected to execution");
@@ -59,4 +83,4 @@ if (!source.includes("formats={imageMotionFormats}")) throw new Error("Image mot
 if (!source.includes("onNew={() =>")) throw new Error("Image motion Novo action was not connected");
 
 writeFileSync(creativeUrl, source);
-console.log("Image-motion execution mounted from the visible independent Gerar Vídeo action without running a generation during build.");
+console.log("Image-motion picker remains visible; Sair clears only the temporary operation and execution state.");
