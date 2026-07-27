@@ -2,7 +2,7 @@ const FAL_ENDPOINT_ID = "fal-ai/veo3.1/lite/image-to-video";
 const FAL_SUBMIT_BASE = `https://queue.fal.run/${FAL_ENDPOINT_ID}`;
 const FAL_QUEUE_REQUEST_BASE = "https://queue.fal.run/fal-ai/veo3.1";
 
-export type ImageMotionFormat = "feed" | "story";
+export type ImageMotionFormat = "vertical" | "horizontal" | "automatic";
 export type ImageMotionDuration = "6s";
 
 export interface SubmitImageMotionInput {
@@ -124,7 +124,11 @@ function responseUrlFor(requestId: string): string {
 }
 
 export async function submitImageMotion(input: SubmitImageMotionInput): Promise<FalQueueSubmission> {
-  const aspectRatio = input.format === "story" ? "9:16" : "auto";
+  const aspectRatio = input.format === "vertical"
+    ? "9:16"
+    : input.format === "horizontal"
+      ? "16:9"
+      : "auto";
 
   const response = await fetch(FAL_SUBMIT_BASE, {
     method: "POST",
