@@ -1,5 +1,6 @@
 const FAL_ENDPOINT_ID = "fal-ai/veo3.1/lite/image-to-video";
-const FAL_QUEUE_BASE = `https://queue.fal.run/${FAL_ENDPOINT_ID}`;
+const FAL_SUBMIT_BASE = `https://queue.fal.run/${FAL_ENDPOINT_ID}`;
+const FAL_QUEUE_REQUEST_BASE = "https://queue.fal.run/fal-ai/veo3.1";
 
 export type ImageMotionFormat = "feed" | "story";
 export type ImageMotionDuration = "6s";
@@ -114,18 +115,18 @@ function safeFalQueueUrl(value: unknown): string | undefined {
 
 function statusUrlFor(requestId: string): string {
   return queueUrlsByRequestId.get(requestId)?.statusUrl
-    ?? `${FAL_QUEUE_BASE}/requests/${requestId}/status?logs=1`;
+    ?? `${FAL_QUEUE_REQUEST_BASE}/requests/${requestId}/status?logs=1`;
 }
 
 function responseUrlFor(requestId: string): string {
   return queueUrlsByRequestId.get(requestId)?.responseUrl
-    ?? `${FAL_QUEUE_BASE}/requests/${requestId}/response`;
+    ?? `${FAL_QUEUE_REQUEST_BASE}/requests/${requestId}`;
 }
 
 export async function submitImageMotion(input: SubmitImageMotionInput): Promise<FalQueueSubmission> {
   const aspectRatio = input.format === "story" ? "9:16" : "auto";
 
-  const response = await fetch(FAL_QUEUE_BASE, {
+  const response = await fetch(FAL_SUBMIT_BASE, {
     method: "POST",
     headers: falHeaders(),
     body: JSON.stringify({
@@ -161,6 +162,7 @@ export async function submitImageMotion(input: SubmitImageMotionInput): Promise<
 export async function getImageMotionStatus(requestId: string): Promise<FalQueueStatus> {
   assertRequestId(requestId);
   const response = await fetch(statusUrlFor(requestId), {
+    method: "GET",
     headers: falHeaders(),
     signal: AbortSignal.timeout(15_000),
   });
@@ -197,6 +199,7 @@ export async function getImageMotionStatus(requestId: string): Promise<FalQueueS
 export async function getImageMotionResult(requestId: string): Promise<FalImageMotionResult> {
   assertRequestId(requestId);
   const response = await fetch(responseUrlFor(requestId), {
+    method: "GET",
     headers: falHeaders(),
     signal: AbortSignal.timeout(30_000),
   });
