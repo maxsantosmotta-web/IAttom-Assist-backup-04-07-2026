@@ -3,29 +3,27 @@ import fs from "node:fs";
 const pagePath = new URL("../src/pages/dashboard/SavedPrompts.tsx", import.meta.url);
 let source = fs.readFileSync(pagePath, "utf8");
 
-const resetFunctionEnd = `  const resetCreateForm = () => {\n    setCreating(false);\n    setGuidedTipo("Imagem");\n    setGuidedSubject("");\n    setPendingTipo(null);\n    setNewTitle("");\n    setNewPrompt("");\n    setGenerated(false);\n  };`;
-
-const refreshFunction = `${resetFunctionEnd}\n\n  const refreshPromptModule = async () => {\n    setSearch("");\n    resetCreateForm();\n    await fetchPrompts();\n  };`;
-
-if (!source.includes("const refreshPromptModule = async () =>")) {
-  if (!source.includes(resetFunctionEnd)) {
-    throw new Error("Criar Prompt resetCreateForm marker not found");
-  }
-  source = source.replace(resetFunctionEnd, refreshFunction);
-}
-
 const listOnlyRefresh = "          onClick={() => void fetchPrompts()}";
-const fullModuleRefresh = "          onClick={() => void refreshPromptModule()}";
+const manualModuleRefresh = "          onClick={() => void refreshPromptModule()}";
+const browserLikeRefresh = "          onClick={() => window.location.reload()}";
 
 if (source.includes(listOnlyRefresh)) {
-  source = source.replace(listOnlyRefresh, fullModuleRefresh);
-} else if (!source.includes(fullModuleRefresh)) {
+  source = source.replace(listOnlyRefresh, browserLikeRefresh);
+} else if (source.includes(manualModuleRefresh)) {
+  source = source.replace(manualModuleRefresh, browserLikeRefresh);
+} else if (!source.includes(browserLikeRefresh)) {
   throw new Error("Criar Prompt Atualizar button marker not found");
 }
 
-if (!source.includes('setSearch("");') || !source.includes("resetCreateForm();") || !source.includes("await fetchPrompts();")) {
-  throw new Error("Criar Prompt full module refresh was not installed");
+const refreshFunctionPattern = /\n\n  const refreshPromptModule = async \(\) => \{\n    setSearch\(""\);\n    resetCreateForm\(\);\n    await fetchPrompts\(\);\n  \};/;
+source = source.replace(refreshFunctionPattern, "");
+
+if (!source.includes(browserLikeRefresh)) {
+  throw new Error("Criar Prompt browser-like refresh was not installed");
+}
+if (source.includes("const refreshPromptModule = async () =>")) {
+  throw new Error("Criar Prompt still contains the old manual refresh helper");
 }
 
 fs.writeFileSync(pagePath, source);
-console.log("Criar Prompt Atualizar agora limpa o módulo inteiro e recarrega os prompts");
+console.log("Criar Prompt Atualizar agora recarrega a rota inteira como o navegador");
