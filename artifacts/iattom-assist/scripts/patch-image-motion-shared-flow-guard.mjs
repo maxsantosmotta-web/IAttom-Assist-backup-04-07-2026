@@ -3,6 +3,18 @@ import { readFileSync, writeFileSync } from "node:fs";
 const creativeUrl = new URL("../src/pages/dashboard/CreativeGenerator.tsx", import.meta.url);
 let source = readFileSync(creativeUrl, "utf8");
 
+const legacyVideoPattern = /(\{\/\*\s*Vídeo(?: legado desativado)?\s*\*\/\}\s*)\{(?:false\s*&&\s*)?creativeType\s*===\s*"video"\s*&&\s*\(/;
+const legacyVideoMatch = source.match(legacyVideoPattern);
+
+if (!legacyVideoMatch) {
+  throw new Error("Legacy video form marker was not found");
+}
+
+source = source.replace(
+  legacyVideoPattern,
+  `${legacyVideoMatch[1]}{false && creativeType === "video" && (`,
+);
+
 const currentFormatsMarker = `  const currentPlatformFormats = platform ? (PLATFORMS.find((p) => p.key === platform)?.formats ?? []) : [];`;
 const currentFormatsReplacement = `  const currentPlatformFormats = creativeType === "video"
     ? [
@@ -30,7 +42,11 @@ if (source.includes(resetFormatsMarker)) {
 }
 
 if (!source.includes("<ImageMotionSourcePicker")) {
-  throw new Error("Visible image-motion source picker is not mounted");
+  throw new Error("Visible image-motion source picker was not found");
+}
+
+if (/\{\/\*\s*Vídeo(?: legado desativado)?\s*\*\/\}\s*\{creativeType\s*===\s*"video"\s*&&\s*\(/.test(source)) {
+  throw new Error("Legacy avatar video form is still active");
 }
 
 if (!source.includes(`{ key: "vertical", label: "Vertical" }`) ||
@@ -40,4 +56,4 @@ if (!source.includes(`{ key: "vertical", label: "Vertical" }`) ||
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Visible image-motion flow uses Vertical, Horizontal and Automático; existing picker and prompt flow preserved.");
+console.log("Visible image-motion flow is active and legacy avatar video form remains disabled.");
