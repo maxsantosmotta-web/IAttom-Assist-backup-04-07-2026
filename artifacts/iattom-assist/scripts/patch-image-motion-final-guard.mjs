@@ -38,22 +38,40 @@ if (!source.includes(pickerImport)) {
   throw new Error("Final image-motion picker import is missing");
 }
 
-if (!source.includes("<ImageMotionSourcePicker")) {
-  const promptMarker = `                {/* Prompt */}\n`;
-  const promptIndex = source.indexOf(promptMarker);
-  if (promptIndex < 0) {
-    throw new Error("Safe prompt marker for the final image-motion picker was not found");
+const visiblePromptLabel = `Descreva o efeito em movimento desejado`;
+const visiblePromptIndex = source.indexOf(visiblePromptLabel);
+if (visiblePromptIndex < 0) {
+  throw new Error("Visible image-motion prompt was not found");
+}
+
+const visibleFormStart = source.lastIndexOf(`<CardContent className="p-6 space-y-6">`, visiblePromptIndex);
+const visibleFormEnd = source.indexOf(`</CardContent>`, visiblePromptIndex);
+if (visibleFormStart < 0 || visibleFormEnd < 0) {
+  throw new Error("Visible image-motion form boundaries were not found");
+}
+
+let visibleForm = source.slice(visibleFormStart, visibleFormEnd);
+if (!visibleForm.includes("<ImageMotionSourcePicker")) {
+  const promptMarker = `                {/* Prompt */}`;
+  const promptMarkerIndex = source.lastIndexOf(promptMarker, visiblePromptIndex);
+  if (promptMarkerIndex < visibleFormStart) {
+    throw new Error("Safe prompt marker inside the visible image-motion form was not found");
   }
-  source = source.slice(0, promptIndex) + pickerBlock + source.slice(promptIndex);
+  source = source.slice(0, promptMarkerIndex) + pickerBlock + source.slice(promptMarkerIndex);
 }
 
-const pickerStart = source.indexOf("<ImageMotionSourcePicker");
-const pickerEnd = source.indexOf("/>", pickerStart);
-if (pickerStart < 0 || pickerEnd < 0) {
-  throw new Error("Final image-motion picker block is incomplete");
+const verifiedPromptIndex = source.indexOf(visiblePromptLabel);
+const verifiedFormStart = source.lastIndexOf(`<CardContent className="p-6 space-y-6">`, verifiedPromptIndex);
+const verifiedFormEnd = source.indexOf(`</CardContent>`, verifiedPromptIndex);
+visibleForm = source.slice(verifiedFormStart, verifiedFormEnd);
+
+const pickerStartInForm = visibleForm.indexOf("<ImageMotionSourcePicker");
+const pickerEndInForm = visibleForm.indexOf("/>", pickerStartInForm);
+if (pickerStartInForm < 0 || pickerEndInForm < 0) {
+  throw new Error("Image-motion picker is not mounted inside the visible form");
 }
 
-const mountedPicker = source.slice(pickerStart, pickerEnd + 2);
+const mountedPicker = visibleForm.slice(pickerStartInForm, pickerEndInForm + 2);
 for (const marker of [
   "value={imageMotionSource}",
   "onChange={setImageMotionSource}",
@@ -68,8 +86,12 @@ for (const marker of [
   "resetSignal={imageMotionResetSignal}",
 ]) {
   if (!mountedPicker.includes(marker)) {
-    throw new Error(`Final image-motion picker is missing required marker: ${marker}`);
+    throw new Error(`Visible image-motion picker is missing required marker: ${marker}`);
   }
+}
+
+if (pickerStartInForm > visibleForm.indexOf(visiblePromptLabel)) {
+  throw new Error("Image-motion picker must appear before the visible prompt");
 }
 
 for (const stateMarker of [
@@ -89,12 +111,12 @@ for (const formatMarker of [
   `{ key: "horizontal", label: "Horizontal" }`,
   `{ key: "automatic", label: "Automático" }`,
 ]) {
-  if (!source.includes(formatMarker)) {
+  if (!visibleForm.includes(formatMarker) && !source.includes(formatMarker)) {
     throw new Error(`Final image-motion format is missing: ${formatMarker}`);
   }
 }
 
-if (!source.includes("<ImageMotionExecution")) {
+if (!visibleForm.includes("<ImageMotionExecution") && !source.includes("<ImageMotionExecution")) {
   throw new Error("Final image-motion execution panel is missing");
 }
 
@@ -115,4 +137,4 @@ for (const pickerUiMarker of [
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Final image-motion guard preserved Galeria/Biblioteca, formats, states, execution and disabled legacy flow.");
+console.log("Final image-motion guard confirmed Galeria/Biblioteca inside the visible form before the prompt.");
