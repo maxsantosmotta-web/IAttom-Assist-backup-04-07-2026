@@ -86,18 +86,27 @@ const oldGetTrash = `  const getTrash = useCallback(async (): Promise<SavedItemR
     if (!token) return [];
     return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);
   }, [getToken]);`;
-const newGetTrash = `  const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
+const tokenGetTrash = `  const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
     const token = await resolveToken(getToken);
     if (!token) throw new Error("Autenticação ainda não está pronta");
     return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);
   }, [getToken]);`;
-if (!hook.includes(newGetTrash)) {
-  if (!hook.includes(oldGetTrash)) throw new Error("getTrash marker not found");
-  hook = hook.replace(oldGetTrash, newGetTrash);
+
+if (hook.includes(oldGetTrash)) {
+  hook = hook.replace(oldGetTrash, tokenGetTrash);
+}
+
+const hasSafeGetTrash =
+  hook.includes(tokenGetTrash) ||
+  (hook.includes('fetch("/api/saved-items/trash"') && hook.includes('credentials: "include"')) ||
+  (hook.includes("trashReadInFlight") && hook.includes('apiFetch<SavedItemRecord[]>("/api/saved-items/trash"'));
+
+if (!hasSafeGetTrash) {
+  throw new Error("No supported getTrash implementation found");
 }
 if (hook.includes('if (!token) return [];\n    return apiFetch<SavedItemRecord[]>("/api/saved-items/trash"')) {
   throw new Error("getTrash still converts missing authentication into an empty trash");
 }
 writeFileSync(hookUrl, hook);
 
-console.log("Trash loading now preserves visible items, blocks concurrent refreshes, ignores stale responses, and never treats missing auth as an empty trash.");
+console.log("Trash loading stability is compatible with the current authenticated trash flow.");
