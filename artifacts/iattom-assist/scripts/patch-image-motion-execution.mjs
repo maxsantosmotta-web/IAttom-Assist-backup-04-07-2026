@@ -164,10 +164,111 @@ if (executionSource.includes(legacyCompletedBlock)) {
   executionSource = executionSource.replace(legacyCompletedBlock, resilientCompletedBlock);
 }
 
+const legacyGenerate = `  const generate = async () => {
+    if (!source || !canGenerate) return;
+    setPhase("submitting");
+    setError("");
+    setResults([]);
+    try {
+      const imageDataUrl = \`data:\${source.mimeType};base64,\${source.base64}\`;
+      const submitted: PendingRequest[] = [];
+      for (const format of motionFormats) {
+        const response = await fetch("/api/image-motion/submit", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageDataUrl, prompt: prompt.trim(), format }),
+        });
+        if (!response.ok) throw new Error(await readError(response, "Não foi possível enviar a imagem para processamento."));
+        const body = await response.json() as { requestId?: string };
+        if (!body.requestId) throw new Error("O servidor não retornou o identificador da geração.");
+        submitted.push({ requestId: body.requestId, format });
+      }
+      setPending(submitted);
+      setPhase("processing");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível iniciar a geração.");
+      setPhase("error");
+    }
+  };`;
+const resilientGenerate = `  const generate = async () => {
+    if (!source || !canGenerate) return;
+    setPhase("submitting");
+    setError("");
+    setResults([]);
+    setPending([]);
+    const submitted: PendingRequest[] = [];
+    try {
+      const imageDataUrl = \`data:\${source.mimeType};base64,\${source.base64}\`;
+      for (const format of motionFormats) {
+        let response: Response | null = null;
+        let submitMessage = "Não foi possível enviar a imagem para processamento.";
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          response = await fetch("/api/image-motion/submit", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageDataUrl, prompt: prompt.trim(), format }),
+          });
+          if (response.ok) break;
+          submitMessage = await readError(response, submitMessage);
+          const temporaryLimit = response.status === 429 || /muitas requisições|aguarde um momento|rate limit/i.test(submitMessage);
+          if (!temporaryLimit || attempt === 3) break;
+          await new Promise((resolve) => setTimeout(resolve, Math.min(POLL_INTERVAL_MS * (attempt + 1), 12_000)));
+        }
+        if (!response?.ok) {
+          const temporaryLimit = response?.status === 429 || /muitas requisições|aguarde um momento|rate limit/i.test(submitMessage);
+          if (temporaryLimit) throw new Error("O serviço de vídeo está temporariamente ocupado. Tente novamente em instantes sem alterar a imagem ou o prompt.");
+          throw new Error(submitMessage);
+        }
+        const body = await response.json() as { requestId?: string };
+        if (!body.requestId) throw new Error("O servidor não retornou o identificador da geração.");
+        submitted.push({ requestId: body.requestId, format });
+        const snapshot = [...submitted];
+        setPending(snapshot);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ phase: "processing", pending: snapshot, results: [], error: "" } satisfies PersistedState));
+        } catch { /* estado React continua preservando o pedido */ }
+      }
+      setPhase("processing");
+    } catch (cause) {
+      if (submitted.length > 0) {
+        setPending([...submitted]);
+        setError("");
+        setPhase("processing");
+        return;
+      }
+      setError(cause instanceof Error ? cause.message : "Não foi possível iniciar a geração.");
+      setPhase("error");
+    }
+  };`;
+if (executionSource.includes(legacyGenerate)) {
+  executionSource = executionSource.replace(legacyGenerate, resilientGenerate);
+}
+
+const legacyErrorActions = `          <div className="flex gap-2">
+            {pending.length > 0 && <Button type="button" variant="outline" onClick={() => void resumePending(pending)}><RefreshCw className="w-4 h-4 mr-2" /> Consultar novamente</Button>}
+            <Button type="button" variant="outline" onClick={resetAll}>Novo</Button>
+          </div>`;
+const resilientErrorActions = `          <div className="flex flex-wrap gap-2">
+            {pending.length > 0 ? (
+              <Button type="button" variant="outline" onClick={() => void resumePending(pending)}><RefreshCw className="w-4 h-4 mr-2" /> Consultar novamente</Button>
+            ) : (
+              <Button type="button" variant="outline" onClick={() => void generate()}><RefreshCw className="w-4 h-4 mr-2" /> Tentar novamente</Button>
+            )}
+            <Button type="button" variant="outline" onClick={resetAll}>Novo</Button>
+          </div>`;
+if (executionSource.includes(legacyErrorActions)) {
+  executionSource = executionSource.replace(legacyErrorActions, resilientErrorActions);
+}
+
 if (!executionSource.includes(`videosData: "1"`)) throw new Error("Image-motion project is not synchronized with the visible Library");
 if (!executionSource.includes("hasPendingRequest") || !executionSource.includes("resultResponse.status === 429") || !executionSource.includes("statusResponse.status === 429")) {
   throw new Error("Image-motion temporary rate-limit recovery was not installed");
 }
+if (!executionSource.includes("Tentar novamente") || !executionSource.includes("const snapshot = [...submitted]") || !executionSource.includes("O serviço de vídeo está temporariamente ocupado")) {
+  throw new Error("Image-motion submit recovery was not installed");
+}
 writeFileSync(executionUrl, executionSource);
 
-console.log("Image-motion execution preserves pending requests, tolerates temporary provider limits, and synchronizes saved videos with the Library.");
+console.log("Image-motion execution preserves accepted requests, retries temporary submit limits, and always offers a recovery action.");
