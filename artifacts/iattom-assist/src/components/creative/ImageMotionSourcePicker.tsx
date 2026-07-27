@@ -98,7 +98,7 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
       await saveItem({
         id: trashId,
         title: `Imagem removida — ${value.name || "Imagem-base"}`,
-        type: "creative-image",
+        type: "creative",
         content: `Imagem removida do fluxo Vídeo com Imagem em ${now}`,
         data: JSON.stringify({
           type: "image-motion-source",
