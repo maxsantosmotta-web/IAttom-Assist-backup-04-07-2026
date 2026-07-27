@@ -105,9 +105,9 @@ if (!/\{\/\*\s*Vídeo(?: legado desativado)?\s*\*\/\}\s*\{false\s*&&\s*creativeT
 for (const pickerUiMarker of [
   "Buscar na galeria",
   "Buscar na biblioteca",
-  "> Trocar</,
-  "> Sair</,
-  ">Continuar</,
+  "Trocar",
+  "Sair",
+  "Continuar",
 ]) {
   if (!pickerSource.includes(pickerUiMarker)) {
     throw new Error(`Image-motion source picker UI is missing: ${pickerUiMarker}`);
