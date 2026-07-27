@@ -92,12 +92,12 @@ function retryDelayMs(response: Response, attempt: number): number {
   return Math.min(5_000 * (attempt + 1), 20_000);
 }
 
-async function fetchStatusWithRateLimitRetry(url: string): Promise<Response> {
+async function fetchWithRateLimitRetry(url: string, timeoutMs: number): Promise<Response> {
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const response = await fetch(url, {
       method: "GET",
       headers: falHeaders(),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (response.status !== 429) return response;
     if (attempt === 3) return response;
@@ -134,7 +134,14 @@ export async function submitImageMotion(input: SubmitImageMotionInput): Promise<
 
 export async function getImageMotionStatus(requestId: string): Promise<FalQueueStatus> {
   assertRequestId(requestId);
-  const response = await fetchStatusWithRateLimitRetry(statusUrlFor(requestId));
+  const response = await fetchWithRateLimitRetry(statusUrlFor(requestId), 15_000);
+
+  // Limite temporário na consulta não significa falha da geração.
+  // Mantém o mesmo pedido em processamento para o frontend continuar consultando.
+  if (response.status === 429) {
+    return { status: "IN_PROGRESS" };
+  }
+
   const payload = (await parseFalResponse(response)) as {
     status?: unknown; queue_position?: unknown; logs?: unknown; error?: unknown; detail?: unknown; message?: unknown;
   };
@@ -159,11 +166,8 @@ export async function getImageMotionStatus(requestId: string): Promise<FalQueueS
 
 export async function getImageMotionResult(requestId: string): Promise<FalImageMotionResult> {
   assertRequestId(requestId);
-  const response = await fetch(responseUrlFor(requestId), {
-    method: "GET",
-    headers: falHeaders(),
-    signal: AbortSignal.timeout(30_000),
-  });
+  const response = await fetchWithRateLimitRetry(responseUrlFor(requestId), 30_000);
+  if (response.status === 429) throw new Error("O vídeo terminou, mas o arquivo ainda está sendo liberado. Consulte novamente em instantes.");
   const payload = (await parseFalResponse(response)) as {
     video?: { url?: unknown; content_type?: unknown; file_name?: unknown; file_size?: unknown };
   };
