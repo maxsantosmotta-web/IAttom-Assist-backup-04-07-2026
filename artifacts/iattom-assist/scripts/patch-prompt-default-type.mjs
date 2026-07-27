@@ -3,19 +3,32 @@ import fs from "node:fs";
 const pagePath = new URL("../src/pages/dashboard/SavedPrompts.tsx", import.meta.url);
 let source = fs.readFileSync(pagePath, "utf8");
 
-const oldLine = '  const [guidedTipo, setGuidedTipo]       = useState("");';
-const newLine = '  const [guidedTipo, setGuidedTipo]       = useState("Personalizado");';
+const emptyDefault = '  const [guidedTipo, setGuidedTipo]       = useState("");';
+const personalizedDefault = '  const [guidedTipo, setGuidedTipo]       = useState("Personalizado");';
+const imageDefault = '  const [guidedTipo, setGuidedTipo]       = useState("Imagem");';
 
-if (source.includes(oldLine)) {
-  source = source.replace(oldLine, newLine);
-} else if (!source.includes(newLine)) {
+if (source.includes(emptyDefault)) {
+  source = source.replace(emptyDefault, imageDefault);
+} else if (source.includes(personalizedDefault)) {
+  source = source.replace(personalizedDefault, imageDefault);
+} else if (!source.includes(imageDefault)) {
   throw new Error("SavedPrompts guidedTipo state marker not found");
 }
 
 source = source.replace(
   '    setGuidedTipo("");',
-  '    setGuidedTipo("Personalizado");',
+  '    setGuidedTipo("Imagem");',
 );
+source = source.replace(
+  '    setGuidedTipo("Personalizado");',
+  '    setGuidedTipo("Imagem");',
+);
+
+const personalizedOption = '  "Personalizado",\n';
+source = source.split(personalizedOption).join("");
+
+const personalizedColor = '  "Personalizado":"text-zinc-400 bg-zinc-400/10 border-zinc-400/20",\n';
+source = source.split(personalizedColor).join("");
 
 const videoWithImageOption = '  "Vídeo com Imagem",';
 if (!source.includes(videoWithImageOption)) {
@@ -33,9 +46,9 @@ if (!source.includes(videoWithImageColor)) {
 
 const infoMapMarker = "const TIPO_INFO: Record<string, { description: string; example: string }>";
 if (!source.includes(infoMapMarker)) {
-  const colorMapEnd = `  "Personalizado":"text-zinc-400 bg-zinc-400/10 border-zinc-400/20",\n};`;
+  const colorMapEnd = `  "Automação":    "text-cyan-400 bg-cyan-400/10 border-cyan-400/20",\n};`;
   if (!source.includes(colorMapEnd)) throw new Error("SavedPrompts color map end marker not found");
-  const infoMap = `${colorMapEnd}\n\nconst TIPO_INFO: Record<string, { description: string; example: string }> = {\n  "Imagem": {\n    description: "Cria prompts para gerar imagens profissionais, definindo cenário, composição, iluminação, estilo visual e acabamento.",\n    example: "Exemplo: uma moto esportiva preta em uma rua molhada à noite, com luzes neon.",\n  },\n  "Vídeo com Imagem": {\n    description: "Cria prompts para dar vida a uma imagem pronta, definindo movimentos, efeitos, câmera, elementos fixos e o que não deve ser alterado.",\n    example: "Exemplo: movimentar a fumaça e os reflexos, mantendo a moto e a câmera paradas.",\n  },\n  "Vídeo": {\n    description: "Cria prompts para vídeos completos, com cenas, ações, narrativa, ritmo, enquadramento e direção visual.",\n    example: "Exemplo: vídeo curto apresentando uma scooter elétrica em um cenário urbano.",\n  },\n  "Copy": {\n    description: "Cria prompts para textos persuasivos de vendas, com headline, benefícios, objeções, gatilhos e chamada para ação.",\n    example: "Exemplo: copy para vender proteção veicular com economia e assistência 24 horas.",\n  },\n  "Anúncio": {\n    description: "Cria prompts para anúncios pagos ou orgânicos, considerando público, plataforma, objetivo, oferta e formato.",\n    example: "Exemplo: anúncio para Instagram de uma scooter elétrica seminova.",\n  },\n  "Marketplace": {\n    description: "Cria prompts para títulos, descrições e apresentações de produtos em marketplaces, com foco em clareza e conversão.",\n    example: "Exemplo: anúncio completo de uma scooter elétrica para marketplace.",\n  },\n  "Pesquisa": {\n    description: "Cria prompts para pesquisar mercado, concorrência, tendências, demanda, oportunidades e comportamento do público.",\n    example: "Exemplo: analisar a demanda por scooters elétricas em uma cidade específica.",\n  },\n  "Estratégia": {\n    description: "Cria prompts para planejar posicionamento, vendas, canais, precificação, diferenciação e crescimento.",\n    example: "Exemplo: estratégia para lançar um serviço regional de proteção veicular.",\n  },\n  "Automação": {\n    description: "Cria prompts para organizar fluxos automáticos de mensagens, gatilhos, condições e ações em ferramentas de atendimento e marketing.",\n    example: "Exemplo: enviar uma mensagem no direct quando alguém comentar EU QUERO.",\n  },\n  "Personalizado": {\n    description: "Use esta opção quando sua necessidade não se encaixar nas categorias anteriores. Ela cria um prompt profissional sob medida para tarefas específicas, como analisar documentos, organizar informações, comparar opções, planejar uma atividade, revisar um material ou orientar uma ação.",\n    example: "Exemplo: analisar um contrato, resumir os pontos principais e destacar cláusulas que exigem atenção.",\n  },\n};`;
+  const infoMap = `${colorMapEnd}\n\nconst TIPO_INFO: Record<string, { description: string; example: string }> = {\n  "Imagem": {\n    description: "Cria prompts para gerar imagens profissionais, definindo cenário, composição, iluminação, estilo visual e acabamento.",\n    example: "Exemplo: uma moto esportiva preta em uma rua molhada à noite, com luzes neon.",\n  },\n  "Vídeo com Imagem": {\n    description: "Cria prompts para dar vida a uma imagem pronta, definindo movimentos, efeitos, câmera, elementos fixos e o que não deve ser alterado.",\n    example: "Exemplo: movimentar a fumaça e os reflexos, mantendo a moto e a câmera paradas.",\n  },\n  "Vídeo": {\n    description: "Cria prompts para vídeos completos, com cenas, ações, narrativa, ritmo, enquadramento e direção visual.",\n    example: "Exemplo: vídeo curto apresentando uma scooter elétrica em um cenário urbano.",\n  },\n  "Copy": {\n    description: "Cria prompts para textos persuasivos de vendas, com headline, benefícios, objeções, gatilhos e chamada para ação.",\n    example: "Exemplo: copy para vender proteção veicular com economia e assistência 24 horas.",\n  },\n  "Anúncio": {\n    description: "Cria prompts para anúncios pagos ou orgânicos, considerando público, plataforma, objetivo, oferta e formato.",\n    example: "Exemplo: anúncio para Instagram de uma scooter elétrica seminova.",\n  },\n  "Marketplace": {\n    description: "Cria prompts para títulos, descrições e apresentações de produtos em marketplaces, com foco em clareza e conversão.",\n    example: "Exemplo: anúncio completo de uma scooter elétrica para marketplace.",\n  },\n  "Pesquisa": {\n    description: "Cria prompts para pesquisar mercado, concorrência, tendências, demanda, oportunidades e comportamento do público.",\n    example: "Exemplo: analisar a demanda por scooters elétricas em uma cidade específica.",\n  },\n  "Estratégia": {\n    description: "Cria prompts para planejar posicionamento, vendas, canais, precificação, diferenciação e crescimento.",\n    example: "Exemplo: estratégia para lançar um serviço regional de proteção veicular.",\n  },\n  "Automação": {\n    description: "Cria prompts para organizar fluxos automáticos de mensagens, gatilhos, condições e ações em ferramentas de atendimento e marketing.",\n    example: "Exemplo: enviar uma mensagem no direct quando alguém comentar EU QUERO.",\n  },\n};`;
   source = source.replace(colorMapEnd, infoMap);
 }
 
@@ -122,6 +135,9 @@ if (!source.includes(videoWithImageOption) || !source.includes(videoWithImageCol
 if (!source.includes(infoMapMarker) || !source.includes("TIPO_INFO[pendingTipo]?.description") || !source.includes("Continuar")) {
   throw new Error("Criar Prompt type information flow was not installed");
 }
+if (source.includes('"Personalizado"')) {
+  throw new Error("Criar Prompt ainda contém o tipo Personalizado");
+}
 
 fs.writeFileSync(pagePath, source);
-console.log("Criar Prompt now explains every type with improved clarity and contrast");
+console.log("Criar Prompt removeu Personalizado e manteve os tipos com finalidade definida");
