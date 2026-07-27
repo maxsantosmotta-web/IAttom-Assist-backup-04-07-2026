@@ -17,6 +17,20 @@ source = source.replace(
   '    setGuidedTipo("Personalizado");',
 );
 
+const videoWithImageOption = '  "Vídeo com Imagem",';
+if (!source.includes(videoWithImageOption)) {
+  const imageOption = '  "Imagem",';
+  if (!source.includes(imageOption)) throw new Error("SavedPrompts Imagem option marker not found");
+  source = source.replace(imageOption, `${imageOption}\n${videoWithImageOption}`);
+}
+
+const videoWithImageColor = '  "Vídeo com Imagem": "text-fuchsia-400 bg-fuchsia-400/10 border-fuchsia-400/20",';
+if (!source.includes(videoWithImageColor)) {
+  const imageColor = '  "Imagem":       "text-violet-400 bg-violet-400/10 border-violet-400/20",';
+  if (!source.includes(imageColor)) throw new Error("SavedPrompts Imagem color marker not found");
+  source = source.replace(imageColor, `${imageColor}\n${videoWithImageColor}`);
+}
+
 const legacyChargeRef = '  const chargedRef          = useRef(false);';
 const pendingChargeRef = '  const pendingChargeRef    = useRef<(() => void) | null>(null);';
 if (source.includes(legacyChargeRef)) {
@@ -59,6 +73,9 @@ if (!source.includes("pendingChargeRef.current = charge") || !source.includes("c
 if (source.includes("charge();\n                  void generatePromptCore")) {
   throw new Error("Criar Prompt still charges before generation");
 }
+if (!source.includes(videoWithImageOption) || !source.includes(videoWithImageColor)) {
+  throw new Error("Criar Prompt Vídeo com Imagem option was not installed");
+}
 
 fs.writeFileSync(pagePath, source);
-console.log("Criar Prompt now charges only after valid material is rendered");
+console.log("Criar Prompt now includes Vídeo com Imagem and charges only after valid material is rendered");
