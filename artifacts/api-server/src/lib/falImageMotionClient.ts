@@ -16,7 +16,7 @@ export interface FalQueueSubmission {
 }
 
 export interface FalQueueStatus {
-  status: "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED";
+  status: "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
   queuePosition?: number;
   logs?: Array<{ message?: string; timestamp?: string }>;
   error?: string;
@@ -28,6 +28,13 @@ export interface FalImageMotionResult {
   fileName?: string;
   fileSize?: number;
 }
+
+type QueueUrls = {
+  statusUrl?: string;
+  responseUrl?: string;
+};
+
+const queueUrlsByRequestId = new Map<string, QueueUrls>();
 
 function getFalKey(): string {
   const key = process.env.FAL_KEY?.trim();
@@ -42,6 +49,34 @@ function falHeaders(): Record<string, string> {
   };
 }
 
+function readProviderMessage(payload: unknown, fallback: string): string {
+  if (typeof payload !== "object" || payload === null) return fallback;
+  const value = payload as {
+    detail?: unknown;
+    message?: unknown;
+    error?: unknown;
+  };
+
+  if (typeof value.detail === "string" && value.detail.trim()) return value.detail;
+  if (typeof value.message === "string" && value.message.trim()) return value.message;
+  if (typeof value.error === "string" && value.error.trim()) return value.error;
+
+  if (Array.isArray(value.detail)) {
+    const messages = value.detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (typeof item === "object" && item !== null && "msg" in item) {
+          return String((item as { msg?: unknown }).msg ?? "");
+        }
+        return "";
+      })
+      .filter(Boolean);
+    if (messages.length > 0) return messages.join("; ");
+  }
+
+  return fallback;
+}
+
 async function parseFalResponse(response: Response): Promise<unknown> {
   const text = await response.text();
   let payload: unknown = null;
@@ -54,13 +89,7 @@ async function parseFalResponse(response: Response): Promise<unknown> {
   }
 
   if (!response.ok) {
-    const message =
-      typeof payload === "object" && payload !== null && "detail" in payload
-        ? String((payload as { detail?: unknown }).detail)
-        : typeof payload === "object" && payload !== null && "message" in payload
-          ? String((payload as { message?: unknown }).message)
-          : `Fal API error ${response.status}`;
-    throw new Error(message);
+    throw new Error(readProviderMessage(payload, `Fal API error ${response.status}`));
   }
 
   return payload;
@@ -70,6 +99,27 @@ function assertRequestId(value: string): void {
   if (!/^[a-zA-Z0-9-]{8,100}$/.test(value)) {
     throw new Error("INVALID_FAL_REQUEST_ID");
   }
+}
+
+function safeFalQueueUrl(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.hostname !== "queue.fal.run") return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function statusUrlFor(requestId: string): string {
+  return queueUrlsByRequestId.get(requestId)?.statusUrl
+    ?? `${FAL_QUEUE_BASE}/requests/${requestId}/status?logs=1`;
+}
+
+function responseUrlFor(requestId: string): string {
+  return queueUrlsByRequestId.get(requestId)?.responseUrl
+    ?? `${FAL_QUEUE_BASE}/requests/${requestId}/response`;
 }
 
 export async function submitImageMotion(input: SubmitImageMotionInput): Promise<FalQueueSubmission> {
@@ -91,17 +141,26 @@ export async function submitImageMotion(input: SubmitImageMotionInput): Promise<
     signal: AbortSignal.timeout(30_000),
   });
 
-  const payload = (await parseFalResponse(response)) as { request_id?: unknown };
+  const payload = (await parseFalResponse(response)) as {
+    request_id?: unknown;
+    status_url?: unknown;
+    response_url?: unknown;
+  };
   if (typeof payload.request_id !== "string" || !payload.request_id) {
     throw new Error("Fal API did not return a request id");
   }
+
+  queueUrlsByRequestId.set(payload.request_id, {
+    statusUrl: safeFalQueueUrl(payload.status_url),
+    responseUrl: safeFalQueueUrl(payload.response_url),
+  });
 
   return { requestId: payload.request_id };
 }
 
 export async function getImageMotionStatus(requestId: string): Promise<FalQueueStatus> {
   assertRequestId(requestId);
-  const response = await fetch(`${FAL_QUEUE_BASE}/requests/${requestId}/status?logs=1`, {
+  const response = await fetch(statusUrlFor(requestId), {
     headers: falHeaders(),
     signal: AbortSignal.timeout(15_000),
   });
@@ -110,10 +169,21 @@ export async function getImageMotionStatus(requestId: string): Promise<FalQueueS
     queue_position?: unknown;
     logs?: unknown;
     error?: unknown;
+    detail?: unknown;
+    message?: unknown;
   };
 
+  const providerError = readProviderMessage(payload, "A geração falhou no provedor.");
+  if (payload.status === "FAILED") {
+    return {
+      status: "FAILED",
+      error: providerError,
+      logs: Array.isArray(payload.logs) ? payload.logs as Array<{ message?: string; timestamp?: string }> : undefined,
+    };
+  }
+
   if (payload.status !== "IN_QUEUE" && payload.status !== "IN_PROGRESS" && payload.status !== "COMPLETED") {
-    throw new Error("Fal API returned an unknown status");
+    throw new Error(`Fal API returned an unknown status: ${String(payload.status ?? "empty")}`);
   }
 
   return {
@@ -126,7 +196,7 @@ export async function getImageMotionStatus(requestId: string): Promise<FalQueueS
 
 export async function getImageMotionResult(requestId: string): Promise<FalImageMotionResult> {
   assertRequestId(requestId);
-  const response = await fetch(`${FAL_QUEUE_BASE}/requests/${requestId}/response`, {
+  const response = await fetch(responseUrlFor(requestId), {
     headers: falHeaders(),
     signal: AbortSignal.timeout(30_000),
   });
@@ -142,6 +212,8 @@ export async function getImageMotionResult(requestId: string): Promise<FalImageM
   if (typeof payload.video?.url !== "string" || !payload.video.url) {
     throw new Error("Fal API did not return the generated video");
   }
+
+  queueUrlsByRequestId.delete(requestId);
 
   return {
     videoUrl: payload.video.url,
