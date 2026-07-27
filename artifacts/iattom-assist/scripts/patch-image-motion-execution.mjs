@@ -84,4 +84,34 @@ if (!verifiedPickerBlock.includes("setPrompt(\"\")")) throw new Error("Visible p
 if (!source.includes("<ImageMotionExecution")) throw new Error("Image motion execution panel was not mounted");
 
 writeFileSync(creativeUrl, source);
-console.log("Image-motion exit is connected to the visible picker and clears all visible and temporary fields.");
+
+const executionUrl = new URL("../src/components/creative/ImageMotionExecution.tsx", import.meta.url);
+let executionSource = readFileSync(executionUrl, "utf8");
+const libraryMarker = `      toast({ description: "Vídeo salvo na Biblioteca." });`;
+const localLibrarySync = `      try {
+        const raw = localStorage.getItem("iattom_saved_items_v1");
+        const existing = raw ? JSON.parse(raw) as Array<Record<string, unknown>> : [];
+        existing.unshift({
+          id,
+          title,
+          type: "creative",
+          content: \`Tipo: Vídeo com imagem | Plataforma: \${platformLabel} | Formatos: \${motionFormats.map(formatLabel).join(", ")} | Prompt: \${prompt.trim()}\`,
+          data,
+          hasImages: false,
+          videosData: "1",
+          createdAt: new Date().toISOString(),
+          deletedAt: null,
+          expiresAt: null,
+        });
+        localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
+      } catch { /* banco já confirmou o salvamento */ }
+      toast({ description: "Vídeo salvo na Biblioteca." });`;
+
+if (!executionSource.includes(`videosData: "1"`)) {
+  if (!executionSource.includes(libraryMarker)) throw new Error("Image-motion library success marker was not found");
+  executionSource = executionSource.replace(libraryMarker, localLibrarySync);
+}
+if (!executionSource.includes(`videosData: "1"`)) throw new Error("Image-motion project is not synchronized with the visible Library");
+writeFileSync(executionUrl, executionSource);
+
+console.log("Image-motion execution preserves the visible flow and synchronizes saved video projects with the Library.");
