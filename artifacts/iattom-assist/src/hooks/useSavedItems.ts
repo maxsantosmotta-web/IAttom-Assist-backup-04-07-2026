@@ -44,6 +44,23 @@ export interface TrashImageSourcePayload {
   mimeType: "image/png" | "image/jpeg";
 }
 
+type PendingImageTrash = {
+  payload: SavedItemPayload;
+  asset?: AssetData;
+};
+
+const pendingImageTrash = new Map<string, PendingImageTrash>();
+
+function parseImageMotionTrash(payload: SavedItemPayload): boolean {
+  if (!payload.data || payload.type !== "creative") return false;
+  try {
+    const parsed = JSON.parse(payload.data) as { type?: string };
+    return parsed.type === "image-motion-source";
+  } catch {
+    return false;
+  }
+}
+
 async function apiFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -79,6 +96,11 @@ export function useSavedItems() {
   }, [getToken]);
 
   const saveItem = useCallback(async (payload: SavedItemPayload): Promise<void> => {
+    if (parseImageMotionTrash(payload)) {
+      pendingImageTrash.set(payload.id, { payload });
+      return;
+    }
+
     const token = await resolveToken(getToken);
     if (!token) throw new Error("Não autenticado");
     await apiFetch<SavedItemRecord>("/api/saved-items", token, {
@@ -89,6 +111,13 @@ export function useSavedItems() {
 
   const saveItemAssets = useCallback(async (id: string, assets: AssetData[]): Promise<void> => {
     if (!assets.length) return;
+
+    const pending = pendingImageTrash.get(id);
+    if (pending) {
+      pendingImageTrash.set(id, { ...pending, asset: assets[0] });
+      return;
+    }
+
     const token = await resolveToken(getToken);
     if (!token) throw new Error("Não autenticado");
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}/assets`, token, {
@@ -122,6 +151,36 @@ export function useSavedItems() {
   }, [getToken]);
 
   const trashItem = useCallback(async (id: string): Promise<void> => {
+    const pending = pendingImageTrash.get(id);
+    if (pending) {
+      const asset = pending.asset;
+      if (!asset?.base64) {
+        pendingImageTrash.delete(id);
+        throw new Error("A imagem não foi preparada para a Lixeira");
+      }
+
+      const parsed = pending.payload.data ? JSON.parse(pending.payload.data) as { origin?: "gallery" | "library"; name?: string; mimeType?: "image/png" | "image/jpeg" } : {};
+      const token = await resolveToken(getToken);
+      if (!token) throw new Error("Não autenticado");
+
+      const response = await apiFetch<{ ok: boolean; item?: { id: string; deletedAt: string | null } }>("/api/image-motion/trash-source", token, {
+        method: "POST",
+        body: JSON.stringify({
+          title: pending.payload.title,
+          origin: parsed.origin ?? (asset.format === "library" ? "library" : "gallery"),
+          name: parsed.name ?? asset.label,
+          base64: asset.base64,
+          mimeType: parsed.mimeType ?? (/\.jpe?g$/i.test(asset.label) ? "image/jpeg" : "image/png"),
+        } satisfies TrashImageSourcePayload),
+      });
+
+      pendingImageTrash.delete(id);
+      if (!response.ok || !response.item?.id || !response.item.deletedAt) {
+        throw new Error("A imagem não foi confirmada na Lixeira");
+      }
+      return;
+    }
+
     const token = await resolveToken(getToken);
     if (!token) throw new Error("Não autenticado");
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}`, token, { method: "DELETE" });
