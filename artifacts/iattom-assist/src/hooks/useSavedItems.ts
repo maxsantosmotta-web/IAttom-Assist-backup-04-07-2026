@@ -36,6 +36,14 @@ export interface VideoAssetData {
   videoAvatar?: string;
 }
 
+export interface TrashImageSourcePayload {
+  title: string;
+  origin: "gallery" | "library";
+  name: string;
+  base64: string;
+  mimeType: "image/png" | "image/jpeg";
+}
+
 async function apiFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -119,6 +127,18 @@ export function useSavedItems() {
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}`, token, { method: "DELETE" });
   }, [getToken]);
 
+  const trashImageSource = useCallback(async (payload: TrashImageSourcePayload): Promise<void> => {
+    const token = await resolveToken(getToken);
+    if (!token) throw new Error("Não autenticado");
+    const response = await apiFetch<{ ok: boolean; item?: { id: string; deletedAt: string | null } }>("/api/image-motion/trash-source", token, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok || !response.item?.id || !response.item.deletedAt) {
+      throw new Error("A imagem não foi confirmada na Lixeira");
+    }
+  }, [getToken]);
+
   const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
     const token = await resolveToken(getToken);
     if (!token) return [];
@@ -137,5 +157,5 @@ export function useSavedItems() {
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}/permanent`, token, { method: "DELETE" });
   }, [getToken]);
 
-  return { getItems, saveItem, saveItemAssets, getItemAssets, saveItemVideoAssets, getItemVideoAssets, trashItem, getTrash, restoreItem, permanentDelete };
+  return { getItems, saveItem, saveItemAssets, getItemAssets, saveItemVideoAssets, getItemVideoAssets, trashItem, trashImageSource, getTrash, restoreItem, permanentDelete };
 }
