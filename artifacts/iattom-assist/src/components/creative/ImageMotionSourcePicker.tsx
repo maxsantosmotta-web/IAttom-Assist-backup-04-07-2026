@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Image as ImageIcon, Loader2, RefreshCw, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, Loader2, LogOut, RefreshCw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ export interface ImageMotionSource {
 interface ImageMotionSourcePickerProps {
   value: ImageMotionSource | null;
   onChange: (value: ImageMotionSource | null) => void;
+  onExit?: () => void;
   disabled?: boolean;
   resetSignal?: number;
 }
@@ -33,16 +34,16 @@ function inferMime(label: string): "image/png" | "image/jpeg" {
   return /\.jpe?g$/i.test(label) ? "image/jpeg" : "image/png";
 }
 
-export function ImageMotionSourcePicker({ value, onChange, disabled = false, resetSignal = 0 }: ImageMotionSourcePickerProps) {
+export function ImageMotionSourcePicker({ value, onChange, onExit, disabled = false, resetSignal = 0 }: ImageMotionSourcePickerProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
-  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [choosingSource, setChoosingSource] = useState(false);
   const [assets, setAssets] = useState<Array<{ project: SavedItemRecord; asset: AssetData }>>([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
-  const [isRemoving, setIsRemoving] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const [error, setError] = useState("");
-  const { getItems, getItemAssets, saveItem, saveItemAssets, trashItem } = useSavedItems();
+  const { getItems, getItemAssets } = useSavedItems();
 
   useEffect(() => {
     void loadProjectAssets(DRAFT_PROJECT_ID)
@@ -63,7 +64,7 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
     if (resetSignal <= 0) return;
     onChange(null);
     setChoosingSource(false);
-    setRemoveConfirmOpen(false);
+    setExitConfirmOpen(false);
     setLibraryOpen(false);
     setError("");
     void deleteProjectAssets(DRAFT_PROJECT_ID).catch(() => {});
@@ -88,43 +89,22 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
     });
   };
 
-  const confirmRemoveSource = async () => {
-    if (!value || isRemoving) return;
-    setIsRemoving(true);
+  const confirmExit = async () => {
+    if (isExiting) return;
+    setIsExiting(true);
     setError("");
     try {
-      const trashId = crypto.randomUUID();
-      const now = new Date().toISOString();
-      await saveItem({
-        id: trashId,
-        title: `Imagem removida — ${value.name || "Imagem-base"}`,
-        type: "creative",
-        content: `Imagem removida do fluxo Vídeo com Imagem em ${now}`,
-        data: JSON.stringify({
-          type: "image-motion-source",
-          origin: value.origin,
-          name: value.name,
-          removedAt: now,
-        }),
-        hasImages: true,
-      });
-      await saveItemAssets(trashId, [{
-        conceptIndex: 0,
-        base64: value.base64,
-        label: value.name || "Imagem-base",
-        format: value.origin,
-      }]);
-      await trashItem(trashId);
-      await deleteProjectAssets(DRAFT_PROJECT_ID);
-
+      await deleteProjectAssets(DRAFT_PROJECT_ID).catch(() => {});
       onChange(null);
       setChoosingSource(false);
-      setRemoveConfirmOpen(false);
+      setExitConfirmOpen(false);
+      setLibraryOpen(false);
       if (fileRef.current) fileRef.current.value = "";
+      onExit?.();
     } catch {
-      setError("Não foi possível enviar a imagem para a Lixeira.");
+      setError("Não foi possível limpar esta operação.");
     } finally {
-      setIsRemoving(false);
+      setIsExiting(false);
     }
   };
 
@@ -216,8 +196,8 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
               <Button type="button" variant="outline" disabled={disabled} onClick={beginSwap} className="border-white/10 text-zinc-300">
                 <RefreshCw className="w-4 h-4 mr-2" /> Trocar
               </Button>
-              <Button type="button" variant="outline" disabled={disabled} onClick={() => setRemoveConfirmOpen(true)} className="border-red-500/20 text-red-300 hover:bg-red-500/10">
-                <Trash2 className="w-4 h-4 mr-2" /> Remover
+              <Button type="button" variant="outline" disabled={disabled} onClick={() => setExitConfirmOpen(true)} className="border-white/10 text-zinc-300 hover:bg-white/5">
+                <LogOut className="w-4 h-4 mr-2" /> Sair
               </Button>
             </div>
           )}
@@ -278,14 +258,22 @@ export function ImageMotionSourcePicker({ value, onChange, disabled = false, res
         </DialogContent>
       </Dialog>
 
-      <Dialog open={removeConfirmOpen} onOpenChange={setRemoveConfirmOpen}>
+      <Dialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
         <DialogContent className="max-w-sm bg-[#111111] border-white/10">
           <DialogHeader>
-            <DialogTitle className="text-white">Confirmar remoção</DialogTitle>
+            <DialogTitle className="text-white">Sair desta operação?</DialogTitle>
           </DialogHeader>
-          <Button type="button" onClick={() => void confirmRemoveSource()} disabled={isRemoving} className="w-full">
-            {isRemoving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Continuando...</> : "Continuar"}
-          </Button>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            A imagem selecionada e os dados preenchidos serão removidos apenas deste rascunho. Nenhum projeto da Biblioteca será excluído.
+          </p>
+          <div className="grid grid-cols-1 gap-2">
+            <Button type="button" variant="ghost" onClick={() => setExitConfirmOpen(false)} disabled={isExiting} className="w-full text-zinc-400 hover:text-white">
+              Continuar editando
+            </Button>
+            <Button type="button" onClick={() => void confirmExit()} disabled={isExiting} className="w-full">
+              {isExiting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saindo...</> : "Sair sem preservar"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
