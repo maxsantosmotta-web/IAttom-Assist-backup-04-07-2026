@@ -1,3 +1,4 @@
+import "./patch-trash-loading-stability.mjs";
 import { readFileSync, writeFileSync } from "node:fs";
 
 const fileUrl = new URL("../src/pages/dashboard/Trash.tsx", import.meta.url);
