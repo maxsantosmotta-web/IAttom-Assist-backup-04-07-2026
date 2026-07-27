@@ -5,7 +5,7 @@ export const FEATURE_COSTS = {
   product_discovery: 5,
   product_validation: 5,
   campaign: 10,
-  content: 8,
+  content: 10,
   creativeImage1: 10,
   creativeImage2: 20,
   creativeImage3: 30,
