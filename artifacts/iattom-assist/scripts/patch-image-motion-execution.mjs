@@ -28,16 +28,17 @@ const exitAction = `onExit={() => {
                         } catch { /* ignore */ }
                       }}`;
 
-if (!source.includes("onExit={() =>")) {
-  const pickerStart = source.indexOf("<ImageMotionSourcePicker");
-  if (pickerStart < 0) throw new Error("Visible image-motion picker was not found");
-  const pickerEnd = source.indexOf("/>", pickerStart);
-  if (pickerEnd < 0) throw new Error("Visible image-motion picker closing marker was not found");
-  const pickerBlock = source.slice(pickerStart, pickerEnd + 2);
+const pickerStart = source.indexOf("<ImageMotionSourcePicker");
+if (pickerStart < 0) throw new Error("Visible image-motion picker was not found");
+const pickerEnd = source.indexOf("/>", pickerStart);
+if (pickerEnd < 0) throw new Error("Visible image-motion picker closing marker was not found");
+
+let pickerBlock = source.slice(pickerStart, pickerEnd + 2);
+if (!pickerBlock.includes("onExit={() =>")) {
   const onChangeMarker = "onChange={setImageMotionSource}";
   if (!pickerBlock.includes(onChangeMarker)) throw new Error("Visible image-motion picker onChange marker was not found inside the picker block");
-  const updatedPickerBlock = pickerBlock.replace(onChangeMarker, `${onChangeMarker}\n                      ${exitAction}`);
-  source = source.slice(0, pickerStart) + updatedPickerBlock + source.slice(pickerEnd + 2);
+  pickerBlock = pickerBlock.replace(onChangeMarker, `${onChangeMarker}\n                      ${exitAction}`);
+  source = source.slice(0, pickerStart) + pickerBlock + source.slice(pickerEnd + 2);
 }
 
 const executionPanel = `                  <ImageMotionExecution
@@ -73,11 +74,14 @@ if (!source.includes("<ImageMotionExecution")) {
   source = source.slice(0, buttonStart) + executionPanel + source.slice(buttonEnd);
 }
 
-if (!source.includes("<ImageMotionSourcePicker")) throw new Error("Image motion source picker was removed from the visible flow");
-if (!source.includes("setPlatform(\"\")")) throw new Error("Visible platform state is not cleared");
-if (!source.includes("setSelectedFormats([])")) throw new Error("Visible formats state is not cleared");
-if (!source.includes("setPrompt(\"\")")) throw new Error("Visible prompt state is not cleared");
+const verifiedPickerStart = source.indexOf("<ImageMotionSourcePicker");
+const verifiedPickerEnd = source.indexOf("/>", verifiedPickerStart);
+const verifiedPickerBlock = source.slice(verifiedPickerStart, verifiedPickerEnd + 2);
+if (!verifiedPickerBlock.includes("onExit={() =>")) throw new Error("Exit action is not connected to the visible image-motion picker");
+if (!verifiedPickerBlock.includes("setPlatform(\"\")")) throw new Error("Visible platform state is not cleared by the picker exit");
+if (!verifiedPickerBlock.includes("setSelectedFormats([])")) throw new Error("Visible formats state is not cleared by the picker exit");
+if (!verifiedPickerBlock.includes("setPrompt(\"\")")) throw new Error("Visible prompt state is not cleared by the picker exit");
 if (!source.includes("<ImageMotionExecution")) throw new Error("Image motion execution panel was not mounted");
 
 writeFileSync(creativeUrl, source);
-console.log("Image-motion exit clears all visible and temporary fields.");
+console.log("Image-motion exit is connected to the visible picker and clears all visible and temporary fields.");
