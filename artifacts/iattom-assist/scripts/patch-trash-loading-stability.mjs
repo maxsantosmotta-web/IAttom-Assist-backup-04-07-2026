@@ -78,4 +78,26 @@ if (source.includes("catch {\n      setProjectItems([]);\n    }")) {
 }
 
 writeFileSync(trashUrl, source);
-console.log("Trash loading now preserves visible items, blocks concurrent refreshes, and ignores stale responses.");
+
+const hookUrl = new URL("../src/hooks/useSavedItems.ts", import.meta.url);
+let hook = readFileSync(hookUrl, "utf8");
+const oldGetTrash = `  const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
+    const token = await resolveToken(getToken);
+    if (!token) return [];
+    return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);
+  }, [getToken]);`;
+const newGetTrash = `  const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
+    const token = await resolveToken(getToken);
+    if (!token) throw new Error("Autenticação ainda não está pronta");
+    return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);
+  }, [getToken]);`;
+if (!hook.includes(newGetTrash)) {
+  if (!hook.includes(oldGetTrash)) throw new Error("getTrash marker not found");
+  hook = hook.replace(oldGetTrash, newGetTrash);
+}
+if (hook.includes('if (!token) return [];\n    return apiFetch<SavedItemRecord[]>("/api/saved-items/trash"')) {
+  throw new Error("getTrash still converts missing authentication into an empty trash");
+}
+writeFileSync(hookUrl, hook);
+
+console.log("Trash loading now preserves visible items, blocks concurrent refreshes, ignores stale responses, and never treats missing auth as an empty trash.");
