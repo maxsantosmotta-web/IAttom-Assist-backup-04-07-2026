@@ -20,6 +20,19 @@ const sharedPickerBlock = `                {creativeType === "video" && (
                   <ImageMotionSourcePicker
                     value={imageMotionSource}
                     onChange={setImageMotionSource}
+                    onExit={() => {
+                      setImageMotionSource(null);
+                      setImageMotionPrompt("");
+                      setImageMotionPlatform("");
+                      setImageMotionFormats([]);
+                      setImageMotionResetSignal((value) => value + 1);
+                      try {
+                        localStorage.removeItem("iattom_image_motion_prompt_v1");
+                        localStorage.removeItem("iattom_image_motion_platform_v1");
+                        localStorage.removeItem("iattom_image_motion_formats_v1");
+                        localStorage.removeItem("iattom_image_motion_execution_v1");
+                      } catch { /* ignore */ }
+                    }}
                     disabled={isGenerating}
                     resetSignal={imageMotionResetSignal}
                   />
@@ -51,4 +64,4 @@ if (promptAfterPicker < visiblePickerIndex) {
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Visible image-motion source picker is mounted immediately before the video prompt; legacy avatar form remains hidden.");
+console.log("Visible image-motion source picker is mounted with direct exit cleanup; legacy avatar form remains hidden.");
