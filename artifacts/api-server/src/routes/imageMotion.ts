@@ -31,6 +31,12 @@ async function requireAdminTestAccess(req: AuthenticatedRequest): Promise<boolea
   return user?.role === "admin";
 }
 
+function adminTestError(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) return fallback;
+  const message = error.message.trim();
+  return message || fallback;
+}
+
 router.post("/image-motion/submit", requireAuth, async (req, res): Promise<void> => {
   const authReq = req as AuthenticatedRequest;
   if (!(await requireAdminTestAccess(authReq))) {
@@ -81,7 +87,7 @@ router.post("/image-motion/submit", requireAuth, async (req, res): Promise<void>
       res.status(503).json({ error: "A chave da nova IA ainda não foi configurada no servidor." });
       return;
     }
-    res.status(502).json({ error: "Não foi possível enviar a imagem para processamento." });
+    res.status(502).json({ error: adminTestError(error, "Não foi possível enviar a imagem para processamento.") });
   }
 });
 
@@ -97,7 +103,7 @@ router.get("/image-motion/status/:requestId", requireAuth, async (req, res): Pro
     res.json(status);
   } catch (error) {
     req.log.error({ err: error }, "image-motion status failed");
-    res.status(502).json({ error: "Não foi possível consultar o processamento." });
+    res.status(502).json({ error: adminTestError(error, "Não foi possível consultar o processamento.") });
   }
 });
 
@@ -113,7 +119,7 @@ router.get("/image-motion/result/:requestId", requireAuth, async (req, res): Pro
     res.json(result);
   } catch (error) {
     req.log.error({ err: error }, "image-motion result failed");
-    res.status(502).json({ error: "Não foi possível recuperar o vídeo gerado." });
+    res.status(502).json({ error: adminTestError(error, "Não foi possível recuperar o vídeo gerado.") });
   }
 });
 
