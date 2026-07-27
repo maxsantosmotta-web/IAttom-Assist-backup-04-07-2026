@@ -199,10 +199,16 @@ export function useSavedItems() {
   }, [getToken]);
 
   const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
-    const token = await resolveToken(getToken);
-    if (!token) return [];
-    return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);
-  }, [getToken]);
+    const res = await fetch("/api/saved-items/trash", {
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<SavedItemRecord[]>;
+  }, []);
 
   const restoreItem = useCallback(async (id: string): Promise<void> => {
     const token = await resolveToken(getToken);
