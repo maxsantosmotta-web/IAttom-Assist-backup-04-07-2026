@@ -36,6 +36,7 @@ import kiwifyOAuthExperimentRouter from "./kiwifyOAuthExperiment.js";
 import helpRouter from "./help.js";
 import videosRouter from "./videos.js";
 import imageMotionRouter from "./imageMotion.js";
+import imageMotionTrashRouter from "./imageMotionTrash.js";
 
 const router: IRouter = Router();
 
@@ -76,5 +77,6 @@ router.use(kiwifyOAuthExperimentRouter);
 router.use(helpRouter);
 router.use(videosRouter);
 router.use(imageMotionRouter);
+router.use(imageMotionTrashRouter);
 
 export default router;
