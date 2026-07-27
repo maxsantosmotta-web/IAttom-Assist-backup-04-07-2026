@@ -66,8 +66,8 @@ router.post("/image-motion/submit", requireAuth, async (req, res): Promise<void>
   }
 
   const rawFormat = (req.body as { format?: unknown }).format;
-  if (rawFormat !== "feed" && rawFormat !== "story") {
-    res.status(400).json({ error: "Formato inválido. Escolha Feed ou Story." });
+  if (rawFormat !== "vertical" && rawFormat !== "horizontal" && rawFormat !== "automatic") {
+    res.status(400).json({ error: "Formato inválido. Escolha Vertical, Horizontal ou Automático." });
     return;
   }
   const format = rawFormat as ImageMotionFormat;
