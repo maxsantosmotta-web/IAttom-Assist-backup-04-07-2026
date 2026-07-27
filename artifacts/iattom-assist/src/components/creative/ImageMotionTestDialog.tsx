@@ -10,12 +10,18 @@ interface ImageMotionTestDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type MotionFormat = "feed" | "story";
+type MotionFormat = "vertical" | "horizontal" | "automatic";
 type GenerationState = "idle" | "submitting" | "processing" | "done" | "error";
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const POLL_INTERVAL_MS = 5_000;
 const POLL_LIMIT = 120;
+
+const FORMAT_OPTIONS: Array<{ key: MotionFormat; label: string }> = [
+  { key: "vertical", label: "Vertical" },
+  { key: "horizontal", label: "Horizontal" },
+  { key: "automatic", label: "Automático" },
+];
 
 async function readError(response: Response, fallback: string): Promise<string> {
   try {
@@ -26,10 +32,16 @@ async function readError(response: Response, fallback: string): Promise<string> 
   }
 }
 
+function previewClass(format: MotionFormat): string {
+  if (format === "vertical") return "max-w-[280px] aspect-[9/16]";
+  if (format === "horizontal") return "max-w-[520px] aspect-video";
+  return "max-w-[440px]";
+}
+
 export function ImageMotionTestDialog({ open, onOpenChange }: ImageMotionTestDialogProps) {
   const [imageDataUrl, setImageDataUrl] = useState("");
   const [fileName, setFileName] = useState("");
-  const [format, setFormat] = useState<MotionFormat>("feed");
+  const [format, setFormat] = useState<MotionFormat>("automatic");
   const [prompt, setPrompt] = useState("");
   const [state, setState] = useState<GenerationState>("idle");
   const [statusText, setStatusText] = useState("");
@@ -187,27 +199,27 @@ export function ImageMotionTestDialog({ open, onOpenChange }: ImageMotionTestDia
           </div>
 
           {imageDataUrl && (
-            <div className={`mx-auto overflow-hidden rounded-xl border border-white/10 bg-black ${format === "story" ? "max-w-[280px] aspect-[9/16]" : "max-w-[440px] aspect-[4/5]"}`}>
+            <div className={`mx-auto overflow-hidden rounded-xl border border-white/10 bg-black ${previewClass(format)}`}>
               <img src={imageDataUrl} alt="Prévia da imagem enviada" className="h-full w-full object-cover" />
             </div>
           )}
 
           <div className="space-y-3">
             <Label className="text-sm text-muted-foreground">Formato</Label>
-            <div className="grid grid-cols-2 gap-3">
-              {(["feed", "story"] as const).map((option) => (
+            <div className="grid grid-cols-3 gap-3">
+              {FORMAT_OPTIONS.map((option) => (
                 <button
-                  key={option}
+                  key={option.key}
                   type="button"
                   disabled={isBusy}
-                  onClick={() => { setFormat(option); resetResult(); }}
+                  onClick={() => { setFormat(option.key); resetResult(); }}
                   className={`rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
-                    format === option
+                    format === option.key
                       ? "border-primary/40 bg-primary/15 text-primary"
                       : "border-white/10 bg-[#0a0a0a] text-zinc-500 hover:border-white/20 hover:text-zinc-300"
                   }`}
                 >
-                  {option === "feed" ? "Feed" : "Story"}
+                  {option.label}
                 </button>
               ))}
             </div>
@@ -239,7 +251,7 @@ export function ImageMotionTestDialog({ open, onOpenChange }: ImageMotionTestDia
 
           {state === "done" && videoUrl && (
             <div className="space-y-3">
-              <video src={videoUrl} controls playsInline className={`mx-auto w-full rounded-xl border border-white/10 bg-black ${format === "story" ? "max-w-[320px] aspect-[9/16]" : "max-w-[520px]"}`} />
+              <video src={videoUrl} controls playsInline className={`mx-auto w-full rounded-xl border border-white/10 bg-black ${previewClass(format)}`} />
               <a href={videoUrl} target="_blank" rel="noopener noreferrer" download="iattom-video-com-imagem.mp4">
                 <Button type="button" variant="outline" className="w-full border-white/10 text-zinc-300">
                   <Download className="mr-2 h-4 w-4" /> Baixar vídeo
