@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSavedItems } from "@/hooks/useSavedItems";
 import type { ImageMotionSource } from "@/components/creative/ImageMotionSourcePicker";
 
-type MotionFormat = "feed" | "story";
+type MotionFormat = "vertical" | "horizontal" | "automatic" | "feed" | "story";
 type Phase = "idle" | "submitting" | "processing" | "done" | "error";
 
 type MotionResult = {
@@ -39,8 +39,24 @@ interface ImageMotionExecutionProps {
 }
 
 function asMotionFormats(formats: string[]): MotionFormat[] {
-  const normalized = formats.map((format) => format === "stories" || format === "story" ? "story" : "feed");
+  const normalized = formats.map((format): MotionFormat => {
+    if (format === "stories" || format === "story" || format === "vertical") return "vertical";
+    if (format === "banner" || format === "horizontal") return "horizontal";
+    return "automatic";
+  });
   return Array.from(new Set(normalized));
+}
+
+function formatLabel(format: MotionFormat): string {
+  if (format === "vertical" || format === "story") return "Vertical";
+  if (format === "horizontal") return "Horizontal";
+  return "Automático";
+}
+
+function videoAspectClass(format: MotionFormat): string {
+  if (format === "vertical" || format === "story") return "w-full aspect-[9/16] bg-black object-contain";
+  if (format === "horizontal") return "w-full aspect-video bg-black object-contain";
+  return "w-full bg-black object-contain";
 }
 
 async function readError(response: Response, fallback: string): Promise<string> {
@@ -178,13 +194,13 @@ export function ImageMotionExecution({ source, prompt, platform, formats, onNew 
         id,
         title,
         type: "creative",
-        content: `Tipo: Vídeo com imagem | Plataforma: ${platformLabel} | Formatos: ${motionFormats.join(", ")} | Prompt: ${prompt.trim()}`,
+        content: `Tipo: Vídeo com imagem | Plataforma: ${platformLabel} | Formatos: ${motionFormats.map(formatLabel).join(", ")} | Prompt: ${prompt.trim()}`,
         data,
         hasImages: false,
       });
       await saveItemVideoAssets(id, results.map((result, index) => ({
         videoUrl: result.videoUrl,
-        title: result.format === "story" ? "Vídeo Stories" : "Vídeo Feed",
+        title: `Vídeo ${formatLabel(result.format)}`,
         durationSeconds: 6,
         savedAt: new Date().toISOString(),
         provider: "fal",
@@ -268,8 +284,8 @@ export function ImageMotionExecution({ source, prompt, platform, formats, onNew 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {results.map((result) => (
               <Card key={`${result.format}-${result.videoUrl}`} className="overflow-hidden border-white/10 bg-[#111111]">
-                <video src={result.videoUrl} controls playsInline className={result.format === "story" ? "w-full aspect-[9/16] bg-black object-contain" : "w-full aspect-video bg-black object-contain"} />
-                <CardContent className="p-3"><p className="text-xs text-zinc-400">{result.format === "story" ? "Stories" : "Feed"} · 6 segundos · 720p · sem áudio</p></CardContent>
+                <video src={result.videoUrl} controls playsInline className={videoAspectClass(result.format)} />
+                <CardContent className="p-3"><p className="text-xs text-zinc-400">{formatLabel(result.format)} · 6 segundos · 720p · sem áudio</p></CardContent>
               </Card>
             ))}
           </div>
