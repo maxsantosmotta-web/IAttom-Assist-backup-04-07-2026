@@ -16,6 +16,9 @@ const exitAction = `onExit={() => {
                         setImageMotionPrompt("");
                         setImageMotionPlatform("");
                         setImageMotionFormats([]);
+                        setPlatform("");
+                        setSelectedFormats([]);
+                        setPrompt("");
                         setImageMotionResetSignal((value) => value + 1);
                         try {
                           localStorage.removeItem("iattom_image_motion_prompt_v1");
@@ -28,16 +31,11 @@ const exitAction = `onExit={() => {
 if (!source.includes("onExit={() =>")) {
   const pickerStart = source.indexOf("<ImageMotionSourcePicker");
   if (pickerStart < 0) throw new Error("Visible image-motion picker was not found");
-
   const pickerEnd = source.indexOf("/>", pickerStart);
   if (pickerEnd < 0) throw new Error("Visible image-motion picker closing marker was not found");
-
   const pickerBlock = source.slice(pickerStart, pickerEnd + 2);
   const onChangeMarker = "onChange={setImageMotionSource}";
-  if (!pickerBlock.includes(onChangeMarker)) {
-    throw new Error("Visible image-motion picker onChange marker was not found inside the picker block");
-  }
-
+  if (!pickerBlock.includes(onChangeMarker)) throw new Error("Visible image-motion picker onChange marker was not found inside the picker block");
   const updatedPickerBlock = pickerBlock.replace(onChangeMarker, `${onChangeMarker}\n                      ${exitAction}`);
   source = source.slice(0, pickerStart) + updatedPickerBlock + source.slice(pickerEnd + 2);
 }
@@ -66,31 +64,20 @@ if (!source.includes("<ImageMotionExecution")) {
   const label = `<Video className="w-4 h-4 mr-2" /> Gerar Vídeo`;
   const labelIndex = source.indexOf(label);
   if (labelIndex < 0) throw new Error("Visible Gerar Vídeo label was not found");
-
   const buttonStart = source.lastIndexOf("<Button", labelIndex);
   const buttonEndStart = source.indexOf("</Button>", labelIndex);
-  if (buttonStart < 0 || buttonEndStart < 0) {
-    throw new Error("Visible Gerar Vídeo button boundaries were not found");
-  }
-
+  if (buttonStart < 0 || buttonEndStart < 0) throw new Error("Visible Gerar Vídeo button boundaries were not found");
   const buttonEnd = buttonEndStart + "</Button>".length;
   const currentButton = source.slice(buttonStart, buttonEnd);
-
-  if (!currentButton.includes("imageMotionSource") || !currentButton.includes("imageMotionPrompt") || !currentButton.includes("imageMotionPlatform") || !currentButton.includes("imageMotionFormats")) {
-    throw new Error("Located Gerar Vídeo button is not the independent image-motion action");
-  }
-
+  if (!currentButton.includes("imageMotionSource") || !currentButton.includes("imageMotionPrompt") || !currentButton.includes("imageMotionPlatform") || !currentButton.includes("imageMotionFormats")) throw new Error("Located Gerar Vídeo button is not the independent image-motion action");
   source = source.slice(0, buttonStart) + executionPanel + source.slice(buttonEnd);
 }
 
 if (!source.includes("<ImageMotionSourcePicker")) throw new Error("Image motion source picker was removed from the visible flow");
-if (!source.includes("onExit={() =>")) throw new Error("Image motion exit action was not connected");
+if (!source.includes("setPlatform(\"\")")) throw new Error("Visible platform state is not cleared");
+if (!source.includes("setSelectedFormats([])")) throw new Error("Visible formats state is not cleared");
+if (!source.includes("setPrompt(\"\")")) throw new Error("Visible prompt state is not cleared");
 if (!source.includes("<ImageMotionExecution")) throw new Error("Image motion execution panel was not mounted");
-if (!source.includes("source={imageMotionSource}")) throw new Error("Image motion source was not connected to execution");
-if (!source.includes("prompt={imageMotionPrompt}")) throw new Error("Image motion prompt was not connected to execution");
-if (!source.includes("platform={imageMotionPlatform}")) throw new Error("Image motion platform was not connected to execution");
-if (!source.includes("formats={imageMotionFormats}")) throw new Error("Image motion formats were not connected to execution");
-if (!source.includes("onNew={() =>")) throw new Error("Image motion Novo action was not connected");
 
 writeFileSync(creativeUrl, source);
-console.log("Image-motion picker remains visible; Sair clears only the temporary operation and execution state.");
+console.log("Image-motion exit clears all visible and temporary fields.");
