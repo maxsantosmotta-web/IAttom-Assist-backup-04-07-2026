@@ -3,6 +3,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 const creativeUrl = new URL("../src/pages/dashboard/CreativeGenerator.tsx", import.meta.url);
 let source = readFileSync(creativeUrl, "utf8");
 
+const IMAGE_MOTION_FORMATS = `[
+                            { key: "vertical", label: "Vertical" },
+                            { key: "horizontal", label: "Horizontal" },
+                            { key: "automatic", label: "Automático" },
+                          ]`;
+
 function replaceRequired(before, after, label) {
   if (source.includes(after)) return;
   if (!source.includes(before)) throw new Error(`${label} marker was not found`);
@@ -67,7 +73,7 @@ replaceRequired(
 
 replaceRequired(
   `                          {selectedFormats.length} de {currentPlatformFormats.length} selecionado{selectedFormats.length !== 1 ? "s" : ""}`,
-  `                          {(creativeType === "image" ? selectedFormats : imageMotionFormats).length} de {(creativeType === "image" ? currentPlatformFormats : (PLATFORMS.find((item) => item.key === imageMotionPlatform)?.formats ?? [])).length} selecionado{(creativeType === "image" ? selectedFormats : imageMotionFormats).length !== 1 ? "s" : ""}`,
+  `                          {(creativeType === "image" ? selectedFormats : imageMotionFormats).length} de {(creativeType === "image" ? currentPlatformFormats : ${IMAGE_MOTION_FORMATS}).length} selecionado{(creativeType === "image" ? selectedFormats : imageMotionFormats).length !== 1 ? "s" : ""}`,
   "independent format counter",
 );
 
@@ -75,7 +81,7 @@ replaceRequired(
   `                        {currentPlatformFormats.map((f) => {
                           const isSelected = selectedFormats.includes(f.key);
                           const isDisabled = !isSelected && selectedFormats.length >= MAX_FORMATS;`,
-  `                        {(creativeType === "image" ? currentPlatformFormats : (PLATFORMS.find((item) => item.key === imageMotionPlatform)?.formats ?? [])).map((f) => {
+  `                        {(creativeType === "image" ? currentPlatformFormats : ${IMAGE_MOTION_FORMATS}).map((f) => {
                           const activeFormats = creativeType === "image" ? selectedFormats : imageMotionFormats;
                           const isSelected = activeFormats.includes(f.key);
                           const isDisabled = !isSelected && activeFormats.length >= MAX_FORMATS;`,
@@ -136,6 +142,14 @@ if (!source.includes(`const nextPlatform = imageMotionPlatform === p.key ? "" : 
 if (!source.includes(`creativeType === "image" ? selectedFormats : imageMotionFormats`)) {
   throw new Error("Image and image-motion formats are still sharing the same state");
 }
+if (!source.includes(`{ key: "vertical", label: "Vertical" }`) ||
+    !source.includes(`{ key: "horizontal", label: "Horizontal" }`) ||
+    !source.includes(`{ key: "automatic", label: "Automático" }`)) {
+  throw new Error("Visible image-motion formats were not installed");
+}
+if (source.includes(`PLATFORMS.find((item) => item.key === imageMotionPlatform)?.formats`)) {
+  throw new Error("Image-motion formats are still being inherited from the selected platform");
+}
 if (source.includes(`localStorage.setItem("iattom_image_motion_platform_v1"`) || source.includes(`localStorage.setItem("iattom_image_motion_formats_v1"`)) {
   throw new Error("Image-motion platform or formats must not persist after refresh");
 }
@@ -144,4 +158,4 @@ if (!source.includes(independentReadiness)) {
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Platform and format buttons now toggle consistently and reset after a real refresh in both modes.");
+console.log("Image-motion keeps the existing functional flow and shows only Vertical, Horizontal and Automático.");
