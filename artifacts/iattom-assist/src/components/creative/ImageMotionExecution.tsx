@@ -54,7 +54,7 @@ async function readError(response: Response, fallback: string): Promise<string> 
 
 export function ImageMotionExecution({ source, prompt, platform, formats, onNew }: ImageMotionExecutionProps) {
   const { toast } = useToast();
-  const { saveItem } = useSavedItems();
+  const { saveItem, saveItemVideoAssets } = useSavedItems();
   const mountedRef = useRef(true);
   const [phase, setPhase] = useState<Phase>("idle");
   const [pending, setPending] = useState<PendingRequest[]>([]);
@@ -182,6 +182,15 @@ export function ImageMotionExecution({ source, prompt, platform, formats, onNew 
         data,
         hasImages: false,
       });
+      await saveItemVideoAssets(id, results.map((result, index) => ({
+        videoUrl: result.videoUrl,
+        title: result.format === "story" ? "Vídeo Stories" : "Vídeo Feed",
+        durationSeconds: 6,
+        savedAt: new Date().toISOString(),
+        provider: "fal",
+        videoEstilo: "movimento de imagem",
+        videoAvatar: result.fileName || `formato-${index + 1}`,
+      })));
       toast({ description: "Vídeo salvo na Biblioteca." });
     } catch {
       toast({ description: "Não foi possível salvar o vídeo.", variant: "destructive" });
