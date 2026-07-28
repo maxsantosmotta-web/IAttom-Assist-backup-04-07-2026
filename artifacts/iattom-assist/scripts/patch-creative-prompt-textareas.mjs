@@ -12,47 +12,50 @@ if (!source.includes(textareaImport)) {
   source = source.replace(inputImport, `${inputImport}\n${textareaImport}`);
 }
 
-function replacePromptField({ valueName, marker, placeholder }) {
-  if (source.includes(marker)) return;
+function installPromptTextarea({ valueName, setterName, marker, placeholder }) {
+  const alreadyInstalled = new RegExp(
+    String.raw`<Textarea\s+[\s\S]*?rows=\{4\}[\s\S]*?value=\{${valueName}\}[\s\S]*?onChange=\{\(e\) => ${setterName}\(e\.target\.value\)\}[\s\S]*?\/>`,
+  );
+  if (alreadyInstalled.test(source)) return;
 
-  const fieldPattern = new RegExp(
-    String.raw`<Input\s+[\s\S]*?value=\{${valueName}\}[\s\S]*?onChange=\{\(e\) => set${valueName[0].toUpperCase()}${valueName.slice(1)}\(e\.target\.value\)\}[\s\S]*?\/>`,
+  const visibleField = new RegExp(
+    String.raw`<(?:Input|Textarea)\s+[\s\S]*?value=\{${valueName}\}[\s\S]*?onChange=\{\(e\) => ${setterName}\(e\.target\.value\)\}[\s\S]*?\/>`,
   );
 
-  const match = source.match(fieldPattern);
-  if (!match) {
-    throw new Error(`Visible ${valueName} Input field not found`);
+  if (!visibleField.test(source)) {
+    throw new Error(`Visible ${valueName} prompt field not found`);
   }
 
-  const replacement = `{/* ${marker} */}\n                  <Textarea\n                    rows={4}\n                    placeholder="${placeholder}"\n                    className="min-h-[112px] resize-y bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50 leading-relaxed"\n                    value={${valueName}}\n                    onChange={(e) => set${valueName[0].toUpperCase()}${valueName.slice(1)}(e.target.value)}\n                  />`;
+  const replacement = `{/* ${marker} */}\n                  <Textarea\n                    rows={4}\n                    placeholder="${placeholder}"\n                    className="min-h-[112px] resize-y bg-[#0a0a0a] border-white/10 focus-visible:ring-primary/50 leading-relaxed"\n                    value={${valueName}}\n                    onChange={(e) => ${setterName}(e.target.value)}\n                  />`;
 
-  source = source.replace(fieldPattern, replacement);
+  source = source.replace(visibleField, replacement);
 }
 
-replacePromptField({
+installPromptTextarea({
   valueName: "prompt",
-  marker: "iattom_creative_image_prompt_textarea_v2",
+  setterName: "setPrompt",
+  marker: "iattom_creative_image_prompt_textarea_v3",
   placeholder: "Ex: Moto premium em rua neon noturna",
 });
 
-replacePromptField({
+installPromptTextarea({
   valueName: "videoPrompt",
-  marker: "iattom_creative_video_prompt_textarea_v2",
+  setterName: "setVideoPrompt",
+  marker: "iattom_creative_video_prompt_textarea_v3",
   placeholder: "Descreva o contexto do vídeo...",
 });
 
-const imageInstalled = source.includes("iattom_creative_image_prompt_textarea_v2") ||
-  (source.includes("iattom_creative_image_prompt_textarea_v1") && source.includes("value={prompt}"));
-const videoInstalled = source.includes("iattom_creative_video_prompt_textarea_v2") ||
-  (source.includes("iattom_creative_video_prompt_textarea_v1") && source.includes("value={videoPrompt}"));
-
-if (!imageInstalled || !videoInstalled || !source.includes(textareaImport)) {
-  throw new Error("Visible image and video prompt textareas were not installed");
+function verifyTextarea(valueName, setterName) {
+  return new RegExp(
+    String.raw`<Textarea\s+[\s\S]*?rows=\{4\}[\s\S]*?min-h-\[112px\][\s\S]*?value=\{${valueName}\}[\s\S]*?onChange=\{\(e\) => ${setterName}\(e\.target\.value\)\}[\s\S]*?\/>`,
+  ).test(source);
 }
 
-if (source.includes("value={prompt}") && !source.includes("rows={4}")) {
-  throw new Error("Image prompt textarea rows verification failed");
+if (!verifyTextarea("prompt", "setPrompt") ||
+    !verifyTextarea("videoPrompt", "setVideoPrompt") ||
+    !source.includes(textareaImport)) {
+  throw new Error("Visible image and video prompt textareas were not verified");
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Visible image and video prompt fields now support multiple lines.");
+console.log("Visible image and video prompt fields support multiple lines.");
