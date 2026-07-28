@@ -79,20 +79,20 @@ patchFile("src/pages/dashboard/FindProducts.tsx", (source) => {
   }
 
   const buttonBlock = `
-                          <div className="mt-4">
-                            <PromptHandoffButton
-                              source="find_products"
-                              title={product.name}
-                              summary={[
-                                \`Produto: \${product.name}\`,
-                                \`Categoria: \${product.category || niche || "Não informada"}\`,
-                                \`Diferenciais: \${product.keySellingPoints?.slice(0, 3).join(", ") || product.whyNow || "Não informados"}\`,
-                                \`Objetivo visual: criar uma imagem comercial fiel ao produto\${platform ? \` para \${platform}\` : ""}.\`,
-                              ].join("\\n")}
-                              payload={{ product, query, niche, platform }}
-                              className="w-full sm:w-auto sm:max-w-[290px]"
-                            />
-                          </div>`;
+                           <div className="mt-4">
+                             <PromptHandoffButton
+                               source="find_products"
+                               title={product.name}
+                               summary={[
+                                 \`Produto: \${product.name}\`,
+                                 \`Categoria: \${product.category || niche || "Não informada"}\`,
+                                 \`Diferenciais: \${product.keySellingPoints?.slice(0, 3).join(", ") || product.whyNow || "Não informados"}\`,
+                                 \`Objetivo visual: criar uma imagem comercial fiel ao produto\${platform ? \` para \${platform}\` : ""}.\`,
+                               ].join("\\n")}
+                               payload={{ product, query, niche, platform }}
+                               className="w-full sm:w-auto sm:max-w-[290px]"
+                             />
+                           </div>`;
 
   next = next.slice(0, leftColumnEnd) + buttonBlock + "\n                        " + next.slice(leftColumnEnd);
   return next;
@@ -168,12 +168,12 @@ patchFile("src/pages/dashboard/CreateCampaign.tsx", (source) => {
 });
 
 patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
-  if (source.includes("iattom_prompt_handoff_content_and_products_receiver_v1")) return source;
+  if (source.includes("iattom_prompt_handoff_three_sources_receiver_v1")) return source;
 
   const marker = "  useEffect(() => { void fetchPrompts(); }, []);";
   const replacement = `${marker}
 
-  // iattom_prompt_handoff_content_and_products_receiver_v1
+  // iattom_prompt_handoff_three_sources_receiver_v1
   useEffect(() => {
     try {
       const key = "iattom_prompt_handoff_v1";
@@ -187,7 +187,7 @@ patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
         summary?: string;
       };
 
-      const acceptedSources = ["create_content", "find_products"];
+      const acceptedSources = ["create_content", "find_products", "validate_product"];
       if (transfer.version !== 1 || !acceptedSources.includes(transfer.source ?? "") || !transfer.summary?.trim()) return;
 
       sessionStorage.removeItem(key);
@@ -197,12 +197,18 @@ patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
       setGenerated(false);
       setNewTitle("");
       setNewPrompt("");
-      toast({ description: transfer.source === "find_products" ? "Produto recebido. Revise e gere o prompt." : "Conteúdo recebido. Revise e gere o prompt." });
+
+      const message = transfer.source === "find_products"
+        ? "Produto recebido. Revise e gere o prompt."
+        : transfer.source === "validate_product"
+          ? "Validação recebida. Revise e gere o prompt."
+          : "Conteúdo recebido. Revise e gere o prompt.";
+      toast({ description: message });
     } catch {
       sessionStorage.removeItem("iattom_prompt_handoff_v1");
       toast({ description: "Não foi possível carregar o conteúdo preparado.", variant: "destructive" });
     }
   }, [toast]);`;
 
-  return replaceRequired(source, marker, replacement, "SavedPrompts content and products receiver");
+  return replaceRequired(source, marker, replacement, "SavedPrompts three-source receiver");
 });
