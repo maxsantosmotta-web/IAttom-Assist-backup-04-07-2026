@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 const MULTILINE_PROMPT_PLACEHOLDERS = new Set([
   "Ex: Moto premium em rua neon noturna",
   "Descreva o contexto do vídeo...",
+  "Ex: fumaça saindo dos pneus e luzes refletindo na lataria",
 ])
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
