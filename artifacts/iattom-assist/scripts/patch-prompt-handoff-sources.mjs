@@ -214,3 +214,5 @@ patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
 
   return replaceRequired(source, marker, replacement, "SavedPrompts four-source receiver");
 });
+
+await import("./patch-library-filters.mjs");
