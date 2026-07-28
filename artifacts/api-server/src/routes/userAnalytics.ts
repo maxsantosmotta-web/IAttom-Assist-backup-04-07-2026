@@ -59,7 +59,7 @@ router.get("/analytics/user", requireAuth, async (req, res): Promise<void> => {
       .from(historyTable)
       .where(and(eq(historyTable.clerkUserId, clerkUserId), isNull(historyTable.deletedAt)))
       .orderBy(desc(historyTable.createdAt))
-      .limit(5),
+      .limit(50),
 
     db
       .select({ total: sql<number>`count(*)::int` })
