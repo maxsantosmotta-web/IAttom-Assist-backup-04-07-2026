@@ -160,3 +160,42 @@ patchFile("src/pages/dashboard/CreateCampaign.tsx", (source) => {
 
   return next;
 });
+
+patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
+  if (source.includes("iattom_prompt_handoff_content_receiver_v1")) return source;
+
+  const marker = "  useEffect(() => { void fetchPrompts(); }, []);";
+  const replacement = `${marker}
+
+  // iattom_prompt_handoff_content_receiver_v1
+  useEffect(() => {
+    try {
+      const key = "iattom_prompt_handoff_v1";
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return;
+
+      const transfer = JSON.parse(raw) as {
+        version?: number;
+        source?: string;
+        title?: string;
+        summary?: string;
+      };
+
+      if (transfer.version !== 1 || transfer.source !== "create_content" || !transfer.summary?.trim()) return;
+
+      sessionStorage.removeItem(key);
+      setCreating(true);
+      setGuidedTipo("Imagem");
+      setGuidedSubject(transfer.summary.trim());
+      setGenerated(false);
+      setNewTitle("");
+      setNewPrompt("");
+      toast({ description: "Conteúdo recebido. Revise e gere o prompt." });
+    } catch {
+      sessionStorage.removeItem("iattom_prompt_handoff_v1");
+      toast({ description: "Não foi possível carregar o conteúdo preparado.", variant: "destructive" });
+    }
+  }, [toast]);`;
+
+  return replaceRequired(source, marker, replacement, "SavedPrompts content receiver");
+});
