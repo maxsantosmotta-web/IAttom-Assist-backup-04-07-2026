@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Megaphone, FileText, Sparkles, Video, BookOpen,
+  Megaphone, FileText, Image, Video, BookOpen, BadgeCheck,
   Trash2, RefreshCw, Loader2, Search, Calendar, Globe,
 } from "lucide-react";
 import { useAuth } from "@clerk/react";
@@ -24,21 +24,23 @@ type SavedItem = {
   createdAt: string;
 };
 
-type TabKey = "all" | "campaign" | "content" | "creative" | "video_script";
+type TabKey = "all" | "campaign" | "content" | "creative" | "video_script" | "product_validation";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "all",          label: "Todos",           icon: BookOpen   },
-  { key: "campaign",     label: "Campanhas",       icon: Megaphone  },
-  { key: "content",      label: "Conteúdos",       icon: FileText   },
-  { key: "creative",     label: "Criativos",       icon: Sparkles   },
-  { key: "video_script", label: "Scripts de Vídeo", icon: Video      },
+  { key: "all",                label: "Todos",           icon: BookOpen   },
+  { key: "campaign",           label: "Campanhas",       icon: Megaphone  },
+  { key: "content",            label: "Conteúdos",       icon: FileText   },
+  { key: "creative",           label: "Imagens",         icon: Image      },
+  { key: "video_script",       label: "Vídeos",          icon: Video      },
+  { key: "product_validation", label: "Validar Produto", icon: BadgeCheck },
 ];
 
 const TYPE_CONFIG: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
-  campaign:     { label: "Campanha",        color: "text-primary bg-primary/10 border-primary/20",         icon: Megaphone },
-  content:      { label: "Conteúdo",        color: "text-blue-400 bg-blue-500/10 border-blue-500/20",      icon: FileText  },
-  creative:     { label: "Criativo",        color: "text-violet-400 bg-violet-500/10 border-violet-500/20", icon: Sparkles  },
-  video_script: { label: "Script de Vídeo", color: "text-pink-400 bg-pink-500/10 border-pink-500/20",      icon: Video     },
+  campaign:           { label: "Campanha",          color: "text-primary bg-primary/10 border-primary/20",          icon: Megaphone  },
+  content:            { label: "Conteúdo",          color: "text-blue-400 bg-blue-500/10 border-blue-500/20",       icon: FileText   },
+  creative:           { label: "Imagem",            color: "text-violet-400 bg-violet-500/10 border-violet-500/20", icon: Image      },
+  video_script:       { label: "Vídeo",             color: "text-pink-400 bg-pink-500/10 border-pink-500/20",       icon: Video      },
+  product_validation: { label: "Validar Produto",   color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", icon: BadgeCheck },
 };
 
 const fmtDate = (d: string) =>
@@ -110,7 +112,7 @@ export function Library() {
             <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Biblioteca</p>
             <h2 className="text-2xl font-bold text-white mb-1">Minha Biblioteca</h2>
             <p className="text-muted-foreground text-sm">
-              Todos os seus campanhas, conteúdos, criativos e scripts em um só lugar.
+              Suas campanhas, conteúdos, imagens, vídeos e validações de produto em um só lugar.
             </p>
           </div>
           <Button
@@ -185,7 +187,7 @@ export function Library() {
                 {search ? "Nenhum item encontrado para esta pesquisa." : "Nenhum item salvo nesta categoria."}
               </p>
               <p className="text-[11px] text-zinc-700 text-center max-w-xs">
-                Use os módulos de IA para criar campanhas, conteúdos, criativos e scripts — eles aparecerão aqui automaticamente.
+                Salve seus trabalhos nos módulos de campanhas, conteúdos, imagens, vídeos e validação de produto para encontrá-los aqui.
               </p>
             </CardContent>
           </Card>
