@@ -27,13 +27,14 @@ let analyticsSource = readFileSync(analyticsUrl, "utf8");
 
 analyticsSource = analyticsSource
   .replace('  marketing: { label: "Marketing", color: "#FBBF24", icon: Megaphone },\n};', '  marketing: { label: "Marketing", color: "#FBBF24", icon: Megaphone },\n  video_effect: { label: "Vídeo com Efeito", color: "#E879F9", icon: Video },\n  prompts: { label: "Prompt", color: "#22D3EE", icon: Sparkles },\n  help: { label: "IAttom Help", color: "#A1A1AA", icon: Zap },\n};')
-  .replace('<div className="space-y-2">\n              {data.recentHistory.map((item) => {', '<div className="h-72 space-y-2 overflow-y-auto overscroll-contain pr-1">\n              {data.recentHistory.map((item) => {')
-  .replace('<div className="max-h-72 space-y-2 overflow-y-auto overscroll-contain pr-1">\n              {data.recentHistory.map((item) => {', '<div className="h-72 space-y-2 overflow-y-auto overscroll-contain pr-1">\n              {data.recentHistory.map((item) => {');
+  .replace('<div className="space-y-2">\n              {data.recentHistory.map((item) => {', '<div className="h-[42dvh] min-h-[28rem] max-h-[calc(100dvh-8rem)] space-y-2 overflow-y-auto overscroll-contain pr-1">\n              {data.recentHistory.map((item) => {')
+  .replace('<div className="max-h-72 space-y-2 overflow-y-auto overscroll-contain pr-1">\n              {data.recentHistory.map((item) => {', '<div className="h-[42dvh] min-h-[28rem] max-h-[calc(100dvh-8rem)] space-y-2 overflow-y-auto overscroll-contain pr-1">\n              {data.recentHistory.map((item) => {')
+  .replace('<div className="h-72 space-y-2 overflow-y-auto overscroll-contain pr-1">\n              {data.recentHistory.map((item) => {', '<div className="h-[42dvh] min-h-[28rem] max-h-[calc(100dvh-8rem)] space-y-2 overflow-y-auto overscroll-contain pr-1">\n              {data.recentHistory.map((item) => {');
 
 const analyticsMarkers = [
   'label: "Vídeo com Efeito"',
   'label: "IAttom Help"',
-  'h-72 space-y-2 overflow-y-auto overscroll-contain',
+  'h-[42dvh] min-h-[28rem] max-h-[calc(100dvh-8rem)] space-y-2 overflow-y-auto overscroll-contain',
 ];
 for (const marker of analyticsMarkers) {
   if (!analyticsSource.includes(marker)) throw new Error(`Analytics marker missing: ${marker}`);
