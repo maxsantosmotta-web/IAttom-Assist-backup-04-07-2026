@@ -59,7 +59,10 @@ const safeDraftEffects = `  useEffect(() => {
       return;
     }
     try {
-      if (!prompt && !platform && selectedFormats.length === 0) return;
+      if (!prompt && !platform && selectedFormats.length === 0) {
+        localStorage.removeItem(CREATIVE_IMAGE_DRAFT_KEY);
+        return;
+      }
       localStorage.setItem(CREATIVE_IMAGE_DRAFT_KEY, JSON.stringify({
         prompt,
         platform,
@@ -75,12 +78,37 @@ if (source.includes(oldPlatformEffect)) {
   throw new Error("Creative image platform reset effect not found");
 }
 
+const oldNewButton = `onClick={() => { reset(); setRestoredResult(null); clearModuleState("creative"); }}`;
+const safeNewButton = `onClick={() => {
+                    reset();
+                    setRestoredResult(null);
+                    setPrompt("");
+                    setPlatform("");
+                    setSelectedFormats([]);
+                    try {
+                      const persisted = loadModuleState<{ type: "image" | "video"; form: Record<string, unknown>; result: unknown }>("creative");
+                      if (persisted?.type === "image") clearModuleState("creative");
+                      localStorage.removeItem(CREATIVE_IMAGE_DRAFT_KEY);
+                    } catch { /* estados visuais já foram limpos */ }
+                  }}`;
+
+if (source.includes(oldNewButton)) {
+  source = source.replace(oldNewButton, safeNewButton);
+} else if (!source.includes('if (persisted?.type === "image") clearModuleState("creative");')) {
+  throw new Error("Creative image Novo button marker not found");
+}
+
 if (!source.includes("CREATIVE_IMAGE_DRAFT_KEY") ||
     !source.includes("creativeImageDraftReadyRef") ||
     !source.includes("selectedFormats,") ||
-    !source.includes("updatedAt: new Date().toISOString()")) {
-  throw new Error("Creative image draft persistence was not installed");
+    !source.includes("updatedAt: new Date().toISOString()") ||
+    !source.includes("localStorage.removeItem(CREATIVE_IMAGE_DRAFT_KEY)") ||
+    !source.includes('if (persisted?.type === "image") clearModuleState("creative");') ||
+    !source.includes('setPrompt("");') ||
+    !source.includes('setPlatform("");') ||
+    !source.includes("setSelectedFormats([]);")) {
+  throw new Error("Creative image draft persistence and safe reset were not installed");
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Gerar Imagem preserva prompt, plataforma e formatos após atualização sem alterar outros fluxos.");
+console.log("Gerar Imagem preserva o rascunho preenchido, remove o estado vazio e limpa apenas a imagem no botão Novo.");
