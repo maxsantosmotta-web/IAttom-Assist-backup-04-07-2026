@@ -44,46 +44,58 @@ const persistedStates = `  const [platform, setPlatform] = useState<PlatformKey 
       return typeof saved.prompt === "string" ? saved.prompt : "";
     } catch { return ""; }
   });
-  const creativeImageDraftReadyRef = useRef(false);`;
+  const previousCreativeImagePlatformRef = useRef<PlatformKey | "">(platform);`;
 
 if (source.includes(oldStates)) {
   source = source.replace(oldStates, persistedStates);
-} else if (!source.includes("creativeImageDraftReadyRef")) {
+} else if (!source.includes("previousCreativeImagePlatformRef")) {
   throw new Error("Creative image state block not found");
 }
 
-const oldPlatformEffect = `  useEffect(() => { setSelectedFormats([]); }, [platform]);`;
-const safeDraftEffects = `  useEffect(() => {
-    if (!creativeImageDraftReadyRef.current) {
-      creativeImageDraftReadyRef.current = true;
+const legacyPlatformReset = `  useEffect(() => { setSelectedFormats([]); }, [platform]);`;
+if (source.includes(legacyPlatformReset)) {
+  source = source.replace(legacyPlatformReset, "");
+}
+
+const persistenceMarker = `  // Persistência isolada do formulário Gerar Imagem`;
+if (!source.includes(persistenceMarker)) {
+  const insertionMarker = `  // Prefill a partir do módulo Campanha`;
+  const insertionPoint = source.indexOf(insertionMarker);
+  if (insertionPoint < 0) throw new Error("Creative image prefill insertion marker not found");
+
+  const effects = `  // Persistência isolada do formulário Gerar Imagem
+  useEffect(() => {
+    if (previousCreativeImagePlatformRef.current !== platform) {
+      previousCreativeImagePlatformRef.current = platform;
+      setSelectedFormats([]);
       return;
     }
     try {
       if (!prompt && !platform && selectedFormats.length === 0) {
         localStorage.removeItem(CREATIVE_IMAGE_DRAFT_KEY);
-        return;
+      } else {
+        localStorage.setItem(CREATIVE_IMAGE_DRAFT_KEY, JSON.stringify({
+          prompt,
+          platform,
+          selectedFormats,
+          updatedAt: new Date().toISOString(),
+        }));
       }
-      localStorage.setItem(CREATIVE_IMAGE_DRAFT_KEY, JSON.stringify({
-        prompt,
-        platform,
-        selectedFormats,
-        updatedAt: new Date().toISOString(),
-      }));
     } catch { /* estado React continua sendo a fonte ativa */ }
-  }, [prompt, platform, selectedFormats]);`;
+  }, [prompt, platform, selectedFormats]);
 
-if (source.includes(oldPlatformEffect)) {
-  source = source.replace(oldPlatformEffect, safeDraftEffects);
-} else if (!source.includes("localStorage.setItem(CREATIVE_IMAGE_DRAFT_KEY")) {
-  throw new Error("Creative image platform reset effect not found");
+`;
+
+  source = source.slice(0, insertionPoint) + effects + source.slice(insertionPoint);
 }
 
 if (!source.includes("CREATIVE_IMAGE_DRAFT_KEY") ||
-    !source.includes("creativeImageDraftReadyRef") ||
-    !source.includes("selectedFormats,") ||
+    !source.includes("previousCreativeImagePlatformRef") ||
+    !source.includes("Persistência isolada do formulário Gerar Imagem") ||
+    !source.includes("localStorage.setItem(CREATIVE_IMAGE_DRAFT_KEY") ||
     !source.includes("updatedAt: new Date().toISOString()")) {
-  throw new Error("Creative image draft persistence was not installed");
+  throw new Error("Creative image draft persistence was not installed in the final generated page");
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Gerar Imagem preserva prompt, plataforma e formatos após atualização sem alterar outros fluxos.");
+console.log("Gerar Imagem preserva prompt, plataforma e formatos no código final sem alterar outros fluxos.");
