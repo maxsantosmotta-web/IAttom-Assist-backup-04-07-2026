@@ -11,7 +11,7 @@ source = source.replace(
 if (!source.includes('video_effect: { label: "Vídeo com Efeito"')) {
   source = source.replace(
     '  video_script: { label: "Script de Vídeo", color: "#FB7185", icon: Video },',
-    '  video_script: { label: "Script de Vídeo", color: "#FB7185", icon: Video },\n  video_effect: { label: "Vídeo com Efeito", color: "#22D3EE", icon: Video },',
+    '  video_script: { label: "Scripts de Vídeo", color: "#FB7185", icon: Video },\n  video_effect: { label: "Vídeo com Efeito", color: "#22D3EE", icon: Video },',
   );
 }
 
@@ -55,12 +55,23 @@ if (!source.includes('help: { label: "IAttom Help"')) {
   );
 }
 
+source = source.replace(
+  '<BarChart data={chartModules} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>',
+  '<BarChart data={chartModules} margin={{ top: 0, right: 0, left: -20, bottom: 8 }}>',
+);
+source = source.replace(
+  '<XAxis dataKey="label" tick={{ fill: "#52525b", fontSize: 11 }} axisLine={false} tickLine={false} />',
+  '<XAxis dataKey="label" interval={0} tick={{ fill: "#52525b", fontSize: 10 }} tickMargin={8} axisLine={false} tickLine={false} />',
+);
+
 const required = [
+  'find_products: { label: "Buscar Produtos"',
+  'video_script: { label: "Scripts de Vídeo"',
   'label: "Validar Produto"',
   'video_effect: { label: "Vídeo com Efeito"',
   'aliases: ["find_products", "product_discovery"]',
-  'aliases: ["validate_products", "product_validation"]',
-  'aliases: ["video_effect"]',
+  'aliases: ["video_script"]',
+  'interval={0}',
 ];
 
 for (const marker of required) {
@@ -68,4 +79,4 @@ for (const marker of required) {
 }
 
 writeFileSync(analyticsUrl, source);
-console.log("Activity chart now shows every canonical monitored module, including zero counts.");
+console.log("Activity chart now names Buscar Produtos and Scripts de Vídeo and keeps all monitored modules visible.");
