@@ -9,9 +9,12 @@ const MULTILINE_PROMPT_PLACEHOLDERS = new Set([
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
+    const placeholder = typeof props.placeholder === "string" ? props.placeholder : ""
+    const normalizedPlaceholder = placeholder.toLocaleLowerCase("pt-BR")
+    const isCreativeVideoPrompt =
+      normalizedPlaceholder.includes("vídeo") || normalizedPlaceholder.includes("video")
     const isMultilinePrompt =
-      typeof props.placeholder === "string" &&
-      MULTILINE_PROMPT_PLACEHOLDERS.has(props.placeholder)
+      MULTILINE_PROMPT_PLACEHOLDERS.has(placeholder) || isCreativeVideoPrompt
 
     if (isMultilinePrompt) {
       const textareaProps = props as unknown as React.TextareaHTMLAttributes<HTMLTextAreaElement>
