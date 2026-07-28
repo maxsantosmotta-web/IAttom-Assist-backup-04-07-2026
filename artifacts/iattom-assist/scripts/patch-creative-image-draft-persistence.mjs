@@ -59,10 +59,7 @@ const safeDraftEffects = `  useEffect(() => {
       return;
     }
     try {
-      if (!prompt && !platform && selectedFormats.length === 0) {
-        localStorage.removeItem(CREATIVE_IMAGE_DRAFT_KEY);
-        return;
-      }
+      if (!prompt && !platform && selectedFormats.length === 0) return;
       localStorage.setItem(CREATIVE_IMAGE_DRAFT_KEY, JSON.stringify({
         prompt,
         platform,
@@ -78,40 +75,12 @@ if (source.includes(oldPlatformEffect)) {
   throw new Error("Creative image platform reset effect not found");
 }
 
-const togglePlatformClick = `onClick={() => setPlatform((current) => current === p.key ? "" : p.key)}`;
-if (!source.includes(togglePlatformClick)) {
-  const platformButtonPattern = /(key=\{p\.key\}\s*\n\s*)onClick=\{[\s\S]*?\}\s*\n(\s*className=\{`py-2\.5 px-2)/;
-  if (!platformButtonPattern.test(source)) {
-    throw new Error("Creative image platform button block not found");
-  }
-  source = source.replace(platformButtonPattern, `$1${togglePlatformClick}\n$2`);
-}
-
-const oldNewButton = `onClick={() => { reset(); setRestoredResult(null); clearModuleState("creative"); }}`;
-const cleanNewButton = `onClick={() => {
-                    reset();
-                    setRestoredResult(null);
-                    setPrompt("");
-                    setPlatform("");
-                    setSelectedFormats([]);
-                    clearModuleState("creative");
-                    try { localStorage.removeItem(CREATIVE_IMAGE_DRAFT_KEY); } catch { /* ignore */ }
-                  }}`;
-if (source.includes(oldNewButton)) {
-  source = source.replace(oldNewButton, cleanNewButton);
-} else if (!source.includes("localStorage.removeItem(CREATIVE_IMAGE_DRAFT_KEY)")) {
-  throw new Error("Creative image Novo button marker not found");
-}
-
 if (!source.includes("CREATIVE_IMAGE_DRAFT_KEY") ||
     !source.includes("creativeImageDraftReadyRef") ||
     !source.includes("selectedFormats,") ||
-    !source.includes("updatedAt: new Date().toISOString()") ||
-    !source.includes(togglePlatformClick) ||
-    !source.includes("setPrompt(\"\");") ||
-    !source.includes("localStorage.removeItem(CREATIVE_IMAGE_DRAFT_KEY)")) {
-  throw new Error("Creative image draft persistence and reset were not installed");
+    !source.includes("updatedAt: new Date().toISOString()")) {
+  throw new Error("Creative image draft persistence was not installed");
 }
 
 writeFileSync(creativeUrl, source);
-console.log("Gerar Imagem preserva o rascunho, permite desmarcar a plataforma e limpa tudo no botão Novo.");
+console.log("Gerar Imagem preserva prompt, plataforma e formatos após atualização sem alterar outros fluxos.");
