@@ -68,25 +68,25 @@ patchFile("src/pages/dashboard/FindProducts.tsx", (source) => {
   );
 
   const marker = `                          )}
-                        </div>
-                        <div className="shrink-0 flex flex-col items-end gap-2">`;
+                         </div>
+                         <div className="shrink-0 flex flex-col items-end gap-2">`;
   const replacement = `                          )}
-                          <div className="mt-4">
-                            <PromptHandoffButton
-                              source="find_products"
-                              title={product.name}
-                              summary={[
-                                \`Produto: \${product.name}\`,
-                                \`Categoria: \${product.category || niche || "Não informada"}\`,
-                                \`Diferenciais: \${product.keySellingPoints?.slice(0, 3).join(", ") || product.whyNow || "Não informados"}\`,
-                                \`Objetivo visual: criar uma imagem comercial fiel ao produto\${platform ? \` para \${platform}\` : ""}.\`,
-                              ].join("\\n")}
-                              payload={{ product, query, niche, platform }}
-                              className="w-full sm:w-auto sm:max-w-[290px]"
-                            />
-                          </div>
-                        </div>
-                        <div className="shrink-0 flex flex-col items-end gap-2">`;
+                           <div className="mt-4">
+                             <PromptHandoffButton
+                               source="find_products"
+                               title={product.name}
+                               summary={[
+                                 \`Produto: \${product.name}\`,
+                                 \`Categoria: \${product.category || niche || "Não informada"}\`,
+                                 \`Diferenciais: \${product.keySellingPoints?.slice(0, 3).join(", ") || product.whyNow || "Não informados"}\`,
+                                 \`Objetivo visual: criar uma imagem comercial fiel ao produto\${platform ? \` para \${platform}\` : ""}.\`,
+                               ].join("\\n")}
+                               payload={{ product, query, niche, platform }}
+                               className="w-full sm:w-auto sm:max-w-[290px]"
+                             />
+                           </div>
+                         </div>
+                         <div className="shrink-0 flex flex-col items-end gap-2">`;
 
   next = replaceRequired(next, marker, replacement, "FindProducts product card");
   return next;
@@ -162,12 +162,12 @@ patchFile("src/pages/dashboard/CreateCampaign.tsx", (source) => {
 });
 
 patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
-  if (source.includes("iattom_prompt_handoff_content_receiver_v1")) return source;
+  if (source.includes("iattom_prompt_handoff_content_and_products_receiver_v1")) return source;
 
   const marker = "  useEffect(() => { void fetchPrompts(); }, []);";
   const replacement = `${marker}
 
-  // iattom_prompt_handoff_content_receiver_v1
+  // iattom_prompt_handoff_content_and_products_receiver_v1
   useEffect(() => {
     try {
       const key = "iattom_prompt_handoff_v1";
@@ -181,7 +181,8 @@ patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
         summary?: string;
       };
 
-      if (transfer.version !== 1 || transfer.source !== "create_content" || !transfer.summary?.trim()) return;
+      const acceptedSources = ["create_content", "find_products"];
+      if (transfer.version !== 1 || !acceptedSources.includes(transfer.source ?? "") || !transfer.summary?.trim()) return;
 
       sessionStorage.removeItem(key);
       setCreating(true);
@@ -190,12 +191,12 @@ patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
       setGenerated(false);
       setNewTitle("");
       setNewPrompt("");
-      toast({ description: "Conteúdo recebido. Revise e gere o prompt." });
+      toast({ description: transfer.source === "find_products" ? "Produto recebido. Revise e gere o prompt." : "Conteúdo recebido. Revise e gere o prompt." });
     } catch {
       sessionStorage.removeItem("iattom_prompt_handoff_v1");
       toast({ description: "Não foi possível carregar o conteúdo preparado.", variant: "destructive" });
     }
   }, [toast]);`;
 
-  return replaceRequired(source, marker, replacement, "SavedPrompts content receiver");
+  return replaceRequired(source, marker, replacement, "SavedPrompts content and products receiver");
 });
