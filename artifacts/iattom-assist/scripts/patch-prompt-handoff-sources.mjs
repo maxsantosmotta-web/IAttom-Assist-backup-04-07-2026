@@ -168,12 +168,12 @@ patchFile("src/pages/dashboard/CreateCampaign.tsx", (source) => {
 });
 
 patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
-  if (source.includes("iattom_prompt_handoff_three_sources_receiver_v1")) return source;
+  if (source.includes("iattom_prompt_handoff_four_sources_receiver_v1")) return source;
 
   const marker = "  useEffect(() => { void fetchPrompts(); }, []);";
   const replacement = `${marker}
 
-  // iattom_prompt_handoff_three_sources_receiver_v1
+  // iattom_prompt_handoff_four_sources_receiver_v1
   useEffect(() => {
     try {
       const key = "iattom_prompt_handoff_v1";
@@ -187,7 +187,7 @@ patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
         summary?: string;
       };
 
-      const acceptedSources = ["create_content", "find_products", "validate_product"];
+      const acceptedSources = ["create_content", "find_products", "validate_product", "create_campaign"];
       if (transfer.version !== 1 || !acceptedSources.includes(transfer.source ?? "") || !transfer.summary?.trim()) return;
 
       sessionStorage.removeItem(key);
@@ -202,7 +202,9 @@ patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
         ? "Produto recebido. Revise e gere o prompt."
         : transfer.source === "validate_product"
           ? "Validação recebida. Revise e gere o prompt."
-          : "Conteúdo recebido. Revise e gere o prompt.";
+          : transfer.source === "create_campaign"
+            ? "Campanha recebida. Revise e gere o prompt."
+            : "Conteúdo recebido. Revise e gere o prompt.";
       toast({ description: message });
     } catch {
       sessionStorage.removeItem("iattom_prompt_handoff_v1");
@@ -210,5 +212,5 @@ patchFile("src/pages/dashboard/SavedPrompts.tsx", (source) => {
     }
   }, [toast]);`;
 
-  return replaceRequired(source, marker, replacement, "SavedPrompts three-source receiver");
+  return replaceRequired(source, marker, replacement, "SavedPrompts four-source receiver");
 });
