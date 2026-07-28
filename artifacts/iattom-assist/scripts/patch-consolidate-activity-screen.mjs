@@ -5,13 +5,20 @@ let sidebar = readFileSync(sidebarUrl, "utf8");
 
 sidebar = sidebar
   .replace('  { href: "/dashboard/history", label: "Atividades", icon: Clock },\n', '')
-  .replace('  { href: "/dashboard/analytics", label: "Análises", icon: BarChart2 },', '  { href: "/dashboard/analytics", label: "Atividades", icon: BarChart2 },');
+  .replace('  { href: "/dashboard/analytics", label: "Análises", icon: BarChart2 },\n', '')
+  .replace('  { href: "/dashboard/analytics", label: "Atividades", icon: BarChart2 },\n', '')
+  .replace(
+    '  { href: "/dashboard", label: "Painel", icon: LayoutDashboard },\n',
+    '  { href: "/dashboard", label: "Painel", icon: LayoutDashboard },\n  { href: "/dashboard/analytics", label: "Atividades", icon: BarChart2 },\n',
+  );
 
 if (sidebar.includes('href: "/dashboard/history", label: "Atividades"')) {
   throw new Error("Old activity navigation item still exists");
 }
-if (!sidebar.includes('href: "/dashboard/analytics", label: "Atividades"')) {
-  throw new Error("Consolidated activity navigation item missing");
+if (!sidebar.includes(
+  '{ href: "/dashboard", label: "Painel", icon: LayoutDashboard },\n  { href: "/dashboard/analytics", label: "Atividades", icon: BarChart2 },',
+)) {
+  throw new Error("Activity is not directly below dashboard");
 }
 writeFileSync(sidebarUrl, sidebar);
 
@@ -28,4 +35,4 @@ if (!app.includes('<Route path="/dashboard/history"><Redirect to="/dashboard/ana
 }
 writeFileSync(appUrl, app);
 
-console.log("Activity navigation consolidated into the analytics-backed screen.");
+console.log("Activity navigation consolidated directly below dashboard.");
