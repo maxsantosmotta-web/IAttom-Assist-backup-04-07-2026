@@ -99,3 +99,5 @@ for (const marker of required) {
 
 writeFileSync(analyticsUrl, source);
 console.log("Activity chart keeps all module labels visible, including Buscar Produtos and Scripts de Vídeo.");
+
+await import("./patch-public-help-consumption-guide.mjs");
