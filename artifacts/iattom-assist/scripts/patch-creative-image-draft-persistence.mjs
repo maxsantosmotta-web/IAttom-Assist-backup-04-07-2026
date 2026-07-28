@@ -78,16 +78,13 @@ if (source.includes(oldPlatformEffect)) {
   throw new Error("Creative image platform reset effect not found");
 }
 
-const oldPlatformClick = `onClick={() => setPlatform(p.key)}`;
 const togglePlatformClick = `onClick={() => setPlatform((current) => current === p.key ? "" : p.key)}`;
-if (source.includes(oldPlatformClick)) {
-  source = source.replace(oldPlatformClick, togglePlatformClick);
-} else if (!source.includes(togglePlatformClick)) {
-  const platformClickPattern = /onClick=\{\(\) => \{\s*setPlatform\(p\.key\);?\s*(?:setSelectedFormats\(\[\]\);?\s*)?\}\}/;
-  if (!platformClickPattern.test(source)) {
-    throw new Error("Creative image platform click marker not found");
+if (!source.includes(togglePlatformClick)) {
+  const platformButtonPattern = /(key=\{p\.key\}\s*\n\s*)onClick=\{[\s\S]*?\}\s*\n(\s*className=\{`py-2\.5 px-2)/;
+  if (!platformButtonPattern.test(source)) {
+    throw new Error("Creative image platform button block not found");
   }
-  source = source.replace(platformClickPattern, togglePlatformClick);
+  source = source.replace(platformButtonPattern, `$1${togglePlatformClick}\n$2`);
 }
 
 const oldNewButton = `onClick={() => { reset(); setRestoredResult(null); clearModuleState("creative"); }}`;
