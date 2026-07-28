@@ -45,10 +45,9 @@ replaceRequired(
   "header copy",
 );
 
-replaceRequired(
-  '          if (t.key !== "all" && count === 0) return null;\n',
+source = source.replace(
+  /^\s*if\s*\(t\.key\s*!==\s*["']all["']\s*&&\s*count\s*===\s*0\)\s*return\s+null;\s*$/gm,
   "",
-  "zero-count visibility",
 );
 
 replaceRequired(
@@ -60,7 +59,7 @@ replaceRequired(
 if (!source.includes('label: "Imagens"') || !source.includes('label: "Vídeos"') || !source.includes('label: "Validar Produto"')) {
   throw new Error("Library final filters were not installed");
 }
-if (source.includes('if (t.key !== "all" && count === 0) return null;')) {
+if (/if\s*\(t\.key\s*!==\s*["']all["']\s*&&\s*count\s*===\s*0\)\s*return\s+null;/.test(source)) {
   throw new Error("Library still hides empty filters");
 }
 
