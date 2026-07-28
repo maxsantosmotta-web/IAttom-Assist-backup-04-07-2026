@@ -1,4 +1,5 @@
 import { WandSparkles } from "lucide-react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,6 +27,7 @@ export function PromptHandoffButton({
   className = "",
 }: PromptHandoffButtonProps) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const preparePrompt = async () => {
     const cleanSummary = summary.trim();
@@ -58,10 +60,16 @@ export function PromptHandoffButton({
 
     try {
       await navigator.clipboard.writeText(cleanSummary);
-      toast({ description: "Conteúdo preparado para Criar Prompt." });
     } catch {
-      toast({ description: "Conteúdo preparado para Criar Prompt." });
+      // O pacote salvo no sessionStorage é a fonte da transferência.
     }
+
+    if (source === "create_content") {
+      setLocation("/dashboard/prompts");
+      return;
+    }
+
+    toast({ description: "Conteúdo preparado para Criar Prompt." });
   };
 
   return (
