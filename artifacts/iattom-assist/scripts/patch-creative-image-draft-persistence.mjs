@@ -78,7 +78,6 @@ if (source.includes(oldPlatformEffect)) {
   throw new Error("Creative image platform reset effect not found");
 }
 
-const oldNewButton = `onClick={() => { reset(); setRestoredResult(null); clearModuleState("creative"); }}`;
 const safeNewButton = `onClick={() => {
                     reset();
                     setRestoredResult(null);
@@ -92,10 +91,30 @@ const safeNewButton = `onClick={() => {
                     } catch { /* estados visuais já foram limpos */ }
                   }}`;
 
-if (source.includes(oldNewButton)) {
-  source = source.replace(oldNewButton, safeNewButton);
-} else if (!source.includes('if (persisted?.type === "image") clearModuleState("creative");')) {
-  throw new Error("Creative image Novo button marker not found");
+if (!source.includes('if (persisted?.type === "image") clearModuleState("creative");')) {
+  const imageResultsStart = source.indexOf("Imagens Geradas");
+  const videoResultsStart = source.indexOf("{/* Resultados — Vídeo */}", imageResultsStart);
+  if (imageResultsStart < 0 || videoResultsStart < 0) {
+    throw new Error("Creative image results section was not found");
+  }
+
+  const imageResultsSection = source.slice(imageResultsStart, videoResultsStart);
+  const newLabelIndex = imageResultsSection.indexOf("Novo");
+  if (newLabelIndex < 0) throw new Error("Creative image Novo label was not found");
+
+  const absoluteLabelIndex = imageResultsStart + newLabelIndex;
+  const buttonStart = source.lastIndexOf("<button", absoluteLabelIndex);
+  const classNameIndex = source.indexOf("className=", buttonStart);
+  if (buttonStart < imageResultsStart || classNameIndex < 0 || classNameIndex > absoluteLabelIndex) {
+    throw new Error("Creative image Novo button boundaries were not found");
+  }
+
+  const buttonOpening = source.slice(buttonStart, classNameIndex);
+  const onClickStart = buttonOpening.indexOf("onClick=");
+  if (onClickStart < 0) throw new Error("Creative image Novo onClick was not found");
+
+  const absoluteOnClickStart = buttonStart + onClickStart;
+  source = source.slice(0, absoluteOnClickStart) + safeNewButton + "\n                  " + source.slice(classNameIndex);
 }
 
 if (!source.includes("CREATIVE_IMAGE_DRAFT_KEY") ||
