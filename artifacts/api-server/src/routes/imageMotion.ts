@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, users } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
 import {
+  FalProviderError,
   getImageMotionResult,
   getImageMotionStatus,
   submitImageMotion,
@@ -35,6 +36,38 @@ function adminTestError(error: unknown, fallback: string): string {
   if (!(error instanceof Error)) return fallback;
   const message = error.message.trim();
   return message || fallback;
+}
+
+function isTimeoutError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return error.name === "TimeoutError" || /timeout|timed out|tempo de espera/i.test(error.message);
+}
+
+function sendImageMotionError(
+  res: Parameters<IRouter["use"]>[0] extends never ? never : any,
+  error: unknown,
+  fallback: string,
+): void {
+  if (error instanceof FalProviderError) {
+    if (error.status === 429) {
+      if (error.retryAfterSeconds) res.setHeader("Retry-After", String(error.retryAfterSeconds));
+      res.status(429).json({ error: adminTestError(error, "O serviço está temporariamente ocupado. Tente novamente em instantes.") });
+      return;
+    }
+    if (error.status === 408 || error.status === 504) {
+      res.status(504).json({ error: adminTestError(error, "O provedor demorou para responder. Tente novamente em instantes.") });
+      return;
+    }
+    res.status(502).json({ error: adminTestError(error, fallback) });
+    return;
+  }
+
+  if (isTimeoutError(error)) {
+    res.status(504).json({ error: "O provedor demorou para responder. Tente novamente em instantes." });
+    return;
+  }
+
+  res.status(502).json({ error: adminTestError(error, fallback) });
 }
 
 router.post("/image-motion/submit", requireAuth, async (req, res): Promise<void> => {
@@ -87,7 +120,7 @@ router.post("/image-motion/submit", requireAuth, async (req, res): Promise<void>
       res.status(503).json({ error: "A chave da nova IA ainda não foi configurada no servidor." });
       return;
     }
-    res.status(502).json({ error: adminTestError(error, "Não foi possível enviar a imagem para processamento.") });
+    sendImageMotionError(res, error, "Não foi possível enviar a imagem para processamento.");
   }
 });
 
@@ -103,7 +136,7 @@ router.get("/image-motion/status/:requestId", requireAuth, async (req, res): Pro
     res.json(status);
   } catch (error) {
     req.log.error({ err: error }, "image-motion status failed");
-    res.status(502).json({ error: adminTestError(error, "Não foi possível consultar o processamento.") });
+    sendImageMotionError(res, error, "Não foi possível consultar o processamento.");
   }
 });
 
@@ -119,7 +152,7 @@ router.get("/image-motion/result/:requestId", requireAuth, async (req, res): Pro
     res.json(result);
   } catch (error) {
     req.log.error({ err: error }, "image-motion result failed");
-    res.status(502).json({ error: adminTestError(error, "Não foi possível recuperar o vídeo gerado.") });
+    sendImageMotionError(res, error, "Não foi possível recuperar o vídeo gerado.");
   }
 });
 
