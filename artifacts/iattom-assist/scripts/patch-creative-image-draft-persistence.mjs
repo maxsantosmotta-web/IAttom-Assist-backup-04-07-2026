@@ -83,7 +83,11 @@ const togglePlatformClick = `onClick={() => setPlatform((current) => current ===
 if (source.includes(oldPlatformClick)) {
   source = source.replace(oldPlatformClick, togglePlatformClick);
 } else if (!source.includes(togglePlatformClick)) {
-  throw new Error("Creative image platform click marker not found");
+  const platformClickPattern = /onClick=\{\(\) => \{\s*setPlatform\(p\.key\);?\s*(?:setSelectedFormats\(\[\]\);?\s*)?\}\}/;
+  if (!platformClickPattern.test(source)) {
+    throw new Error("Creative image platform click marker not found");
+  }
+  source = source.replace(platformClickPattern, togglePlatformClick);
 }
 
 const oldNewButton = `onClick={() => { reset(); setRestoredResult(null); clearModuleState("creative"); }}`;
