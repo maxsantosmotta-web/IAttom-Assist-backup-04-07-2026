@@ -64,7 +64,7 @@ export function PromptHandoffButton({
       // O pacote salvo no sessionStorage é a fonte da transferência.
     }
 
-    if (source === "create_content") {
+    if (source === "create_content" || source === "find_products") {
       setLocation("/dashboard/prompts");
       return;
     }
