@@ -56,12 +56,24 @@ if (!source.includes('help: { label: "IAttom Help"')) {
 }
 
 source = source.replace(
+  '<ResponsiveContainer width="100%" height={180}>',
+  '<ResponsiveContainer width="100%" height={230}>',
+);
+source = source.replace(
   '<BarChart data={chartModules} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>',
+  '<BarChart data={chartModules} margin={{ top: 0, right: 8, left: -20, bottom: 52 }}>',
+);
+source = source.replace(
   '<BarChart data={chartModules} margin={{ top: 0, right: 0, left: -20, bottom: 8 }}>',
+  '<BarChart data={chartModules} margin={{ top: 0, right: 8, left: -20, bottom: 52 }}>',
 );
 source = source.replace(
   '<XAxis dataKey="label" tick={{ fill: "#52525b", fontSize: 11 }} axisLine={false} tickLine={false} />',
+  '<XAxis dataKey="label" interval={0} angle={-32} textAnchor="end" height={64} tick={{ fill: "#71717a", fontSize: 10 }} tickMargin={10} axisLine={false} tickLine={false} />',
+);
+source = source.replace(
   '<XAxis dataKey="label" interval={0} tick={{ fill: "#52525b", fontSize: 10 }} tickMargin={8} axisLine={false} tickLine={false} />',
+  '<XAxis dataKey="label" interval={0} angle={-32} textAnchor="end" height={64} tick={{ fill: "#71717a", fontSize: 10 }} tickMargin={10} axisLine={false} tickLine={false} />',
 );
 
 const required = [
@@ -72,6 +84,8 @@ const required = [
   'aliases: ["find_products", "product_discovery"]',
   'aliases: ["video_script"]',
   'interval={0}',
+  'angle={-32}',
+  'height={230}',
 ];
 
 for (const marker of required) {
@@ -79,4 +93,4 @@ for (const marker of required) {
 }
 
 writeFileSync(analyticsUrl, source);
-console.log("Activity chart now names Buscar Produtos and Scripts de Vídeo and keeps all monitored modules visible.");
+console.log("Activity chart keeps all module labels visible, including Buscar Produtos and Scripts de Vídeo.");
