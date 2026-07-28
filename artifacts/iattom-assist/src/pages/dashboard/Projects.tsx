@@ -166,7 +166,7 @@ export function Projects() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => void syncFromDB(true)}
+            onClick={() => window.location.reload()}
             disabled={isRefreshing}
             className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1"
           >
@@ -257,63 +257,47 @@ export function Projects() {
               const preview = item.content?.slice(0, 120).trim() ?? "";
               return (
                 <motion.div key={item.id} variants={itemVariants}>
-                  <Card className="bg-[#111111] border-white/5 hover:border-white/10 transition-colors group h-full flex flex-col">
+                  <Card className="bg-[#111111] border-white/5 hover:border-white/10 transition-colors group h-full flex flex-col cursor-pointer" onClick={() => handleOpenItem(item)}>
                     <CardContent className="p-4 flex flex-col gap-3 flex-1">
-
-                      {/* Topo: ícone + título + botão lixeira */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${cfg.badge}`}>
-                            <Icon className="w-4 h-4" />
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                            <Icon className={`w-4 h-4 ${cfg.cardIcon}`} />
                           </div>
                           <p className="text-sm font-semibold text-white truncate">{item.title}</p>
                         </div>
                         <button
-                          onClick={() => setConfirmDeleteId(item.id)}
-                          className="text-zinc-700 hover:text-red-400 transition-colors p-1 opacity-100 shrink-0"
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(item.id); }}
+                          className="text-zinc-700 hover:text-red-400 transition-colors p-1 opacity-0 group-hover:opacity-100 shrink-0"
                           title="Mover para lixeira"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
 
-                      {/* Badges */}
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${cfg.badge}`}>
                           {cfg.label}
                         </Badge>
-                        {item.platform && platformLabels[item.platform] && (
+                        {item.platform && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-zinc-500 bg-white/[0.03] border-white/10">
                             <Globe className="w-2.5 h-2.5 mr-1" />
-                            {platformLabels[item.platform]}
+                            {platformLabels[item.platform] ?? item.platform}
                           </Badge>
                         )}
-                        <MediaTagBadges hasImages={item.hasImages} hasVideos={!!item.videosData} />
+                        <MediaTagBadges data={item.data} />
                       </div>
 
-                      {/* Preview do conteúdo */}
                       {preview && (
                         <p className="text-[11px] text-zinc-500 leading-relaxed line-clamp-3 flex-1">
-                          {preview}{(item.content?.length ?? 0) > 120 ? "…" : ""}
+                          {preview}{item.content && item.content.length > 120 ? "…" : ""}
                         </p>
                       )}
 
-                      {/* Rodapé: data + botão Abrir */}
-                      <div className="flex items-center justify-between mt-auto pt-1">
-                        <div className="flex items-center gap-1 text-[10px] text-zinc-700">
-                          <Calendar className="w-3 h-3" />
-                          {fmtDate(item.createdAt)}
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleOpenItem(item)}
-                          className="h-6 px-2.5 text-[10px] bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/30 gap-1"
-                        >
-                          <ExternalLink className="w-2.5 h-2.5" />
-                          Abrir
-                        </Button>
+                      <div className="flex items-center justify-between gap-2 text-[10px] text-zinc-700 mt-auto pt-1">
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(item.createdAt)}</span>
+                        <span className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Abrir <ExternalLink className="w-3 h-3" /></span>
                       </div>
-
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -323,32 +307,21 @@ export function Projects() {
         )}
       </motion.div>
 
-      {/* Dialog: confirmar lixeira */}
-      <Dialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}>
-        <DialogContent className="bg-[#0f0f0f] border-white/[0.10] text-white max-w-sm">
+      <Dialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open && !deletingId) setConfirmDeleteId(null); }}>
+        <DialogContent className="bg-[#111111] border-white/10 max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-white text-base">Enviar para lixeira?</DialogTitle>
+            <DialogTitle className="text-base text-white">Mover para a lixeira?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-zinc-400 leading-relaxed">
-            O projeto <span className="text-zinc-200 font-medium">"{confirmItem?.title}"</span> será movido para a lixeira e excluído definitivamente após 48 horas.
+            {confirmItem
+              ? `“${confirmItem.title}” será movido para a lixeira. Você poderá restaurá-lo depois.`
+              : "Este projeto será movido para a lixeira."}
           </p>
-          <DialogFooter className="gap-2 mt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-white/10 text-zinc-400 hover:text-white"
-              onClick={() => setConfirmDeleteId(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => confirmDeleteId && void handleConfirmTrash(confirmDeleteId)}
-              disabled={!!deletingId}
-              className="bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
-            >
-              {deletingId ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Trash2 className="w-3.5 h-3.5 mr-1.5" />}
-              Enviar para lixeira
+          <DialogFooter className="gap-2 mt-3">
+            <Button variant="outline" onClick={() => setConfirmDeleteId(null)} disabled={!!deletingId} className="border-white/10 text-zinc-400 hover:text-white">Cancelar</Button>
+            <Button onClick={() => confirmDeleteId && void handleConfirmTrash(confirmDeleteId)} disabled={!!deletingId} className="bg-red-600 hover:bg-red-700 text-white gap-2">
+              {deletingId && <Loader2 className="w-4 h-4 animate-spin" />}
+              Mover para lixeira
             </Button>
           </DialogFooter>
         </DialogContent>
