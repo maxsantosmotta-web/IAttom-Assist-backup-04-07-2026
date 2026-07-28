@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
-    "build": "node ./scripts/patch-admin-user-balances.mjs && node ./scripts/patch-stripe-catalog-runtime.mjs && node ./scripts/patch-stripe-plans-runtime.mjs && node ./scripts/patch-stripe-subscription-autoheal.mjs && node ./scripts/patch-complete-billing-test-runtime.mjs && node ./scripts/patch-stripe-single-subscription-upgrade-runtime.mjs && node ./scripts/patch-stripe-canonical-subscription-runtime.mjs && node ./scripts/patch-prompt-activity-logging.mjs && node ./scripts/patch-help-activity-count.mjs && node ./scripts/patch-video-effect-analytics-count.mjs && node ./scripts/patch-help-consumption-guide.mjs && node ./build.mjs",
+    "build": "node ./scripts/patch-admin-user-balances.mjs && node ./scripts/patch-stripe-catalog-runtime.mjs && node ./scripts/patch-stripe-plans-runtime.mjs && node ./scripts/patch-stripe-subscription-autoheal.mjs && node ./scripts/patch-complete-billing-test-runtime.mjs && node ./scripts/patch-stripe-single-subscription-upgrade-runtime.mjs && node ./scripts/patch-stripe-canonical-subscription-runtime.mjs && node ./scripts/patch-prompt-activity-logging.mjs && node ./scripts/patch-help-activity-count.mjs && node ./scripts/patch-video-effect-analytics-count.mjs && node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -36,7 +36,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
     "esbuild": "^0.27.3",
-    "esbuild-plugin-pino": "^2.3.3",
+    "esbuild-plugin-pino": "^3.3.3",
     "pino-pretty": "^13",
     "thread-stream": "3.1.0"
   }
