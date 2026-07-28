@@ -151,7 +151,7 @@ export function Projects() {
   const confirmItem = confirmDeleteId ? savedItems.find(i => i.id === confirmDeleteId) : null;
 
   return (
-    <div className="space-y-8">
+    <div className="flex min-h-0 flex-col gap-8 lg:h-[calc(100dvh-7rem)]">
 
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
@@ -223,10 +223,10 @@ export function Projects() {
       {/* Grid de cards */}
       <motion.div
         initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}
-        className={`transition-opacity duration-150 ${isRefreshing ? "opacity-50 pointer-events-none" : ""}`}
+        className={`min-h-0 max-h-[65dvh] flex-1 overflow-y-auto overscroll-contain pr-1 pb-4 transition-opacity duration-150 lg:max-h-none ${isRefreshing ? "opacity-50 pointer-events-none" : ""}`}
       >
         {filteredItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="flex min-h-full flex-col items-center justify-center py-24 text-center">
             <div className="relative mb-6">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-white/[0.04] to-transparent border border-white/[0.07] flex items-center justify-center">
                 <FolderOpen className="w-8 h-8 text-white/[0.15]" />
