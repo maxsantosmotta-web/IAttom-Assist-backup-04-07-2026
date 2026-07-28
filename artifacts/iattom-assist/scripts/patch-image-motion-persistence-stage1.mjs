@@ -169,11 +169,8 @@ const safePersistenceEffects = `  useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
       if (prompt) localStorage.setItem("iattom_image_motion_prompt_v1", prompt);
-      else localStorage.removeItem("iattom_image_motion_prompt_v1");
       if (platform) localStorage.setItem("iattom_image_motion_platform_v1", platform);
-      else localStorage.removeItem("iattom_image_motion_platform_v1");
       if (formats.length > 0) localStorage.setItem("iattom_image_motion_formats_v1", JSON.stringify(formats));
-      else localStorage.removeItem("iattom_image_motion_formats_v1");
     } catch { /* a operação em memória continua disponível */ }
   }, [storageHydrated, phase, pending, results, error, source, prompt, platform, formats]);
 
@@ -207,4 +204,4 @@ if (!executionSource.includes("if (!storageHydrated) return;") ||
 }
 
 writeFileSync(executionUrl, executionSource);
-console.log("Image-motion Stage 1 now restores the complete operation without an initial empty-state overwrite.");
+console.log("Image-motion Stage 1 preserves saved selections during hydration and restores the complete operation.");
