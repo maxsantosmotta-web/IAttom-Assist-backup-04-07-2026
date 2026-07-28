@@ -48,13 +48,19 @@ export function PromptHandoffButton({
 
     try {
       sessionStorage.setItem(PROMPT_HANDOFF_KEY, JSON.stringify(transfer));
-      await navigator.clipboard.writeText(cleanSummary);
-      toast({ description: "Conteúdo preparado para Criar Prompt." });
     } catch {
       toast({
         description: "Não foi possível preparar o conteúdo. Tente novamente.",
         variant: "destructive",
       });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(cleanSummary);
+      toast({ description: "Conteúdo preparado para Criar Prompt." });
+    } catch {
+      toast({ description: "Conteúdo preparado para Criar Prompt." });
     }
   };
 
