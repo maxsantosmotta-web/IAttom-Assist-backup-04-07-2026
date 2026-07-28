@@ -6,7 +6,10 @@ const MULTILINE_PROMPT_PLACEHOLDERS = new Set([
   "Ex: Moto premium em rua neon noturna",
   "Descreva o contexto do vídeo...",
   "Ex: fumaça saindo dos pneus e luzes refletindo na lataria",
+  "Digite o assunto principal do prompt",
 ])
+
+const PROMPT_SUBJECT_PLACEHOLDER = "Digite o assunto principal do prompt"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
@@ -19,6 +22,8 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
 
     if (isMultilinePrompt) {
       const textareaProps = props as unknown as React.TextareaHTMLAttributes<HTMLTextAreaElement>
+      const { onKeyDown, ...restTextareaProps } = textareaProps
+      const isPromptSubject = placeholder === PROMPT_SUBJECT_PLACEHOLDER
 
       return (
         <textarea
@@ -28,7 +33,11 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
             className
           )}
           ref={ref as unknown as React.ForwardedRef<HTMLTextAreaElement>}
-          {...textareaProps}
+          onKeyDown={(event) => {
+            if (isPromptSubject && event.key === "Enter" && !event.ctrlKey && !event.metaKey) return
+            onKeyDown?.(event)
+          }}
+          {...restTextareaProps}
         />
       )
     }
