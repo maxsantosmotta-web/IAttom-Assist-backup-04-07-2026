@@ -26,4 +26,6 @@ creditsPage = creditsPage
 
 writeFileSync(creditsPageUrl, creditsPage);
 
+await import("./patch-plan-media-package-labels.mjs");
+
 console.log("Billing test prices disabled; original Stripe catalog and plan allowances preserved with correct plan labels and upgrade hierarchy");
