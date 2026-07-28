@@ -116,7 +116,7 @@ export function Library() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => void load()}
+            onClick={() => window.location.reload()}
             disabled={loading}
             className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1"
           >
