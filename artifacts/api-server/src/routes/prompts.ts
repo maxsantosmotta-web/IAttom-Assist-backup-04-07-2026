@@ -102,20 +102,52 @@ const TIPO_TO_MODULE: Record<string, string> = {
 };
 
 const TIPO_CONTEXT: Record<string, string> = {
-  imagem: "prompt para geração de imagem publicitária — visual premium, composição, paleta, iluminação, estilo fotográfico, apelo emocional",
-  video: "prompt para roteiro de vídeo de vendas — gancho, narrativa, benefícios, prova social, CTA",
-  copy: "prompt para copywriting de alta conversão — headline, benefícios, objeções, urgência, CTA",
-  anuncio: "prompt para anúncio pago (tráfego) — ângulo, público, plataforma, mensagem, formato",
-  marketplace: "prompt para listagem em marketplace — título otimizado, descrição persuasiva, especificações, palavras-chave de busca",
-  pesquisa: "prompt para pesquisa de mercado — demanda, concorrência, tendências, oportunidades, nicho",
-  estrategia: "prompt para estratégia de vendas — posicionamento, funil, canal, precificação, diferenciação",
-  automacao: "prompt para automação de marketing — sequência, segmentação, mensagens, gatilhos, métricas",
+  imagem: "prompt para geração de imagem publicitária",
+  video: "prompt para geração de vídeo publicitário",
+  copy: "prompt para copywriting de alta conversão",
+  anuncio: "prompt para anúncio pago",
+  marketplace: "prompt para listagem em marketplace",
+  pesquisa: "prompt para pesquisa de mercado",
+  estrategia: "prompt para estratégia de vendas",
+  automacao: "prompt para automação de marketing",
   personalizado: "prompt profissional, reutilizável e bem estruturado",
+};
+
+const TYPE_RULES: Record<string, string> = {
+  imagem: `
+Para IMAGEM, atue como diretor de arte, fotógrafo publicitário e especialista em composição visual.
+Antes de escrever, interprete silenciosamente: objeto/produto, intenção comercial ou emocional, público provável, benefício central e melhor direção criativa.
+Se a entrada for curta ou ambígua, complete o briefing com escolhas plausíveis e úteis, sem inventar especificações técnicas do produto, certificações, marcas ou promessas não informadas.
+Não use automaticamente neon, fundo escuro, luxo, pedestal, luz dramática ou estética futurista. Escolha esses elementos somente quando combinarem com o assunto. Varie de verdade entre direções como editorial, lifestyle, minimalista, natural, industrial, artesanal, documental, elegante, divertida, técnica, emocional ou promocional.
+O prompt final deve conter, quando fizer sentido: Contexto; Direção criativa; Instruções de composição; sujeito e posição; ambiente e fundo; espaço negativo; enquadramento e lente; iluminação; paleta; materiais e texturas; estilo fotográfico; apelo emocional; restrições; critérios de qualidade.
+Priorize coerência entre produto, cenário, público e objetivo. Evite elementos genéricos ou decorativos que roubem a atenção do assunto.
+Não peça textos, logotipos ou marcas visíveis, salvo quando o usuário solicitar explicitamente.`,
+  video: `
+Para VÍDEO, atue como diretor criativo, roteirista, diretor de fotografia e especialista em movimento.
+Antes de escrever, interprete silenciosamente: assunto, objetivo, público provável, formato de comunicação e emoção desejada.
+Se a entrada for curta, escolha uma ideia narrativa forte e coerente. Não transforme apenas um prompt de imagem em vídeo; construa progressão temporal.
+O prompt final deve conter, quando fizer sentido: conceito e objetivo; duração e formato sugeridos; gancho inicial; sequência clara de cenas; ações do produto ou personagem; movimentos de câmera; enquadramentos; transições; ritmo; ambiente; iluminação; paleta; efeitos visuais coerentes; som, fala ou legenda apenas quando úteis; encerramento e CTA; continuidade visual; restrições e critérios de qualidade.
+Evite repetir sempre câmera lenta, partículas, neon, fumaça, zoom dramático ou transições rápidas. Use efeitos somente quando reforçarem a intenção.
+Mantenha personagens, produto, cores e cenário consistentes entre as cenas.`,
+  copy: `
+Para COPY, interprete oferta, público, dor, desejo, nível de consciência e objeção principal. Produza uma instrução capaz de gerar headline, argumento, benefícios, prova, tratamento de objeções e CTA, sem promessas enganosas.`,
+  anuncio: `
+Para ANÚNCIO, interprete produto, público, objetivo, canal e estágio do funil. Estruture ângulo, mensagem, conceito criativo, formato, variações e CTA, evitando afirmações não comprovadas.`,
+  marketplace: `
+Para MARKETPLACE, interprete produto, categoria, comprador e diferenciais. Estruture título, descrição, benefícios, especificações disponíveis, palavras-chave e tratamento de objeções, sem inventar características.`,
+  pesquisa: `
+Para PESQUISA, interprete mercado, público, hipótese e decisão desejada. Estruture demanda, concorrência, tendências, riscos, oportunidades, fontes e critérios de conclusão.`,
+  estrategia: `
+Para ESTRATÉGIA, interprete objetivo, público, oferta, canais, recursos e restrições. Estruture posicionamento, funil, aquisição, conversão, retenção, métricas e prioridades.`,
+  automacao: `
+Para AUTOMAÇÃO, interprete objetivo, gatilho, público, dados disponíveis e resultado esperado. Estruture sequência, condições, segmentação, mensagens, exceções, métricas e segurança operacional.`,
+  personalizado: `
+Para PERSONALIZADO, identifique a intenção real do usuário e construa uma instrução especializada, completa, prática e reutilizável para aquela finalidade.`,
 };
 
 const GeneratePromptBody = z.object({
   tipo: z.string().min(1).max(50),
-  subject: z.string().min(1).max(300),
+  subject: z.string().min(1).max(3000),
 });
 
 router.post("/prompts/generate", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
@@ -125,33 +157,48 @@ router.post("/prompts/generate", requireAuth, requirePlan(["pro", "business", "a
     return;
   }
   const { tipo, subject: rawSubject } = parsed.data;
-  const subject = semanticNormalize(rawSubject);
+  const subject = semanticNormalize(rawSubject.trim());
   const tipoKey = tipo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "");
   const module = TIPO_TO_MODULE[tipoKey] ?? "content";
   const tipoCtx = TIPO_CONTEXT[tipoKey] ?? "prompt profissional reutilizável";
+  const typeRules = TYPE_RULES[tipoKey] ?? TYPE_RULES.personalizado;
 
-  const systemMsg = `Você é um especialista em criar prompts premium para sistemas de IA de marketing e negócios digitais em português brasileiro.
+  const systemMsg = `Você cria prompts de nível profissional para marketing, conteúdo e negócios digitais em português brasileiro.
 
-Crie um ${tipoCtx} sobre o assunto: ${subject}.
+Sua tarefa é transformar SOMENTE a solicitação atual em um ${tipoCtx}. Não reutilize assunto, estética, produto, cenário ou instruções de pedidos anteriores. Cada execução começa limpa.
 
-Regras obrigatórias:
-- O prompt deve ser completo, profissional e imediatamente reutilizável
-- Específico para o assunto informado, sem generalizações
-- Entre 80 e 250 palavras
-- Linguagem direta e profissional em português brasileiro
-- Estruturado com contexto claro + instruções + critérios de qualidade
-- Não usar placeholders como [produto] ou [nicho]
+SOLICITAÇÃO ATUAL:
+${subject}
 
-Responda exatamente neste formato, sem colchetes, sem explicações adicionais:
-TITULO: escreva o título aqui
-PROMPT: escreva o prompt completo aqui`;
+PROCESSO INTERNO OBRIGATÓRIO (não mostre ao usuário):
+1. Separe fatos fornecidos de detalhes que precisam ser inferidos.
+2. Identifique a intenção real, mesmo quando a entrada tiver apenas poucas palavras.
+3. Considere pelo menos três direções possíveis e escolha silenciosamente a mais coerente, específica e útil.
+4. Verifique se a direção escolhida não repete clichês sem necessidade.
+5. Construa o prompt final com detalhes acionáveis, sem contradizer os fatos fornecidos.
+
+${typeRules}
+
+REGRAS GERAIS:
+- Preserve nomes, características e restrições informadas pelo usuário.
+- Não invente preço, composição, certificação, desempenho, garantia ou alegação de saúde.
+- Não mencione que fez inferências nem explique seu raciocínio.
+- O resultado deve ser imediatamente reutilizável e específico para a solicitação atual.
+- Use entre 140 e 420 palavras para Imagem ou Vídeo; entre 100 e 320 palavras para os demais tipos.
+- Use seções com títulos claros quando isso melhorar a execução.
+- Não use placeholders como [produto], [nicho], [público] ou campos para preencher.
+- Não inclua múltiplos prompts concorrentes: entregue a melhor direção final, completa e coerente.
+
+Responda exatamente neste formato, sem colchetes e sem comentários adicionais:
+TITULO: título específico e profissional
+PROMPT: prompt completo`;
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5-mini",
       messages: [
         { role: "system", content: systemMsg },
-        { role: "user", content: `Tipo: ${tipo}\nAssunto: ${subject}` },
+        { role: "user", content: `Tipo selecionado: ${tipo}\nUse exclusivamente a solicitação atual descrita no sistema.` },
       ],
       max_completion_tokens: 4000,
     });
