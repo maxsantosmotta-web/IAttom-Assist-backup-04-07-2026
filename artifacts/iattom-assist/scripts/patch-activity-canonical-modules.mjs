@@ -8,9 +8,14 @@ source = source.replace(
   '  validate_products: { label: "Validar Produto", color: "#34D399", icon: CheckCircle },\n  product_validation: { label: "Validar Produto", color: "#34D399", icon: CheckCircle },',
 );
 
+source = source.replace(
+  '  video_script: { label: "Script de Vídeo", color: "#FB7185", icon: Video },',
+  '  video_script: { label: "Scripts de Vídeo", color: "#FB7185", icon: Video },',
+);
+
 if (!source.includes('video_effect: { label: "Vídeo com Efeito"')) {
   source = source.replace(
-    '  video_script: { label: "Script de Vídeo", color: "#FB7185", icon: Video },',
+    '  video_script: { label: "Scripts de Vídeo", color: "#FB7185", icon: Video },',
     '  video_script: { label: "Scripts de Vídeo", color: "#FB7185", icon: Video },\n  video_effect: { label: "Vídeo com Efeito", color: "#22D3EE", icon: Video },',
   );
 }
