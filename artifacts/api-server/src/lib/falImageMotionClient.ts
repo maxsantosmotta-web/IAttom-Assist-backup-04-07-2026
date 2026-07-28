@@ -26,6 +26,18 @@ export interface FalImageMotionResult {
   fileSize?: number;
 }
 
+export class FalProviderError extends Error {
+  readonly status: number;
+  readonly retryAfterSeconds?: number;
+
+  constructor(status: number, message: string, retryAfterSeconds?: number) {
+    super(message);
+    this.name = "FalProviderError";
+    this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 type QueueUrls = { statusUrl?: string; responseUrl?: string };
 const queueUrlsByRequestId = new Map<string, QueueUrls>();
 
@@ -56,13 +68,26 @@ function readProviderMessage(payload: unknown, fallback: string): string {
   return fallback;
 }
 
+function retryAfterSeconds(response: Response): number | undefined {
+  const raw = response.headers.get("retry-after");
+  if (!raw) return undefined;
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : undefined;
+}
+
 async function parseFalResponse(response: Response): Promise<unknown> {
   const text = await response.text();
   let payload: unknown = null;
   if (text) {
     try { payload = JSON.parse(text); } catch { payload = { message: text }; }
   }
-  if (!response.ok) throw new Error(readProviderMessage(payload, `Fal API error ${response.status}`));
+  if (!response.ok) {
+    throw new FalProviderError(
+      response.status,
+      readProviderMessage(payload, `Fal API error ${response.status}`),
+      retryAfterSeconds(response),
+    );
+  }
   return payload;
 }
 
@@ -136,8 +161,6 @@ export async function getImageMotionStatus(requestId: string): Promise<FalQueueS
   assertRequestId(requestId);
   const response = await fetchWithRateLimitRetry(statusUrlFor(requestId), 15_000);
 
-  // Limite temporário na consulta não significa falha da geração.
-  // Mantém o mesmo pedido em processamento para o frontend continuar consultando.
   if (response.status === 429) {
     return { status: "IN_PROGRESS" };
   }
@@ -167,7 +190,13 @@ export async function getImageMotionStatus(requestId: string): Promise<FalQueueS
 export async function getImageMotionResult(requestId: string): Promise<FalImageMotionResult> {
   assertRequestId(requestId);
   const response = await fetchWithRateLimitRetry(responseUrlFor(requestId), 30_000);
-  if (response.status === 429) throw new Error("O vídeo terminou, mas o arquivo ainda está sendo liberado. Consulte novamente em instantes.");
+  if (response.status === 429) {
+    throw new FalProviderError(
+      429,
+      "O vídeo terminou, mas o arquivo ainda está sendo liberado. Consulte novamente em instantes.",
+      retryAfterSeconds(response),
+    );
+  }
   const payload = (await parseFalResponse(response)) as {
     video?: { url?: unknown; content_type?: unknown; file_name?: unknown; file_size?: unknown };
   };
