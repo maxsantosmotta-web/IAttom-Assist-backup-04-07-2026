@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import { eq } from "drizzle-orm";
 import { db, users } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
@@ -43,11 +43,7 @@ function isTimeoutError(error: unknown): boolean {
   return error.name === "TimeoutError" || /timeout|timed out|tempo de espera/i.test(error.message);
 }
 
-function sendImageMotionError(
-  res: Parameters<IRouter["use"]>[0] extends never ? never : any,
-  error: unknown,
-  fallback: string,
-): void {
+function sendImageMotionError(res: Response, error: unknown, fallback: string): void {
   if (error instanceof FalProviderError) {
     if (error.status === 429) {
       if (error.retryAfterSeconds) res.setHeader("Retry-After", String(error.retryAfterSeconds));
