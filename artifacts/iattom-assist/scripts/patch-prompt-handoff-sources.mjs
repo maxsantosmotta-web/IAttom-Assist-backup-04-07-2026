@@ -67,28 +67,34 @@ patchFile("src/pages/dashboard/FindProducts.tsx", (source) => {
     "FindProducts import",
   );
 
-  const marker = `                          )}
-                         </div>
-                         <div className="shrink-0 flex flex-col items-end gap-2">`;
-  const replacement = `                          )}
-                           <div className="mt-4">
-                             <PromptHandoffButton
-                               source="find_products"
-                               title={product.name}
-                               summary={[
-                                 \`Produto: \${product.name}\`,
-                                 \`Categoria: \${product.category || niche || "Não informada"}\`,
-                                 \`Diferenciais: \${product.keySellingPoints?.slice(0, 3).join(", ") || product.whyNow || "Não informados"}\`,
-                                 \`Objetivo visual: criar uma imagem comercial fiel ao produto\${platform ? \` para \${platform}\` : ""}.\`,
-                               ].join("\\n")}
-                               payload={{ product, query, niche, platform }}
-                               className="w-full sm:w-auto sm:max-w-[290px]"
-                             />
-                           </div>
-                         </div>
-                         <div className="shrink-0 flex flex-col items-end gap-2">`;
+  const rightColumnMarker = '<div className="shrink-0 flex flex-col items-end gap-2">';
+  const rightColumnIndex = next.indexOf(rightColumnMarker, next.indexOf("product.keySellingPoints"));
+  if (rightColumnIndex < 0) {
+    throw new Error("[prompt-handoff] marker not found: FindProducts product right column");
+  }
 
-  next = replaceRequired(next, marker, replacement, "FindProducts product card");
+  const leftColumnEnd = next.lastIndexOf("</div>", rightColumnIndex);
+  if (leftColumnEnd < 0) {
+    throw new Error("[prompt-handoff] marker not found: FindProducts product left column end");
+  }
+
+  const buttonBlock = `
+                          <div className="mt-4">
+                            <PromptHandoffButton
+                              source="find_products"
+                              title={product.name}
+                              summary={[
+                                \`Produto: \${product.name}\`,
+                                \`Categoria: \${product.category || niche || "Não informada"}\`,
+                                \`Diferenciais: \${product.keySellingPoints?.slice(0, 3).join(", ") || product.whyNow || "Não informados"}\`,
+                                \`Objetivo visual: criar uma imagem comercial fiel ao produto\${platform ? \` para \${platform}\` : ""}.\`,
+                              ].join("\\n")}
+                              payload={{ product, query, niche, platform }}
+                              className="w-full sm:w-auto sm:max-w-[290px]"
+                            />
+                          </div>`;
+
+  next = next.slice(0, leftColumnEnd) + buttonBlock + "\n                        " + next.slice(leftColumnEnd);
   return next;
 });
 
