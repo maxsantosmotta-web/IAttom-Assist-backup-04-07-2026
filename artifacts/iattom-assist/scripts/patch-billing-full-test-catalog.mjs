@@ -3,64 +3,52 @@ import { readFileSync, writeFileSync } from "node:fs";
 const billingUrl = new URL("../src/pages/dashboard/Billing.tsx", import.meta.url);
 let source = readFileSync(billingUrl, "utf8");
 
-function replaceRequired(before, after, label) {
-  if (source.includes(after)) return;
-  if (!source.includes(before)) throw new Error(`[billing-full-test] ${label}: marker not found`);
-  source = source.replace(before, after);
-}
-
-replaceRequired(
-  `  const handleBillingRefresh = () => { void refetchPlans(); void refetchSub(); void refetchMe(); void refetchCredits(); };`,
-  `  const handleBillingRefresh = () => { window.location.reload(); };`,
-  "real page refresh",
+source = source.replace(
+  /const handleBillingRefresh\s*=\s*\(\)\s*=>\s*\{[^}]*\};/,
+  `const handleBillingRefresh = () => { window.location.reload(); };`,
 );
 
-source = source
-  .replace(`{ id: "credits_300",  credits: 300,  label: "300",   price: "R$ 39,90",  tag: "Acessível",   perUnit: "" }`, `{ id: "credits_300",  credits: 300,  label: "300",   price: "R$ 0,50", tag: "Acessível", perUnit: "" }`)
-  .replace(`{ id: "credits_700",  credits: 700,  label: "700",   price: "R$ 79,90",  tag: "Vantagem",    perUnit: "" }`, `{ id: "credits_700",  credits: 700,  label: "700",   price: "R$ 0,55", tag: "Vantagem", perUnit: "" }`)
-  .replace(`{ id: "credits_1500", credits: 1500, label: "1.500", price: "R$ 149,90", tag: "Melhor Valor", perUnit: "" }`, `{ id: "credits_1500", credits: 1500, label: "1.500", price: "R$ 0,60", tag: "Melhor Valor", perUnit: "" }`)
-  .replaceAll(`id: "creative_20", tag: "20 IMAGENS", images: 20, price: "R$ 47,00"`, `id: "creative_20", tag: "20 IMAGENS", images: 20, price: "R$ 0,50"`)
-  .replaceAll(`id: "creative_35", tag: "35 IMAGENS", images: 35, price: "R$ 79,00"`, `id: "creative_35", tag: "35 IMAGENS", images: 35, price: "R$ 0,55"`)
-  .replaceAll(`id: "creative_50", tag: "50 IMAGENS", images: 50, price: "R$ 89,00"`, `id: "creative_50", tag: "50 IMAGENS", images: 50, price: "R$ 0,60"`)
-  .replaceAll(`id: "creative_20", tag: "CRIATIVO 20", images: 20, price: "R$ 47,00"`, `id: "creative_20", tag: "20 IMAGENS", images: 20, price: "R$ 0,50"`)
-  .replaceAll(`id: "creative_35", tag: "CRIATIVO 35", images: 35, price: "R$ 79,00"`, `id: "creative_35", tag: "35 IMAGENS", images: 35, price: "R$ 0,55"`)
-  .replaceAll(`id: "creative_50", tag: "CRIATIVO 50", images: 50, price: "R$ 89,00"`, `id: "creative_50", tag: "50 IMAGENS", images: 50, price: "R$ 0,60"`);
+const creditBlock = `const CREDIT_PACKAGES = [
+  { id: "credits_300",  credits: 300,  label: "300",   price: "R$ 0,50", tag: "Acessível", perUnit: "" },
+  { id: "credits_700",  credits: 700,  label: "700",   price: "R$ 0,55", tag: "Vantagem", perUnit: "" },
+  { id: "credits_1500", credits: 1500, label: "1.500", price: "R$ 0,60", tag: "Melhor Valor", perUnit: "" },
+] as const;`;
+if (!/const CREDIT_PACKAGES = \[[\s\S]*?\] as const;/.test(source)) {
+  throw new Error("[billing-full-test] credit package block not found");
+}
+source = source.replace(/const CREDIT_PACKAGES = \[[\s\S]*?\] as const;/, creditBlock);
 
-replaceRequired(
-  `  const getMainPrice = (planKey: string) => {
-    const p = PLAN_PRICES[planKey];
-    if (!p) return "—";
-    return billing === "annual" ? p.yearlyDisplay : p.monthlyDisplay;
-  };`,
-  `  const getMainPrice = (planKey: string) => {
+source = source
+  .replace(/(id: "creative_20"[^\n]*images: 20, price: ")[^"]+("[^\n]*)/g, `$1R$ 0,50$2`)
+  .replace(/(id: "creative_35"[^\n]*images: 35, price: ")[^"]+("[^\n]*)/g, `$1R$ 0,55$2`)
+  .replace(/(id: "creative_50"[^\n]*images: 50, price: ")[^"]+("[^\n]*)/g, `$1R$ 0,60$2`)
+  .replaceAll(`tag: "CRIATIVO 20"`, `tag: "20 IMAGENS"`)
+  .replaceAll(`tag: "CRIATIVO 35"`, `tag: "35 IMAGENS"`)
+  .replaceAll(`tag: "CRIATIVO 50"`, `tag: "50 IMAGENS"`);
+
+const mainPricePattern = /const getMainPrice\s*=\s*\(planKey: string\)\s*=>\s*\{[\s\S]*?\n\s*\};/;
+if (!mainPricePattern.test(source)) throw new Error("[billing-full-test] plan price helper not found");
+source = source.replace(
+  mainPricePattern,
+  `const getMainPrice = (planKey: string) => {
     if (planKey === "free") return "R$ 0";
     return "R$ 0,50";
   };`,
-  "test plan display",
 );
 
-const lockedCard = `              <div
-                key={pkg.id}
-                className={\`relative flex flex-col rounded-xl border pt-8 px-5 pb-5 opacity-60 cursor-not-allowed \${pkg.bg} \${pkg.border}\`}
-              >
-                <div className="absolute inset-0 z-10 rounded-xl bg-black/25 pointer-events-none" />
-                <div className="absolute top-3 right-3 z-20 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/70 px-2 py-1 text-[10px] font-semibold text-zinc-300">
-                  <Lock className="w-3 h-3" /> Em breve
-                </div>`;
-const openCard = `              <div
-                key={pkg.id}
-                className={\`relative flex flex-col rounded-xl border pt-8 px-5 pb-5 transition-all duration-200 \${pkg.bg} \${pkg.border}\`}
-              >`;
-replaceRequired(lockedCard, openCard, "unlock video cards");
+const videoStart = source.indexOf("{/* ── Pacotes de Vídeo");
+const videoEnd = source.indexOf("{/* ── Referral CTA", videoStart);
+if (videoStart < 0 || videoEnd < 0) throw new Error("[billing-full-test] video section boundaries not found");
+let videoSection = source.slice(videoStart, videoEnd);
 
-const lockedButton = `                <Button
-                  size="sm"
-                  className="w-full h-9 text-xs bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed"
-                  disabled
-                >
-                  <Lock className="w-3.5 h-3.5 mr-1.5" /> Em breve
-                </Button>`;
-const buyButton = `                <Button
+videoSection = videoSection
+  .replaceAll("Pacotes de Vídeo</p>", "Pacotes de Vídeo com Efeito</p>")
+  .replace(/ opacity-60 cursor-not-allowed/g, " transition-all duration-200")
+  .replace(/\n\s*<div className="absolute inset-0 z-10 rounded-xl bg-black\/25 pointer-events-none" \/>/g, "")
+  .replace(/\n\s*<div className="absolute top-3 right-3 z-20[\s\S]*?<Lock className="w-3 h-3" \/> Em breve\s*<\/div>/g, "")
+  .replace(
+    /<Button\s+size="sm"\s+className="w-full h-9 text-xs bg-white\/5 text-zinc-500 border border-white\/10 cursor-not-allowed"\s+disabled\s*>\s*<Lock className="w-3\.5 h-3\.5 mr-1\.5" \/> Em breve\s*<\/Button>/,
+    `<Button
                   size="sm"
                   className={\`w-full h-9 text-xs \${pkg.btn}\`}
                   onClick={() => handleBuyVideoPack(pkg.id)}
@@ -70,10 +58,10 @@ const buyButton = `                <Button
                     ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Aguarde...</>
                     : <><ShoppingCart className="w-3.5 h-3.5 mr-1.5" />Comprar</>
                   }
-                </Button>`;
-replaceRequired(lockedButton, buyButton, "unlock video checkout");
+                </Button>`,
+  );
 
-source = source.replaceAll("Pacotes de Vídeo</p>", "Pacotes de Vídeo com Efeito</p>");
+source = source.slice(0, videoStart) + videoSection + source.slice(videoEnd);
 
 for (const marker of [
   `const handleBillingRefresh = () => { window.location.reload(); };`,
@@ -86,7 +74,11 @@ for (const marker of [
 ]) {
   if (!source.includes(marker)) throw new Error(`[billing-full-test] validation failed: ${marker}`);
 }
-if (source.includes(`<Lock className="w-3.5 h-3.5 mr-1.5" /> Em breve`)) {
+
+const finalVideoStart = source.indexOf("{/* ── Pacotes de Vídeo");
+const finalVideoEnd = source.indexOf("{/* ── Referral CTA", finalVideoStart);
+const finalVideoSection = source.slice(finalVideoStart, finalVideoEnd);
+if (finalVideoSection.includes("Em breve") || finalVideoSection.includes("cursor-not-allowed")) {
   throw new Error("[billing-full-test] video checkout remains locked");
 }
 
