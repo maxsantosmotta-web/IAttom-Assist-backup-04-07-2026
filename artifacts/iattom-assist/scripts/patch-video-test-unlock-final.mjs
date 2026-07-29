@@ -72,12 +72,24 @@ for (const marker of [
   `id: "video_10", tag: "PACK 10", videos: 10, price: "R$ 0,50"`,
   `id: "video_20", tag: "PACK 20", videos: 20, price: "R$ 0,50"`,
   `id: "video_30", tag: "PACK 30", videos: 30, price: "R$ 0,50"`,
-  `onClick={() => handleBuyVideoPack(pkg.id)}`,
   `if (false && !isAdmin`,
 ]) {
   if (!(billing + creative).includes(marker)) {
     throw new Error(`Final video test validation missing: ${marker}`);
   }
+}
+
+const videoSectionStart = billing.indexOf("{VIDEO_PACKAGES.map((pkg) => {");
+const videoSectionEnd = billing.indexOf("{/* ── Referral CTA", videoSectionStart);
+if (videoSectionStart < 0 || videoSectionEnd <= videoSectionStart) {
+  throw new Error("Final video package section not found");
+}
+const finalVideoSection = billing.slice(videoSectionStart, videoSectionEnd);
+if (!/onClick=\{\(\)\s*=>\s*handleBuyVideoPack\(pkg\.id\)\}/.test(finalVideoSection)) {
+  throw new Error("Final video checkout button is not connected to pkg.id");
+}
+if (/Em breve|cursor-not-allowed|disabled\s*>/.test(finalVideoSection)) {
+  throw new Error("Final video package checkout remains visually locked");
 }
 
 if (/id: "video_(5|7)"/.test(billing)) throw new Error("Legacy video packages remain visible");
