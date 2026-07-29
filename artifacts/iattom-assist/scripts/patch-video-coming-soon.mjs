@@ -21,7 +21,7 @@ creative = replaceRequired(
   creative,
   `  const [videoBalance, setVideoBalance] = useState<number | null>(null);`,
   `  const [videoBalance, setVideoBalance] = useState<number | null>(null);
-  const canOpenImageMotion = isAdmin || (videoBalance ?? 0) > 0;
+  const canOpenImageMotion = true;
   const [imageMotionSource, setImageMotionSource] = useState<ImageMotionSource | null>(null);
   const [imageMotionResetSignal, setImageMotionResetSignal] = useState(0);`,
   "image motion access and source state",
@@ -131,7 +131,7 @@ creative = replaceRequired(
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4 mr-2" />
-                          Gerar {selectedFormats.length <= 1 ? "Imagem" : \`\${selectedFormats.length} Imagens\`}
+                          Gerar {selectedFormats.length <= 1 ? "Imagem" : \`${selectedFormats.length} Imagens\`}
                         </>
                       )}
                     </Button>
@@ -156,7 +156,7 @@ creative = replaceRequired(
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4 mr-2" />
-                            Gerar {selectedFormats.length <= 1 ? "Imagem" : \`\${selectedFormats.length} Imagens\`}
+                            Gerar {selectedFormats.length <= 1 ? "Imagem" : \`${selectedFormats.length} Imagens\`}
                           </>
                         )}
                       </Button>
@@ -191,4 +191,4 @@ if (creative.includes("ImageMotionTestDialog") || creative.includes("imageMotion
 }
 
 writeFileSync(creativeUrl, creative);
-console.log("Video package checkout remains open; module access is finalized by the last commercial-test patch.");
+console.log("Video package checkout remains open; image-motion module access is unlocked for commercial testing.");
