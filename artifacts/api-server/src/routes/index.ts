@@ -35,6 +35,7 @@ import savedItemsRouter from "./savedItems.js";
 import kiwifyOAuthExperimentRouter from "./kiwifyOAuthExperiment.js";
 import helpRouter from "./help.js";
 import videosRouter from "./videos.js";
+import videoEffectBillingRouter from "./videoEffectBilling.js";
 import imageMotionRouter from "./imageMotion.js";
 import imageMotionTrashRouter from "./imageMotionTrash.js";
 
@@ -76,6 +77,8 @@ router.use(savedItemsRouter);
 router.use(kiwifyOAuthExperimentRouter);
 router.use(helpRouter);
 router.use(videosRouter);
+// Camada comercial isolada. Admin segue para o roteador congelado via next().
+router.use(videoEffectBillingRouter);
 router.use(imageMotionRouter);
 router.use(imageMotionTrashRouter);
 
