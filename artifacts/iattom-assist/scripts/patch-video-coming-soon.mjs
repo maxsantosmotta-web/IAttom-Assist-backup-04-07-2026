@@ -21,7 +21,7 @@ creative = replaceRequired(
   creative,
   `  const [videoBalance, setVideoBalance] = useState<number | null>(null);`,
   `  const [videoBalance, setVideoBalance] = useState<number | null>(null);
-  const canOpenImageMotion = true;
+  const canOpenImageMotion = isAdmin || (videoBalance ?? 0) > 0;
   const [imageMotionSource, setImageMotionSource] = useState<ImageMotionSource | null>(null);
   const [imageMotionResetSignal, setImageMotionResetSignal] = useState(0);`,
   "image motion access and source state",
@@ -191,4 +191,4 @@ if (creative.includes("ImageMotionTestDialog") || creative.includes("imageMotion
 }
 
 writeFileSync(creativeUrl, creative);
-console.log("Video package checkout remains open; image-motion module access is unlocked for commercial testing.");
+console.log("Video package checkout remains open; image-motion access requires an available video balance.");
