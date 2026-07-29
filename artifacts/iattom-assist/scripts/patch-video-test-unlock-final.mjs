@@ -67,7 +67,48 @@ if (executionStart >= 0 && !creative.includes("video-balance-click-gate")) {
   const executionEnd = creative.indexOf("/>", executionStart);
   if (executionEnd > executionStart) {
     const executionBlock = creative.slice(executionStart, executionEnd + 2);
-    const gatedExecution = `<>\n                    <div\n                      data-testid="video-balance-click-gate"\n                      onClickCapture={(event) => {\n                        if (!isAdmin && (videoBalance ?? 0) <= 0) {\n                          const target = event.target as HTMLElement;\n                          if (target.closest("button")) {\n                            event.preventDefault();\n                            event.stopPropagation();\n                            setVideoBalanceDialogOpen(true);\n                          }\n                        }\n                      }}\n                    >\n                      ${executionBlock}\n                    </div>\n                    <Dialog open={videoBalanceDialogOpen} onOpenChange={setVideoBalanceDialogOpen}>\n                      <DialogContent className="bg-[#111111] border-white/10 max-w-md">\n                        <DialogHeader>\n                          <DialogTitle>Saldo de vídeos com efeito insuficiente</DialogTitle>\n                        </DialogHeader>\n                        <p className="text-sm text-muted-foreground">Adquira um pacote avulso</p>\n                        <DialogFooter>\n                          <Button variant="outline" onClick={() => setVideoBalanceDialogOpen(false)}>Fechar</Button>\n                        </DialogFooter>\n                      </DialogContent>\n                    </Dialog>\n                  </>`;
+    const gatedExecution = `<>
+                    <div
+                      data-testid="video-balance-click-gate"
+                      onClickCapture={(event) => {
+                        if (!isAdmin && (videoBalance ?? 0) <= 0) {
+                          const target = event.target as HTMLElement;
+                          if (target.closest("button")) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setVideoBalanceDialogOpen(true);
+                          }
+                        }
+                      }}
+                    >
+                      ${executionBlock}
+                    </div>
+                    <Dialog open={videoBalanceDialogOpen} onOpenChange={setVideoBalanceDialogOpen}>
+                      <DialogContent className="bg-[#111111] border-white/10 max-w-md p-0 gap-0">
+                        <div className="p-6 border-b border-white/5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <Video className="w-4 h-4 text-amber-400" />
+                                <p className="text-xs text-amber-400 uppercase tracking-widest font-medium">Saldo de vídeo com efeito</p>
+                              </div>
+                              <h2 className="text-xl font-bold text-white mb-1">Saldo de vídeo com efeito insuficiente</h2>
+                              <p className="text-sm text-muted-foreground">Adquira um pacote avulso</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-6">
+                          <Button
+                            variant="outline"
+                            className="w-full border-white/10 hover:border-primary/30 text-sm"
+                            onClick={() => setVideoBalanceDialogOpen(false)}
+                          >
+                            Fechar
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </>`;
     creative = creative.slice(0, executionStart) + gatedExecution + creative.slice(executionEnd + 2);
   }
 }
