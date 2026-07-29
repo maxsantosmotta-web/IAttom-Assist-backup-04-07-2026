@@ -92,9 +92,9 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
       );
 
   const labelGeneral = "Créditos Insuficientes";
-  const labelCreative = "Créditos de Criativo Insuficientes";
+  const labelCreative = "Saldo de imagens insuficiente";
   const titleGeneral = "Créditos insuficientes";
-  const titleCreative = "Créditos de criativo insuficientes";
+  const titleCreative = "Saldo de imagens insuficiente";
 
   return (
     <>
@@ -119,13 +119,17 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
                 <h2 className="text-xl font-bold text-white mb-1">
                   {insufficient?.isCreative ? titleCreative : titleGeneral}
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                  Esta ação custa{" "}
-                  <span className="text-white font-semibold">
-                    {insufficient?.required} crédito{insufficient?.isCreative ? "s de criativo" : "s"}
-                  </span>. Seu saldo{insufficient?.isCreative ? " de criativo" : ""} é{" "}
-                  <span className="text-amber-400 font-semibold">{insufficient?.balance}</span>.
-                </p>
+                {insufficient?.isCreative ? (
+                  <p className="text-sm text-muted-foreground">Adquira um pacote avulso</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Esta ação custa{" "}
+                    <span className="text-white font-semibold">
+                      {insufficient?.required} crédito{insufficient?.isCreative ? "s de criativo" : "s"}
+                    </span>. Seu saldo{insufficient?.isCreative ? " de criativo" : ""} é{" "}
+                    <span className="text-amber-400 font-semibold">{insufficient?.balance}</span>.
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => setInsufficient(null)}
@@ -137,7 +141,7 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
           </div>
 
           <div className="p-6 space-y-3">
-            {hasUpgrade ? (
+            {!insufficient?.isCreative && hasUpgrade ? (
               <>
                 <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium mb-4">
                   Faça upgrade para obter mais créditos
@@ -153,11 +157,11 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
                   Comparar Planos
                 </Button>
               </>
-            ) : (
+            ) : !insufficient?.isCreative ? (
               <p className="text-sm text-muted-foreground">
                 Faça um upgrade de plano ou adquira um pacote avulso.
               </p>
-            )}
+            ) : null}
             <Button
               variant="outline"
               className="w-full border-white/10 hover:border-primary/30 text-sm"
