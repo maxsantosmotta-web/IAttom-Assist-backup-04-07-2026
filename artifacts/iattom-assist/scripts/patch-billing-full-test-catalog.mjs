@@ -5,10 +5,12 @@ const creditsUrl = new URL("../src/lib/credits.ts", import.meta.url);
 let billing = readFileSync(billingUrl, "utf8");
 let credits = readFileSync(creditsUrl, "utf8");
 
-billing = billing.replace(
-  /const handleBillingRefresh\s*=\s*\(\)\s*=>\s*\{[^}]*\};/,
-  `const handleBillingRefresh = () => { window.location.reload(); };`,
-);
+if (!/const handleBillingRefresh[^\n]*window\.location\.reload\(\)/.test(billing)) {
+  billing = billing.replace(
+    /const handleBillingRefresh[^\n]*/,
+    `const handleBillingRefresh = () => { window.location.reload(); };`,
+  );
+}
 
 const creditPackages = `const CREDIT_PACKAGES = [
   { id: "credits_300",  credits: 300,  label: "300",   price: "R$ 0,50", tag: "Acessível", perUnit: "" },
@@ -64,7 +66,6 @@ video = video
 billing = billing.slice(0, videoMapStart) + video + billing.slice(videoSectionEnd);
 
 for (const marker of [
-  `const handleBillingRefresh = () => { window.location.reload(); };`,
   `price: "R$ 0,50"`,
   `price: "R$ 0,55"`,
   `price: "R$ 0,60"`,
@@ -72,6 +73,9 @@ for (const marker of [
   `Pacotes de Vídeo com Efeito`,
 ]) {
   if (!billing.includes(marker)) throw new Error(`[billing-full-test] billing validation failed: ${marker}`);
+}
+if (!/const handleBillingRefresh[^\n]*window\.location\.reload\(\)/.test(billing)) {
+  throw new Error("[billing-full-test] real browser refresh was not applied");
 }
 if (!credits.includes(`monthlyDisplay: "R$ 0,50/mês"`) || !credits.includes(`yearlyDisplay: "R$ 0,50/ano"`)) {
   throw new Error("[billing-full-test] plan test prices were not applied");
