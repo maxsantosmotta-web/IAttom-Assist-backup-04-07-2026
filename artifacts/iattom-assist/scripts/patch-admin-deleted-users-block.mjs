@@ -20,6 +20,12 @@ if (!page.includes("type DeletedUser")) {
 ${typeAnchor}`);
 }
 
+if (!page.includes("planSelected?: boolean;")) {
+  const adminUserAnchor = "  banned: boolean;\n};";
+  if (!page.includes(adminUserAnchor)) throw new Error("AdminUser type anchor not found");
+  page = page.replace(adminUserAnchor, "  banned: boolean;\n  planSelected?: boolean;\n};");
+}
+
 if (!page.includes("const [deletedUsers")) {
   const stateAnchor = "  const [banLoading, setBanLoading] = useState(false);";
   if (!page.includes(stateAnchor)) throw new Error("Deleted users state anchor not found");
@@ -108,6 +114,13 @@ page = page.replace(
   '<Button size="sm" variant="outline" onClick={() => window.location.reload()} disabled={isFetching} className="gap-1.5">',
 );
 
+const planCell = '<td className="px-4 py-3"><Badge variant="outline" className={planColors[user.plan]}>{planLabels[user.plan]}</Badge></td>';
+const planCellWithSelection = '<td className="px-4 py-3">{user.planSelected ? <Badge variant="outline" className={planColors[user.plan]}>{planLabels[user.plan]}</Badge> : <span className="text-muted-foreground">—</span>}</td>';
+if (!page.includes(planCellWithSelection)) {
+  if (!page.includes(planCell)) throw new Error("Admin plan cell anchor not found");
+  page = page.replace(planCell, planCellWithSelection);
+}
+
 if (!page.includes("Usuários excluídos")) {
   const cardAnchor = `      </Card>\n\n      <Dialog open={!!editingUser}`;
   if (!page.includes(cardAnchor)) throw new Error("Deleted users card anchor not found");
@@ -160,6 +173,7 @@ enhancer = enhancer.replace(
 
 for (const marker of [
   "type DeletedUser",
+  "planSelected?: boolean;",
   "fetchDeletedUsers",
   "Usuários excluídos",
   "/api/admin/deleted-users",
@@ -167,6 +181,7 @@ for (const marker of [
   "const activeUsers =",
   "activeUsers.map((user) => {",
   "iattom:admin-user-deleted",
+  "user.planSelected ?",
 ]) {
   if (!page.includes(marker) && !enhancer.includes(marker)) throw new Error(`Deleted users frontend marker missing: ${marker}`);
 }
@@ -175,4 +190,4 @@ if (enhancer.includes("Ele perderá plano")) throw new Error("Verbose deletion c
 
 fs.writeFileSync(pagePath, page);
 fs.writeFileSync(enhancerPath, enhancer);
-console.log("Admin user deletion now updates active users and deleted history inline without a full-page reload.");
+console.log("Admin users now shows a dash until planSelected becomes true, while preserving inline deletion flow.");
