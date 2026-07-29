@@ -35,7 +35,7 @@ if (!page.includes("async function fetchDeletedUsers")) {
     setDeletedUsersLoading(true);
     try {
       const token = await getToken();
-      const res = await fetch(\`${BASE}/api/admin/deleted-users\`, {
+      const res = await fetch(\`\${BASE}/api/admin/deleted-users\`, {
         headers: token ? { Authorization: \`Bearer \${token}\` } : {},
         credentials: "include",
       });
