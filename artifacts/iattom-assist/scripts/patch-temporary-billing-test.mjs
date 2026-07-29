@@ -29,9 +29,9 @@ writeFileSync(creditsPageUrl, creditsPage);
 const billingUrl = new URL("../src/pages/dashboard/Billing.tsx", import.meta.url);
 let billing = readFileSync(billingUrl, "utf8");
 
-const officialVideoPackages = `const VIDEO_PACKAGES = [
+const testVideoPackages = `const VIDEO_PACKAGES = [
   {
-    id: "video_10", tag: "PACK 10", videos: 10, price: "R$ 35,00",
+    id: "video_10", tag: "PACK 10", videos: 10, price: "R$ 0,50",
     bg: "bg-[#060a10]",
     border: "border-blue-400/20 hover:border-blue-400/35",
     topLine: "via-blue-400/25",
@@ -43,7 +43,7 @@ const officialVideoPackages = `const VIDEO_PACKAGES = [
     btn: "bg-blue-500/15 text-blue-200 hover:bg-blue-500/25 border border-blue-400/25",
   },
   {
-    id: "video_20", tag: "PACK 20", videos: 20, price: "R$ 65,00",
+    id: "video_20", tag: "PACK 20", videos: 20, price: "R$ 0,50",
     bg: "bg-[#0a080e]",
     border: "border-violet-500/50 shadow-[0_0_36px_-6px_rgba(139,92,246,0.22)] hover:shadow-[0_0_44px_-6px_rgba(139,92,246,0.30)]",
     topLine: "via-violet-400/70",
@@ -55,7 +55,7 @@ const officialVideoPackages = `const VIDEO_PACKAGES = [
     btn: "bg-violet-600 text-white hover:bg-violet-500 font-bold",
   },
   {
-    id: "video_30", tag: "PACK 30", videos: 30, price: "R$ 90,00",
+    id: "video_30", tag: "PACK 30", videos: 30, price: "R$ 0,50",
     bg: "bg-[#050e09]",
     border: "border-emerald-500/30 hover:border-emerald-500/45 shadow-[0_0_36px_-4px_rgba(16,185,129,0.16)]",
     topLine: "via-emerald-400/50",
@@ -70,14 +70,14 @@ const officialVideoPackages = `const VIDEO_PACKAGES = [
 
 const videoBlockPattern = /const VIDEO_PACKAGES = \[[\s\S]*?\] as const;/;
 if (!videoBlockPattern.test(billing)) throw new Error("Video package block not found");
-billing = billing.replace(videoBlockPattern, officialVideoPackages);
+billing = billing.replace(videoBlockPattern, testVideoPackages);
 
 for (const marker of [
-  'id: "video_10", tag: "PACK 10", videos: 10, price: "R$ 35,00"',
-  'id: "video_20", tag: "PACK 20", videos: 20, price: "R$ 65,00"',
-  'id: "video_30", tag: "PACK 30", videos: 30, price: "R$ 90,00"',
+  'id: "video_10", tag: "PACK 10", videos: 10, price: "R$ 0,50"',
+  'id: "video_20", tag: "PACK 20", videos: 20, price: "R$ 0,50"',
+  'id: "video_30", tag: "PACK 30", videos: 30, price: "R$ 0,50"',
 ]) {
-  if (!billing.includes(marker)) throw new Error(`Official video display missing: ${marker}`);
+  if (!billing.includes(marker)) throw new Error(`Test video display missing: ${marker}`);
 }
 if (/id: "video_(5|7)"/.test(billing)) throw new Error("Legacy video cards are still visible");
 
@@ -85,4 +85,4 @@ writeFileSync(billingUrl, billing);
 
 await import("./patch-plan-media-package-labels.mjs");
 
-console.log("Official 10, 20 and 30 video packages displayed; test prices remain inactive.");
+console.log("Temporary R$ 0,50 video package prices displayed; official prices remain preserved in backend catalog.");
