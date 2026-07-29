@@ -8,19 +8,19 @@ let billing = readFileSync(billingUrl, "utf8");
 
 const videoPackages = `const VIDEO_PACKAGES = [
   {
-    id: "video_10", tag: "PACK 10", videos: 10, price: "R$ 0,50",
-    bg: "bg-[#060a10]",
-    border: "border-blue-400/20 hover:border-blue-400/35",
-    topLine: "via-blue-400/25",
-    ambient: "from-blue-500/[0.03]",
-    badge: "bg-blue-500/10 text-blue-300 border border-blue-400/20 border-t-0",
-    iconBg: "bg-blue-500/12 border border-blue-400/20",
-    iconColor: "text-blue-300",
-    labelColor: "text-blue-300",
-    btn: "bg-blue-500/15 text-blue-200 hover:bg-blue-500/25 border border-blue-400/25",
+    id: "video_10", tag: "PACK 10", videos: 10, price: "R$ 35,00",
+    bg: "bg-[#0e0c06]",
+    border: "border-[#C9A84C]/55 shadow-[0_0_36px_-4px_rgba(201,168,76,0.20)] hover:shadow-[0_0_44px_-4px_rgba(201,168,76,0.28)]",
+    topLine: "via-[#C9A84C]/60",
+    ambient: "from-[#C9A84C]/[0.06]",
+    badge: "bg-[#C9A84C] text-black shadow-[0_2px_8px_rgba(201,168,76,0.35)]",
+    iconBg: "bg-[#C9A84C]/15 border border-[#C9A84C]/30",
+    iconColor: "text-[#E8C96A]",
+    labelColor: "text-[#E8C96A]",
+    btn: "bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-black hover:brightness-110 font-black",
   },
   {
-    id: "video_20", tag: "PACK 20", videos: 20, price: "R$ 0,50",
+    id: "video_20", tag: "PACK 20", videos: 20, price: "R$ 65,00",
     bg: "bg-[#0a080e]",
     border: "border-violet-500/50 shadow-[0_0_36px_-6px_rgba(139,92,246,0.22)] hover:shadow-[0_0_44px_-6px_rgba(139,92,246,0.30)]",
     topLine: "via-violet-400/70",
@@ -32,7 +32,7 @@ const videoPackages = `const VIDEO_PACKAGES = [
     btn: "bg-violet-600 text-white hover:bg-violet-500 font-bold",
   },
   {
-    id: "video_30", tag: "PACK 30", videos: 30, price: "R$ 0,50",
+    id: "video_30", tag: "PACK 30", videos: 30, price: "R$ 90,00",
     bg: "bg-[#050e09]",
     border: "border-emerald-500/30 hover:border-emerald-500/45 shadow-[0_0_36px_-4px_rgba(16,185,129,0.16)]",
     topLine: "via-emerald-400/50",
@@ -145,4 +145,4 @@ billing = billing.replaceAll("Pacotes de Vídeo</p>", "Pacotes de Vídeo com Efe
 
 writeFileSync(creativeUrl, creative);
 writeFileSync(billingUrl, billing);
-console.log("Video test packages are active, visually enabled, and connected to checkout.");
+console.log("Official video package prices and gold-violet-green visual order applied.");
