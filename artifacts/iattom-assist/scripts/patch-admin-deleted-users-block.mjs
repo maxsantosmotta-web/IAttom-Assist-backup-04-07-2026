@@ -56,6 +56,40 @@ if (!page.includes("async function fetchDeletedUsers")) {
   page = page.replace(functionAnchor, `${functions}${functionAnchor}`);
 }
 
+page = page.replaceAll("{data?.total ?? 0}", "{activeUsers.length}");
+page = page.replaceAll(
+  '((data?.users ?? []) as AdminUser[]).filter((user) => user.role === "user").length',
+  'activeUsers.filter((user) => user.role === "user").length',
+);
+page = page.replaceAll(
+  '((data?.users ?? []) as AdminUser[]).filter((user) => user.role === "admin").length',
+  'activeUsers.filter((user) => user.role === "admin").length',
+);
+page = page.replaceAll(
+  '((data?.users ?? []) as AdminUser[]).reduce((sum, user) => sum + Number(user.credits || 0), 0)',
+  'activeUsers.reduce((sum, user) => sum + Number(user.credits || 0), 0)',
+);
+page = page.replaceAll(
+  '((data?.users ?? []) as AdminUser[]).reduce((sum, user) => sum + Number(user.credits || 0) + Number(user.extraCredits || 0), 0)',
+  'activeUsers.reduce((sum, user) => sum + Number(user.credits || 0) + Number(user.extraCredits || 0), 0)',
+);
+page = page.replace(
+  "(data?.users as AdminUser[] | undefined)?.map((user) => {",
+  "activeUsers.map((user) => {",
+);
+
+if (!page.includes("const activeUsers =")) {
+  const queryAnchor = `  const { data, isLoading, isFetching, refetch } = useListAdminUsers(params, {
+    query: { queryKey: getListAdminUsersQueryKey(params) },
+  });`;
+  if (!page.includes(queryAnchor)) throw new Error("Admin users query anchor not found");
+  page = page.replace(queryAnchor, `${queryAnchor}
+
+  const activeUsers = ((data?.users ?? []) as AdminUser[]).filter(
+    (user) => !user.email.toLowerCase().endsWith("@deleted.iattom.invalid"),
+  );`);
+}
+
 page = page.replace(
   '<Button size="sm" variant="outline" onClick={() => void refetch()} disabled={isFetching} className="gap-1.5">',
   '<Button size="sm" variant="outline" onClick={() => window.location.reload()} disabled={isFetching} className="gap-1.5">',
@@ -111,11 +145,20 @@ enhancer = enhancer.replace(
   "Excluir o usuário ${email}?",
 );
 
-for (const marker of ["type DeletedUser", "fetchDeletedUsers", "Usuários excluídos", "/api/admin/deleted-users", "window.location.reload()"] ) {
+for (const marker of [
+  "type DeletedUser",
+  "fetchDeletedUsers",
+  "Usuários excluídos",
+  "/api/admin/deleted-users",
+  "window.location.reload()",
+  "const activeUsers =",
+  "activeUsers.map((user) => {",
+]) {
   if (!page.includes(marker)) throw new Error(`Deleted users frontend marker missing: ${marker}`);
 }
+if (page.includes("const activeUsers = activeUsers")) throw new Error("Active users self-reference detected");
 if (enhancer.includes("Ele perderá plano")) throw new Error("Verbose deletion confirmation remains");
 
 fs.writeFileSync(pagePath, page);
 fs.writeFileSync(enhancerPath, enhancer);
-console.log("Admin users page now shows deleted users, reloads fully, and uses a short deletion confirmation.");
+console.log("Admin users page hides deleted records from active rows and counters, reloads fully, and keeps the deleted audit block.");
