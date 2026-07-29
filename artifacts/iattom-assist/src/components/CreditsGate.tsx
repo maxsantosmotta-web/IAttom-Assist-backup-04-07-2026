@@ -92,9 +92,9 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
       );
 
   const labelGeneral = "Créditos Insuficientes";
-  const labelCreative = "Saldo de imagens insuficiente";
+  const labelCreative = "Saldo de imagem";
   const titleGeneral = "Créditos insuficientes";
-  const titleCreative = "Saldo de imagens insuficiente";
+  const titleCreative = "Saldo de imagem insuficiente";
 
   return (
     <>
