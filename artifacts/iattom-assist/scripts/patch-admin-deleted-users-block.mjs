@@ -58,7 +58,7 @@ if (!page.includes("async function fetchDeletedUsers")) {
 
 page = page.replace(
   '<Button size="sm" variant="outline" onClick={() => void refetch()} disabled={isFetching} className="gap-1.5">',
-  '<Button size="sm" variant="outline" onClick={() => window.location.reload()} disabled={isFetching} className="gap-1.5">',
+  '<Button size="sm" variant="outline" onClick={() => { void refetch(); void fetchDeletedUsers(); }} disabled={isFetching} className="gap-1.5">',
 );
 
 if (!page.includes("Usuários excluídos")) {
@@ -100,20 +100,14 @@ if (!page.includes("Usuários excluídos")) {
 
 enhancer = enhancer.replace(
   "Excluir definitivamente o usuário ${email}?\\n\\nA conta será removida do Clerk e do banco de dados.",
-  "Excluir o usuário ${email}?",
-);
-enhancer = enhancer.replace(
   "Excluir o usuário ${email}?\\n\\nEle perderá plano, saldos e acesso, e será movido para Usuários excluídos.",
-  "Excluir o usuário ${email}?",
 );
 
-for (const marker of ["type DeletedUser", "fetchDeletedUsers", "Usuários excluídos", "/api/admin/deleted-users", "window.location.reload()"] ) {
+for (const marker of ["type DeletedUser", "fetchDeletedUsers", "Usuários excluídos", "/api/admin/deleted-users"]) {
   if (!page.includes(marker)) throw new Error(`Deleted users frontend marker missing: ${marker}`);
 }
-if (enhancer.includes("Ele perderá plano") || enhancer.includes("Excluir definitivamente o usuário")) {
-  throw new Error("Old delete confirmation remains");
-}
+if (enhancer.includes("Excluir definitivamente o usuário")) throw new Error("Old permanent deletion confirmation remains");
 
 fs.writeFileSync(pagePath, page);
 fs.writeFileSync(enhancerPath, enhancer);
-console.log("Admin users page shows deleted users, uses short confirmation and reloads the full route.");
+console.log("Admin users page now shows an audit-only deleted users block with no manual restore or permanent delete actions.");
