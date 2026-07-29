@@ -19,14 +19,39 @@ source = source.replace(
   "const usersWithCounts = await Promise.all(allUsers.map(async (u) => {",
   "const usersWithCounts = await Promise.all(visibleActiveUsers.map(async (u) => {",
 );
-source = source.replace(
-  "res.json(ListAdminUsersResponse.parse({ users: usersWithCounts, total: totalRes.count }));",
-  "res.json(ListAdminUsersResponse.parse({ users: usersWithCounts, total: Math.max(0, totalRes.count - (allUsers.length - visibleActiveUsers.length)) }));",
-);
 
-for (const marker of ["const visibleActiveUsers =", "visibleActiveUsers.map", "allUsers.length - visibleActiveUsers.length"]) {
+const originalResponse = "res.json(ListAdminUsersResponse.parse({ users: usersWithCounts, total: totalRes.count }));";
+const guardedResponse = "res.json(ListAdminUsersResponse.parse({ users: usersWithCounts, total: Math.max(0, totalRes.count - (allUsers.length - visibleActiveUsers.length)) }));";
+const responseWithPlanSelection = `const parsedUsersResponse = ListAdminUsersResponse.parse({
+    users: usersWithCounts,
+    total: Math.max(0, totalRes.count - (allUsers.length - visibleActiveUsers.length)),
+  });
+  res.json({
+    ...parsedUsersResponse,
+    users: parsedUsersResponse.users.map((user, index) => ({
+      ...user,
+      planSelected: Boolean(visibleActiveUsers[index]?.planSelected),
+    })),
+  });`;
+
+if (!source.includes("planSelected: Boolean(visibleActiveUsers[index]?.planSelected)")) {
+  if (source.includes(guardedResponse)) {
+    source = source.replace(guardedResponse, responseWithPlanSelection);
+  } else if (source.includes(originalResponse)) {
+    source = source.replace(originalResponse, responseWithPlanSelection);
+  } else {
+    throw new Error("Admin users response anchor not found");
+  }
+}
+
+for (const marker of [
+  "const visibleActiveUsers =",
+  "visibleActiveUsers.map",
+  "allUsers.length - visibleActiveUsers.length",
+  "planSelected: Boolean(visibleActiveUsers[index]?.planSelected)",
+]) {
   if (!source.includes(marker)) throw new Error(`Admin active-user guard marker missing: ${marker}`);
 }
 
 fs.writeFileSync(adminPath, source);
-console.log("Admin users endpoint now has a final response guard against deleted records.");
+console.log("Admin users endpoint filters deleted records and preserves planSelected for display.");
