@@ -5,11 +5,13 @@ const creditsUrl = new URL("../src/lib/credits.ts", import.meta.url);
 let billing = readFileSync(billingUrl, "utf8");
 let credits = readFileSync(creditsUrl, "utf8");
 
-if (!/const handleBillingRefresh[^\n]*window\.location\.reload\(\)/.test(billing)) {
-  billing = billing.replace(
-    /const handleBillingRefresh[^\n]*/,
-    `const handleBillingRefresh = () => { window.location.reload(); };`,
-  );
+const refreshStart = billing.indexOf("  const handleBillingRefresh");
+const refreshEnd = billing.indexOf("\n\n  const checkout", refreshStart);
+if (refreshStart >= 0 && refreshEnd > refreshStart) {
+  billing =
+    billing.slice(0, refreshStart) +
+    "  const handleBillingRefresh = () => { window.location.reload(); };" +
+    billing.slice(refreshEnd);
 }
 
 const creditPackages = `const CREDIT_PACKAGES = [
@@ -66,4 +68,4 @@ if (videoMapStart >= 0 && videoSectionEnd > videoMapStart) {
 
 writeFileSync(billingUrl, billing);
 writeFileSync(creditsUrl, credits);
-console.log("Billing test catalog patch applied; Vite will validate final syntax and imports.");
+console.log("Billing test catalog patch applied; complete refresh handler replaced and Vite validates final output.");
