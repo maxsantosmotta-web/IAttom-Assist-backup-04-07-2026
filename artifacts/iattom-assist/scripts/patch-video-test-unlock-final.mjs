@@ -8,7 +8,7 @@ let billing = readFileSync(billingUrl, "utf8");
 
 const videoPackages = `const VIDEO_PACKAGES = [
   {
-    id: "video_10", tag: "PACK 10", videos: 10, price: "R$ 35,00",
+    id: "video_10", tag: "PACK 10", videos: 10, price: "R$ 0,50",
     bg: "bg-[#0e0c06]",
     border: "border-[#C9A84C]/55 shadow-[0_0_36px_-4px_rgba(201,168,76,0.20)] hover:shadow-[0_0_44px_-4px_rgba(201,168,76,0.28)]",
     topLine: "via-[#C9A84C]/60",
@@ -20,7 +20,7 @@ const videoPackages = `const VIDEO_PACKAGES = [
     btn: "bg-gradient-to-r from-[#C9A84C] to-[#E8C96A] text-black hover:brightness-110 font-black",
   },
   {
-    id: "video_20", tag: "PACK 20", videos: 20, price: "R$ 65,00",
+    id: "video_20", tag: "PACK 20", videos: 20, price: "R$ 0,55",
     bg: "bg-[#0a080e]",
     border: "border-violet-500/50 shadow-[0_0_36px_-6px_rgba(139,92,246,0.22)] hover:shadow-[0_0_44px_-6px_rgba(139,92,246,0.30)]",
     topLine: "via-violet-400/70",
@@ -32,7 +32,7 @@ const videoPackages = `const VIDEO_PACKAGES = [
     btn: "bg-violet-600 text-white hover:bg-violet-500 font-bold",
   },
   {
-    id: "video_30", tag: "PACK 30", videos: 30, price: "R$ 90,00",
+    id: "video_30", tag: "PACK 30", videos: 30, price: "R$ 0,60",
     bg: "bg-[#050e09]",
     border: "border-emerald-500/30 hover:border-emerald-500/45 shadow-[0_0_36px_-4px_rgba(16,185,129,0.16)]",
     topLine: "via-emerald-400/50",
@@ -145,4 +145,4 @@ billing = billing.replaceAll("Pacotes de Vídeo</p>", "Pacotes de Vídeo com Efe
 
 writeFileSync(creativeUrl, creative);
 writeFileSync(billingUrl, billing);
-console.log("Official video package prices and gold-violet-green visual order applied.");
+console.log("Video test prices R$ 0,50, R$ 0,55 and R$ 0,60 applied with gold-violet-green cards.");
