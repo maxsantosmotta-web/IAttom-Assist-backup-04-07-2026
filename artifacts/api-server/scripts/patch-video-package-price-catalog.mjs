@@ -45,7 +45,7 @@ route = route.replace(
         clerkUserId,
         pkg.id,
         pkg.videos,
-        pkg.officialPriceId,
+        pkg.testPriceId,
         pkg.name,
       );`,
 );
@@ -56,16 +56,16 @@ service = service.replace(
 );
 
 const priceDataBlock = `      {
-        price_data: {
-          currency: "brl",
-          unit_amount: unitAmountBrl,
-          product_data: {
-            name: packageName,
-            description: \`${"${videos}"} vídeo${"${videos !== 1 ? \"s\" : \"\"}"} — compra avulsa (não expiram)\`,
-          },
-        },
-        quantity: 1,
-      },`;
+         price_data: {
+           currency: "brl",
+           unit_amount: unitAmountBrl,
+           product_data: {
+             name: packageName,
+             description: \`${"${videos}"} vídeo${"${videos !== 1 ? \"s\" : \"\"}"} — compra avulsa (não expiram)\`,
+           },
+         },
+         quantity: 1,
+       },`;
 const priceIdBlock = `      { price: priceId, quantity: 1 },`;
 if (service.includes(priceDataBlock)) {
   service = service.replace(priceDataBlock, priceIdBlock);
@@ -74,14 +74,14 @@ if (service.includes(priceDataBlock)) {
 }
 
 for (const marker of [
-  'officialPriceId: "price_1TunidAYtu5nLhAZ4jIMKk3V"',
-  'officialPriceId: "price_1TunhwAYtu5nLhAZtAIPYFPX"',
-  'officialPriceId: "price_1TungXAYtu5nLhAZDHUOzXF9"',
-  "pkg.officialPriceId",
+  'testPriceId: "price_1TyO8kAYtu5nLhAZFL8AJ8F9"',
+  'testPriceId: "price_1TyOBZAYtu5nLhAZ2JqbZb09"',
+  'testPriceId: "price_1TyOCZAYtu5nLhAZkTdXPnee"',
+  "pkg.testPriceId",
 ]) {
   if (!route.includes(marker)) throw new Error(`Video catalog validation failed: ${marker}`);
 }
-if (route.includes("pkg.testPriceId,")) throw new Error("Test video prices are still active");
+if (route.includes("pkg.officialPriceId,")) throw new Error("Official video prices are still active during test mode");
 if (/id: "video_(5|7)"/.test(route)) throw new Error("Legacy video packages remain in API catalog");
 if (!service.includes("priceId: string") || !service.includes("{ price: priceId, quantity: 1 }")) {
   throw new Error("Stripe video checkout is not using a registered Price ID");
@@ -89,4 +89,4 @@ if (!service.includes("priceId: string") || !service.includes("{ price: priceId,
 
 writeFileSync(stripeRouteUrl, route);
 writeFileSync(stripeServiceUrl, service);
-console.log("Official video Stripe Price IDs active: R$ 35,00, R$ 65,00 and R$ 90,00.");
+console.log("Video test Stripe Price IDs active for 10, 20 and 30 video packages.");
