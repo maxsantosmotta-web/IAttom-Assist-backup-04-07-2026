@@ -56,22 +56,26 @@ if (!videoFunctionMatch) throw new Error("Video checkout service function not fo
 
 let videoFunction = videoFunctionMatch[0];
 videoFunction = videoFunction.replace(
-  /  unitAmountBrl: number,/,
-  "  priceId: string,",
-);
-videoFunction = videoFunction.replace(
-  /    line_items: \[[\s\S]*?\n    \],\n    mode: "payment",/,
-  `    line_items: [{ price: priceId, quantity: 1 }],
-    mode: "payment",`,
+  /\bunitAmountBrl:\s*number,/,
+  "priceId: string,",
 );
 
-if (!videoFunction.includes("priceId: string")) {
+const lineItemsPattern = /line_items:\s*\[[\s\S]*?\],\s*mode:\s*"payment",/;
+if (!lineItemsPattern.test(videoFunction)) {
+  throw new Error("Video checkout line_items block not found");
+}
+videoFunction = videoFunction.replace(
+  lineItemsPattern,
+  'line_items: [{ price: priceId, quantity: 1 }],\n    mode: "payment",',
+);
+
+if (!/priceId:\s*string/.test(videoFunction)) {
   throw new Error("Video checkout parameter was not changed to priceId");
 }
-if (!videoFunction.includes('line_items: [{ price: priceId, quantity: 1 }]')) {
+if (!/line_items:\s*\[\{\s*price:\s*priceId,\s*quantity:\s*1\s*\}\]/.test(videoFunction)) {
   throw new Error("Video checkout line item is not using the registered Price ID");
 }
-if (videoFunction.includes("unitAmountBrl") || videoFunction.includes("price_data:")) {
+if (/unitAmountBrl|price_data:/.test(videoFunction)) {
   throw new Error("Video checkout still contains dynamic or official amount data");
 }
 
