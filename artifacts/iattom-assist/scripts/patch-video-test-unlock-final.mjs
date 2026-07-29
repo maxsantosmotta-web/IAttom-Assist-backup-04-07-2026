@@ -1,16 +1,42 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const creativeUrl = new URL("../src/pages/dashboard/CreativeGenerator.tsx", import.meta.url);
-let source = readFileSync(creativeUrl, "utf8");
+const billingUrl = new URL("../src/pages/dashboard/Billing.tsx", import.meta.url);
 
-source = source.replace(
-  "const canOpenImageMotion = isAdmin || (videoBalance ?? 0) > 0;",
-  "const canOpenImageMotion = true;",
+let creative = readFileSync(creativeUrl, "utf8");
+let billing = readFileSync(billingUrl, "utf8");
+
+creative = creative
+  .replace(
+    "const canOpenImageMotion = isAdmin || (videoBalance ?? 0) > 0;",
+    "const canOpenImageMotion = true;",
+  )
+  .replace(
+    'if (!isAdmin && !["pro", "business", "agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["pro", "business", "agency"]} moduleName="Criar Imagem e Vídeo" />;',
+    'if (false && !isAdmin && !["pro", "business", "agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["pro", "business", "agency"]} moduleName="Criar Imagem e Vídeo" />;',
+  );
+
+billing = billing.replace(
+  `  const handleBuyVideoPack = async (packId: string) => {
+    if (currentPlan === "free") {
+      setShowComparison(true);
+      return;
+    }
+    setVideoPending(packId);`,
+  `  const handleBuyVideoPack = async (packId: string) => {
+    setVideoPending(packId);`,
 );
 
-if (!source.includes("const canOpenImageMotion = true;")) {
-  throw new Error("Final video module unlock was not applied");
+for (const marker of [
+  "const canOpenImageMotion = true;",
+  "if (false && !isAdmin",
+  "const handleBuyVideoPack = async (packId: string) => {\n    setVideoPending(packId);",
+]) {
+  if (!(creative + billing).includes(marker)) {
+    throw new Error(`Final commercial video unlock missing: ${marker}`);
+  }
 }
 
-writeFileSync(creativeUrl, source);
-console.log("Vídeo com Imagem module unlocked for commercial testing.");
+writeFileSync(creativeUrl, creative);
+writeFileSync(billingUrl, billing);
+console.log("Video package checkout and Criar Imagem e Vídeo module unlocked for FREE commercial-test accounts.");
