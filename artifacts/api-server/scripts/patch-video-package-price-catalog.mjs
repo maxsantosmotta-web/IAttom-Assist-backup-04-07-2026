@@ -50,28 +50,32 @@ route = route.replace(
       );`,
 );
 
-service = service.replace(
-  `  videos: number,\n  unitAmountBrl: number,\n  packageName: string,`,
-  `  videos: number,\n  priceId: string,\n  packageName: string,`,
+const videoFunctionPattern = /export async function createVideoPackCheckoutSession\([\s\S]*?\n}\n/;
+const videoFunctionMatch = service.match(videoFunctionPattern);
+if (!videoFunctionMatch) throw new Error("Video checkout service function not found");
+
+let videoFunction = videoFunctionMatch[0];
+videoFunction = videoFunction.replace(
+  /  unitAmountBrl: number,/,
+  "  priceId: string,",
+);
+videoFunction = videoFunction.replace(
+  /    line_items: \[[\s\S]*?\n    \],\n    mode: "payment",/,
+  `    line_items: [{ price: priceId, quantity: 1 }],
+    mode: "payment",`,
 );
 
-const priceDataBlock = `      {
-         price_data: {
-           currency: "brl",
-           unit_amount: unitAmountBrl,
-           product_data: {
-             name: packageName,
-             description: \`${"${videos}"} vídeo${"${videos !== 1 ? \"s\" : \"\"}"} — compra avulsa (não expiram)\`,
-           },
-         },
-         quantity: 1,
-       },`;
-const priceIdBlock = `      { price: priceId, quantity: 1 },`;
-if (service.includes(priceDataBlock)) {
-  service = service.replace(priceDataBlock, priceIdBlock);
-} else if (!service.includes("{ price: priceId, quantity: 1 }")) {
-  throw new Error("Video Stripe line item marker not found");
+if (!videoFunction.includes("priceId: string")) {
+  throw new Error("Video checkout parameter was not changed to priceId");
 }
+if (!videoFunction.includes('line_items: [{ price: priceId, quantity: 1 }]')) {
+  throw new Error("Video checkout line item is not using the registered Price ID");
+}
+if (videoFunction.includes("unitAmountBrl") || videoFunction.includes("price_data:")) {
+  throw new Error("Video checkout still contains dynamic or official amount data");
+}
+
+service = service.replace(videoFunctionPattern, videoFunction);
 
 for (const marker of [
   'testPriceId: "price_1TyO8kAYtu5nLhAZFL8AJ8F9"',
@@ -83,10 +87,7 @@ for (const marker of [
 }
 if (route.includes("pkg.officialPriceId,")) throw new Error("Official video prices are still active during test mode");
 if (/id: "video_(5|7)"/.test(route)) throw new Error("Legacy video packages remain in API catalog");
-if (!service.includes("priceId: string") || !service.includes("{ price: priceId, quantity: 1 }")) {
-  throw new Error("Stripe video checkout is not using a registered Price ID");
-}
 
 writeFileSync(stripeRouteUrl, route);
 writeFileSync(stripeServiceUrl, service);
-console.log("Video test Stripe Price IDs active for 10, 20 and 30 video packages.");
+console.log("Video checkout now uses only the verified test Stripe Price IDs.");
