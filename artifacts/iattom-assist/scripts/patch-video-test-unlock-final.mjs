@@ -57,8 +57,23 @@ creative = creative.replace(
   `if (false && !isAdmin && !["pro", "business", "agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["pro", "business", "agency"]} moduleName="Criar Imagem e Vídeo" />;`,
 );
 
+creative = creative.replace(
+  `  const canOpenImageMotion = isAdmin || (videoBalance ?? 0) > 0;`,
+  `  const canOpenImageMotion = true;\n  const [videoBalanceDialogOpen, setVideoBalanceDialogOpen] = useState(false);`,
+);
+
+const executionStart = creative.indexOf("<ImageMotionExecution");
+if (executionStart >= 0 && !creative.includes("video-balance-click-gate")) {
+  const executionEnd = creative.indexOf("/>", executionStart);
+  if (executionEnd > executionStart) {
+    const executionBlock = creative.slice(executionStart, executionEnd + 2);
+    const gatedExecution = `<div\n                      data-testid="video-balance-click-gate"\n                      onClickCapture={(event) => {\n                        if (!isAdmin && (videoBalance ?? 0) <= 0) {\n                          const target = event.target as HTMLElement;\n                          if (target.closest("button")) {\n                            event.preventDefault();\n                            event.stopPropagation();\n                            setVideoBalanceDialogOpen(true);\n                          }\n                        }\n                      }}\n                    >\n                      ${executionBlock}\n                    </div>\n                    <Dialog open={videoBalanceDialogOpen} onOpenChange={setVideoBalanceDialogOpen}>\n                      <DialogContent className="bg-[#111111] border-white/10 max-w-md">\n                        <DialogHeader>\n                          <DialogTitle>Saldo de vídeos com efeito insuficiente</DialogTitle>\n                        </DialogHeader>\n                        <p className="text-sm text-muted-foreground">Adquira um pacote avulso</p>\n                        <DialogFooter>\n                          <Button variant="outline" onClick={() => setVideoBalanceDialogOpen(false)}>Fechar</Button>\n                        </DialogFooter>\n                      </DialogContent>\n                    </Dialog>`;
+    creative = creative.slice(0, executionStart) + gatedExecution + creative.slice(executionEnd + 2);
+  }
+}
+
 billing = billing.replaceAll("Pacotes de Vídeo</p>", "Pacotes de Vídeo com Efeito</p>");
 
 writeFileSync(creativeUrl, creative);
 writeFileSync(billingUrl, billing);
-console.log("Final video test patch applied; Vite will validate the generated frontend.");
+console.log("Video packages remain purchasable; video generation now checks balance only when the user clicks Gerar Vídeo.");
