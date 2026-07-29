@@ -131,7 +131,7 @@ creative = replaceRequired(
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4 mr-2" />
-                          Gerar {selectedFormats.length <= 1 ? "Imagem" : \`${selectedFormats.length} Imagens\`}
+                          Gerar {selectedFormats.length <= 1 ? "Imagem" : \`\${selectedFormats.length} Imagens\`}
                         </>
                       )}
                     </Button>
@@ -156,7 +156,7 @@ creative = replaceRequired(
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4 mr-2" />
-                            Gerar {selectedFormats.length <= 1 ? "Imagem" : \`${selectedFormats.length} Imagens\`}
+                            Gerar {selectedFormats.length <= 1 ? "Imagem" : \`\${selectedFormats.length} Imagens\`}
                           </>
                         )}
                       </Button>
