@@ -6,51 +6,6 @@ function replaceRequired(source, before, after, label) {
   return source.replace(before, after);
 }
 
-const billingUrl = new URL("../src/pages/dashboard/Billing.tsx", import.meta.url);
-let billing = readFileSync(billingUrl, "utf8");
-
-billing = replaceRequired(
-  billing,
-  `              <div
-                key={pkg.id}
-                className={\`relative flex flex-col rounded-xl border pt-8 px-5 pb-5 transition-all duration-200 \${pkg.bg} \${pkg.border}\`}
-              >`,
-  `              <div
-                key={pkg.id}
-                className={\`relative flex flex-col rounded-xl border pt-8 px-5 pb-5 opacity-60 cursor-not-allowed \${pkg.bg} \${pkg.border}\`}
-              >
-                <div className="absolute inset-0 z-10 rounded-xl bg-black/25 pointer-events-none" />
-                <div className="absolute top-3 right-3 z-20 inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/70 px-2 py-1 text-[10px] font-semibold text-zinc-300">
-                  <Lock className="w-3 h-3" /> Em breve
-                </div>`,
-  "video package card lock",
-);
-
-billing = replaceRequired(
-  billing,
-  `                <Button
-                  size="sm"
-                  className={\`w-full h-9 text-xs \${pkg.btn}\`}
-                  onClick={() => handleBuyVideoPack(pkg.id)}
-                  disabled={isPending || videoPending !== null}
-                >
-                  {isPending
-                    ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Aguarde...</>
-                    : <><ShoppingCart className="w-3.5 h-3.5 mr-1.5" />Comprar</>
-                  }
-                </Button>`,
-  `                <Button
-                  size="sm"
-                  className="w-full h-9 text-xs bg-white/5 text-zinc-500 border border-white/10 cursor-not-allowed"
-                  disabled
-                >
-                  <Lock className="w-3.5 h-3.5 mr-1.5" /> Em breve
-                </Button>`,
-  "video package checkout lock",
-);
-
-writeFileSync(billingUrl, billing);
-
 const creativeUrl = new URL("../src/pages/dashboard/CreativeGenerator.tsx", import.meta.url);
 let creative = readFileSync(creativeUrl, "utf8");
 
@@ -66,7 +21,7 @@ creative = replaceRequired(
   creative,
   `  const [videoBalance, setVideoBalance] = useState<number | null>(null);`,
   `  const [videoBalance, setVideoBalance] = useState<number | null>(null);
-  const canOpenImageMotion = isAdmin || (videoBalance ?? 0) > 0;
+  const canOpenImageMotion = true;
   const [imageMotionSource, setImageMotionSource] = useState<ImageMotionSource | null>(null);
   const [imageMotionResetSignal, setImageMotionResetSignal] = useState(0);`,
   "image motion access and source state",
@@ -176,7 +131,7 @@ creative = replaceRequired(
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4 mr-2" />
-                          Gerar {selectedFormats.length <= 1 ? "Imagem" : \`\${selectedFormats.length} Imagens\`}
+                          Gerar {selectedFormats.length <= 1 ? "Imagem" : \`${selectedFormats.length} Imagens\`}
                         </>
                       )}
                     </Button>
@@ -201,7 +156,7 @@ creative = replaceRequired(
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4 mr-2" />
-                            Gerar {selectedFormats.length <= 1 ? "Imagem" : \`\${selectedFormats.length} Imagens\`}
+                            Gerar {selectedFormats.length <= 1 ? "Imagem" : \`${selectedFormats.length} Imagens\`}
                           </>
                         )}
                       </Button>
@@ -236,4 +191,4 @@ if (creative.includes("ImageMotionTestDialog") || creative.includes("imageMotion
 }
 
 writeFileSync(creativeUrl, creative);
-console.log("Shared flow uses the standard Gerar Vídeo button style while image-motion execution remains protected until provider connection.");
+console.log("Video package checkout remains open and the Vídeo com Imagem module is unlocked for commercial testing.");
