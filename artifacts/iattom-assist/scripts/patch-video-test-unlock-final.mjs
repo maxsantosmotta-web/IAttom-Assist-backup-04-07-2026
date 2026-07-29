@@ -52,6 +52,34 @@ billing = billing.replace(
   `  const handleBuyVideoPack = async (packId: string) => {\n    setVideoPending(packId);`,
 );
 
+const videoMapStart = billing.indexOf("{VIDEO_PACKAGES.map((pkg) => {");
+const videoSectionEnd = billing.indexOf("{/* ── Referral CTA", videoMapStart);
+if (videoMapStart >= 0 && videoSectionEnd > videoMapStart) {
+  let section = billing.slice(videoMapStart, videoSectionEnd);
+
+  section = section
+    .replaceAll(" opacity-60 cursor-not-allowed", "")
+    .replace(/\n\s*<div className="absolute inset-0 z-10 rounded-xl bg-black\/25 pointer-events-none" \/>/g, "")
+    .replace(/\n\s*<div className="absolute top-3 right-3 z-20[\s\S]*?<Lock className="w-3 h-3" \/>\s*Em breve\s*<\/div>/g, "");
+
+  section = section.replace(
+    /<Button[\s\S]*?<Lock className="w-3\.5 h-3\.5 mr-1\.5" \/>\s*Em breve[\s\S]*?<\/Button>/,
+    `<Button
+                  size="sm"
+                  className={\`w-full h-9 text-xs \${pkg.btn}\`}
+                  onClick={() => handleBuyVideoPack(pkg.id)}
+                  disabled={isPending || videoPending !== null}
+                >
+                  {isPending
+                    ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />Aguarde...</>
+                    : <><ShoppingCart className="w-3.5 h-3.5 mr-1.5" />Comprar</>
+                  }
+                </Button>`,
+  );
+
+  billing = billing.slice(0, videoMapStart) + section + billing.slice(videoSectionEnd);
+}
+
 creative = creative.replace(
   /if \(!isAdmin && !\["pro", "business", "agency"\]\.includes\(planSlug\)\) return <ModuleLockGate allowedPlans=\{\["pro", "business", "agency"\]\} moduleName="Criar Imagem e Vídeo" \/>;/,
   `if (false && !isAdmin && !["pro", "business", "agency"].includes(planSlug)) return <ModuleLockGate allowedPlans={["pro", "business", "agency"]} moduleName="Criar Imagem e Vídeo" />;`,
@@ -117,4 +145,4 @@ billing = billing.replaceAll("Pacotes de Vídeo</p>", "Pacotes de Vídeo com Efe
 
 writeFileSync(creativeUrl, creative);
 writeFileSync(billingUrl, billing);
-console.log("Video packages remain purchasable; video generation checks balance only when the user clicks Gerar Vídeo.");
+console.log("Video test packages are active, visually enabled, and connected to checkout.");
