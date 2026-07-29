@@ -52,6 +52,15 @@ if (!page.includes("async function fetchDeletedUsers")) {
     void fetchDeletedUsers();
   }, []);
 
+  useEffect(() => {
+    const handleDeletedUser = () => {
+      void refetch();
+      void fetchDeletedUsers();
+    };
+    window.addEventListener("iattom:admin-user-deleted", handleDeletedUser);
+    return () => window.removeEventListener("iattom:admin-user-deleted", handleDeletedUser);
+  }, [refetch]);
+
 `;
   page = page.replace(functionAnchor, `${functions}${functionAnchor}`);
 }
@@ -144,6 +153,10 @@ enhancer = enhancer.replace(
   "Excluir o usuário ${email}?\\n\\nEle perderá plano, saldos e acesso, e será movido para Usuários excluídos.",
   "Excluir o usuário ${email}?",
 );
+enhancer = enhancer.replace(
+  "    window.location.reload();",
+  '    window.dispatchEvent(new CustomEvent("iattom:admin-user-deleted"));',
+);
 
 for (const marker of [
   "type DeletedUser",
@@ -153,12 +166,13 @@ for (const marker of [
   "window.location.reload()",
   "const activeUsers =",
   "activeUsers.map((user) => {",
+  "iattom:admin-user-deleted",
 ]) {
-  if (!page.includes(marker)) throw new Error(`Deleted users frontend marker missing: ${marker}`);
+  if (!page.includes(marker) && !enhancer.includes(marker)) throw new Error(`Deleted users frontend marker missing: ${marker}`);
 }
 if (page.includes("const activeUsers = activeUsers")) throw new Error("Active users self-reference detected");
 if (enhancer.includes("Ele perderá plano")) throw new Error("Verbose deletion confirmation remains");
 
 fs.writeFileSync(pagePath, page);
 fs.writeFileSync(enhancerPath, enhancer);
-console.log("Admin users page hides deleted records from active rows and counters, reloads fully, and keeps the deleted audit block.");
+console.log("Admin user deletion now updates active users and deleted history inline without a full-page reload.");
