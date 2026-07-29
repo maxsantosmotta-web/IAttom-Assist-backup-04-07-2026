@@ -12,6 +12,18 @@ import { PlanComparisonModal } from "@/components/PlanComparisonModal";
 const GLOBAL_BETA = import.meta.env.VITE_GLOBAL_BETA_MODE === "true";
 const OWNER_EMAIL = "maxsantosmotta@gmail.com";
 
+const FEATURE_MODULE_NAMES: Record<FeatureKey, string> = {
+  product_discovery: "Buscar Produto",
+  product_validation: "Validar Produto",
+  campaign: "Criar Campanha",
+  content: "Criar Conteúdo",
+  creativeImage1: "Imagem",
+  creativeImage2: "Imagem",
+  creativeImage3: "Imagem",
+  video_script: "Script de Vídeo",
+  prompt_creation: "Criar Prompt",
+};
+
 interface CreditsGateProps {
   feature: FeatureKey;
   onSuccess: (charge: () => void) => void;
@@ -91,10 +103,9 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
         (p) => PLAN_CREDITS[p] > currentPlanLimit,
       );
 
-  const labelGeneral = "Créditos Insuficientes";
-  const labelCreative = "Saldo de imagem";
-  const titleGeneral = "Créditos insuficientes";
-  const titleCreative = "Saldo de imagem insuficiente";
+  const moduleName = FEATURE_MODULE_NAMES[feature];
+  const topLabel = `SALDO DE ${moduleName.toUpperCase()}`;
+  const title = `Saldo de ${moduleName} insuficiente`;
 
   return (
     <>
@@ -113,23 +124,13 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
                     : <AlertTriangle className="w-4 h-4 text-amber-400" />
                   }
                   <p className="text-xs text-amber-400 uppercase tracking-widest font-medium">
-                    {insufficient?.isCreative ? labelCreative : labelGeneral}
+                    {topLabel}
                   </p>
                 </div>
                 <h2 className="text-xl font-bold text-white mb-1">
-                  {insufficient?.isCreative ? titleCreative : titleGeneral}
+                  {title}
                 </h2>
-                {insufficient?.isCreative ? (
-                  <p className="text-sm text-muted-foreground">Adquira um pacote avulso</p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Esta ação custa{" "}
-                    <span className="text-white font-semibold">
-                      {insufficient?.required} crédito{insufficient?.isCreative ? "s de criativo" : "s"}
-                    </span>. Seu saldo{insufficient?.isCreative ? " de criativo" : ""} é{" "}
-                    <span className="text-amber-400 font-semibold">{insufficient?.balance}</span>.
-                  </p>
-                )}
+                <p className="text-sm text-muted-foreground">Adquira um pacote avulso</p>
               </div>
               <button
                 onClick={() => setInsufficient(null)}
@@ -141,27 +142,6 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
           </div>
 
           <div className="p-6 space-y-3">
-            {!insufficient?.isCreative && hasUpgrade ? (
-              <>
-                <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium mb-4">
-                  Faça upgrade para obter mais créditos
-                </p>
-                <Button
-                  className="w-full bg-primary text-black hover:bg-primary/90 font-semibold"
-                  onClick={() => {
-                    setInsufficient(null);
-                    setShowPlans(true);
-                  }}
-                >
-                  <Zap className="w-3.5 h-3.5 mr-2 fill-black" />
-                  Comparar Planos
-                </Button>
-              </>
-            ) : !insufficient?.isCreative ? (
-              <p className="text-sm text-muted-foreground">
-                Faça um upgrade de plano ou adquira um pacote avulso.
-              </p>
-            ) : null}
             <Button
               variant="outline"
               className="w-full border-white/10 hover:border-primary/30 text-sm"
