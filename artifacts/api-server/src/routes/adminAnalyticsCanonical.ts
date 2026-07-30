@@ -1,12 +1,10 @@
 import { Router, type IRouter } from "express";
-import { and, count, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { count, desc, eq, gte, sql } from "drizzle-orm";
 import {
   db,
   historyTable,
   projectsTable,
-  savedItemsTable,
   users,
-  videoTransactions,
 } from "@workspace/db";
 import { GetAdminAnalyticsResponse } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
@@ -44,8 +42,6 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
     newUsersByMonth,
     newProjectsByMonth,
     moduleRows,
-    completedVideoUses,
-    persistedVideoAssets,
   ] = await Promise.all([
     db.select({ count: count() }).from(users).where(eq(users.plan, "free")),
     db.select({ count: count() }).from(users).where(eq(users.plan, "pro")),
@@ -71,22 +67,8 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
     db
       .select({ module: historyTable.module, count: count() })
       .from(historyTable)
-      .where(isNull(historyTable.deletedAt))
       .groupBy(historyTable.module)
       .orderBy(desc(count())),
-    db
-      .select({ count: count() })
-      .from(videoTransactions)
-      .where(and(
-        eq(videoTransactions.type, "use"),
-        sql`${videoTransactions.amount} < 0`,
-      )),
-    db
-      .select({
-        count: sql<number>`coalesce(sum(jsonb_array_length(coalesce(nullif(${savedItemsTable.videosData}, ''), '[]')::jsonb)), 0)::int`,
-      })
-      .from(savedItemsTable)
-      .where(isNull(savedItemsTable.deletedAt)),
   ]);
 
   const userMap = new Map(newUsersByMonth.map((row) => [row.month.slice(0, 7), row.total]));
@@ -103,20 +85,7 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
     };
   });
 
-  const persistedVideoCount = Number(persistedVideoAssets[0]?.count ?? 0);
-  const completedVideoCount = Number(completedVideoUses[0]?.count ?? 0);
-  const trackedVideoCount = Number(
-    moduleRows.find((row) => row.module === "video_effect")?.count ?? 0,
-  );
-  const videoEffectCount = Math.max(
-    persistedVideoCount,
-    completedVideoCount + trackedVideoCount,
-  );
-
-  const canonicalModuleRows = [
-    ...moduleRows.filter((row) => row.module !== "video_effect"),
-    { module: "video_effect", count: videoEffectCount },
-  ].sort((left, right) => {
+  const canonicalModuleRows = [...moduleRows].sort((left, right) => {
     const orderDifference = moduleOrder(left.module) - moduleOrder(right.module);
     return orderDifference !== 0 ? orderDifference : Number(right.count) - Number(left.count);
   });
