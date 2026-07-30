@@ -133,63 +133,70 @@ analytics = splitActionRules(analytics);
 activity = splitActionRules(activity);
 
 function syncOverviewActionChart(source) {
-  if (source.includes("canonicalOverviewMediaCounts")) return source;
-
-  const pattern = /  const actionDonut = useMemo\(\(\) => \{[\s\S]*?\n  \}, \[activity\]\);/;
+  const pattern = /  const actionDonut = useMemo\(\(\) => \{[\s\S]*?\n  \}, \[[^\]]*\]\);/;
   if (!pattern.test(source)) throw new Error("Overview action chart block not found");
 
   const replacement = `  const actionDonut = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of activity ?? []) {
-      const label = normalizeAction(item.action);
-      counts.set(label, (counts.get(label) ?? 0) + 1);
-    }
-
-    for (const label of [
-      "Criativos Gerados",
-      "Imagens geradas",
-      "Gerar Imagem",
-      "Imagens e vídeos criados",
-      "Vídeos com efeito gerados",
-      "Vídeo com Efeito",
-    ]) {
-      counts.delete(label);
-    }
-
-    const canonicalOverviewMediaCounts = new Map<string, number>(
-      (analytics?.featureUsage ?? []).map((item) => [
-        String(item.name ?? "").toLowerCase().replaceAll(" ", "_"),
-        Number(item.count ?? 0),
-      ]),
-    );
-
-    const imageCount = canonicalOverviewMediaCounts.get("creative");
-    const videoCount = canonicalOverviewMediaCounts.get("video_effect");
-    if (imageCount !== undefined) counts.set("Gerar Imagem", imageCount);
-    if (videoCount !== undefined) counts.set("Vídeo com Efeito", videoCount);
-
-    const priority = (label: string) => {
-      if (label === "Gerar Imagem") return 0;
-      if (label === "Vídeo com Efeito") return 1;
-      return 2;
-    };
-
-    return [...counts.entries()]
-      .filter(([, value]) => value > 0)
-      .sort((a, b) => priority(a[0]) - priority(b[0]) || b[1] - a[1])
+    return (analytics?.featureUsage ?? [])
+      .filter((item) => Number(item.count ?? 0) > 0)
       .slice(0, 9)
-      .map(([label, value], index) => ({ label, value, color: FEATURE_COLORS[index % FEATURE_COLORS.length] }));
-  }, [activity, analytics]);`;
+      .map((item, index) => ({
+        label: FEATURE_NAME_MAP[item.name] ?? item.name,
+        value: Number(item.count ?? 0),
+        color: FEATURE_COLORS[index % FEATURE_COLORS.length],
+      }));
+  }, [analytics]);`;
 
   return source.replace(pattern, replacement);
 }
 
 overview = syncOverviewActionChart(overview);
 
+function syncActivityCanonicalCharts(source) {
+  if (source.includes("canonicalActionLabelByKey")) return source;
+  const pattern = /    const canonicalMediaCounts = new Map<string, number>\([\s\S]*?    const actionChart = Object\.entries\(actionMap\)[\s\S]*?\.map\(\(\[label, value\], index\) => \(\{ label, value, color: FALLBACK_COLORS\[index % FALLBACK_COLORS\.length\] \}\)\);/;
+  if (!pattern.test(source)) throw new Error("Activity canonical chart block not found");
+
+  const replacement = `    const canonicalActionLabelByKey: Record<string, string> = {
+      creative: "Gerar Imagem",
+      video_effect: "Vídeo com Efeito",
+      campaign: "Criar Campanha",
+      product_discovery: "Buscar Produtos",
+      product_validation: "Validar Produto",
+      content: "Criar Conteúdo",
+      video_script: "Scripts de Vídeo",
+      prompt: "Prompts",
+      marketing: "Marketing",
+    };
+    const canonicalRows = mediaMetrics
+      .map((item) => ({
+        key: item.name.toLowerCase().replaceAll(" ", "_"),
+        count: Number(item.count ?? 0),
+      }))
+      .filter((item) => item.count > 0);
+
+    const moduleChart = canonicalRows.slice(0, 9).map(({ key, count }, index) => ({
+      label: translateModule(key),
+      value: count,
+      color: MODULE_COLORS[key] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
+    }));
+
+    const actionChart = canonicalRows.slice(0, 10).map(({ key, count }, index) => ({
+      label: canonicalActionLabelByKey[key] ?? translateModule(key),
+      value: count,
+      color: MODULE_COLORS[key] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
+    }));`;
+
+  return source.replace(pattern, replacement);
+}
+
+activity = syncActivityCanonicalCharts(activity);
+
 if (!finance.includes("registeredResponse")) throw new Error("Canonical finance merge missing");
 if (!overview.includes("Gerar Imagem") || !overview.includes('"Video Effect": "Vídeo com Efeito"')) throw new Error("Overview image/video labels missing");
-if (!overview.includes("canonicalOverviewMediaCounts") || !overview.includes('counts.set("Vídeo com Efeito", videoCount)')) throw new Error("Overview action chart video-effect synchronization missing");
+if (!overview.includes("analytics?.featureUsage") || !overview.includes("const actionDonut")) throw new Error("Overview action chart canonical synchronization missing");
 if (!analytics.includes("Gerar Imagem") || !analytics.includes('"Video Effect": "Vídeo com Efeito"')) throw new Error("Analytics image/video labels missing");
+if (!activity.includes("canonicalActionLabelByKey")) throw new Error("Activity canonical charts missing");
 if (!translations.includes("Gerar Imagem") || !translations.includes('video_effect: "Vídeo com Efeito"')) throw new Error("Shared activity image/video labels missing");
 if ([overview, analytics, translations].some((source) => source.includes('"Find Products": "Find Products"'))) throw new Error("Untranslated Find Products mapping remains");
 
@@ -198,7 +205,7 @@ fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(analyticsPath, analytics);
 fs.writeFileSync(activityPath, activity);
 fs.writeFileSync(translationsPath, translations);
-console.log("Admin charts keep Gerar Imagem and Vídeo com Efeito synchronized in module and action views.");
+console.log("Admin charts now use the canonical baseline plus post-cutoff executions.");
 
 await import("./patch-admin-media-metrics-final.mjs");
 await import("./patch-admin-final-label-guard.mjs");
