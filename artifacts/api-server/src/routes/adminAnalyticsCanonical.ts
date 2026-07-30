@@ -22,6 +22,7 @@ const BASELINE_COUNTS: Record<string, number> = {
   content: 3,
   video_script: 2,
   prompt: 4,
+  help: 1,
 };
 
 const MODULE_ORDER = [
@@ -33,6 +34,7 @@ const MODULE_ORDER = [
   "content",
   "video_script",
   "prompt",
+  "help",
   "marketing",
 ] as const;
 
