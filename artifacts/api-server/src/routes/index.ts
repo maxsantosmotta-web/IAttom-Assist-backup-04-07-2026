@@ -36,6 +36,7 @@ import kiwifyOAuthExperimentRouter from "./kiwifyOAuthExperiment.js";
 import helpRouter from "./help.js";
 import videosRouter from "./videos.js";
 import videoEffectBillingRouter from "./videoEffectBilling.js";
+import imageMotionAdminAnalyticsRouter from "./imageMotionAdminAnalytics.js";
 import imageMotionRouter from "./imageMotion.js";
 import imageMotionTrashRouter from "./imageMotionTrash.js";
 
@@ -79,6 +80,8 @@ router.use(helpRouter);
 router.use(videosRouter);
 // Camada comercial isolada. Admin segue para o roteador congelado via next().
 router.use(videoEffectBillingRouter);
+// Registra apenas a conclusão administrativa; não altera o fluxo congelado.
+router.use(imageMotionAdminAnalyticsRouter);
 router.use(imageMotionRouter);
 router.use(imageMotionTrashRouter);
 
