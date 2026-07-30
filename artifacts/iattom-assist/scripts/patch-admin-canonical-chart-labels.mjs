@@ -12,54 +12,64 @@ let activity = fs.readFileSync(paths.activity, "utf8");
 let overview = fs.readFileSync(paths.overview, "utf8");
 let analytics = fs.readFileSync(paths.analytics, "utf8");
 
-const modules = `export const MODULE_LABELS: Record<string, string> = {
-  campaign: "Criar Campanha", Campaign: "Criar Campanha",
-  content: "Criar Conteúdo", Content: "Criar Conteúdo",
-  creative: "Criar Imagem e Vídeo", Creative: "Criar Imagem e Vídeo",
-  video_script: "Scripts de Vídeo", "Video Script": "Scripts de Vídeo",
-  product_discovery: "Buscar Produtos", find_products: "Buscar Produtos",
-  "Find Products": "Buscar Produtos", "Product Discovery": "Buscar Produtos",
-  product_validation: "Validar Produto", validate_products: "Validar Produto",
-  "Validate Products": "Validar Produto", "Product Validation": "Validar Produto",
-  prompt_creation: "Criar Prompt", prompt: "Criar Prompt",
-  help: "IAttom Help", iattom_help: "IAttom Help", Help: "IAttom Help",
-  marketing: "Marketing",
-};`;
-translations = translations.replace(/export const MODULE_LABELS: Record<string, string> = \{[\s\S]*?\n\};/, modules);
+// Keep the existing functions intact. Only replace user-visible labels and exact match rules.
+const labelReplacements = [
+  ["Descoberta de Produto", "Buscar Produtos"],
+  ["Descobertas Executadas", "Buscas de produtos executadas"],
+  ["Validação de Produto", "Validar Produto"],
+  ["Validação de Produtos", "Validar Produto"],
+  ["Validações Executadas", "Validações de produtos executadas"],
+  ["Criativo", "Criar Imagem e Vídeo"],
+  ["Criativos Gerados", "Imagens e vídeos criados"],
+  ["Roteiro de Vídeo", "Scripts de Vídeo"],
+  ["Script de Vídeo", "Scripts de Vídeo"],
+  ["Scripts Criados", "Scripts de vídeo criados"],
+  ["Scripts Gerados", "Scripts de vídeo criados"],
+  ["Campanha", "Criar Campanha"],
+  ["Campanhas Criadas", "Campanhas criadas"],
+  ["Conteúdo", "Criar Conteúdo"],
+  ["Conteúdos Criados", "Conteúdos criados"],
+  ["Prompts Criados", "Prompts criados"],
+  ["Help", "IAttom Help"],
+];
 
-const normalize = `function normalizeAction(action: string): string {
-  const base = action.split(":")[0].trim();
-  if (/campaign.*creat|creat.*campaign|campanha.*cria|entrega.*criad/i.test(base)) return "Campanhas criadas";
-  if (/content.*creat|creat.*content|content.*gen|gen.*content|conteúdo/i.test(base)) return "Conteúdos criados";
-  if (/script.*creat|script.*gen|video.?script|roteiro/i.test(base)) return "Scripts de vídeo criados";
-  if (/creative.*gen|gen.*creative|criativo|imagem.*gerad|vídeo.*gerad/i.test(base)) return "Imagens e vídeos criados";
-  if (/find.?products|product.*discover|descoberta|buscar.*produto/i.test(base)) return "Buscas de produtos executadas";
-  if (/validat|validação/i.test(base)) return "Validações de produtos executadas";
-  if (/prompt/i.test(base)) return "Prompts criados";
-  if (/iattom.*help|help/i.test(base)) return "IAttom Help utilizado";
-  return base.length > 0 ? base : action;
-}`;
-
-function patchNormalize(source) {
-  if (!source.includes("function normalizeAction(action: string): string")) return source;
-  return source.replace(/function normalizeAction\(action: string\): string \{[\s\S]*?\n\}/, normalize);
+function applyVisibleLabels(source) {
+  for (const [from, to] of labelReplacements) {
+    source = source.replaceAll(`\"${from}\"`, `\"${to}\"`);
+  }
+  return source;
 }
-activity = patchNormalize(activity);
-overview = patchNormalize(overview);
-analytics = patchNormalize(analytics);
 
-const featureMap = `const FEATURE_NAME_MAP: Record<string, string> = {
-  "Product Discovery": "Buscar Produtos", "Find Products": "Buscar Produtos",
-  "Product Validation": "Validar Produto", "Validate Products": "Validar Produto",
-  Campaign: "Criar Campanha", Content: "Criar Conteúdo",
-  Creative: "Criar Imagem e Vídeo", "Video Script": "Scripts de Vídeo",
-  Prompt: "Criar Prompt", Help: "IAttom Help", Marketing: "Marketing",
-};`;
-overview = overview.replace(/const FEATURE_NAME_MAP: Record<string, string> = \{[\s\S]*?\n\};/, featureMap);
-analytics = analytics.replace(/const FEATURE_NAME_MAP: Record<string, string> = \{[\s\S]*?\n\};/, featureMap);
+translations = applyVisibleLabels(translations);
+activity = applyVisibleLabels(activity);
+overview = applyVisibleLabels(overview);
+analytics = applyVisibleLabels(analytics);
+
+// Normalize old campaign action wording without replacing the whole function.
+activity = activity.replace(
+  "if (/campaign.*creat|creat.*campaign|campanha.*cria/i.test(base)) return \"Campanhas criadas\";",
+  "if (/campaign.*creat|creat.*campaign|campanha.*cria|entrega.*criad/i.test(base)) return \"Campanhas criadas\";",
+);
+
+// Normalize all historical product-search action variants without changing surrounding code.
+for (const target of [activity, overview, analytics]) {
+  void target;
+}
+activity = activity.replace(
+  "if (/discover|descoberta/i.test(base)) return \"Buscas de produtos executadas\";",
+  "if (/find.?products|product.*discover|discover|descoberta|buscar.*produto/i.test(base)) return \"Buscas de produtos executadas\";",
+);
+overview = overview.replace(
+  "if (/discover|descoberta/i.test(base)) return \"Buscas de produtos executadas\";",
+  "if (/find.?products|product.*discover|discover|descoberta|buscar.*produto/i.test(base)) return \"Buscas de produtos executadas\";",
+);
+analytics = analytics.replace(
+  "if (/discover|descoberta/i.test(base)) return \"Buscas de produtos executadas\";",
+  "if (/find.?products|product.*discover|discover|descoberta|buscar.*produto/i.test(base)) return \"Buscas de produtos executadas\";",
+);
 
 for (const marker of ["Buscar Produtos", "Validar Produto", "Criar Imagem e Vídeo", "Buscas de produtos executadas"]) {
-  if (!translations.includes(marker) && !activity.includes(marker) && !overview.includes(marker) && !analytics.includes(marker)) {
+  if (![translations, activity, overview, analytics].some((source) => source.includes(marker))) {
     throw new Error(`Canonical chart label missing: ${marker}`);
   }
 }
@@ -68,4 +78,4 @@ fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Administrative activity charts now use the same names as the platform menu.");
+console.log("Administrative activity chart labels were normalized without rewriting page functions.");
