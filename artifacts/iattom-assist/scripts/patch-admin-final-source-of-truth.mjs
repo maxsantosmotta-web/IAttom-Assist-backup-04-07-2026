@@ -4,11 +4,13 @@ const financePath = new URL("../src/pages/admin/AdminFinance.tsx", import.meta.u
 const overviewPath = new URL("../src/pages/admin/AdminOverview.tsx", import.meta.url);
 const analyticsPath = new URL("../src/pages/admin/AdminAnalytics.tsx", import.meta.url);
 const activityPath = new URL("../src/pages/admin/AdminActivity.tsx", import.meta.url);
+const translationsPath = new URL("../src/lib/eventTranslations.ts", import.meta.url);
 
 let finance = fs.readFileSync(financePath, "utf8");
 let overview = fs.readFileSync(overviewPath, "utf8");
 let analytics = fs.readFileSync(analyticsPath, "utf8");
 let activity = fs.readFileSync(activityPath, "utf8");
+let translations = fs.readFileSync(translationsPath, "utf8");
 
 if (!finance.includes("registeredResponse")) {
   const fetchStart = finance.indexOf('        const response = await fetch(`${BASE}/api/admin/financial-summary?refresh=${Date.now()}`, {');
@@ -55,7 +57,9 @@ const literalPairs = [
   ['"Product Discovery": "Descoberta de Produtos"', '"Product Discovery": "Buscar Produtos"'],
   ['"Product Discovery": "Descoberta de Produto"', '"Product Discovery": "Buscar Produtos"'],
   ['"Find Products": "Descoberta de Produtos"', '"Find Products": "Buscar Produtos"'],
+  ['"Find Products": "Find Products"', '"Find Products": "Buscar Produtos"'],
   ['product_discovery: "Descoberta de Produto"', 'product_discovery: "Buscar Produtos"'],
+  ['find_products: "Descoberta de Produto"', 'find_products: "Buscar Produtos"'],
   ['"Product Validation": "Validação de Produtos"', '"Product Validation": "Validar Produto"'],
   ['"Validate Products": "Validação de Produtos"', '"Validate Products": "Validar Produto"'],
   ['product_validation: "Validação de Produto"', 'product_validation: "Validar Produto"'],
@@ -63,13 +67,19 @@ const literalPairs = [
   ['campaign: "Campanha"', 'campaign: "Criar Campanha"'],
   ['Content: "Conteúdo"', 'Content: "Criar Conteúdo"'],
   ['content: "Conteúdo"', 'content: "Criar Conteúdo"'],
-  ['Creative: "Criativos"', 'Creative: "Criar Imagem e Vídeo"'],
-  ['creative: "Criativo"', 'creative: "Criar Imagem e Vídeo"'],
+  ['Creative: "Criativos"', 'Creative: "Gerar Imagem"'],
+  ['Creative: "Criar Imagem e Vídeo"', 'Creative: "Gerar Imagem"'],
+  ['creative: "Criativo"', 'creative: "Gerar Imagem"'],
+  ['creative: "Criar Imagem e Vídeo"', 'creative: "Gerar Imagem"'],
+  ['creative: "Criar Imagem e Vídeo"', 'creative: "Gerar Imagem"'],
+  ['"Video Effect": "Criar Imagem e Vídeo"', '"Video Effect": "Vídeo com Efeito"'],
+  ['video_effect: "Criar Imagem e Vídeo"', 'video_effect: "Vídeo com Efeito"'],
   ['"Video Script": "Roteiro de Vídeo"', '"Video Script": "Scripts de Vídeo"'],
   ['video_script: "Script de Vídeo"', 'video_script: "Scripts de Vídeo"'],
   ['return "Descobertas Executadas"', 'return "Buscas de produtos executadas"'],
   ['return "Validações Executadas"', 'return "Validações de produtos executadas"'],
-  ['return "Criativos Gerados"', 'return "Imagens e vídeos criados"'],
+  ['return "Criativos Gerados"', 'return "Imagens geradas"'],
+  ['return "Imagens e vídeos criados"', 'return "Imagens geradas"'],
   ['return "Campanhas Criadas"', 'return "Campanhas criadas"'],
   ['return "Conteúdos Criados"', 'return "Conteúdos criados"'],
   ['return "Scripts Criados"', 'return "Scripts de vídeo criados"'],
@@ -83,13 +93,51 @@ for (const [from, to] of literalPairs) {
   overview = overview.replaceAll(from, to);
   analytics = analytics.replaceAll(from, to);
   activity = activity.replaceAll(from, to);
+  translations = translations.replaceAll(from, to);
 }
 
+function addVideoEffectMap(source) {
+  if (source.includes('video_effect: "Vídeo com Efeito"') || source.includes('video_effect: { label: "Vídeo com Efeito"')) return source;
+  if (source.includes('video_script: "Scripts de Vídeo",')) {
+    return source.replace('video_script: "Scripts de Vídeo",', 'video_script: "Scripts de Vídeo",\n  video_effect: "Vídeo com Efeito",');
+  }
+  if (source.includes('video_script: { label: "Scripts de Vídeo"')) {
+    return source.replace(/(video_script: \{ label: "Scripts de Vídeo"[^\n]*\n)/, '$1  video_effect: { label: "Vídeo com Efeito", color: "#22D3EE", icon: Video },\n');
+  }
+  return source;
+}
+
+overview = addVideoEffectMap(overview);
+analytics = addVideoEffectMap(analytics);
+activity = addVideoEffectMap(activity);
+translations = addVideoEffectMap(translations);
+
+function splitActionRules(source) {
+  source = source.replace(
+    'if (/creative.*gen|gen.*creative|criativo|imagem.*gerad|vídeo.*gerad/i.test(base)) return "Imagens geradas";',
+    'if (/video.?effect|vídeo.*efeito|video.*generated|vídeo.*gerad/i.test(base)) return "Vídeos com efeito gerados";\n  if (/creative.*gen|gen.*creative|criativo|imagem.*gerad/i.test(base)) return "Imagens geradas";',
+  );
+  source = source.replace(
+    'if (/creative|criativo/i.test(base)) return "Imagens geradas";',
+    'if (/video.?effect|vídeo.*efeito/i.test(base)) return "Vídeos com efeito gerados";\n  if (/creative|criativo|imagem/i.test(base)) return "Imagens geradas";',
+  );
+  return source;
+}
+
+overview = splitActionRules(overview);
+analytics = splitActionRules(analytics);
+activity = splitActionRules(activity);
+
 if (!finance.includes("registeredResponse")) throw new Error("Canonical finance merge missing");
-if (!analytics.includes("Buscar Produtos") && !overview.includes("Buscar Produtos")) throw new Error("Canonical product label missing");
+for (const [name, source] of [["overview", overview], ["analytics", analytics], ["activity", activity]]) {
+  if (!source.includes("Gerar Imagem")) throw new Error(`${name} image label missing`);
+  if (!source.includes("Vídeo com Efeito")) throw new Error(`${name} video-effect label missing`);
+  if (source.includes('"Find Products": "Find Products"')) throw new Error(`${name} still contains untranslated Find Products mapping`);
+}
 
 fs.writeFileSync(financePath, finance);
 fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(analyticsPath, analytics);
 fs.writeFileSync(activityPath, activity);
-console.log("Admin finance and chart labels use canonical sources without broad rewrites.");
+fs.writeFileSync(translationsPath, translations);
+console.log("Admin charts keep Gerar Imagem and Vídeo com Efeito as separate original metrics with canonical Portuguese labels.");
