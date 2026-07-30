@@ -147,3 +147,4 @@ console.log("Admin charts keep Gerar Imagem and Vídeo com Efeito as separate or
 
 await import("./patch-admin-media-metrics-final.mjs");
 await import("./patch-admin-final-label-guard.mjs");
+await import("./patch-admin-video-effect-and-refresh-final.mjs");
