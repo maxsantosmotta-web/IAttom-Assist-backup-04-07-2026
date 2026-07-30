@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Zap, TrendingUp, RefreshCw, Image, Video, HelpCircle } from "lucide-react";
+import { Zap, TrendingUp, RefreshCw } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,42 +12,6 @@ import {
   getListCreditTransactionsQueryKey,
 } from "@workspace/api-client-react";
 import { PLAN_CREDITS, PLAN_NAMES, PLAN_PRICES, getCreditColor, getCreditBarColor } from "@/lib/credits";
-
-const BALANCE_CACHE_KEY = "iattom_credit_balances_v1";
-
-interface BalanceSnapshot {
-  balance: number;
-  creativeBalance: number;
-  plan: string;
-  planLimit: number;
-  creativePlanLimit: number;
-  percentage: number;
-  creativePercentage: number;
-  lowCredit: boolean;
-  lowCreativeCredit: boolean;
-}
-
-interface AuxiliarySnapshot {
-  videoBalance: number | null;
-  helpUsed: number | null;
-}
-
-function readBalanceCache(): { balance: BalanceSnapshot | null; auxiliary: AuxiliarySnapshot } {
-  try {
-    const raw = sessionStorage.getItem(BALANCE_CACHE_KEY);
-    if (!raw) return { balance: null, auxiliary: { videoBalance: null, helpUsed: null } };
-    const parsed = JSON.parse(raw) as { balance?: BalanceSnapshot; auxiliary?: AuxiliarySnapshot };
-    return {
-      balance: parsed.balance ?? null,
-      auxiliary: {
-        videoBalance: typeof parsed.auxiliary?.videoBalance === "number" ? parsed.auxiliary.videoBalance : null,
-        helpUsed: typeof parsed.auxiliary?.helpUsed === "number" ? parsed.auxiliary.helpUsed : null,
-      },
-    };
-  } catch {
-    return { balance: null, auxiliary: { videoBalance: null, helpUsed: null } };
-  }
-}
 
 const featureLabels: Record<string, string> = {
   product_discovery: "Buscar Produtos",
@@ -169,94 +132,29 @@ const planColors: Record<string, string> = {
 
 export function Credits() {
   const [, navigate] = useLocation();
-  const initialCache = readBalanceCache();
-  const [balanceSnapshot, setBalanceSnapshot] = useState<BalanceSnapshot | null>(initialCache.balance);
-  const [videoBalance, setVideoBalance] = useState<number | null>(initialCache.auxiliary.videoBalance);
-  const [helpUsed, setHelpUsed] = useState<number | null>(initialCache.auxiliary.helpUsed);
-  const [auxiliaryLoading, setAuxiliaryLoading] = useState(true);
-
-  const { data: balance, isLoading: balanceLoading } = useGetCreditsBalance({
-    query: { queryKey: getGetCreditsBalanceQueryKey(), staleTime: 0, retry: 3 },
+  const { data: balance, isLoading: balanceLoading, isFetching: fetchingBalance, refetch: refetchBalance } = useGetCreditsBalance({
+    query: { queryKey: getGetCreditsBalanceQueryKey(), staleTime: 0 },
   });
 
-  const { data: txData, isLoading: txLoading, isError: txError, refetch: refetchTx } = useListCreditTransactions(
+  const { data: txData, isLoading: txLoading, isFetching: fetchingTx, isError: txError, refetch: refetchTx } = useListCreditTransactions(
     {},
-    { query: { queryKey: getListCreditTransactionsQueryKey(), staleTime: 0, retry: 3 } },
+    { query: { queryKey: getListCreditTransactionsQueryKey(), staleTime: 0 } },
   );
 
-  useEffect(() => {
-    if (!balance) return;
-    const snapshot: BalanceSnapshot = {
-      balance: balance.balance,
-      creativeBalance: balance.creativeBalance,
-      plan: balance.plan,
-      planLimit: balance.planLimit,
-      creativePlanLimit: balance.creativePlanLimit,
-      percentage: balance.percentage,
-      creativePercentage: balance.creativePercentage,
-      lowCredit: balance.lowCredit,
-      lowCreativeCredit: balance.lowCreativeCredit,
-    };
-    setBalanceSnapshot(snapshot);
-  }, [balance]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadAuxiliaryBalances = async () => {
-      setAuxiliaryLoading(true);
-      const [videoResult, helpResult] = await Promise.allSettled([
-        fetch("/api/videos/balance", { credentials: "include", cache: "no-store" }).then(async (response) => {
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          return response.json() as Promise<{ videoBalance?: number }>;
-        }),
-        fetch("/api/help/usage", { credentials: "include", cache: "no-store" }).then(async (response) => {
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          return response.json() as Promise<{ used?: number }>;
-        }),
-      ]);
-
-      if (cancelled) return;
-      if (videoResult.status === "fulfilled" && typeof videoResult.value.videoBalance === "number") {
-        setVideoBalance(videoResult.value.videoBalance);
-      }
-      if (helpResult.status === "fulfilled" && typeof helpResult.value.used === "number") {
-        setHelpUsed(helpResult.value.used);
-      }
-      setAuxiliaryLoading(false);
-    };
-
-    void loadAuxiliaryBalances();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(BALANCE_CACHE_KEY, JSON.stringify({
-        balance: balanceSnapshot,
-        auxiliary: { videoBalance, helpUsed },
-      }));
-    } catch {
-      // A tela continua usando os valores em memória quando o armazenamento não estiver disponível.
-    }
-  }, [balanceSnapshot, videoBalance, helpUsed]);
-
-  const displayBalance = balance ?? balanceSnapshot;
-  const percentage = displayBalance?.percentage ?? 0;
+  const percentage = balance?.percentage ?? 0;
   const barColor = getCreditBarColor(percentage);
   const textColor = getCreditColor(percentage);
 
-  const upgradePlans = displayBalance
+  const upgradePlans = balance
     ? (Object.keys(PLAN_CREDITS) as Array<keyof typeof PLAN_CREDITS>).filter(
-        (p) => PLAN_CREDITS[p] > (PLAN_CREDITS[displayBalance.plan as keyof typeof PLAN_CREDITS] ?? 0),
+        (p) => PLAN_CREDITS[p] > (PLAN_CREDITS[balance.plan as keyof typeof PLAN_CREDITS] ?? 0),
       )
     : [];
 
-  const currentPlanDisplay = displayBalance?.plan ? (planDisplayNames[displayBalance.plan] ?? displayBalance.plan) : "FREE";
+  const currentPlanDisplay = balance?.plan ? (planDisplayNames[balance.plan] ?? balance.plan) : "FREE";
   const visibleTransactions = (txData?.transactions.filter(
     (tx) => !isTechnicalMaintenanceDescription(tx.description),
   ) ?? []).slice(0, 10);
-  const showBalanceLoader = balanceLoading && !displayBalance;
 
   return (
     <div className="space-y-8">
@@ -269,40 +167,11 @@ export function Credits() {
               Acompanhe seu saldo e histórico de uso dos créditos.
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={() => window.location.reload()} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
-            <RefreshCw className="w-3.5 h-3.5" />
+          <Button size="sm" variant="outline" onClick={() => { void refetchBalance(); void refetchTx(); }} disabled={fetchingBalance || fetchingTx} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+            <RefreshCw className={`w-3.5 h-3.5 ${(fetchingBalance || fetchingTx) ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
         </div>
-      </motion.div>
-
-      <motion.div
-        data-testid="centralized-credit-balances"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.08 }}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-      >
-        <Card className="bg-[#111111] border-white/5"><CardContent className="p-5">
-          <div className="flex items-center gap-2 mb-3"><Zap className="w-4 h-4 text-primary" /><span className="text-xs uppercase tracking-widest text-muted-foreground">Créditos gerais</span></div>
-          {showBalanceLoader ? <Skeleton className="h-9 w-24 bg-white/5" /> : <p className="text-3xl font-bold text-white tabular-nums">{(displayBalance?.balance ?? 0).toLocaleString("pt-BR")}</p>}
-          <p className="text-xs text-muted-foreground mt-1">Disponíveis para os módulos</p>
-        </CardContent></Card>
-        <Card className="bg-[#111111] border-white/5"><CardContent className="p-5">
-          <div className="flex items-center gap-2 mb-3"><Image className="w-4 h-4 text-violet-400" /><span className="text-xs uppercase tracking-widest text-muted-foreground">Imagens</span></div>
-          {showBalanceLoader ? <Skeleton className="h-9 w-20 bg-white/5" /> : <p className="text-3xl font-bold text-white tabular-nums">{Math.floor((displayBalance?.creativeBalance ?? 0) / 10).toLocaleString("pt-BR")}</p>}
-          <p className="text-xs text-muted-foreground mt-1">Saldo disponível</p>
-        </CardContent></Card>
-        <Card className="bg-[#111111] border-white/5"><CardContent className="p-5">
-          <div className="flex items-center gap-2 mb-3"><Video className="w-4 h-4 text-emerald-400" /><span className="text-xs uppercase tracking-widest text-muted-foreground">Vídeos com efeito</span></div>
-          {videoBalance === null && auxiliaryLoading ? <Skeleton className="h-9 w-16 bg-white/5" /> : <p className="text-3xl font-bold text-white tabular-nums">{videoBalance?.toLocaleString("pt-BR") ?? "—"}</p>}
-          <p className="text-xs text-muted-foreground mt-1">Saldo disponível</p>
-        </CardContent></Card>
-        <Card className="bg-[#111111] border-white/5"><CardContent className="p-5">
-          <div className="flex items-center gap-2 mb-3"><HelpCircle className="w-4 h-4 text-sky-400" /><span className="text-xs uppercase tracking-widest text-muted-foreground">IAttom Help</span></div>
-          {helpUsed === null && auxiliaryLoading ? <Skeleton className="h-9 w-16 bg-white/5" /> : <p className="text-3xl font-bold text-white tabular-nums">{helpUsed?.toLocaleString("pt-BR") ?? "—"}</p>}
-          <p className="text-xs text-muted-foreground mt-1">Mensagens utilizadas</p>
-        </CardContent></Card>
       </motion.div>
 
       <motion.div
@@ -312,7 +181,7 @@ export function Credits() {
       >
         <Card className="bg-[#111111] border-white/5">
           <CardContent className="p-6">
-            {showBalanceLoader ? (
+            {balanceLoading ? (
               <div className="space-y-4">
                 <Skeleton className="h-12 w-36 bg-white/5" />
                 <Skeleton className="h-2 w-full bg-white/5" />
@@ -323,16 +192,16 @@ export function Credits() {
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Saldo</p>
                     <p className={`text-5xl font-bold tabular-nums ${textColor}`}>
-                      {(displayBalance?.balance ?? 0).toLocaleString()}
+                      {(balance?.balance ?? 0).toLocaleString()}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1.5">
-                      de {(displayBalance?.planLimit ?? 0).toLocaleString()} créditos &middot;{" "}
-                      <span className={`capitalize font-medium ${planColors[displayBalance?.plan ?? "free"]}`}>
+                      de {(balance?.planLimit ?? 0).toLocaleString()} créditos &middot;{" "}
+                      <span className={`capitalize font-medium ${planColors[balance?.plan ?? "free"]}`}>
                         Plano {currentPlanDisplay}
                       </span>
                     </p>
                   </div>
-                  {displayBalance?.lowCredit && (
+                  {balance?.lowCredit && (
                     <span className="text-xs px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-medium shrink-0">
                       Créditos Baixos
                     </span>
@@ -356,7 +225,7 @@ export function Credits() {
         </Card>
       </motion.div>
 
-      {displayBalance?.lowCredit && upgradePlans.length > 0 && (
+      {balance?.lowCredit && upgradePlans.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <Card className="bg-amber-950/20 border-amber-500/20">
             <CardContent className="p-4">
@@ -438,7 +307,7 @@ export function Credits() {
                       className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
                     >
                       <td className="px-5 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(tx.createdAt).toLocaleDateString("pt-BR")}{" "}
+                        {new Date(tx.createdAt).toLocaleDateString("pt-BR")} {" "}
                         <span className="text-white/30">
                           {new Date(tx.createdAt).toLocaleTimeString("pt-BR", {
                             hour: "2-digit",
