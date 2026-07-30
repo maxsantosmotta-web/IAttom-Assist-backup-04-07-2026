@@ -29,7 +29,7 @@ export function SavedPrompts() {
   const { planSlug, isAdmin } = useUserAccess();
   const { toast } = useToast();
   const { saveItem } = useSavedItems();
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(true);
   const [guidedTipo, setGuidedTipo] = useState("");
   const [guidedSubject, setGuidedSubject] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -40,8 +40,7 @@ export function SavedPrompts() {
   const chargedRef = useRef(false);
   const generateTriggerRef = useRef<(() => void) | null>(null);
 
-  const resetCreateForm = () => {
-    setCreating(false);
+  const clearForm = () => {
     setGuidedTipo("");
     setGuidedSubject("");
     setGenerated(false);
@@ -49,13 +48,13 @@ export function SavedPrompts() {
     setNewPrompt("");
   };
 
+  const closeCreateForm = () => {
+    setCreating(false);
+  };
+
   const startNewPrompt = () => {
     setCreating(true);
-    setGuidedTipo("");
-    setGuidedSubject("");
-    setGenerated(false);
-    setNewTitle("");
-    setNewPrompt("");
+    clearForm();
   };
 
   const generatePromptCore = async () => {
@@ -139,16 +138,11 @@ export function SavedPrompts() {
 
   return (
     <div className="space-y-6 pb-4">
-      <motion.div variants={fadeUp} initial="hidden" animate="show" transition={{ duration: 0.4 }} className="flex items-start justify-between gap-4">
+      <motion.div variants={fadeUp} initial="hidden" animate="show" transition={{ duration: 0.4 }}>
         <div className="space-y-1">
           <p className="text-[10px] text-primary font-bold tracking-widest uppercase">Biblioteca</p>
           <h2 className="text-2xl font-black tracking-tight text-white">Criar Prompt</h2>
           <p className="text-sm text-zinc-500">Crie, salve e reutilize seus prompts.</p>
-        </div>
-        <div className="shrink-0">
-          <Button onClick={startNewPrompt} size="sm" className="bg-primary text-black hover:bg-primary/90 font-bold text-xs h-8">
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Novo Prompt
-          </Button>
         </div>
       </motion.div>
 
@@ -158,7 +152,10 @@ export function SavedPrompts() {
             <div className="bg-[#0f0f0f] border border-primary/20 rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-bold text-white">Novo Prompt</p>
-                <button onClick={resetCreateForm} className="text-zinc-600 hover:text-zinc-400 transition-colors"><X className="w-4 h-4" /></button>
+                <div className="flex items-center gap-3">
+                  <button onClick={clearForm} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">Limpar</button>
+                  <button onClick={closeCreateForm} className="text-zinc-600 hover:text-zinc-400 transition-colors"><X className="w-4 h-4" /></button>
+                </div>
               </div>
 
               <div className="space-y-2">
