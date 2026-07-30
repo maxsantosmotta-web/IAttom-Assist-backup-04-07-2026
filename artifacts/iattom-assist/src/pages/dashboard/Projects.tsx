@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   FolderOpen, Plus, Trash2, Loader2, Search,
   Megaphone, FileText, Sparkles, Video, RefreshCw,
-  BookOpen, Calendar, Globe, ExternalLink,
+  BookOpen, BookMarked, Calendar, Globe, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,27 +18,29 @@ import { useSavedItems } from "@/hooks/useSavedItems";
 import { MediaTagBadges } from "@/components/ui/MediaTagBadges";
 
 interface SavedItem extends SavedItemBase {
-  type: "campaign" | "content" | "creative" | "video_script" | "product_discovery" | "product_validation";
+  type: "campaign" | "content" | "creative" | "video_script" | "product_discovery" | "product_validation" | "prompt";
 }
 
-type TabKey = "all" | "campaign" | "content" | "creative" | "video_script" | "product_discovery";
+type TabKey = "all" | "campaign" | "content" | "creative" | "video_script" | "product_discovery" | "prompt";
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
-  { key: "all",               label: "Todos",           icon: BookOpen   },
-  { key: "campaign",          label: "Campanhas",       icon: Megaphone  },
-  { key: "content",           label: "Conteúdos",       icon: FileText   },
-  { key: "creative",          label: "Criativos",       icon: Sparkles   },
+  { key: "all",               label: "Todos",            icon: BookOpen   },
+  { key: "campaign",          label: "Campanhas",        icon: Megaphone  },
+  { key: "content",           label: "Conteúdos",        icon: FileText   },
+  { key: "creative",          label: "Criativos",        icon: Sparkles   },
   { key: "video_script",      label: "Scripts de Vídeo", icon: Video      },
-  { key: "product_discovery", label: "Produtos",        icon: Search     },
+  { key: "prompt",            label: "Prompts",          icon: BookMarked },
+  { key: "product_discovery", label: "Produtos",         icon: Search     },
 ];
 
 const TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; badge: string; cardIcon: string }> = {
-  campaign:           { label: "Campanha",        icon: Megaphone, badge: "text-primary bg-primary/10 border-primary/20",           cardIcon: "text-primary" },
-  content:            { label: "Conteúdo",         icon: FileText,  badge: "text-blue-400 bg-blue-500/10 border-blue-500/20",         cardIcon: "text-blue-400" },
-  creative:           { label: "Criativo",         icon: Sparkles,  badge: "text-violet-400 bg-violet-500/10 border-violet-500/20",   cardIcon: "text-violet-400" },
-  video_script:       { label: "Script de Vídeo",  icon: Video,     badge: "text-pink-400 bg-pink-500/10 border-pink-500/20",         cardIcon: "text-pink-400" },
-  product_discovery:  { label: "Produtos",         icon: Search,    badge: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", cardIcon: "text-emerald-400" },
-  product_validation: { label: "Validação",        icon: Search,    badge: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", cardIcon: "text-emerald-400" },
+  campaign:           { label: "Campanha",        icon: Megaphone,  badge: "text-primary bg-primary/10 border-primary/20",           cardIcon: "text-primary" },
+  content:            { label: "Conteúdo",         icon: FileText,   badge: "text-blue-400 bg-blue-500/10 border-blue-500/20",         cardIcon: "text-blue-400" },
+  creative:           { label: "Criativo",         icon: Sparkles,   badge: "text-violet-400 bg-violet-500/10 border-violet-500/20",   cardIcon: "text-violet-400" },
+  video_script:       { label: "Script de Vídeo",  icon: Video,      badge: "text-pink-400 bg-pink-500/10 border-pink-500/20",         cardIcon: "text-pink-400" },
+  prompt:             { label: "Prompt",           icon: BookMarked, badge: "text-amber-400 bg-amber-500/10 border-amber-500/20",       cardIcon: "text-amber-400" },
+  product_discovery:  { label: "Produtos",         icon: Search,     badge: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", cardIcon: "text-emerald-400" },
+  product_validation: { label: "Validação",        icon: Search,     badge: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", cardIcon: "text-emerald-400" },
 };
 
 const platformLabels: Record<string, string> = {
@@ -160,7 +162,7 @@ export function Projects() {
             <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Espaço de Trabalho</p>
             <h2 className="text-2xl font-bold text-white mb-1">Biblioteca</h2>
             <p className="text-muted-foreground text-sm">
-              Campanhas, conteúdos, criativos e scripts gerados e salvos.
+              Campanhas, conteúdos, criativos, scripts e prompts gerados e salvos.
             </p>
           </div>
           <Button
@@ -241,7 +243,7 @@ export function Projects() {
             <p className="text-sm text-zinc-600 max-w-[260px] leading-relaxed">
               {search || tab !== "all"
                 ? "Tente outro filtro ou termo de busca."
-                : "Gere e salve campanhas, criativos, conteúdos e scripts."}
+                : "Gere e salve campanhas, criativos, conteúdos, scripts e prompts."}
             </p>
           </div>
         ) : (
