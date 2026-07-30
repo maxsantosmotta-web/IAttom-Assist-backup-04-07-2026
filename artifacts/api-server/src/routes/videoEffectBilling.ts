@@ -1,6 +1,6 @@
 import { Router, type IRouter, type NextFunction, type Response } from "express";
 import { and, eq, sql } from "drizzle-orm";
-import { db, users, videoTransactions } from "@workspace/db";
+import { db, historyTable, users, videoTransactions } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
 import {
   FalProviderError,
@@ -15,6 +15,7 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_PROMPT_LENGTH = 1200;
 const PAID_PLANS = new Set(["pro", "business", "agency"]);
 const DELIVERY_PREFIX = "Vídeo com Efeito entregue • requestId:";
+const HISTORY_PREFIX = "Vídeo com Efeito gerado • requestId:";
 
 type CommercialUser = { role: string | null; plan: string | null; videoBalance: number | null };
 
@@ -72,7 +73,6 @@ router.post("/image-motion/submit", requireAuth, async (req, res, next): Promise
   const user = await passAdminOrRequirePaid(authReq, res, next);
   if (!user) return;
 
-  // Pré-validação de saldo: não desconta nada nesta etapa.
   if ((user.videoBalance ?? 0) <= 0) {
     res.status(402).json({ error: "insufficient_video_balance", balance: 0 });
     return;
@@ -119,7 +119,6 @@ router.get("/image-motion/result/:requestId", requireAuth, async (req, res, next
 
   const requestId = String(req.params.requestId ?? "");
   try {
-    // O provedor precisa devolver um arquivo final válido antes de qualquer cobrança.
     const result = await getImageMotionResult(requestId);
     if (!result.videoUrl) {
       res.status(502).json({ error: "O vídeo final ainda não está disponível." });
@@ -127,9 +126,27 @@ router.get("/image-motion/result/:requestId", requireAuth, async (req, res, next
     }
 
     const description = `${DELIVERY_PREFIX}${requestId}`;
+    const historyAction = `${HISTORY_PREFIX}${requestId}`;
     const charged = await db.transaction(async (tx) => {
-      // Serializa consultas simultâneas do mesmo usuário/requestId.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${authReq.clerkUserId}:${requestId}`}))`);
+
+      const [historyEvent] = await tx
+        .select({ id: historyTable.id })
+        .from(historyTable)
+        .where(and(
+          eq(historyTable.clerkUserId, authReq.clerkUserId),
+          eq(historyTable.action, historyAction),
+        ))
+        .limit(1);
+
+      if (!historyEvent) {
+        await tx.insert(historyTable).values({
+          clerkUserId: authReq.clerkUserId,
+          action: historyAction,
+          module: "video_effect",
+          projectName: "Vídeo com Efeito",
+        });
+      }
 
       const [existing] = await tx
         .select({ id: videoTransactions.id, balanceAfter: videoTransactions.balanceAfter })
