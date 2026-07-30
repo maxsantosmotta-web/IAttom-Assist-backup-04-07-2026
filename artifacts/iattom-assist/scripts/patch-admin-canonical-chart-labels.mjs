@@ -12,65 +12,86 @@ let activity = fs.readFileSync(paths.activity, "utf8");
 let overview = fs.readFileSync(paths.overview, "utf8");
 let analytics = fs.readFileSync(paths.analytics, "utf8");
 
-// Keep the existing functions intact. Only replace user-visible labels and exact match rules.
-const labelReplacements = [
-  ["Descoberta de Produto", "Buscar Produtos"],
-  ["Descobertas Executadas", "Buscas de produtos executadas"],
-  ["Validação de Produto", "Validar Produto"],
-  ["Validação de Produtos", "Validar Produto"],
-  ["Validações Executadas", "Validações de produtos executadas"],
-  ["Criativo", "Criar Imagem e Vídeo"],
-  ["Criativos Gerados", "Imagens e vídeos criados"],
-  ["Roteiro de Vídeo", "Scripts de Vídeo"],
-  ["Script de Vídeo", "Scripts de Vídeo"],
-  ["Scripts Criados", "Scripts de vídeo criados"],
-  ["Scripts Gerados", "Scripts de vídeo criados"],
-  ["Campanha", "Criar Campanha"],
-  ["Campanhas Criadas", "Campanhas criadas"],
-  ["Conteúdo", "Criar Conteúdo"],
-  ["Conteúdos Criados", "Conteúdos criados"],
-  ["Prompts Criados", "Prompts criados"],
-  ["Help", "IAttom Help"],
-];
+const modules = `export const MODULE_LABELS: Record<string, string> = {
+  campaign: "Criar Campanha", Campaign: "Criar Campanha",
+  content: "Criar Conteúdo", Content: "Criar Conteúdo",
+  creative: "Criar Imagem e Vídeo", Creative: "Criar Imagem e Vídeo",
+  video_script: "Scripts de Vídeo", "Video Script": "Scripts de Vídeo",
+  product_discovery: "Buscar Produtos", find_products: "Buscar Produtos",
+  "Find Products": "Buscar Produtos", "Product Discovery": "Buscar Produtos",
+  product_validation: "Validar Produto", validate_products: "Validar Produto",
+  "Validate Products": "Validar Produto", "Product Validation": "Validar Produto",
+  prompt_creation: "Criar Prompt", prompt: "Criar Prompt", Prompt: "Criar Prompt",
+  help: "IAttom Help", iattom_help: "IAttom Help", Help: "IAttom Help",
+  marketing: "Marketing",
+};`;
+translations = translations.replace(/export const MODULE_LABELS: Record<string, string> = \{[\s\S]*?\n\};/, modules);
 
-function applyVisibleLabels(source) {
-  for (const [from, to] of labelReplacements) {
-    source = source.replaceAll(`\"${from}\"`, `\"${to}\"`);
-  }
+const exactReplacements = new Map([
+  ["Criativos Gerados", "Imagens e vídeos criados"],
+  ["Descobertas Executadas", "Buscas de produtos executadas"],
+  ["Scripts Criados", "Scripts de vídeo criados"],
+  ["Conteúdos Criados", "Conteúdos criados"],
+  ["Campanhas Criadas", "Campanhas criadas"],
+  ["Validações Executadas", "Validações de produtos executadas"],
+  ["Prompts Criados", "Prompts criados"],
+  ["Entrega criada", "Campanhas criadas"],
+]);
+
+function replaceLabels(source) {
+  for (const [from, to] of exactReplacements) source = source.replaceAll(from, to);
   return source;
 }
 
-translations = applyVisibleLabels(translations);
-activity = applyVisibleLabels(activity);
-overview = applyVisibleLabels(overview);
-analytics = applyVisibleLabels(analytics);
+activity = replaceLabels(activity);
+overview = replaceLabels(overview);
+analytics = replaceLabels(analytics);
 
-// Normalize old campaign action wording without replacing the whole function.
-activity = activity.replace(
-  "if (/campaign.*creat|creat.*campaign|campanha.*cria/i.test(base)) return \"Campanhas criadas\";",
-  "if (/campaign.*creat|creat.*campaign|campanha.*cria|entrega.*criad/i.test(base)) return \"Campanhas criadas\";",
-);
+const featureNameMap = `const FEATURE_NAME_MAP: Record<string, string> = {
+  "Product Discovery": "Buscar Produtos", "Find Products": "Buscar Produtos",
+  product_discovery: "Buscar Produtos", find_products: "Buscar Produtos",
+  "Product Validation": "Validar Produto", "Validate Products": "Validar Produto",
+  product_validation: "Validar Produto", validate_products: "Validar Produto",
+  Campaign: "Criar Campanha", campaign: "Criar Campanha", campaign_creation: "Criar Campanha",
+  Content: "Criar Conteúdo", content: "Criar Conteúdo", content_creation: "Criar Conteúdo",
+  Creative: "Criar Imagem e Vídeo", creative: "Criar Imagem e Vídeo", creative_generator: "Criar Imagem e Vídeo",
+  "Video Script": "Scripts de Vídeo", video_script: "Scripts de Vídeo",
+  Prompt: "Criar Prompt", prompt: "Criar Prompt", prompt_creation: "Criar Prompt",
+  Help: "IAttom Help", help: "IAttom Help", iattom_help: "IAttom Help",
+  Marketing: "Marketing", marketing: "Marketing",
+};`;
 
-// Normalize all historical product-search action variants without changing surrounding code.
-for (const target of [activity, overview, analytics]) {
-  void target;
-}
-activity = activity.replace(
-  "if (/discover|descoberta/i.test(base)) return \"Buscas de produtos executadas\";",
-  "if (/find.?products|product.*discover|discover|descoberta|buscar.*produto/i.test(base)) return \"Buscas de produtos executadas\";",
-);
-overview = overview.replace(
-  "if (/discover|descoberta/i.test(base)) return \"Buscas de produtos executadas\";",
-  "if (/find.?products|product.*discover|discover|descoberta|buscar.*produto/i.test(base)) return \"Buscas de produtos executadas\";",
-);
-analytics = analytics.replace(
-  "if (/discover|descoberta/i.test(base)) return \"Buscas de produtos executadas\";",
-  "if (/find.?products|product.*discover|discover|descoberta|buscar.*produto/i.test(base)) return \"Buscas de produtos executadas\";",
-);
+const featurePtMap = `const FEATURE_PT: Record<string, string> = {
+  campaign_creation: "Criar Campanha", campaign: "Criar Campanha",
+  creative_generator: "Criar Imagem e Vídeo", creative: "Criar Imagem e Vídeo",
+  content_creation: "Criar Conteúdo", content: "Criar Conteúdo",
+  video_script: "Scripts de Vídeo",
+  product_discovery: "Buscar Produtos", find_products: "Buscar Produtos",
+  product_validation: "Validar Produto", validate_products: "Validar Produto",
+  prompt: "Criar Prompt", prompt_creation: "Criar Prompt",
+  help: "IAttom Help", iattom_help: "IAttom Help",
+  marketing: "Marketing",
+};`;
 
-for (const marker of ["Buscar Produtos", "Validar Produto", "Criar Imagem e Vídeo", "Buscas de produtos executadas"]) {
-  if (![translations, activity, overview, analytics].some((source) => source.includes(marker))) {
-    throw new Error(`Canonical chart label missing: ${marker}`);
+analytics = analytics
+  .replace(/const FEATURE_NAME_MAP: Record<string, string> = \{[\s\S]*?\n\};/, featureNameMap)
+  .replace(/const FEATURE_PT: Record<string, string> = \{[\s\S]*?\n\};/, featurePtMap)
+  .replace('className="grid gap-6 md:grid-cols-2"', 'className="grid gap-6 lg:grid-cols-2"')
+  .replace('title="Uso por Recurso" subtitle="Distribuição de ações"', 'title="Execuções por Módulo" subtitle="Quantidade de ações por módulo"')
+  .replace('title="Resumo de Uso dos Recursos" subtitle="Participação por recurso"', 'title="Resumo de Execuções por Módulo" subtitle="Participação de cada módulo"');
+
+for (const marker of [
+  '"Product Discovery": "Buscar Produtos"',
+  '"Find Products": "Buscar Produtos"',
+  '"Product Validation": "Validar Produto"',
+  'Creative: "Criar Imagem e Vídeo"',
+  'Help: "IAttom Help"',
+  'className="grid gap-6 lg:grid-cols-2"',
+  'title="Execuções por Módulo"',
+  'title="Resumo de Execuções por Módulo"',
+]) {
+  if (!analytics.includes(marker) && !translations.includes(marker)) {
+    throw new Error(`Canonical admin chart marker missing: ${marker}`);
   }
 }
 
@@ -78,4 +99,4 @@ fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Administrative activity chart labels were normalized without rewriting page functions.");
+console.log("Administrative charts now use complete platform names and responsive full-width legends.");
