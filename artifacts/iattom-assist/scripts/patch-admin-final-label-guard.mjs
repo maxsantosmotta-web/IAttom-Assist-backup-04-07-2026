@@ -73,20 +73,23 @@ activity = activity.replaceAll(
   'if (/find.?products|product.*discover|discover|descoberta|buscar.*produto/i.test(base))',
 );
 
-for (const [name, source] of [
-  ["overview", overview],
-  ["analytics", analytics],
+for (const marker of [
+  '"Find Products": "Buscar Produtos"',
+  'Creative: "Gerar Imagem"',
+  '"Video Effect": "Vídeo com Efeito"',
+  "find.?products",
 ]) {
-  for (const marker of [
-    '"Find Products": "Buscar Produtos"',
-    'Creative: "Gerar Imagem"',
-    '"Video Effect": "Vídeo com Efeito"',
-    "find.?products",
-  ]) {
-    if (!source.includes(marker)) throw new Error(`${name} final label marker missing: ${marker}`);
-  }
+  if (!overview.includes(marker)) throw new Error(`overview final label marker missing: ${marker}`);
+}
+for (const marker of [
+  '"Find Products": "Buscar Produtos"',
+  'Creative: "Gerar Imagem"',
+  '"Video Effect": "Vídeo com Efeito"',
+]) {
+  if (!analytics.includes(marker)) throw new Error(`analytics final label marker missing: ${marker}`);
 }
 if (!translations.includes('video_effect: "Vídeo com Efeito"')) throw new Error("Shared video-effect label missing");
+if (!translations.includes('"Find Products": "Buscar Produtos"')) throw new Error("Shared Find Products label missing");
 if (!activity.includes("find.?products")) throw new Error("Activity Find Products normalization missing");
 
 fs.writeFileSync(overviewPath, overview);
