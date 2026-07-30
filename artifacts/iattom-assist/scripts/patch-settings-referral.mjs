@@ -46,7 +46,7 @@ patchFile("../src/pages/dashboard/Settings.tsx", [
 patchFile("../src/components/IAttomHelpPanel.tsx", [
   [
     "  const [usage, setUsage] = useState<{ used: number; limit: number; remaining: number } | null>(null);",
-    "  const [usage, setUsage] = useState<{ used: number; limit: number; remaining: number; plan?: string } | null>(null);\n  const [usageLoaded, setUsageLoaded] = useState(false);",
+    "  const [usage, setUsage] = useState<{ used: number; plan: string; creditCost: number; availableGeneralCredits: number; canUse: boolean; accessReason: \"FREE_PLAN\" | \"INSUFFICIENT_GENERAL_CREDITS\" | \"ALLOWED\" } | null>(null);\n  const [usageLoaded, setUsageLoaded] = useState(false);",
   ],
   [
     "        .catch(() => {\n          if (showGreetingIfEmpty) setMessages([getGreeting(firstNameRef.current)]);\n          return false;\n        });",
@@ -54,23 +54,55 @@ patchFile("../src/components/IAttomHelpPanel.tsx", [
   ],
   [
     "  const fetchUsage = useCallback(() => {\n    fetch(`${BASE_URL}/api/help/usage`, { credentials: \"include\" })\n      .then((r) => r.ok ? (r.json() as Promise<{ used: number; limit: number; remaining: number }>) : Promise.reject())\n      .then((data) => { if (mountedRef.current) setUsage(data); })\n      .catch(() => { /* silent — counter simply won't render */ });\n  }, []);",
-    "  const fetchUsage = useCallback(() => {\n    if (mountedRef.current) setUsageLoaded(false);\n    fetch(`${BASE_URL}/api/help/usage`, { credentials: \"include\" })\n      .then((r) => r.ok ? (r.json() as Promise<{ used: number; limit: number; remaining: number; plan?: string }>) : Promise.reject())\n      .then((data) => {\n        if (!mountedRef.current) return;\n        setUsage(data);\n        setUsageLoaded(true);\n      })\n      .catch(() => {\n        // Estado neutro: não acusa plano gratuito e não libera envio sem confirmação.\n        if (mountedRef.current) setUsageLoaded(false);\n      });\n  }, []);",
+    "  const fetchUsage = useCallback(() => {\n    fetch(`${BASE_URL}/api/help/usage`, { credentials: \"include\" })\n      .then((r) => r.ok ? (r.json() as Promise<{ used: number; plan: string; creditCost: number; availableGeneralCredits: number; canUse: boolean; accessReason: \"FREE_PLAN\" | \"INSUFFICIENT_GENERAL_CREDITS\" | \"ALLOWED\" }>) : Promise.reject())\n      .then((data) => {\n        if (!mountedRef.current) return;\n        setUsage(data);\n        setUsageLoaded(true);\n      })\n      .catch(() => {\n        // Sem resposta válida, mantém o último estado conhecido; no primeiro acesso permanece neutro e fechado.\n      });\n  }, []);",
   ],
   [
     "  const clearConversation = async () => {\n    try {\n      await fetch(`${BASE_URL}/api/help/history`, {\n        method: \"DELETE\",\n        credentials: \"include\",\n      });\n    } catch {\n      // reset state regardless\n    }\n    setMessages([getGreeting(firstNameRef.current)]);\n    setConfirmClear(false);\n  };",
     "  const clearConversation = async () => {\n    await pendingSaveRef.current;\n    try {\n      const response = await fetch(`${BASE_URL}/api/help/history`, {\n        method: \"DELETE\",\n        credentials: \"include\",\n      });\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n      if (!mountedRef.current) return;\n      setMessages([getGreeting(firstNameRef.current)]);\n      setConfirmClear(false);\n    } catch {\n      if (!mountedRef.current) return;\n      setConfirmClear(false);\n      setSyncStatus(\"error\");\n      if (syncDoneTimerRef.current) clearTimeout(syncDoneTimerRef.current);\n      syncDoneTimerRef.current = setTimeout(() => setSyncStatus(\"idle\"), 2200);\n    }\n  };",
   ],
   [
+    `              {/* Usage counter */}
+              {usage !== null && usage.limit > 0 && (
+                <div className="flex items-center justify-end mb-1.5 px-0.5">
+                  <span className={\`text-[11px] tabular-nums \${
+                    usage.remaining === 0
+                      ? "text-amber-500/80"
+                      : usage.remaining <= 20
+                        ? "text-amber-500/60"
+                        : "text-zinc-600"
+                  }\`}>
+                    {usage.used} / {usage.limit} mensagens
+                  </span>
+                </div>
+              )}`,
+    `              {/* Usage counter — histórico independente da conversa */}
+              {usageLoaded && usage !== null && (
+                <div className="flex items-center justify-end mb-1.5 px-0.5">
+                  <span className="text-[11px] tabular-nums text-zinc-600">
+                    {usage.used} {usage.used === 1 ? "mensagem utilizada" : "mensagens utilizadas"}
+                  </span>
+                </div>
+              )}`,
+  ],
+  [
+    "{usage !== null && (usage.limit === 0 || usage.remaining === 0) ? (",
+    "{usageLoaded && usage !== null && !usage.canUse ? (",
+  ],
+  [
+    "{usage.limit === 0\n                      ? \"O IAttom Help não está disponível no plano gratuito.\"\n                      : \"Limite de mensagens atingido para este ciclo.\"}",
+    "{usage.accessReason === \"FREE_PLAN\"\n                      ? \"O IAttom Help não está disponível no plano gratuito.\"\n                      : \"Créditos gerais insuficientes para usar o IAttom Help.\"}",
+  ],
+  [
     "disabled={loading || !historyLoaded || syncStatus !== \"idle\"}",
-    "disabled={!usageLoaded || loading || !historyLoaded || syncStatus !== \"idle\"}",
+    "disabled={!usageLoaded || !usage?.canUse || loading || !historyLoaded || syncStatus !== \"idle\"}",
   ],
   [
     "disabled={loading || !historyLoaded}",
-    "disabled={!usageLoaded || loading || !historyLoaded}",
+    "disabled={!usageLoaded || !usage?.canUse || loading || !historyLoaded}",
   ],
   [
     "disabled={(!input.trim() && attachedImages.length === 0) || loading || !historyLoaded}",
-    "disabled={!usageLoaded || (!input.trim() && attachedImages.length === 0) || loading || !historyLoaded}",
+    "disabled={!usageLoaded || !usage?.canUse || (!input.trim() && attachedImages.length === 0) || loading || !historyLoaded}",
   ],
 ]);
 
@@ -112,4 +144,4 @@ patchFile("../src/pages/dashboard/Referral.tsx", [
   ],
 ]);
 
-console.log("Settings, stable navigation, IAttom Help access/history and referral runtime fixes applied.");
+console.log("Settings, stable navigation, canonical IAttom Help access/history and referral runtime fixes applied.");
