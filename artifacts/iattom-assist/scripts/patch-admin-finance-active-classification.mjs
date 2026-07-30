@@ -28,16 +28,26 @@ if (!source.includes('{ label: "SEM PLANO"')) {
 }
 
 source = source
+  .replace(
+    'fetch(`${BASE}/api/admin/financial-summary`, {',
+    'fetch(`${BASE}/api/admin/financial-summary?refresh=${Date.now()}`, {',
+  )
+  .replace(
+    'credentials: "include",',
+    'credentials: "include",\n          cache: "no-store",',
+  )
   .replace('sub="usuários convertidos em pagantes"', 'sub="cadastros comerciais convertidos em pagantes"')
   .replace('subtitle="Assinaturas ativas e usuários FREE" centerLabel="Planos"', 'subtitle="Cadastros comerciais ativos por situação" centerLabel="Cadastros"');
 
 for (const marker of [
   "unselected: number;",
   '{ label: "SEM PLANO", value: summary?.planBreakdown.unselected ?? 0, color: ORANGE }',
+  'financial-summary?refresh=${Date.now()}',
+  'cache: "no-store"',
   'centerLabel="Cadastros"',
 ]) {
   if (!source.includes(marker)) throw new Error(`Finance UI marker missing: ${marker}`);
 }
 
 fs.writeFileSync(financePath, source);
-console.log("Admin Finance now displays active commercial registrations as Sem plano, FREE, START, PREMIUM or PRO.");
+console.log("Admin Finance now displays a fresh active commercial classification without stale cached responses.");
