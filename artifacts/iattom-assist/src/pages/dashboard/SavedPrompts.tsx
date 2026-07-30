@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@clerk/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Copy, Plus, Save, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,14 @@ import { useSavedItems } from "@/hooks/useSavedItems";
 import { CreditsGate } from "@/components/CreditsGate";
 import { ModuleLockGate } from "@/components/ModuleLockGate";
 import { useUserAccess } from "@/hooks/useUserAccess";
+
+interface LegacyPrompt {
+  id: number;
+  title: string;
+  prompt: string;
+  module: string;
+  createdAt: string;
+}
 
 const TIPO_OPTIONS = [
   "Imagem",
@@ -23,13 +32,58 @@ const TIPO_OPTIONS = [
   "Personalizado",
 ];
 
+const TIPO_INFO: Record<string, { description: string; example: string }> = {
+  "Imagem": {
+    description: "Cria prompts para gerar imagens profissionais, definindo cenário, composição, iluminação, estilo visual e acabamento.",
+    example: "Exemplo: uma moto esportiva preta em uma rua molhada à noite, com luzes neon.",
+  },
+  "Vídeo com Imagem": {
+    description: "Cria prompts para dar movimento a uma imagem pronta, definindo câmera, efeitos, elementos que podem se mover e o que deve permanecer fixo.",
+    example: "Exemplo: movimentar a fumaça e os reflexos, mantendo a moto e o enquadramento preservados.",
+  },
+  "Vídeo": {
+    description: "Cria prompts para vídeos completos, com cenas, ações, narrativa, ritmo, enquadramento e direção visual.",
+    example: "Exemplo: vídeo curto apresentando uma scooter elétrica em um cenário urbano.",
+  },
+  "Copy": {
+    description: "Cria prompts para textos persuasivos de vendas, com headline, benefícios, objeções e chamada para ação.",
+    example: "Exemplo: copy para vender proteção veicular com economia e assistência 24 horas.",
+  },
+  "Anúncio": {
+    description: "Cria prompts para anúncios pagos ou orgânicos, considerando público, plataforma, objetivo, oferta e formato.",
+    example: "Exemplo: anúncio para Instagram de uma scooter elétrica seminova.",
+  },
+  "Marketplace": {
+    description: "Cria prompts para títulos, descrições e apresentações de produtos em marketplaces, com foco em clareza e conversão.",
+    example: "Exemplo: anúncio completo de uma scooter elétrica para marketplace.",
+  },
+  "Pesquisa": {
+    description: "Cria prompts para pesquisar mercado, concorrência, tendências, demanda, oportunidades e comportamento do público.",
+    example: "Exemplo: analisar a demanda por scooters elétricas em uma cidade específica.",
+  },
+  "Estratégia": {
+    description: "Cria prompts para planejar posicionamento, vendas, canais, precificação, diferenciação e crescimento.",
+    example: "Exemplo: estratégia para lançar um serviço regional de proteção veicular.",
+  },
+  "Automação": {
+    description: "Cria prompts para organizar fluxos automáticos de mensagens, condições e ações em ferramentas de atendimento e marketing.",
+    example: "Exemplo: enviar uma mensagem no direct quando alguém comentar EU QUERO.",
+  },
+  "Personalizado": {
+    description: "Cria um prompt sob medida para uma necessidade específica que não se encaixe nas outras categorias.",
+    example: "Exemplo: montar um plano personalizado de organização, estudo, análise ou planejamento.",
+  },
+};
+
 const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
 
 export function SavedPrompts() {
   const { planSlug, isAdmin } = useUserAccess();
+  const { isLoaded: authLoaded, isSignedIn, getToken } = useAuth();
   const { toast } = useToast();
-  const { saveItem } = useSavedItems();
+  const { saveItem, getItems } = useSavedItems();
   const [guidedTipo, setGuidedTipo] = useState("");
+  const [pendingTipo, setPendingTipo] = useState<string | null>(null);
   const [guidedSubject, setGuidedSubject] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
@@ -38,13 +92,85 @@ export function SavedPrompts() {
   const [saving, setSaving] = useState(false);
   const chargedRef = useRef(false);
   const generateTriggerRef = useRef<(() => void) | null>(null);
+  const migrationStartedRef = useRef(false);
+  const subjectInputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (!authLoaded || !isSignedIn || migrationStartedRef.current) return;
+    migrationStartedRef.current = true;
+
+    const migrateLegacyPrompts = async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+
+        const response = await fetch("/api/prompts", {
+          credentials: "include",
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+
+        const legacyPrompts = await response.json() as LegacyPrompt[];
+        if (!Array.isArray(legacyPrompts) || legacyPrompts.length === 0) return;
+
+        const currentItems = await getItems();
+        const existingPromptKeys = new Set(
+          currentItems
+            .filter((item) => item.type === "prompt")
+            .map((item) => `${item.title.trim()}\n${item.content.trim()}`),
+        );
+
+        let migrated = 0;
+        for (const prompt of legacyPrompts) {
+          const title = prompt.title.trim();
+          const content = prompt.prompt.trim();
+          const key = `${title}\n${content}`;
+          if (!title || !content || existingPromptKeys.has(key)) continue;
+
+          const id = `legacy-prompt-${prompt.id}`;
+          const data = JSON.stringify({
+            briefing: { tipo: prompt.module || "Personalizado", subject: "" },
+            result: { title, prompt: content },
+            legacyPromptId: prompt.id,
+            migratedAt: new Date().toISOString(),
+          });
+
+          await saveItem({ id, title, type: "prompt", content, data });
+          existingPromptKeys.add(key);
+          migrated += 1;
+        }
+
+        if (migrated > 0) {
+          const refreshed = await getItems();
+          try { localStorage.setItem("iattom_saved_items_v1", JSON.stringify(refreshed)); } catch {}
+          toast({ description: `${migrated} prompt${migrated > 1 ? "s" : ""} antigo${migrated > 1 ? "s" : ""} restaurado${migrated > 1 ? "s" : ""} na Biblioteca.` });
+        }
+      } catch {
+        migrationStartedRef.current = false;
+      }
+    };
+
+    void migrateLegacyPrompts();
+  }, [authLoaded, isSignedIn, getToken, getItems, saveItem, toast]);
 
   const clearForm = () => {
     setGuidedTipo("");
+    setPendingTipo(null);
     setGuidedSubject("");
     setGenerated(false);
     setNewTitle("");
     setNewPrompt("");
+  };
+
+  const selectPromptType = (tipo: string) => {
+    setGuidedTipo(tipo);
+    setPendingTipo(tipo);
+  };
+
+  const continueWithType = () => {
+    setPendingTipo(null);
+    window.setTimeout(() => subjectInputRef.current?.focus(), 0);
   };
 
   const generatePromptCore = async () => {
@@ -147,16 +273,44 @@ export function SavedPrompts() {
             <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Tipo de Prompt</label>
             <div className="flex flex-wrap gap-1.5">
               {TIPO_OPTIONS.map((tipo) => (
-                <button type="button" key={tipo} onClick={() => setGuidedTipo(tipo)} disabled={generating || saving} className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all duration-150 disabled:opacity-40 ${guidedTipo === tipo ? "bg-primary/20 text-primary border-primary/40" : "text-zinc-500 border-white/[0.07] hover:text-zinc-300 hover:border-white/15"}`}>
+                <button type="button" key={tipo} onClick={() => selectPromptType(tipo)} disabled={generating || saving} className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all duration-150 disabled:opacity-40 ${guidedTipo === tipo ? "bg-primary/20 text-primary border-primary/40" : "text-zinc-500 border-white/[0.07] hover:text-zinc-300 hover:border-white/15"}`}>
                   {tipo}
                 </button>
               ))}
             </div>
+
+            <AnimatePresence mode="wait">
+              {pendingTipo && (
+                <motion.div
+                  key={pendingTipo}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18 }}
+                  className="rounded-xl border border-primary/25 bg-primary/[0.07] p-4 space-y-3"
+                >
+                  <div className="space-y-2">
+                    <p className="text-sm font-bold text-primary">{pendingTipo}</p>
+                    <p className="text-sm leading-relaxed text-white">{TIPO_INFO[pendingTipo]?.description}</p>
+                    <p className="text-xs leading-relaxed text-zinc-300">{TIPO_INFO[pendingTipo]?.example}</p>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => setPendingTipo(null)} className="h-8 border-white/20 text-xs font-semibold text-white hover:bg-white/5 hover:text-white">
+                      Sair
+                    </Button>
+                    <Button type="button" size="sm" onClick={continueWithType} className="h-8 bg-primary px-4 text-xs font-bold text-black hover:bg-primary/90">
+                      Continuar
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Assunto</label>
             <Textarea
+              ref={subjectInputRef}
               value={guidedSubject}
               onChange={(event) => setGuidedSubject(event.target.value)}
               onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && canGenerate && !generating) { event.preventDefault(); generateTriggerRef.current?.(); } }}
