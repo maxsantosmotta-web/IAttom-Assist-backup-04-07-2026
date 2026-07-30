@@ -12,7 +12,7 @@ source = source.replace(
   "db, users, projectsTable, historyTable, savedItemsTable, videoTransactions, creditsTransactions, waitlistTable, feedbackTable",
 );
 
-if (!source.includes("commercialVideoDeliveries")) {
+if (!source.includes("persistedVideoAssets")) {
   const oldBlock = `  const moduleRows = await db
     .select({ module: historyTable.module, count: count() })
     .from(historyTable)
@@ -26,8 +26,7 @@ if (!source.includes("commercialVideoDeliveries")) {
     percentage: Math.round((r.count / totalModuleCount) * 100),
   }));`;
 
-  const newBlock = `  const VIDEO_EFFECT_TRACKING_CUTOFF = Date.parse("2026-07-30T04:30:00.000Z");
-  const [moduleRows, commercialVideoDeliveries, legacyAdminVideoRows] = await Promise.all([
+  const newBlock = `  const [moduleRows, completedVideoUses, persistedVideoAssets] = await Promise.all([
     db
       .select({ module: historyTable.module, count: count() })
       .from(historyTable)
@@ -42,31 +41,17 @@ if (!source.includes("commercialVideoDeliveries")) {
         sql\`\${videoTransactions.amount} < 0\`,
       )),
     db
-      .select({ videosData: savedItemsTable.videosData })
+      .select({
+        count: sql<number>\`coalesce(sum(jsonb_array_length(coalesce(nullif(\${savedItemsTable.videosData}, ''), '[]')::jsonb)), 0)::int\`,
+      })
       .from(savedItemsTable)
-      .innerJoin(users, eq(savedItemsTable.clerkUserId, users.clerkId))
-      .where(and(
-        isNull(savedItemsTable.deletedAt),
-        eq(users.role, "admin"),
-      )),
+      .where(isNull(savedItemsTable.deletedAt)),
   ]);
 
-  const commercialVideoCount = Number(commercialVideoDeliveries[0]?.count ?? 0);
-  const trackedAdminVideoCount = Number(moduleRows.find((row) => row.module === "video_effect")?.count ?? 0);
-  const legacyAdminVideoCount = legacyAdminVideoRows.reduce((total, row) => {
-    if (!row.videosData) return total;
-    try {
-      const videos = JSON.parse(row.videosData) as Array<{ savedAt?: string }>;
-      if (!Array.isArray(videos)) return total;
-      return total + videos.filter((video) => {
-        const savedAt = video.savedAt ? Date.parse(video.savedAt) : Number.NaN;
-        return !Number.isFinite(savedAt) || savedAt < VIDEO_EFFECT_TRACKING_CUTOFF;
-      }).length;
-    } catch {
-      return total;
-    }
-  }, 0);
-  const videoEffectCount = commercialVideoCount + trackedAdminVideoCount + legacyAdminVideoCount;
+  const completedVideoCount = Number(completedVideoUses[0]?.count ?? 0);
+  const persistedVideoCount = Number(persistedVideoAssets[0]?.count ?? 0);
+  const trackedVideoCount = Number(moduleRows.find((row) => row.module === "video_effect")?.count ?? 0);
+  const videoEffectCount = Math.max(persistedVideoCount, completedVideoCount + trackedVideoCount);
   const canonicalModuleRows = [
     ...moduleRows.filter((row) => row.module !== "video_effect"),
     { module: "video_effect", count: videoEffectCount },
@@ -84,10 +69,10 @@ if (!source.includes("commercialVideoDeliveries")) {
 
 for (const marker of [
   "videoTransactions",
-  "commercialVideoDeliveries",
-  'eq(videoTransactions.type, "use")',
-  "trackedAdminVideoCount",
-  "legacyAdminVideoCount",
+  "completedVideoUses",
+  "persistedVideoAssets",
+  "persistedVideoCount",
+  "Math.max(persistedVideoCount, completedVideoCount + trackedVideoCount)",
   '{ module: "video_effect", count: videoEffectCount }',
   "canonicalModuleRows",
 ]) {
@@ -98,4 +83,4 @@ if (source.includes("rawCreativeCount - videoEffectCount")) {
 }
 
 fs.writeFileSync(adminPath, source);
-console.log("Admin analytics counts every completed video-effect use independently from image generation.");
+console.log("Admin analytics adds Vídeo com Efeito to the existing module charts with the canonical generation count.");
