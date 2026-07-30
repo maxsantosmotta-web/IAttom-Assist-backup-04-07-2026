@@ -45,32 +45,32 @@ patchFile("../src/pages/dashboard/Settings.tsx", [
 
 patchFile("../src/components/IAttomHelpPanel.tsx", [
   [
-    'import { useUser } from "@clerk/react";',
-    'import { useUser } from "@clerk/react";\nimport { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";',
-  ],
-  [
-    "  const { user } = useUser();\n  const userId = user?.id;",
-    "  const { user } = useUser();\n  const userId = user?.id;\n  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: 1, staleTime: 0, enabled: !!userId } });\n  const isFreePlan = me?.plan === \"free\" && me?.planSelected === true;",
-  ],
-  [
-    "{usage !== null && (usage.limit === 0 || usage.remaining === 0) ? (",
-    "{isFreePlan || (usage !== null && (usage.limit === 0 || usage.remaining === 0)) ? (",
-  ],
-  [
-    "{usage.limit === 0\n                      ? \"O IAttom Help não está disponível no plano gratuito.\"\n                      : \"Limite de mensagens atingido para este ciclo.\"}",
-    "{isFreePlan || usage?.limit === 0\n                      ? \"O IAttom Help não está disponível no plano gratuito.\"\n                      : \"Limite de mensagens atingido para este ciclo.\"}",
+    "  const [usage, setUsage] = useState<{ used: number; limit: number; remaining: number } | null>(null);",
+    "  const [usage, setUsage] = useState<{ used: number; limit: number; remaining: number; plan?: string } | null>(null);\n  const [usageLoaded, setUsageLoaded] = useState(false);",
   ],
   [
     "        .catch(() => {\n          if (showGreetingIfEmpty) setMessages([getGreeting(firstNameRef.current)]);\n          return false;\n        });",
     "        .catch(() => {\n          // Falha temporária não pode apagar nem substituir uma conversa já carregada.\n          return false;\n        });",
   ],
   [
-    "  // ── Initial load — only fires when userId changes ─────────────────────────\n  useEffect(() => {\n    if (!userId) return;\n    setHistoryLoaded(false);\n    loadHistory(true).finally(() => setHistoryLoaded(true));\n  }, [userId, loadHistory]);",
-    "  // ── Initial load — restore local snapshot first, then reconcile with server ──\n  useEffect(() => {\n    if (!userId) return;\n    const cacheKey = `iattom_help_history_v1:${userId}`;\n    try {\n      const cached = localStorage.getItem(cacheKey);\n      if (cached) {\n        const parsed = JSON.parse(cached) as Message[];\n        if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);\n      }\n    } catch { /* ignore invalid cache */ }\n    setHistoryLoaded(false);\n    loadHistory(true).finally(() => setHistoryLoaded(true));\n  }, [userId, loadHistory]);\n\n  useEffect(() => {\n    if (!userId || !historyLoaded) return;\n    const stableMessages = messages.filter((message) => !message.streaming);\n    try {\n      localStorage.setItem(`iattom_help_history_v1:${userId}`, JSON.stringify(stableMessages));\n    } catch { /* storage unavailable */ }\n  }, [userId, historyLoaded, messages]);",
+    "  const fetchUsage = useCallback(() => {\n    fetch(`${BASE_URL}/api/help/usage`, { credentials: \"include\" })\n      .then((r) => r.ok ? (r.json() as Promise<{ used: number; limit: number; remaining: number }>) : Promise.reject())\n      .then((data) => { if (mountedRef.current) setUsage(data); })\n      .catch(() => { /* silent — counter simply won't render */ });\n  }, []);",
+    "  const fetchUsage = useCallback(() => {\n    if (mountedRef.current) setUsageLoaded(false);\n    fetch(`${BASE_URL}/api/help/usage`, { credentials: \"include\" })\n      .then((r) => r.ok ? (r.json() as Promise<{ used: number; limit: number; remaining: number; plan?: string }>) : Promise.reject())\n      .then((data) => {\n        if (!mountedRef.current) return;\n        setUsage(data);\n        setUsageLoaded(true);\n      })\n      .catch(() => {\n        // Estado neutro: não acusa plano gratuito e não libera envio sem confirmação.\n        if (mountedRef.current) setUsageLoaded(false);\n      });\n  }, []);",
   ],
   [
-    "    setMessages([getGreeting(firstNameRef.current)]);\n    setConfirmClear(false);",
-    "    setMessages([getGreeting(firstNameRef.current)]);\n    if (userId) {\n      try { localStorage.removeItem(`iattom_help_history_v1:${userId}`); } catch { /* ignore */ }\n    }\n    setConfirmClear(false);",
+    "  const clearConversation = async () => {\n    try {\n      await fetch(`${BASE_URL}/api/help/history`, {\n        method: \"DELETE\",\n        credentials: \"include\",\n      });\n    } catch {\n      // reset state regardless\n    }\n    setMessages([getGreeting(firstNameRef.current)]);\n    setConfirmClear(false);\n  };",
+    "  const clearConversation = async () => {\n    await pendingSaveRef.current;\n    try {\n      const response = await fetch(`${BASE_URL}/api/help/history`, {\n        method: \"DELETE\",\n        credentials: \"include\",\n      });\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n      if (!mountedRef.current) return;\n      setMessages([getGreeting(firstNameRef.current)]);\n      setConfirmClear(false);\n    } catch {\n      if (!mountedRef.current) return;\n      setConfirmClear(false);\n      setSyncStatus(\"error\");\n      if (syncDoneTimerRef.current) clearTimeout(syncDoneTimerRef.current);\n      syncDoneTimerRef.current = setTimeout(() => setSyncStatus(\"idle\"), 2200);\n    }\n  };",
+  ],
+  [
+    "disabled={loading || !historyLoaded || syncStatus !== \"idle\"}",
+    "disabled={!usageLoaded || loading || !historyLoaded || syncStatus !== \"idle\"}",
+  ],
+  [
+    "disabled={loading || !historyLoaded}",
+    "disabled={!usageLoaded || loading || !historyLoaded}",
+  ],
+  [
+    "disabled={(!input.trim() && attachedImages.length === 0) || loading || !historyLoaded}",
+    "disabled={!usageLoaded || (!input.trim() && attachedImages.length === 0) || loading || !historyLoaded}",
   ],
 ]);
 
@@ -112,4 +112,4 @@ patchFile("../src/pages/dashboard/Referral.tsx", [
   ],
 ]);
 
-console.log("Settings FREE plan, stable user navigation, single-session user sync, persistent IAttom Help history and referral runtime fixes applied.");
+console.log("Settings, stable navigation, IAttom Help access/history and referral runtime fixes applied.");
