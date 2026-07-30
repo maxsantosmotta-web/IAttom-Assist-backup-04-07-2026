@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Plus, Save, Wand2, X } from "lucide-react";
+import { Copy, Plus, Save, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +29,6 @@ export function SavedPrompts() {
   const { planSlug, isAdmin } = useUserAccess();
   const { toast } = useToast();
   const { saveItem } = useSavedItems();
-  const [creating, setCreating] = useState(true);
   const [guidedTipo, setGuidedTipo] = useState("");
   const [guidedSubject, setGuidedSubject] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -46,15 +45,6 @@ export function SavedPrompts() {
     setGenerated(false);
     setNewTitle("");
     setNewPrompt("");
-  };
-
-  const closeCreateForm = () => {
-    setCreating(false);
-  };
-
-  const startNewPrompt = () => {
-    setCreating(true);
-    clearForm();
   };
 
   const generatePromptCore = async () => {
@@ -104,7 +94,7 @@ export function SavedPrompts() {
   };
 
   const savePrompt = async () => {
-    if (!newTitle.trim() || !newPrompt.trim()) return;
+    if (!newTitle.trim() || !newPrompt.trim() || saving) return;
     setSaving(true);
     try {
       const id = crypto.randomUUID();
@@ -146,91 +136,85 @@ export function SavedPrompts() {
         </div>
       </motion.div>
 
-      <AnimatePresence>
-        {creating && (
-          <motion.div initial={{ opacity: 0, y: -8, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0, y: -8, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-            <div className="bg-[#0f0f0f] border border-primary/20 rounded-2xl p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-white">Novo Prompt</p>
-                <div className="flex items-center gap-3">
-                  <button onClick={clearForm} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">Limpar</button>
-                  <button onClick={closeCreateForm} className="text-zinc-600 hover:text-zinc-400 transition-colors"><X className="w-4 h-4" /></button>
-                </div>
-              </div>
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+        <div className="bg-[#0f0f0f] border border-primary/20 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-white">Novo Prompt</p>
+            <button type="button" onClick={clearForm} disabled={generating || saving} className="ml-auto text-xs text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-40">Limpar</button>
+          </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Tipo de Prompt</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {TIPO_OPTIONS.map((tipo) => (
-                    <button key={tipo} onClick={() => setGuidedTipo(tipo)} className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all duration-150 ${guidedTipo === tipo ? "bg-primary/20 text-primary border-primary/40" : "text-zinc-500 border-white/[0.07] hover:text-zinc-300 hover:border-white/15"}`}>
-                      {tipo}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Assunto</label>
-                <Textarea
-                  value={guidedSubject}
-                  onChange={(event) => setGuidedSubject(event.target.value)}
-                  onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && canGenerate && !generating) { event.preventDefault(); generateTriggerRef.current?.(); } }}
-                  placeholder="Digite o assunto principal do prompt"
-                  className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 min-h-24 resize-none text-xs"
-                />
-                <p className="text-[10px] text-zinc-700 px-0.5">Ex: scooter, cadeira gamer, proteção veicular, emagrecimento...</p>
-              </div>
-
-              <CreditsGate
-                feature="prompt_creation"
-                onSuccess={(charge) => {
-                  charge();
-                  chargedRef.current = true;
-                  void generatePromptCore();
-                }}
-                disabled={!canGenerate || generating}
-              >
-                {({ trigger, isLoading }) => {
-                  generateTriggerRef.current = trigger;
-                  return (
-                    <Button onClick={trigger} disabled={!canGenerate || generating || isLoading} size="sm" className="bg-primary text-black hover:bg-primary/90 font-bold text-xs h-9 w-full gap-2 disabled:opacity-40">
-                      <Wand2 className={`w-3.5 h-3.5 ${generating ? "animate-spin" : ""}`} />
-                      {generating ? "Gerando prompt..." : "Gerar Prompt"}
-                    </Button>
-                  );
-                }}
-              </CreditsGate>
-
-              <AnimatePresence>
-                {generated && (
-                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="space-y-3 pt-3 border-t border-white/[0.06]">
-                    <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Prompt gerado — revise e salve</p>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Título</label>
-                      <Input value={newTitle} onChange={(event) => setNewTitle(event.target.value)} className="bg-[#111111] border-white/[0.08] text-zinc-200 h-9 text-xs" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Prompt</label>
-                      <Textarea value={newPrompt} onChange={(event) => setNewPrompt(event.target.value)} className="bg-[#111111] border-white/[0.08] text-zinc-200 h-40 resize-none text-xs leading-relaxed" />
-                    </div>
-                    <div className="flex justify-end items-center gap-3">
-                      <button onClick={() => void copyAll()} disabled={!canUseResult} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 disabled:opacity-40">
-                        <Copy className="w-3 h-3" /> Copiar tudo
-                      </button>
-                      <button onClick={() => void savePrompt()} disabled={!canUseResult || saving} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 disabled:opacity-40">
-                        <Save className="w-3 h-3" /> {saving ? "Salvando..." : "Salvar"}
-                      </button>
-                      <button onClick={startNewPrompt} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1">
-                        <Plus className="w-3 h-3" /> Novo
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+          <div className="space-y-2">
+            <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Tipo de Prompt</label>
+            <div className="flex flex-wrap gap-1.5">
+              {TIPO_OPTIONS.map((tipo) => (
+                <button type="button" key={tipo} onClick={() => setGuidedTipo(tipo)} disabled={generating || saving} className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-all duration-150 disabled:opacity-40 ${guidedTipo === tipo ? "bg-primary/20 text-primary border-primary/40" : "text-zinc-500 border-white/[0.07] hover:text-zinc-300 hover:border-white/15"}`}>
+                  {tipo}
+                </button>
+              ))}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Assunto</label>
+            <Textarea
+              value={guidedSubject}
+              onChange={(event) => setGuidedSubject(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && canGenerate && !generating) { event.preventDefault(); generateTriggerRef.current?.(); } }}
+              placeholder="Digite o assunto principal do prompt"
+              disabled={generating || saving}
+              className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 min-h-24 resize-none text-xs"
+            />
+            <p className="text-[10px] text-zinc-700 px-0.5">Ex: scooter, cadeira gamer, proteção veicular, emagrecimento...</p>
+          </div>
+
+          <CreditsGate
+            feature="prompt_creation"
+            onSuccess={(charge) => {
+              charge();
+              chargedRef.current = true;
+              void generatePromptCore();
+            }}
+            disabled={!canGenerate || generating || saving}
+          >
+            {({ trigger, isLoading }) => {
+              generateTriggerRef.current = trigger;
+              return (
+                <Button type="button" onClick={trigger} disabled={!canGenerate || generating || saving || isLoading} size="sm" className="bg-primary text-black hover:bg-primary/90 font-bold text-xs h-9 w-full gap-2 disabled:opacity-40">
+                  <Wand2 className={`w-3.5 h-3.5 ${generating ? "animate-spin" : ""}`} />
+                  {generating ? "Gerando prompt..." : "Gerar Prompt"}
+                </Button>
+              );
+            }}
+          </CreditsGate>
+
+          <AnimatePresence>
+            {generated && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="space-y-3 pt-3 border-t border-white/[0.06]">
+                <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Prompt gerado — revise e salve</p>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Título</label>
+                  <Input value={newTitle} onChange={(event) => setNewTitle(event.target.value)} disabled={saving} className="bg-[#111111] border-white/[0.08] text-zinc-200 h-9 text-xs" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Prompt</label>
+                  <Textarea value={newPrompt} onChange={(event) => setNewPrompt(event.target.value)} disabled={saving} className="bg-[#111111] border-white/[0.08] text-zinc-200 h-40 resize-none text-xs leading-relaxed" />
+                </div>
+                <div className="flex justify-end items-center gap-3">
+                  <button type="button" onClick={() => void copyAll()} disabled={!canUseResult || saving} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 disabled:opacity-40">
+                    <Copy className="w-3 h-3" /> Copiar tudo
+                  </button>
+                  <button type="button" onClick={() => void savePrompt()} disabled={!canUseResult || saving} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1.5 disabled:opacity-40">
+                    <Save className="w-3 h-3" /> {saving ? "Salvando..." : "Salvar"}
+                  </button>
+                  <button type="button" onClick={clearForm} disabled={generating || saving} className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-1 disabled:opacity-40">
+                    <Plus className="w-3 h-3" /> Novo
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
     </div>
   );
 }
