@@ -156,9 +156,7 @@ async function fetchDeletedAuditRows(): Promise<boolean> {
 }
 
 async function removeDeletedAuditRow(item: DeletedAuditRow, button: HTMLButtonElement): Promise<void> {
-  const confirmed = window.confirm(
-    `Remover apenas este registro do histórico?\n\n${item.email}\n\nIsso não bloqueia um novo cadastro com o mesmo e-mail.`,
-  );
+  const confirmed = window.confirm(`Remover este registro do histórico?\n\n${item.email}`);
   if (!confirmed) return;
 
   button.disabled = true;
