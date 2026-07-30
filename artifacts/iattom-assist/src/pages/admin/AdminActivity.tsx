@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Activity, RefreshCw, TrendingUp, Zap, CalendarDays, BarChart2, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ const MODULE_COLORS: Record<string, string> = {
   campaign: "#fbbf24",
   content: "#60a5fa",
   creative: "#a78bfa",
+  video_effect: "#22d3ee",
   video_script: "#fb7185",
   product_discovery: "#3fd7ff",
   product_validation: "#64e6a6",
@@ -32,20 +33,21 @@ function shortDay(iso: string) {
 
 function normalizeAction(action: string): string {
   const base = action.split(":")[0].trim();
-  if (/campaign.*creat|creat.*campaign|campanha.*cria/i.test(base)) return "Campanhas Criadas";
-  if (/campaign.*refin|block.*refin|bloco/i.test(base)) return "Blocos Refinados";
-  if (/content.*creat|creat.*content|content.*gen|gen.*content|conteúdo/i.test(base)) return "Conteúdos Criados";
-  if (/script.*creat|script.*gen|video.?script/i.test(base)) return "Scripts Gerados";
-  if (/creative.*gen|gen.*creative|criativo/i.test(base)) return "Criativos Gerados";
-  if (/creat.*project|project.*creat|projeto.*cri/i.test(base)) return "Projetos Criados";
-  if (/updat.*project|project.*updat|projeto.*atualiz/i.test(base)) return "Projetos Atualizados";
-  if (/complet.*project|project.*complet|projeto.*conclu/i.test(base)) return "Projetos Concluídos";
-  if (/validat|validação/i.test(base)) return "Validações Executadas";
-  if (/discover|descoberta/i.test(base)) return "Descobertas Executadas";
-  if (/marketing/i.test(base)) return "Marketing Gerado";
-  if (/prompt/i.test(base)) return "Prompts Criados";
-  if (/delet|exclu/i.test(base)) return "Itens Excluídos";
-  if (/restor|restaur/i.test(base)) return "Itens Restaurados";
+  if (/campaign.*creat|creat.*campaign|campanha.*cria|entrega.*criad/i.test(base)) return "Campanhas criadas";
+  if (/campaign.*refin|block.*refin|bloco/i.test(base)) return "Blocos refinados";
+  if (/content.*creat|creat.*content|content.*gen|gen.*content|conteúdo/i.test(base)) return "Conteúdos criados";
+  if (/script.*creat|script.*gen|video.?script/i.test(base)) return "Scripts gerados";
+  if (/video.?effect|vídeo.*efeito/i.test(base)) return "Vídeo com Efeito";
+  if (/creative.*gen|gen.*creative|criativo|imagem.*gerad/i.test(base)) return "Gerar Imagem";
+  if (/creat.*project|project.*creat|projeto.*cri/i.test(base)) return "Projetos criados";
+  if (/updat.*project|project.*updat|projeto.*atualiz/i.test(base)) return "Projetos atualizados";
+  if (/complet.*project|project.*complet|projeto.*conclu/i.test(base)) return "Projetos concluídos";
+  if (/validat|validação/i.test(base)) return "Validações de produtos executadas";
+  if (/find.?products|product.*discover|discover|descoberta|buscar.*produto/i.test(base)) return "Buscas de produtos executadas";
+  if (/marketing/i.test(base)) return "Marketing gerado";
+  if (/prompt/i.test(base)) return "Prompts criados";
+  if (/delet|exclu/i.test(base)) return "Itens excluídos";
+  if (/restor|restaur/i.test(base)) return "Itens restaurados";
   return base.length > 0 ? base : action;
 }
 
@@ -63,9 +65,12 @@ function LiveStatus() {
 
 const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
 
+type MediaMetric = { name: string; count: number };
+
 export function AdminActivity() {
   const { getToken } = useAuth();
   const { toast } = useToast();
+  const [mediaMetrics, setMediaMetrics] = useState<MediaMetric[]>([]);
 
   async function downloadCsv(path: string, filename: string) {
     try {
@@ -95,6 +100,26 @@ export function AdminActivity() {
       },
     },
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        const response = await fetch(`${BASE}/api/admin/analytics?refresh=${Date.now()}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const data = await response.json() as { featureUsage?: MediaMetric[] };
+        if (!cancelled) setMediaMetrics(data.featureUsage ?? []);
+      } catch {
+        if (!cancelled) setMediaMetrics([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [getToken, isFetching]);
 
   const items = activity ?? [];
 
@@ -127,15 +152,21 @@ export function AdminActivity() {
     }
     const dailyChart = days14.map((key) => ({ label: shortDay(key), value: dailyMap[key] }));
 
+    const canonicalMediaCounts = new Map<string, number>(
+      mediaMetrics.map((item): [string, number] => [item.name.toLowerCase().replaceAll(" ", "_"), Number(item.count ?? 0)]),
+    );
     const moduleMap: Record<string, { count: number; rawKey: string }> = {};
     for (const item of items) {
       const key = item.module.toLowerCase();
       if (!moduleMap[key]) moduleMap[key] = { count: 0, rawKey: item.module };
       moduleMap[key].count++;
     }
+    if (canonicalMediaCounts.has("creative")) moduleMap.creative = { count: canonicalMediaCounts.get("creative") ?? 0, rawKey: "creative" };
+    if (canonicalMediaCounts.has("video_effect")) moduleMap.video_effect = { count: canonicalMediaCounts.get("video_effect") ?? 0, rawKey: "video_effect" };
     const moduleChart = Object.entries(moduleMap)
+      .filter(([, value]) => value.count > 0)
       .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 8)
+      .slice(0, 9)
       .map(([key, { count, rawKey }], index) => ({
         label: translateModule(rawKey),
         value: count,
@@ -147,13 +178,17 @@ export function AdminActivity() {
       const label = normalizeAction(item.action);
       actionMap[label] = (actionMap[label] ?? 0) + 1;
     }
+    for (const key of ["Criativos Gerados", "Imagens e vídeos criados", "Imagens geradas", "Gerar Imagem", "Vídeo com Efeito"]) delete actionMap[key];
+    if (canonicalMediaCounts.has("creative")) actionMap["Gerar Imagem"] = canonicalMediaCounts.get("creative") ?? 0;
+    if (canonicalMediaCounts.has("video_effect")) actionMap["Vídeo com Efeito"] = canonicalMediaCounts.get("video_effect") ?? 0;
     const actionChart = Object.entries(actionMap)
+      .filter(([, value]) => value > 0)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 9)
+      .slice(0, 10)
       .map(([label, value], index) => ({ label, value, color: FALLBACK_COLORS[index % FALLBACK_COLORS.length] }));
 
     return { kpis: { today, week, month, avgDaily }, dailyChart, moduleChart, actionChart };
-  }, [items]);
+  }, [items, mediaMetrics]);
 
   return (
     <div className="space-y-8">
@@ -183,11 +218,7 @@ export function AdminActivity() {
           { label: "Últimos 30 dias", value: isLoading ? null : kpis.month, sub: "no período", icon: TrendingUp, color: "text-violet-300 bg-violet-400/10 border-violet-300/20", glow: "rgba(139, 92, 246, .10)" },
           { label: "Média Diária", value: isLoading ? null : kpis.avgDaily, sub: "ações/dia (7 dias)", icon: BarChart2, color: "text-emerald-300 bg-emerald-400/10 border-emerald-300/20", glow: "rgba(16, 185, 129, .10)" },
         ] as const).map(({ label, value, sub, icon: Icon, color, glow }) => (
-          <Card
-            key={label}
-            className="relative overflow-hidden border-white/[0.065] bg-[#0d1015] shadow-[inset_0_1px_0_rgba(255,255,255,.02),0_14px_36px_rgba(0,0,0,.20)] transition-colors hover:border-white/10"
-            style={{ backgroundImage: `radial-gradient(circle at 20% 18%, ${glow}, transparent 56%), linear-gradient(135deg, rgba(255,255,255,.012), transparent 60%)` }}
-          >
+          <Card key={label} className="relative overflow-hidden border-white/[0.065] bg-[#0d1015] shadow-[inset_0_1px_0_rgba(255,255,255,.02),0_14px_36px_rgba(0,0,0,.20)] transition-colors hover:border-white/10" style={{ backgroundImage: `radial-gradient(circle at 20% 18%, ${glow}, transparent 56%), linear-gradient(135deg, rgba(255,255,255,.012), transparent 60%)` }}>
             <CardContent className="relative p-5">
               <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg border shadow-[0_0_10px_currentColor] ${color}`}><Icon className="h-4 w-4" /></div>
               {value === null ? <Skeleton className="mb-1 h-8 w-16 bg-white/5" /> : <p className="mb-0.5 text-2xl font-bold text-white">{value}</p>}
