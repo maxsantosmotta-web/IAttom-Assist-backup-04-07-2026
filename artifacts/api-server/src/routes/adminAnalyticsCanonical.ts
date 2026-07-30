@@ -12,7 +12,7 @@ import { requireAdmin } from "../middlewares/requireAdmin.js";
 
 const router: IRouter = Router();
 
-const BASELINE_CUTOFF = new Date("2026-07-30T07:15:00.000Z");
+const BASELINE_CUTOFF = new Date("2026-07-30T07:25:00.000Z");
 const BASELINE_COUNTS: Record<string, number> = {
   creative: 5,
   video_effect: 9,
