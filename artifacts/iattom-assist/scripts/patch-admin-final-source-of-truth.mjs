@@ -144,3 +144,5 @@ fs.writeFileSync(analyticsPath, analytics);
 fs.writeFileSync(activityPath, activity);
 fs.writeFileSync(translationsPath, translations);
 console.log("Admin charts keep Gerar Imagem and Vídeo com Efeito as separate original metrics with canonical Portuguese labels.");
+
+await import("./patch-admin-media-metrics-final.mjs");
