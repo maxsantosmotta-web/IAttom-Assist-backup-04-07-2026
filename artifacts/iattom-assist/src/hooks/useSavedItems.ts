@@ -77,13 +77,16 @@ async function apiFetch<T>(path: string, token: string, init?: RequestInit): Pro
   return res.json() as Promise<T>;
 }
 
-async function resolveToken(getToken: () => Promise<string | null>): Promise<string | null> {
-  let token = await getToken();
-  if (!token) {
-    await new Promise(r => setTimeout(r, 700));
-    token = await getToken();
+async function resolveToken(getToken: () => Promise<string | null>): Promise<string> {
+  const retryDelays = [0, 250, 500, 750, 1000, 1000, 1000];
+
+  for (const delay of retryDelays) {
+    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+    const token = await getToken();
+    if (token) return token;
   }
-  return token;
+
+  throw new Error("Sessão ainda carregando. Tente novamente.");
 }
 
 export function useSavedItems() {
@@ -91,7 +94,6 @@ export function useSavedItems() {
 
   const getItems = useCallback(async (): Promise<SavedItemRecord[]> => {
     const token = await resolveToken(getToken);
-    if (!token) return [];
     return apiFetch<SavedItemRecord[]>("/api/saved-items", token);
   }, [getToken]);
 
@@ -102,7 +104,6 @@ export function useSavedItems() {
     }
 
     const token = await resolveToken(getToken);
-    if (!token) throw new Error("Não autenticado");
     await apiFetch<SavedItemRecord>("/api/saved-items", token, {
       method: "POST",
       body: JSON.stringify(payload),
@@ -119,7 +120,6 @@ export function useSavedItems() {
     }
 
     const token = await resolveToken(getToken);
-    if (!token) throw new Error("Não autenticado");
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}/assets`, token, {
       method: "POST",
       body: JSON.stringify({ assets }),
@@ -128,7 +128,6 @@ export function useSavedItems() {
 
   const getItemAssets = useCallback(async (id: string): Promise<AssetData[]> => {
     const token = await resolveToken(getToken);
-    if (!token) return [];
     const res = await apiFetch<{ assets: AssetData[] }>(`/api/saved-items/${id}/assets`, token);
     return res.assets ?? [];
   }, [getToken]);
@@ -136,7 +135,6 @@ export function useSavedItems() {
   const saveItemVideoAssets = useCallback(async (id: string, videos: VideoAssetData[]): Promise<void> => {
     if (!videos.length) return;
     const token = await resolveToken(getToken);
-    if (!token) throw new Error("Não autenticado");
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}/video-assets`, token, {
       method: "POST",
       body: JSON.stringify({ videos }),
@@ -145,7 +143,6 @@ export function useSavedItems() {
 
   const getItemVideoAssets = useCallback(async (id: string): Promise<VideoAssetData[]> => {
     const token = await resolveToken(getToken);
-    if (!token) return [];
     const res = await apiFetch<{ videos: VideoAssetData[] }>(`/api/saved-items/${id}/video-assets`, token);
     return res.videos ?? [];
   }, [getToken]);
@@ -161,7 +158,6 @@ export function useSavedItems() {
 
       const parsed = pending.payload.data ? JSON.parse(pending.payload.data) as { origin?: "gallery" | "library"; name?: string; mimeType?: "image/png" | "image/jpeg" } : {};
       const token = await resolveToken(getToken);
-      if (!token) throw new Error("Não autenticado");
 
       const response = await apiFetch<{ ok: boolean; item?: { id: string; deletedAt: string | null } }>("/api/image-motion/trash-source", token, {
         method: "POST",
@@ -182,13 +178,11 @@ export function useSavedItems() {
     }
 
     const token = await resolveToken(getToken);
-    if (!token) throw new Error("Não autenticado");
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}`, token, { method: "DELETE" });
   }, [getToken]);
 
   const trashImageSource = useCallback(async (payload: TrashImageSourcePayload): Promise<void> => {
     const token = await resolveToken(getToken);
-    if (!token) throw new Error("Não autenticado");
     const response = await apiFetch<{ ok: boolean; item?: { id: string; deletedAt: string | null } }>("/api/image-motion/trash-source", token, {
       method: "POST",
       body: JSON.stringify(payload),
@@ -212,13 +206,11 @@ export function useSavedItems() {
 
   const restoreItem = useCallback(async (id: string): Promise<void> => {
     const token = await resolveToken(getToken);
-    if (!token) throw new Error("Não autenticado");
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}/restore`, token, { method: "POST" });
   }, [getToken]);
 
   const permanentDelete = useCallback(async (id: string): Promise<void> => {
     const token = await resolveToken(getToken);
-    if (!token) throw new Error("Não autenticado");
     await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}/permanent`, token, { method: "DELETE" });
   }, [getToken]);
 
