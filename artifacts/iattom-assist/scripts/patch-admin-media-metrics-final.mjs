@@ -36,14 +36,36 @@ if (!translations.includes('video_effect: "Vídeo com Efeito"')) {
   translations = translations.replace('video_script: "Scripts de Vídeo",', 'video_script: "Scripts de Vídeo",\n  video_effect: "Vídeo com Efeito",');
 }
 
-if (!activity.includes("useGetAdminAnalytics")) {
+if (!activity.includes("mediaAnalytics")) {
+  activity = activity.replace('import { useMemo } from "react";', 'import { useEffect, useMemo, useState } from "react";');
   activity = activity.replace(
-    'import { useListAdminActivity, getListAdminActivityQueryKey } from "@workspace/api-client-react";',
-    'import { useListAdminActivity, getListAdminActivityQueryKey, useGetAdminAnalytics } from "@workspace/api-client-react";',
+    "  const { toast } = useToast();",
+    `  const { toast } = useToast();
+  const [mediaAnalytics, setMediaAnalytics] = useState<Array<{ name: string; count: number }>>([]);`,
   );
   activity = activity.replace(
     "  const items = activity ?? [];",
-    "  const { data: adminAnalytics } = useGetAdminAnalytics();\n  const items = activity ?? [];",
+    `  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        const response = await fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
+          headers: token ? { Authorization: \`Bearer \${token}\` } : {},
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const data = await response.json() as { featureUsage?: Array<{ name: string; count: number }> };
+        if (!cancelled) setMediaAnalytics(data.featureUsage ?? []);
+      } catch {
+        if (!cancelled) setMediaAnalytics([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [getToken, isFetching]);
+
+  const items = activity ?? [];`,
   );
 }
 
@@ -51,7 +73,7 @@ if (!activity.includes("canonicalMediaCounts")) {
   activity = activity.replace(
     "    const moduleMap: Record<string, { count: number; rawKey: string }> = {};",
     `    const canonicalMediaCounts = new Map(
-      (adminAnalytics?.featureUsage ?? []).map((item) => [item.name.toLowerCase().replaceAll(" ", "_"), Number(item.count ?? 0)]),
+      mediaAnalytics.map((item) => [item.name.toLowerCase().replaceAll(" ", "_"), Number(item.count ?? 0)]),
     );
     const moduleMap: Record<string, { count: number; rawKey: string }> = {};`,
   );
@@ -63,12 +85,12 @@ if (!activity.includes("canonicalMediaCounts")) {
   );
   activity = activity.replace(
     "    const actionChart = Object.entries(actionMap)",
-    `    for (const key of ["Criativos Gerados", "Imagens e vídeos criados", "Gerar Imagem", "Vídeo com Efeito"]) delete actionMap[key];
+    `    for (const key of ["Criativos Gerados", "Imagens e vídeos criados", "Imagens geradas", "Gerar Imagem", "Vídeo com Efeito"]) delete actionMap[key];
     if (canonicalMediaCounts.has("creative")) actionMap["Gerar Imagem"] = canonicalMediaCounts.get("creative") ?? 0;
     if (canonicalMediaCounts.has("video_effect")) actionMap["Vídeo com Efeito"] = canonicalMediaCounts.get("video_effect") ?? 0;
     const actionChart = Object.entries(actionMap)`,
   );
-  activity = activity.replace("  }, [items]);", "  }, [items, adminAnalytics]);
+  activity = activity.replace("  }, [items]);", "  }, [items, mediaAnalytics]);
 }
 
 for (const fileName of ["overview", "analytics"]) {
@@ -79,7 +101,7 @@ for (const fileName of ["overview", "analytics"]) {
   if (fileName === "overview") overview = source; else analytics = source;
 }
 
-for (const marker of ["Gerar Imagem", "Vídeo com Efeito", "canonicalMediaCounts"]) {
+for (const marker of ["Gerar Imagem", "Vídeo com Efeito", "canonicalMediaCounts", "mediaAnalytics"]) {
   if (!overview.includes(marker) && !analytics.includes(marker) && !activity.includes(marker) && !translations.includes(marker)) {
     throw new Error(`Canonical media marker missing: ${marker}`);
   }
@@ -89,4 +111,4 @@ fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(analyticsPath, analytics);
 fs.writeFileSync(activityPath, activity);
 fs.writeFileSync(translationsPath, translations);
-console.log("Admin media charts now separate Gerar Imagem and Vídeo com Efeito using canonical counts.");
+console.log("Admin media charts now subtract Vídeo com Efeito from Gerar Imagem and use the same canonical counts.");
