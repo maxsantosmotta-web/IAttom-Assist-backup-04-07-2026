@@ -34,7 +34,7 @@ const ROSE = "#fb7185";
 const AMBER = "#fbbf24";
 const CYAN = "#22d3ee";
 
-const FEATURE_COLORS = [GOLD, CYAN, PURPLE, EMERALD, BLUE, ORANGE, ROSE, AMBER];
+const FEATURE_COLORS = [GOLD, PURPLE, EMERALD, BLUE, ORANGE, ROSE, AMBER, CYAN];
 const PLAN_COLORS: Record<string, string> = {
   Free: BLUE,
   Start: EMERALD,
@@ -45,34 +45,15 @@ const PLAN_COLORS: Record<string, string> = {
 const BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, "");
 
 const FEATURE_NAME_MAP: Record<string, string> = {
-  Creative: "Gerar Imagem",
-  "Video Effect": "Vídeo com Efeito",
-  Campaign: "Criar Campanha",
-  "Product Discovery": "Buscar Produtos",
-  "Product Validation": "Validar Produto",
-  "Validate Products": "Validar Produto",
-  Content: "Criar Conteúdo",
-  "Video Script": "Scripts de Vídeo",
-  Prompt: "Prompts",
-  Marketing: "IAttom Help",
+  "Product Discovery": "Descoberta de Produtos",
+  "Product Validation": "Validação de Produtos",
+  "Validate Products": "Validação de Produtos",
+  Campaign: "Campanha",
+  Content: "Conteúdo",
+  Creative: "Criativos",
+  "Video Script": "Roteiro de Vídeo",
+  Marketing: "Marketing",
 };
-
-const MODULE_ORDER = [
-  "Gerar Imagem",
-  "Vídeo com Efeito",
-  "Criar Campanha",
-  "Buscar Produtos",
-  "Validar Produto",
-  "Criar Conteúdo",
-  "Scripts de Vídeo",
-  "Prompts",
-  "IAttom Help",
-];
-
-function moduleOrder(label: string): number {
-  const index = MODULE_ORDER.indexOf(label);
-  return index === -1 ? MODULE_ORDER.length : index;
-}
 
 interface GrowthStats {
   mrr: number;
@@ -104,15 +85,13 @@ interface CreditAnalytics {
 
 function normalizeAction(action: string): string {
   const base = action.split(":")[0].trim();
-  if (/video.?effect|vídeo.*efeito/i.test(base)) return "Vídeo com Efeito";
-  if (/creative|criativo|imagem.*gerad/i.test(base)) return "Gerar Imagem";
-  if (/discover|descoberta|buscar.*produto/i.test(base)) return "Buscar Produtos";
-  if (/script/i.test(base)) return "Scripts de Vídeo";
-  if (/content|conteúdo/i.test(base)) return "Criar Conteúdo";
-  if (/campaign|campanha/i.test(base)) return "Criar Campanha";
-  if (/validat|validação/i.test(base)) return "Validar Produto";
-  if (/prompt/i.test(base)) return "Prompts";
-  if (/marketing|help/i.test(base)) return "IAttom Help";
+  if (/creative|criativo/i.test(base)) return "Criativos Gerados";
+  if (/discover|descoberta/i.test(base)) return "Descobertas Executadas";
+  if (/script/i.test(base)) return "Scripts Criados";
+  if (/content|conteúdo/i.test(base)) return "Conteúdos Criados";
+  if (/campaign|campanha/i.test(base)) return "Campanhas Criadas";
+  if (/validat|validação/i.test(base)) return "Validações Executadas";
+  if (/prompt/i.test(base)) return "Prompts Criados";
   return base || action;
 }
 
@@ -255,22 +234,11 @@ export function AdminOverview() {
     return { label: plan.label, value, color: plan.color };
   });
 
-  const canonicalFeatureCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of analytics?.featureUsage ?? []) {
-      const label = FEATURE_NAME_MAP[item.name] ?? item.name;
-      counts.set(label, Number(item.count ?? 0));
-    }
-    return counts;
-  }, [analytics]);
-
-  const featureDonut = [...canonicalFeatureCounts.entries()]
-    .sort((left, right) => moduleOrder(left[0]) - moduleOrder(right[0]))
-    .map(([label, value], index) => ({
-      label,
-      value,
-      color: FEATURE_COLORS[index % FEATURE_COLORS.length],
-    }));
+  const featureDonut = (analytics?.featureUsage ?? []).slice(0, 8).map((item, index) => ({
+    label: FEATURE_NAME_MAP[item.name] ?? item.name,
+    value: Number(item.count ?? 0),
+    color: FEATURE_COLORS[index % FEATURE_COLORS.length],
+  }));
 
   const actionDonut = useMemo(() => {
     const counts = new Map<string, number>();
@@ -278,20 +246,11 @@ export function AdminOverview() {
       const label = normalizeAction(item.action);
       counts.set(label, (counts.get(label) ?? 0) + 1);
     }
-
-    for (const label of MODULE_ORDER) {
-      const canonicalValue = canonicalFeatureCounts.get(label);
-      if (canonicalValue !== undefined) counts.set(label, canonicalValue);
-    }
-
     return [...counts.entries()]
-      .filter(([, value]) => value > 0)
-      .sort((left, right) => {
-        const orderDifference = moduleOrder(left[0]) - moduleOrder(right[0]);
-        return orderDifference !== 0 ? orderDifference : right[1] - left[1];
-      })
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
       .map(([label, value], index) => ({ label, value, color: FEATURE_COLORS[index % FEATURE_COLORS.length] }));
-  }, [activity, canonicalFeatureCounts]);
+  }, [activity]);
 
   const growthLine = (analytics?.userGrowth ?? []).map((item) => ({
     label: item.month,
