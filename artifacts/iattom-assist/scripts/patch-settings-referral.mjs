@@ -50,22 +50,34 @@ patchFile("../src/components/IAttomHelpPanel.tsx", [
   ],
   [
     "  const { user } = useUser();\n  const userId = user?.id;",
-    "  const { user } = useUser();\n  const userId = user?.id;\n  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: false, staleTime: 0, enabled: !!userId } });\n  const isFreePlan = me?.plan === \"free\" && me?.planSelected === true;\n  const helpAccessLoading = !!userId && me === undefined;",
+    "  const { user } = useUser();\n  const userId = user?.id;\n  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), retry: 1, staleTime: 0, enabled: !!userId } });\n  const isFreePlan = me?.plan === \"free\" && me?.planSelected === true;",
   ],
   [
     "{usage !== null && (usage.limit === 0 || usage.remaining === 0) ? (",
-    "{helpAccessLoading || isFreePlan || (usage !== null && (usage.limit === 0 || usage.remaining === 0)) ? (",
+    "{isFreePlan || (usage !== null && (usage.limit === 0 || usage.remaining === 0)) ? (",
   ],
   [
     "{usage.limit === 0\n                      ? \"O IAttom Help não está disponível no plano gratuito.\"\n                      : \"Limite de mensagens atingido para este ciclo.\"}",
-    "{helpAccessLoading\n                      ? \"Verificando disponibilidade do IAttom Help...\"\n                      : isFreePlan || usage?.limit === 0\n                        ? \"O IAttom Help não está disponível no plano gratuito.\"\n                        : \"Limite de mensagens atingido para este ciclo.\"}",
+    "{isFreePlan || usage?.limit === 0\n                      ? \"O IAttom Help não está disponível no plano gratuito.\"\n                      : \"Limite de mensagens atingido para este ciclo.\"}",
+  ],
+  [
+    "        .catch(() => {\n          if (showGreetingIfEmpty) setMessages([getGreeting(firstNameRef.current)]);\n          return false;\n        });",
+    "        .catch(() => {\n          // Falha temporária não pode apagar nem substituir uma conversa já carregada.\n          return false;\n        });",
+  ],
+  [
+    "  // ── Initial load — only fires when userId changes ─────────────────────────\n  useEffect(() => {\n    if (!userId) return;\n    setHistoryLoaded(false);\n    loadHistory(true).finally(() => setHistoryLoaded(true));\n  }, [userId, loadHistory]);",
+    "  // ── Initial load — restore local snapshot first, then reconcile with server ──\n  useEffect(() => {\n    if (!userId) return;\n    const cacheKey = `iattom_help_history_v1:${userId}`;\n    try {\n      const cached = localStorage.getItem(cacheKey);\n      if (cached) {\n        const parsed = JSON.parse(cached) as Message[];\n        if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);\n      }\n    } catch { /* ignore invalid cache */ }\n    setHistoryLoaded(false);\n    loadHistory(true).finally(() => setHistoryLoaded(true));\n  }, [userId, loadHistory]);\n\n  useEffect(() => {\n    if (!userId || !historyLoaded) return;\n    const stableMessages = messages.filter((message) => !message.streaming);\n    try {\n      localStorage.setItem(`iattom_help_history_v1:${userId}`, JSON.stringify(stableMessages));\n    } catch { /* storage unavailable */ }\n  }, [userId, historyLoaded, messages]);",
+  ],
+  [
+    "    setMessages([getGreeting(firstNameRef.current)]);\n    setConfirmClear(false);",
+    "    setMessages([getGreeting(firstNameRef.current)]);\n    if (userId) {\n      try { localStorage.removeItem(`iattom_help_history_v1:${userId}`); } catch { /* ignore */ }\n    }\n    setConfirmClear(false);",
   ],
 ]);
 
 patchFile("../src/components/layout/SidebarLayout.tsx", [
   [
     `  useEffect(() => {\n    if (isLoaded && isSignedIn && user) {\n      const email = user.primaryEmailAddress?.emailAddress;\n      const name = user.fullName ?? user.firstName ?? undefined;\n      if (email) syncUser.mutate({ data: { email, name } });\n    }\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [isLoaded, isSignedIn]);`,
-    `  useEffect(() => {\n    if (isLoaded && isSignedIn && user) {\n      const email = user.primaryEmailAddress?.emailAddress;\n      const name = user.fullName ?? user.firstName ?? undefined;\n      const syncKey = \`iattom_user_synced_\${user.id}\`;\n      if (!email || sessionStorage.getItem(syncKey) === \"1\") return;\n\n      sessionStorage.setItem(syncKey, \"1\");\n      syncUser.mutate(\n        { data: { email, name } },\n        { onError: () => sessionStorage.removeItem(syncKey) },\n      );\n    }\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [isLoaded, isSignedIn]);`,
+    `  useEffect(() => {\n    if (isLoaded && isSignedIn && user) {\n      const email = user.primaryEmailAddress?.emailAddress;\n      const name = user.fullName ?? user.firstName ?? undefined;\n      const syncKey = \`iattom_user_synced_\${user.id}\`;\n      if (!email || sessionStorage.getItem(syncKey) === "1") return;\n\n      sessionStorage.setItem(syncKey, "1");\n      syncUser.mutate(\n        { data: { email, name } },\n        { onError: () => sessionStorage.removeItem(syncKey) },\n      );\n    }\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [isLoaded, isSignedIn]);`,
   ],
   [
     `              {isActive && (\n                <motion.div\n                  layoutId="nav-active-pill"\n                  className="absolute inset-0 rounded-xl bg-primary/[0.10]"\n                  transition={{ type: "spring", stiffness: 420, damping: 38 }}\n                />\n              )}\n              <motion.div\n                className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-r-full bg-primary origin-center"\n                initial={false}\n                animate={{ height: isActive ? 20 : 0, opacity: isActive ? 1 : 0 }}\n                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}\n              />`,
@@ -100,4 +112,4 @@ patchFile("../src/pages/dashboard/Referral.tsx", [
   ],
 ]);
 
-console.log("Settings FREE plan, stable user navigation, single-session user sync, IAttom Help access and referral runtime fixes applied.");
+console.log("Settings FREE plan, stable user navigation, single-session user sync, persistent IAttom Help history and referral runtime fixes applied.");
