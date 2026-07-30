@@ -13,6 +13,23 @@ import { requireAdmin } from "../middlewares/requireAdmin.js";
 
 const router: IRouter = Router();
 
+const MODULE_ORDER = [
+  "creative",
+  "video_effect",
+  "campaign",
+  "product_discovery",
+  "product_validation",
+  "content",
+  "video_script",
+  "prompt",
+  "marketing",
+] as const;
+
+function moduleOrder(module: string): number {
+  const index = MODULE_ORDER.indexOf(module as (typeof MODULE_ORDER)[number]);
+  return index === -1 ? MODULE_ORDER.length : index;
+}
+
 router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> => {
   const now = new Date();
   const sixMonthsAgo = new Date(now);
@@ -99,7 +116,11 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
   const canonicalModuleRows = [
     ...moduleRows.filter((row) => row.module !== "video_effect"),
     { module: "video_effect", count: videoEffectCount },
-  ];
+  ].sort((left, right) => {
+    const orderDifference = moduleOrder(left.module) - moduleOrder(right.module);
+    return orderDifference !== 0 ? orderDifference : Number(right.count) - Number(left.count);
+  });
+
   const totalModuleCount = canonicalModuleRows.reduce(
     (total, row) => total + Number(row.count),
     0,
@@ -109,6 +130,11 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
     count: Number(row.count),
     percentage: Math.round((Number(row.count) / totalModuleCount) * 100),
   }));
+
+  const percentageTotal = featureUsage.reduce((total, item) => total + item.percentage, 0);
+  if (featureUsage.length > 0 && percentageTotal !== 100) {
+    featureUsage[0].percentage += 100 - percentageTotal;
+  }
 
   const planRevenue = [
     { plan: "Free", users: freeRes.count, mrr: 0 },
