@@ -14,20 +14,21 @@ function replaceOrKeep(pattern, replacement, label) {
 // O filtro video_effect é virtual: os registros continuam com o tipo original salvo.
 source = source.replace(
   /type TabKey = [^;]+;/,
-  'type TabKey = "all" | "campaign" | "content" | "creative" | "video_script" | "video_effect" | "product_discovery" | "product_validation";',
+  'type TabKey = "all" | "campaign" | "content" | "creative" | "video_script" | "video_effect" | "prompt" | "product_discovery" | "product_validation";',
 );
 
 source = source.replace(
   /const TABS:[\s\S]*?= \[[\s\S]*?\n\];/,
   `const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
-  { key: "all",                label: "Todos",            icon: BookOpen  },
-  { key: "campaign",           label: "Campanhas",        icon: Megaphone },
-  { key: "content",            label: "Conteúdos",        icon: FileText  },
-  { key: "creative",           label: "Imagens",          icon: Sparkles  },
-  { key: "video_script",       label: "Scripts de Vídeo", icon: Video     },
-  { key: "video_effect",       label: "Vídeo com Efeito", icon: Video     },
-  { key: "product_discovery",  label: "Produtos",         icon: Search    },
-  { key: "product_validation", label: "Validar Produto",  icon: Search    },
+  { key: "all",                label: "Todos",            icon: BookOpen   },
+  { key: "campaign",           label: "Campanhas",        icon: Megaphone  },
+  { key: "content",            label: "Conteúdos",        icon: FileText   },
+  { key: "creative",           label: "Imagens",          icon: Sparkles   },
+  { key: "video_script",       label: "Scripts de Vídeo", icon: Video      },
+  { key: "video_effect",       label: "Vídeo com Efeito", icon: Video      },
+  { key: "prompt",             label: "Prompts",          icon: BookMarked },
+  { key: "product_discovery",  label: "Produtos",         icon: Search     },
+  { key: "product_validation", label: "Validar Produto",  icon: Search     },
 ];`,
 );
 
@@ -69,7 +70,7 @@ source = source.replace(
     const matchTab = tab === "all"
       || (tab === "video_effect" && videoEffect)
       || (tab === "creative" && item.type === "creative" && !videoEffect)
-      || (!(["video_effect", "creative"] as TabKey[]).includes(tab) && item.type === tab);
+      || (!("video_effect" === tab || "creative" === tab) && item.type === tab);
     const matchSearch = !search || item.title.toLowerCase().includes(search.toLowerCase());
     return matchTab && matchSearch;
   });`,
@@ -103,16 +104,19 @@ source = source.replace(
 );
 
 source = source
-  .replace("Campanhas, conteúdos, criativos e scripts gerados e salvos.", "Campanhas, conteúdos, imagens, scripts de vídeo, vídeos com efeito, produtos e validações salvos.")
-  .replace('Gere e salve campanhas, criativos, conteúdos e scripts.', 'Gere e salve campanhas, imagens, scripts de vídeo, vídeos com efeito, conteúdos, produtos e validações.');
+  .replace("Campanhas, conteúdos, criativos e scripts gerados e salvos.", "Campanhas, conteúdos, imagens, scripts de vídeo, vídeos com efeito, prompts, produtos e validações salvos.")
+  .replace("Campanhas, conteúdos, criativos, scripts e prompts gerados e salvos.", "Campanhas, conteúdos, imagens, scripts de vídeo, vídeos com efeito, prompts, produtos e validações salvos.")
+  .replace('Gere e salve campanhas, criativos, conteúdos e scripts.', 'Gere e salve campanhas, imagens, scripts de vídeo, vídeos com efeito, prompts, conteúdos, produtos e validações.');
 
 const required = [
   'label: "Imagens"',
   'label: "Scripts de Vídeo"',
   'label: "Vídeo com Efeito"',
+  'label: "Prompts"',
   'label: "Validar Produto"',
   'parsed?.type === "image-motion-source"',
   'savedItems.filter(isVideoEffectItem).length',
+  'item.type === t.key',
 ];
 for (const marker of required) {
   if (!source.includes(marker)) throw new Error(`Library final marker missing: ${marker}`);
@@ -120,4 +124,4 @@ for (const marker of required) {
 if (source.includes('label: "Vídeos"')) throw new Error("Library incorrectly renamed Scripts de Vídeo");
 
 writeFileSync(projectsUrl, source);
-console.log("Library keeps Scripts de Vídeo and separates saved image-motion projects into Vídeo com Efeito.");
+console.log("Library preserves all existing filters and adds Prompts without replacing other categories.");
