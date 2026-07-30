@@ -8,6 +8,13 @@ export type DomnBarPoint = { label: string; value: number; color?: string };
 const COLORS = ["#f4c95d", "#3fd7ff", "#ff5cc8", "#64e6a6", "#9b82ff", "#ff9f5a", "#ff657f"];
 const numberFmt = (value: number) => Number(value || 0).toLocaleString("pt-BR");
 
+function mediaOrder(label: string): number {
+  const normalized = label.toLocaleLowerCase("pt-BR");
+  if (normalized.includes("gerar imagem") || normalized === "criativo" || normalized === "criativos") return 0;
+  if (normalized.includes("vídeo com efeito") || normalized.includes("video com efeito")) return 1;
+  return 2;
+}
+
 function smoothPath(points: Array<{ x: number; y: number }>) {
   if (!points.length) return "";
   if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
@@ -85,7 +92,13 @@ export function DomnLineChart({ data, title, subtitle }: { data: DomnLinePoint[]
 
 export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total", centerValue, fixedColorStructure = false }: { data: DomnBarPoint[]; title: string; subtitle: string; centerLabel?: string; centerValue?: string | number; fixedColorStructure?: boolean }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const normalized = useMemo(() => data.map((item, index) => ({ ...item, value: Math.max(0, Number(item.value || 0)), color: item.color || COLORS[index % COLORS.length] })), [data]);
+  const percentageMode = centerLabel.toLocaleLowerCase("pt-BR").includes("percentual");
+  const normalized = useMemo(() => data
+    .map((item, index) => ({ ...item, value: Math.max(0, Number(item.value || 0)), color: item.color || COLORS[index % COLORS.length], originalIndex: index }))
+    .sort((left, right) => {
+      const orderDifference = mediaOrder(left.label) - mediaOrder(right.label);
+      return orderDifference !== 0 ? orderDifference : left.originalIndex - right.originalIndex;
+    }), [data]);
   const total = normalized.reduce((sum, item) => sum + item.value, 0);
   const visualValues = fixedColorStructure ? normalized.map(() => 1) : total > 0 ? normalized.map((item) => item.value) : normalized.map(() => 1);
   const visualTotal = visualValues.reduce((sum, value) => sum + value, 0);
@@ -98,7 +111,8 @@ export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total", c
   });
   const active = activeIndex === null ? null : normalized[activeIndex];
   const gradient = normalized.length ? `conic-gradient(${segments.join(", ")})` : "conic-gradient(#252525 0deg 360deg)";
-  const displayedValue = active ? numberFmt(active.value) : centerValue ?? numberFmt(total);
+  const formattedValue = (value: number) => `${numberFmt(value)}${percentageMode ? "%" : ""}`;
+  const displayedValue = active ? formattedValue(active.value) : centerValue ?? formattedValue(total);
 
   return (
     <section className="domn-chart-card domn-donut-card">
@@ -111,7 +125,7 @@ export function DomnDonutChart({ data, title, subtitle, centerLabel = "Total", c
           <div className="domn-donut-legend">
             {normalized.map((item, index) => (
               <button type="button" className={activeIndex === index ? "active" : ""} onPointerDown={() => setActiveIndex(index)} onPointerEnter={() => setActiveIndex(index)} onPointerLeave={() => setActiveIndex(null)} onFocus={() => setActiveIndex(index)} onBlur={() => setActiveIndex(null)} key={item.label}>
-                <i style={{ background: item.color }} /><span>{item.label}</span><strong>{numberFmt(item.value)}</strong>
+                <i style={{ background: item.color }} /><span>{item.label}</span><strong>{formattedValue(item.value)}</strong>
               </button>
             ))}
           </div>
