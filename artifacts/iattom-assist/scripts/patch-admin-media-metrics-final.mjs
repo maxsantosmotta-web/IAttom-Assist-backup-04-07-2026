@@ -50,8 +50,8 @@ if (!activity.includes("mediaAnalytics")) {
     (async () => {
       try {
         const token = await getToken();
-        const response = await fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
-          headers: token ? { Authorization: \`Bearer \${token}\` } : {},
+        const response = await fetch(BASE + "/api/admin/analytics?refresh=" + Date.now(), {
+          headers: token ? { Authorization: "Bearer " + token } : {},
           credentials: "include",
           cache: "no-store",
         });
@@ -63,7 +63,7 @@ if (!activity.includes("mediaAnalytics")) {
       }
     })();
     return () => { cancelled = true; };
-  }, [getToken, isFetching]);
+  }, [getToken]);
 
   const items = activity ?? [];`,
   );
@@ -72,8 +72,8 @@ if (!activity.includes("mediaAnalytics")) {
 if (!activity.includes("canonicalMediaCounts")) {
   activity = activity.replace(
     "    const moduleMap: Record<string, { count: number; rawKey: string }> = {};",
-    `    const canonicalMediaCounts = new Map(
-      mediaAnalytics.map((item) => [item.name.toLowerCase().replaceAll(" ", "_"), Number(item.count ?? 0)]),
+    `    const canonicalMediaCounts = new Map<string, number>(
+      mediaAnalytics.map((item): [string, number] => [item.name.toLowerCase().replaceAll(" ", "_"), Number(item.count ?? 0)]),
     );
     const moduleMap: Record<string, { count: number; rawKey: string }> = {};`,
   );
