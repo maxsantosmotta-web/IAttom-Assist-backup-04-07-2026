@@ -18,6 +18,7 @@ type DeletedAuditRow = {
 
 let deletedAuditRows: DeletedAuditRow[] = [];
 let deletedAuditLoading = false;
+let deletedAuditLoaded = false;
 
 function isAdminUsersPage(): boolean {
   return window.location.pathname.includes("/admin/users");
@@ -132,19 +133,23 @@ function enhanceRows(): void {
   });
 }
 
-async function fetchDeletedAuditRows(): Promise<void> {
-  if (deletedAuditLoading || !isAdminUsersPage()) return;
+async function fetchDeletedAuditRows(): Promise<boolean> {
+  if (deletedAuditLoading || !isAdminUsersPage()) return false;
   deletedAuditLoading = true;
   try {
     const token = await getAuthToken();
-    if (!token) return;
+    if (!token) return false;
     const response = await fetch("/api/admin/deleted-users", {
       headers: { Authorization: `Bearer ${token}` },
       credentials: "include",
       cache: "no-store",
     });
-    if (!response.ok) return;
+    if (!response.ok) return false;
     deletedAuditRows = await response.json() as DeletedAuditRow[];
+    deletedAuditLoaded = true;
+    return true;
+  } catch {
+    return false;
   } finally {
     deletedAuditLoading = false;
   }
@@ -167,7 +172,8 @@ async function removeDeletedAuditRow(item: DeletedAuditRow, button: HTMLButtonEl
     });
     if (!response.ok) throw new Error("Não foi possível remover o registro.");
     deletedAuditRows = deletedAuditRows.filter((row) => row.id !== item.id);
-    enhanceDeletedUsersHistory();
+    const tableRow = button.closest("tr");
+    tableRow?.remove();
   } catch (error) {
     button.disabled = false;
     window.alert(error instanceof Error ? error.message : "Não foi possível remover o registro.");
@@ -203,12 +209,39 @@ function ensureDeletedSearch(section: HTMLElement, table: HTMLTableElement): HTM
   return input;
 }
 
+function rowEmail(row: HTMLTableRowElement): string {
+  const firstCell = row.querySelector<HTMLTableCellElement>("td");
+  if (!firstCell) return "";
+  return Array.from(firstCell.querySelectorAll("p"))
+    .map((element) => element.textContent?.trim().toLowerCase() ?? "")
+    .find((value) => value.includes("@")) ?? "";
+}
+
 function applyDeletedSearch(table: HTMLTableElement, value: string): void {
   const query = value.trim().toLowerCase();
-  table.querySelectorAll<HTMLTableRowElement>(`tbody tr[${AUDIT_MARKER}]`).forEach((row) => {
-    const email = row.getAttribute("data-email") ?? "";
+  table.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((row) => {
+    const email = row.getAttribute("data-email") ?? rowEmail(row);
     row.style.display = !query || email.includes(query) ? "" : "none";
   });
+}
+
+function ensureAuditHeaders(table: HTMLTableElement): void {
+  const headerRow = table.querySelector<HTMLTableRowElement>("thead tr");
+  if (!headerRow || headerRow.querySelector("[data-iattom-reason-header]")) return;
+
+  const dateHeader = headerRow.lastElementChild;
+  if (!dateHeader) return;
+
+  const reasonHeader = document.createElement("th");
+  reasonHeader.textContent = "Motivo";
+  reasonHeader.setAttribute("data-iattom-reason-header", "true");
+  reasonHeader.className = "text-left px-4 py-3.5 text-xs text-muted-foreground";
+  headerRow.insertBefore(reasonHeader, dateHeader);
+
+  const actionHeader = document.createElement("th");
+  actionHeader.setAttribute("data-iattom-action-header", "true");
+  actionHeader.className = "w-12 px-3 py-3.5";
+  headerRow.appendChild(actionHeader);
 }
 
 function enhanceDeletedUsersHistory(): void {
@@ -224,41 +257,35 @@ function enhanceDeletedUsersHistory(): void {
     scrollContainer.style.overflow = "auto";
   }
 
-  const headerRow = table.querySelector<HTMLTableRowElement>("thead tr");
-  if (headerRow && !headerRow.querySelector("[data-iattom-reason-header]")) {
-    const reasonHeader = document.createElement("th");
-    reasonHeader.textContent = "Motivo";
-    reasonHeader.setAttribute("data-iattom-reason-header", "true");
-    reasonHeader.className = "text-left px-4 py-3.5 text-xs text-muted-foreground";
-    headerRow.insertBefore(reasonHeader, headerRow.lastElementChild);
-
-    const actionHeader = document.createElement("th");
-    actionHeader.setAttribute("data-iattom-action-header", "true");
-    actionHeader.className = "w-12 px-3 py-3.5";
-    headerRow.appendChild(actionHeader);
+  if (!deletedAuditLoaded) {
+    applyDeletedSearch(table, input.value);
+    return;
   }
+
+  ensureAuditHeaders(table);
 
   const rows = table.querySelectorAll<HTMLTableRowElement>("tbody tr");
   rows.forEach((row) => {
-    const cells = row.querySelectorAll<HTMLTableCellElement>("td");
-    const email = Array.from(cells[0]?.querySelectorAll("p") ?? [])
-      .map((element) => element.textContent?.trim() ?? "")
-      .find((value) => value.includes("@"));
+    const email = rowEmail(row);
     if (!email) return;
 
-    const item = deletedAuditRows.find((audit) => audit.email.toLowerCase() === email.toLowerCase());
+    const item = deletedAuditRows.find((audit) => audit.email.toLowerCase() === email);
     if (!item) return;
 
     row.setAttribute(AUDIT_MARKER, "true");
-    row.setAttribute("data-email", email.toLowerCase());
+    row.setAttribute("data-email", email);
+
+    const cells = row.querySelectorAll<HTMLTableCellElement>("td");
+    const dateCell = cells[cells.length - 1];
+    if (!dateCell) return;
 
     if (!row.querySelector("[data-iattom-reason-cell]")) {
       const reasonCell = document.createElement("td");
       reasonCell.setAttribute("data-iattom-reason-cell", "true");
-      reasonCell.className = "max-w-[260px] px-4 py-3 text-xs text-zinc-400";
+      reasonCell.className = "max-w-[220px] px-4 py-3 text-xs text-zinc-400";
       reasonCell.textContent = item.reason?.trim() || "Não informado";
       reasonCell.title = reasonCell.textContent;
-      row.insertBefore(reasonCell, row.lastElementChild);
+      row.insertBefore(reasonCell, dateCell);
     }
 
     if (!row.querySelector("[data-iattom-audit-delete]")) {
@@ -280,9 +307,9 @@ function enhanceDeletedUsersHistory(): void {
 }
 
 async function refreshDeletedAuditRows(): Promise<void> {
-  deletedAuditRows = [];
-  await fetchDeletedAuditRows();
-  enhanceDeletedUsersHistory();
+  deletedAuditLoaded = false;
+  const loaded = await fetchDeletedAuditRows();
+  if (loaded) enhanceDeletedUsersHistory();
 }
 
 export function initializeAdminManualDeleteEnhancer(): void {
@@ -300,8 +327,10 @@ export function initializeAdminManualDeleteEnhancer(): void {
   window.setInterval(() => {
     enhanceRows();
     enhanceDeletedUsersHistory();
+    if (!deletedAuditLoaded && !deletedAuditLoading) void refreshDeletedAuditRows();
   }, 1500);
 
   enhanceRows();
+  enhanceDeletedUsersHistory();
   void refreshDeletedAuditRows();
 }
