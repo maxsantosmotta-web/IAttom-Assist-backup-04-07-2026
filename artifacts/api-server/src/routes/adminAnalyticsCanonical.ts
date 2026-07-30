@@ -203,7 +203,9 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
   const moduleRows = canonicalModuleRows(postCutoffRows);
   const totalModuleCount = moduleRows.reduce((total, row) => total + row.count, 0) || 1;
   const featureUsage = moduleRows.map((row) => ({
-    name: row.module.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase()),
+    name: row.module === "help"
+      ? "IAttom Help"
+      : row.module.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase()),
     count: row.count,
     percentage: Math.round((row.count / totalModuleCount) * 100),
   }));
