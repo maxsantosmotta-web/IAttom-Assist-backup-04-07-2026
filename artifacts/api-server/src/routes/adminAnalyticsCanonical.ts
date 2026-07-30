@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import {
   db,
   historyTable,
@@ -89,7 +89,7 @@ router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
     [newProjects],
   ] = await Promise.all([
     db.select({ count: count() }).from(users),
-    db.select({ count: count() }).from(savedItemsTable),
+    db.select({ count: count() }).from(savedItemsTable).where(isNull(savedItemsTable.deletedAt)),
     db.select({ count: count() }).from(historyTable).where(gte(historyTable.createdAt, BASELINE_CUTOFF)),
     db.select({ count: count() }).from(users).where(eq(users.role, "admin")),
     db.select({ count: count() }).from(users).where(eq(users.plan, "free")),
@@ -97,7 +97,7 @@ router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
     db.select({ count: count() }).from(users).where(eq(users.plan, "business")),
     db.select({ count: count() }).from(users).where(eq(users.plan, "agency")),
     db.select({ count: count() }).from(users).where(gte(users.createdAt, monthStart)),
-    db.select({ count: count() }).from(savedItemsTable).where(gte(savedItemsTable.createdAt, monthStart)),
+    db.select({ count: count() }).from(savedItemsTable).where(and(gte(savedItemsTable.createdAt, monthStart), isNull(savedItemsTable.deletedAt))),
   ]);
 
   res.json({
