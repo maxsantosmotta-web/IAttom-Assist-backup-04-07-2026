@@ -7,12 +7,13 @@ const newCode = "const handleBillingRefresh = () => { window.location.reload(); 
 
 if (source.includes(newCode)) {
   console.log("Billing browser refresh already applied.");
-  process.exit(0);
+} else {
+  if (!source.includes(oldCode)) {
+    throw new Error("Billing refresh handler marker not found.");
+  }
+  await writeFile(fileUrl, source.replace(oldCode, newCode), "utf8");
+  console.log("Billing refresh now reloads the browser page.");
 }
 
-if (!source.includes(oldCode)) {
-  throw new Error("Billing refresh handler marker not found.");
-}
-
-await writeFile(fileUrl, source.replace(oldCode, newCode), "utf8");
-console.log("Billing refresh now reloads the browser page.");
+// Run last so Help/Credits synchronization is applied after all source-rewriting patches.
+await import("./patch-help-credit-react-query-sync.mjs");
