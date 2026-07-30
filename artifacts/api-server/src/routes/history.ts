@@ -31,13 +31,16 @@ router.get("/history", requireAuth, async (req, res): Promise<void> => {
   }))));
 });
 
-/* ── GET /history/trash ── trash list (purge expired first) ─────────── */
+/* ── GET /history/trash ── trash list; expired rows remain as ADM audit events ── */
 router.get("/history/trash", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const now = new Date();
 
+  // Expired entries leave the user's trash, but the execution event is preserved
+  // for read-only administrative metrics.
   await db
-    .delete(historyTable)
+    .update(historyTable)
+    .set({ expiresAt: null })
     .where(and(
       eq(historyTable.clerkUserId, clerkUserId),
       isNotNull(historyTable.deletedAt),
@@ -51,6 +54,7 @@ router.get("/history/trash", requireAuth, async (req, res): Promise<void> => {
     .where(and(
       eq(historyTable.clerkUserId, clerkUserId),
       isNotNull(historyTable.deletedAt),
+      isNotNull(historyTable.expiresAt),
     ))
     .orderBy(desc(historyTable.deletedAt));
 
@@ -64,7 +68,7 @@ router.get("/history/trash", requireAuth, async (req, res): Promise<void> => {
   })));
 });
 
-/* ── POST /history/clear ── soft-delete ALL active ──────────────────── */
+/* ── POST /history/clear ── hide ALL active items from the user ────── */
 router.post("/history/clear", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const now = new Date();
@@ -81,7 +85,7 @@ router.post("/history/clear", requireAuth, async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
-/* ── DELETE /history/:id ── soft-delete individual ──────────────────── */
+/* ── DELETE /history/:id ── hide individual item from the user ────── */
 router.delete("/history/:id", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const id = parseInt(req.params["id"] as string, 10);
@@ -107,19 +111,20 @@ router.post("/history/:id/restore", requireAuth, async (req, res): Promise<void>
   await db
     .update(historyTable)
     .set({ deletedAt: null, expiresAt: null })
-    .where(and(eq(historyTable.id, id), eq(historyTable.clerkUserId, clerkUserId)));
+    .where(eq(historyTable.id, id));
 
   res.json({ ok: true });
 });
 
-/* ── DELETE /history/:id/permanent ── hard delete ───────────────────── */
+/* ── DELETE /history/:id/permanent ── remove from user UI, retain ADM audit ── */
 router.delete("/history/:id/permanent", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "id inválido" }); return; }
 
   await db
-    .delete(historyTable)
+    .update(historyTable)
+    .set({ deletedAt: new Date(), expiresAt: null })
     .where(and(eq(historyTable.id, id), eq(historyTable.clerkUserId, clerkUserId)));
 
   res.json({ ok: true });
