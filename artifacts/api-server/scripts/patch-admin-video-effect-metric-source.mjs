@@ -38,7 +38,7 @@ if (!source.includes("commercialVideoDeliveries")) {
       .select({ count: count() })
       .from(videoTransactions)
       .where(and(
-        sql\`\${videoTransactions.description} like \${"Vídeo com Efeito entregue • requestId:%"}\`,
+        eq(videoTransactions.type, "use"),
         sql\`\${videoTransactions.amount} < 0\`,
       )),
     db
@@ -69,7 +69,7 @@ if (!source.includes("commercialVideoDeliveries")) {
   const videoEffectCount = commercialVideoCount + trackedAdminVideoCount + legacyAdminVideoCount;
   const canonicalModuleRows = [
     ...moduleRows.filter((row) => row.module !== "video_effect"),
-    ...(videoEffectCount > 0 ? [{ module: "video_effect", count: videoEffectCount }] : []),
+    { module: "video_effect", count: videoEffectCount },
   ];
   const totalModuleCount = canonicalModuleRows.reduce((sum, row) => sum + Number(row.count), 0) || 1;
   const featureUsage = canonicalModuleRows.map((row) => ({
@@ -85,9 +85,10 @@ if (!source.includes("commercialVideoDeliveries")) {
 for (const marker of [
   "videoTransactions",
   "commercialVideoDeliveries",
+  'eq(videoTransactions.type, "use")',
   "trackedAdminVideoCount",
   "legacyAdminVideoCount",
-  'module: "video_effect"',
+  '{ module: "video_effect", count: videoEffectCount }',
   "canonicalModuleRows",
 ]) {
   if (!source.includes(marker)) throw new Error(`Admin video metric marker missing: ${marker}`);
@@ -97,4 +98,4 @@ if (source.includes("rawCreativeCount - videoEffectCount")) {
 }
 
 fs.writeFileSync(adminPath, source);
-console.log("Admin analytics counts completed video effects independently from image generation.");
+console.log("Admin analytics counts every completed video-effect use independently from image generation.");
