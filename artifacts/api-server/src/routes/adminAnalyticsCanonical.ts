@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, count, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { count, desc, eq, gte, sql } from "drizzle-orm";
 import {
   db,
   historyTable,
@@ -11,6 +11,18 @@ import { GetAdminAnalyticsResponse } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 
 const router: IRouter = Router();
+
+const BASELINE_CUTOFF = new Date("2026-07-30T07:15:00.000Z");
+const BASELINE_COUNTS: Record<string, number> = {
+  creative: 5,
+  video_effect: 9,
+  campaign: 4,
+  product_discovery: 4,
+  product_validation: 4,
+  content: 3,
+  video_script: 2,
+  prompt: 4,
+};
 
 const MODULE_ORDER = [
   "creative",
@@ -29,6 +41,36 @@ function moduleOrder(module: string): number {
   return index === -1 ? MODULE_ORDER.length : index;
 }
 
+function baselineTotal(): number {
+  return Object.values(BASELINE_COUNTS).reduce((sum, value) => sum + value, 0);
+}
+
+async function postCutoffModuleRows(): Promise<Array<{ module: string; count: number }>> {
+  const rows = await db
+    .select({ module: historyTable.module, count: count() })
+    .from(historyTable)
+    .where(gte(historyTable.createdAt, BASELINE_CUTOFF))
+    .groupBy(historyTable.module)
+    .orderBy(desc(count()));
+
+  return rows.map((row) => ({ module: row.module, count: Number(row.count) }));
+}
+
+function canonicalModuleRows(postCutoffRows: Array<{ module: string; count: number }>) {
+  const counts = new Map<string, number>(Object.entries(BASELINE_COUNTS));
+  for (const row of postCutoffRows) {
+    counts.set(row.module, (counts.get(row.module) ?? 0) + Number(row.count));
+  }
+
+  return [...counts.entries()]
+    .map(([module, countValue]) => ({ module, count: countValue }))
+    .filter((row) => row.count > 0)
+    .sort((left, right) => {
+      const orderDifference = moduleOrder(left.module) - moduleOrder(right.module);
+      return orderDifference !== 0 ? orderDifference : right.count - left.count;
+    });
+}
+
 router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -37,7 +79,7 @@ router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
   const [
     [totalUsers],
     [totalProjects],
-    [totalActions],
+    [newActions],
     [adminCount],
     [freeCount],
     [startCount],
@@ -47,21 +89,21 @@ router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
     [newProjects],
   ] = await Promise.all([
     db.select({ count: count() }).from(users),
-    db.select({ count: count() }).from(savedItemsTable).where(isNull(savedItemsTable.deletedAt)),
-    db.select({ count: count() }).from(historyTable),
+    db.select({ count: count() }).from(savedItemsTable),
+    db.select({ count: count() }).from(historyTable).where(gte(historyTable.createdAt, BASELINE_CUTOFF)),
     db.select({ count: count() }).from(users).where(eq(users.role, "admin")),
     db.select({ count: count() }).from(users).where(eq(users.plan, "free")),
     db.select({ count: count() }).from(users).where(eq(users.plan, "pro")),
     db.select({ count: count() }).from(users).where(eq(users.plan, "business")),
     db.select({ count: count() }).from(users).where(eq(users.plan, "agency")),
     db.select({ count: count() }).from(users).where(gte(users.createdAt, monthStart)),
-    db.select({ count: count() }).from(savedItemsTable).where(and(gte(savedItemsTable.createdAt, monthStart), isNull(savedItemsTable.deletedAt))),
+    db.select({ count: count() }).from(savedItemsTable).where(gte(savedItemsTable.createdAt, monthStart)),
   ]);
 
   res.json({
     totalUsers: totalUsers.count,
     totalProjects: totalProjects.count,
-    totalActions: totalActions.count,
+    totalActions: baselineTotal() + Number(newActions.count),
     adminCount: adminCount.count,
     planBreakdown: {
       free: freeCount.count,
@@ -88,6 +130,7 @@ router.get("/admin/activity", requireAdmin, async (req, res): Promise<void> => {
     })
     .from(historyTable)
     .leftJoin(users, eq(historyTable.clerkUserId, users.clerkId))
+    .where(gte(historyTable.createdAt, BASELINE_CUTOFF))
     .orderBy(desc(historyTable.createdAt))
     .limit(limit);
 
@@ -115,7 +158,7 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
     [businessRes],
     newUsersByMonth,
     newProjectsByMonth,
-    moduleRows,
+    postCutoffRows,
   ] = await Promise.all([
     db.select({ count: count() }).from(users).where(eq(users.plan, "free")),
     db.select({ count: count() }).from(users).where(eq(users.plan, "pro")),
@@ -138,11 +181,7 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
       .where(gte(projectsTable.createdAt, sixMonthsAgo))
       .groupBy(sql`date_trunc('month', ${projectsTable.createdAt})`)
       .orderBy(sql`date_trunc('month', ${projectsTable.createdAt})`),
-    db
-      .select({ module: historyTable.module, count: count() })
-      .from(historyTable)
-      .groupBy(historyTable.module)
-      .orderBy(desc(count())),
+    postCutoffModuleRows(),
   ]);
 
   const userMap = new Map(newUsersByMonth.map((row) => [row.month.slice(0, 7), row.total]));
@@ -159,19 +198,12 @@ router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> =>
     };
   });
 
-  const canonicalModuleRows = [...moduleRows].sort((left, right) => {
-    const orderDifference = moduleOrder(left.module) - moduleOrder(right.module);
-    return orderDifference !== 0 ? orderDifference : Number(right.count) - Number(left.count);
-  });
-
-  const totalModuleCount = canonicalModuleRows.reduce(
-    (total, row) => total + Number(row.count),
-    0,
-  ) || 1;
-  const featureUsage = canonicalModuleRows.map((row) => ({
+  const moduleRows = canonicalModuleRows(postCutoffRows);
+  const totalModuleCount = moduleRows.reduce((total, row) => total + row.count, 0) || 1;
+  const featureUsage = moduleRows.map((row) => ({
     name: row.module.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase()),
-    count: Number(row.count),
-    percentage: Math.round((Number(row.count) / totalModuleCount) * 100),
+    count: row.count,
+    percentage: Math.round((row.count / totalModuleCount) * 100),
   }));
 
   const percentageTotal = featureUsage.reduce((total, item) => total + item.percentage, 0);
