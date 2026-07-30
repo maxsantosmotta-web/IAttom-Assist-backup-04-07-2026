@@ -38,8 +38,11 @@ if (!source.includes("videoEffectAssets")) {
   ]);
 
   const videoEffectCount = Number(videoEffectAssets[0]?.count ?? 0);
+  const rawCreativeCount = Number(moduleRows.find((row) => row.module === "creative")?.count ?? 0);
+  const imageGenerationCount = Math.max(0, rawCreativeCount - videoEffectCount);
   const canonicalModuleRows = [
-    ...moduleRows.filter((row) => row.module !== "video_effect"),
+    ...moduleRows.filter((row) => row.module !== "creative" && row.module !== "video_effect"),
+    ...(imageGenerationCount > 0 ? [{ module: "creative", count: imageGenerationCount }] : []),
     ...(videoEffectCount > 0 ? [{ module: "video_effect", count: videoEffectCount }] : []),
   ];
   const totalModuleCount = canonicalModuleRows.reduce((sum, row) => sum + Number(row.count), 0) || 1;
@@ -56,6 +59,8 @@ if (!source.includes("videoEffectAssets")) {
 for (const marker of [
   "savedItemsTable",
   "videoEffectAssets",
+  "rawCreativeCount",
+  "imageGenerationCount = Math.max(0, rawCreativeCount - videoEffectCount)",
   'module: "video_effect"',
   "canonicalModuleRows",
 ]) {
@@ -63,4 +68,4 @@ for (const marker of [
 }
 
 fs.writeFileSync(adminPath, source);
-console.log("Admin analytics now exposes persisted Vídeo com Efeito as its own original metric.");
+console.log("Admin analytics separates Gerar Imagem from persisted Vídeo com Efeito without double counting.");
