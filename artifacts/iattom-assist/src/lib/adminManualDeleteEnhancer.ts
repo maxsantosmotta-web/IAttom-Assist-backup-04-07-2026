@@ -1,5 +1,6 @@
 const PROTECTED_ADMIN_EMAIL = "maxsantosmotta@gmail.com";
 const BUTTON_MARKER = "data-iattom-delete-user";
+const AUDIT_MARKER = "data-iattom-deleted-audit";
 
 interface ClerkWindow extends Window {
   Clerk?: {
@@ -8,6 +9,15 @@ interface ClerkWindow extends Window {
     };
   };
 }
+
+type DeletedAuditRow = {
+  id: number;
+  email: string;
+  reason?: string | null;
+};
+
+let deletedAuditRows: DeletedAuditRow[] = [];
+let deletedAuditLoading = false;
 
 function isAdminUsersPage(): boolean {
   return window.location.pathname.includes("/admin/users");
@@ -53,9 +63,17 @@ async function resolveUserId(email: string, token: string): Promise<number> {
 }
 
 async function deleteUser(email: string, button: HTMLButtonElement): Promise<void> {
-  const confirmed = window.confirm(
-    `Excluir definitivamente o usuário ${email}?\n\nA conta será removida do Clerk e do banco de dados.`,
-  );
+  const reason = window.prompt(`Informe o motivo da exclusão de ${email}:`)?.trim() ?? "";
+  if (!reason) {
+    window.alert("O motivo da exclusão é obrigatório.");
+    return;
+  }
+  if (reason.length > 500) {
+    window.alert("O motivo deve ter no máximo 500 caracteres.");
+    return;
+  }
+
+  const confirmed = window.confirm(`Excluir o usuário ${email}?\n\nMotivo: ${reason}`);
   if (!confirmed) return;
 
   button.disabled = true;
@@ -68,14 +86,16 @@ async function deleteUser(email: string, button: HTMLButtonElement): Promise<voi
     const userId = await resolveUserId(email, token);
     const response = await fetch(`/api/admin/users/${userId}/remove-manual`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       credentials: "include",
+      body: JSON.stringify({ reason }),
     });
 
     const payload = (await response.json().catch(() => null)) as { error?: string } | null;
     if (!response.ok) throw new Error(payload?.error ?? "Falha ao excluir usuário.");
 
-    window.location.reload();
+    window.dispatchEvent(new CustomEvent("iattom:admin-user-deleted"));
+    await refreshDeletedAuditRows();
   } catch (error) {
     button.disabled = false;
     button.style.opacity = "1";
@@ -89,7 +109,7 @@ function enhanceRows(): void {
   const rows = document.querySelectorAll<HTMLTableRowElement>("table tbody tr");
   rows.forEach((row) => {
     const cells = row.querySelectorAll<HTMLTableCellElement>("td");
-    if (cells.length < 2) return;
+    if (cells.length < 2 || row.hasAttribute(AUDIT_MARKER)) return;
 
     const emailCandidates = Array.from(cells[0].querySelectorAll("p"));
     const email = emailCandidates
@@ -112,11 +132,176 @@ function enhanceRows(): void {
   });
 }
 
+async function fetchDeletedAuditRows(): Promise<void> {
+  if (deletedAuditLoading || !isAdminUsersPage()) return;
+  deletedAuditLoading = true;
+  try {
+    const token = await getAuthToken();
+    if (!token) return;
+    const response = await fetch("/api/admin/deleted-users", {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (!response.ok) return;
+    deletedAuditRows = await response.json() as DeletedAuditRow[];
+  } finally {
+    deletedAuditLoading = false;
+  }
+}
+
+async function removeDeletedAuditRow(item: DeletedAuditRow, button: HTMLButtonElement): Promise<void> {
+  const confirmed = window.confirm(
+    `Remover apenas este registro do histórico?\n\n${item.email}\n\nIsso não bloqueia um novo cadastro com o mesmo e-mail.`,
+  );
+  if (!confirmed) return;
+
+  button.disabled = true;
+  try {
+    const token = await getAuthToken();
+    if (!token) throw new Error("Sessão administrativa não encontrada.");
+    const response = await fetch(`/api/admin/deleted-users/${item.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error("Não foi possível remover o registro.");
+    deletedAuditRows = deletedAuditRows.filter((row) => row.id !== item.id);
+    enhanceDeletedUsersHistory();
+  } catch (error) {
+    button.disabled = false;
+    window.alert(error instanceof Error ? error.message : "Não foi possível remover o registro.");
+  }
+}
+
+function findDeletedUsersSection(): { section: HTMLElement; table: HTMLTableElement } | null {
+  const heading = Array.from(document.querySelectorAll<HTMLHeadingElement>("h3"))
+    .find((element) => element.textContent?.trim() === "Usuários excluídos");
+  const section = heading?.parentElement?.parentElement;
+  const table = section?.querySelector<HTMLTableElement>("table");
+  return section && table ? { section, table } : null;
+}
+
+function ensureDeletedSearch(section: HTMLElement, table: HTMLTableElement): HTMLInputElement {
+  let input = section.querySelector<HTMLInputElement>("[data-iattom-deleted-search]");
+  if (input) return input;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "relative w-full max-w-sm";
+  wrapper.setAttribute("data-iattom-deleted-search-wrapper", "true");
+
+  input = document.createElement("input");
+  input.type = "search";
+  input.placeholder = "Pesquisar e-mail excluído";
+  input.setAttribute("data-iattom-deleted-search", "true");
+  input.className = "flex h-10 w-full rounded-md border border-white/5 bg-[#111111] px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary";
+  input.addEventListener("input", () => applyDeletedSearch(table, input?.value ?? ""));
+  wrapper.appendChild(input);
+
+  const card = table.closest("div.overflow-x-auto")?.parentElement;
+  card?.parentElement?.insertBefore(wrapper, card);
+  return input;
+}
+
+function applyDeletedSearch(table: HTMLTableElement, value: string): void {
+  const query = value.trim().toLowerCase();
+  table.querySelectorAll<HTMLTableRowElement>(`tbody tr[${AUDIT_MARKER}]`).forEach((row) => {
+    const email = row.getAttribute("data-email") ?? "";
+    row.style.display = !query || email.includes(query) ? "" : "none";
+  });
+}
+
+function enhanceDeletedUsersHistory(): void {
+  if (!isAdminUsersPage()) return;
+  const target = findDeletedUsersSection();
+  if (!target) return;
+  const { section, table } = target;
+  const input = ensureDeletedSearch(section, table);
+
+  const scrollContainer = table.parentElement;
+  if (scrollContainer) {
+    scrollContainer.style.maxHeight = "360px";
+    scrollContainer.style.overflow = "auto";
+  }
+
+  const headerRow = table.querySelector<HTMLTableRowElement>("thead tr");
+  if (headerRow && !headerRow.querySelector("[data-iattom-reason-header]")) {
+    const reasonHeader = document.createElement("th");
+    reasonHeader.textContent = "Motivo";
+    reasonHeader.setAttribute("data-iattom-reason-header", "true");
+    reasonHeader.className = "text-left px-4 py-3.5 text-xs text-muted-foreground";
+    headerRow.insertBefore(reasonHeader, headerRow.lastElementChild);
+
+    const actionHeader = document.createElement("th");
+    actionHeader.setAttribute("data-iattom-action-header", "true");
+    actionHeader.className = "w-12 px-3 py-3.5";
+    headerRow.appendChild(actionHeader);
+  }
+
+  const rows = table.querySelectorAll<HTMLTableRowElement>("tbody tr");
+  rows.forEach((row) => {
+    const cells = row.querySelectorAll<HTMLTableCellElement>("td");
+    const email = Array.from(cells[0]?.querySelectorAll("p") ?? [])
+      .map((element) => element.textContent?.trim() ?? "")
+      .find((value) => value.includes("@"));
+    if (!email) return;
+
+    const item = deletedAuditRows.find((audit) => audit.email.toLowerCase() === email.toLowerCase());
+    if (!item) return;
+
+    row.setAttribute(AUDIT_MARKER, "true");
+    row.setAttribute("data-email", email.toLowerCase());
+
+    if (!row.querySelector("[data-iattom-reason-cell]")) {
+      const reasonCell = document.createElement("td");
+      reasonCell.setAttribute("data-iattom-reason-cell", "true");
+      reasonCell.className = "max-w-[260px] px-4 py-3 text-xs text-zinc-400";
+      reasonCell.textContent = item.reason?.trim() || "Não informado";
+      reasonCell.title = reasonCell.textContent;
+      row.insertBefore(reasonCell, row.lastElementChild);
+    }
+
+    if (!row.querySelector("[data-iattom-audit-delete]")) {
+      const actionCell = document.createElement("td");
+      actionCell.className = "px-3 py-3 text-right";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.title = "Remover do histórico";
+      button.setAttribute("data-iattom-audit-delete", "true");
+      button.className = "rounded-md p-1.5 text-muted-foreground transition-colors hover:text-red-400";
+      button.appendChild(createTrashIcon());
+      button.addEventListener("click", () => void removeDeletedAuditRow(item, button));
+      actionCell.appendChild(button);
+      row.appendChild(actionCell);
+    }
+  });
+
+  applyDeletedSearch(table, input.value);
+}
+
+async function refreshDeletedAuditRows(): Promise<void> {
+  deletedAuditRows = [];
+  await fetchDeletedAuditRows();
+  enhanceDeletedUsersHistory();
+}
+
 export function initializeAdminManualDeleteEnhancer(): void {
-  const observer = new MutationObserver(() => enhanceRows());
+  const observer = new MutationObserver(() => {
+    enhanceRows();
+    enhanceDeletedUsersHistory();
+  });
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
-  window.addEventListener("popstate", enhanceRows);
-  window.setInterval(enhanceRows, 1500);
+  window.addEventListener("popstate", () => {
+    enhanceRows();
+    void refreshDeletedAuditRows();
+  });
+  window.addEventListener("iattom:admin-user-deleted", () => void refreshDeletedAuditRows());
+  window.setInterval(() => {
+    enhanceRows();
+    enhanceDeletedUsersHistory();
+  }, 1500);
+
   enhanceRows();
+  void refreshDeletedAuditRows();
 }
