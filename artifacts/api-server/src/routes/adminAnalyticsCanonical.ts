@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
-import { count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import {
   db,
   historyTable,
   projectsTable,
+  savedItemsTable,
   users,
 } from "@workspace/db";
 import { GetAdminAnalyticsResponse } from "@workspace/api-zod";
@@ -27,6 +28,79 @@ function moduleOrder(module: string): number {
   const index = MODULE_ORDER.indexOf(module as (typeof MODULE_ORDER)[number]);
   return index === -1 ? MODULE_ORDER.length : index;
 }
+
+router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [
+    [totalUsers],
+    [totalProjects],
+    [totalActions],
+    [adminCount],
+    [freeCount],
+    [startCount],
+    [premiumCount],
+    [proCount],
+    [newUsers],
+    [newProjects],
+  ] = await Promise.all([
+    db.select({ count: count() }).from(users),
+    db.select({ count: count() }).from(savedItemsTable).where(isNull(savedItemsTable.deletedAt)),
+    db.select({ count: count() }).from(historyTable),
+    db.select({ count: count() }).from(users).where(eq(users.role, "admin")),
+    db.select({ count: count() }).from(users).where(eq(users.plan, "free")),
+    db.select({ count: count() }).from(users).where(eq(users.plan, "pro")),
+    db.select({ count: count() }).from(users).where(eq(users.plan, "business")),
+    db.select({ count: count() }).from(users).where(eq(users.plan, "agency")),
+    db.select({ count: count() }).from(users).where(gte(users.createdAt, monthStart)),
+    db.select({ count: count() }).from(savedItemsTable).where(and(gte(savedItemsTable.createdAt, monthStart), isNull(savedItemsTable.deletedAt))),
+  ]);
+
+  res.json({
+    totalUsers: totalUsers.count,
+    totalProjects: totalProjects.count,
+    totalActions: totalActions.count,
+    adminCount: adminCount.count,
+    planBreakdown: {
+      free: freeCount.count,
+      pro: startCount.count,
+      business: premiumCount.count,
+      agency: proCount.count,
+    },
+    newUsersThisMonth: newUsers.count,
+    newProjectsThisMonth: newProjects.count,
+  });
+});
+
+router.get("/admin/activity", requireAdmin, async (req, res): Promise<void> => {
+  const limit = Math.min(Number.parseInt(String(req.query.limit ?? "100"), 10) || 100, 100);
+  const items = await db
+    .select({
+      id: historyTable.id,
+      action: historyTable.action,
+      module: historyTable.module,
+      projectName: historyTable.projectName,
+      createdAt: historyTable.createdAt,
+      userEmail: users.email,
+      userName: users.name,
+    })
+    .from(historyTable)
+    .leftJoin(users, eq(historyTable.clerkUserId, users.clerkId))
+    .orderBy(desc(historyTable.createdAt))
+    .limit(limit);
+
+  res.json(items.map((item) => ({
+    id: item.id,
+    action: item.action,
+    module: item.module,
+    projectName: item.projectName ?? undefined,
+    userEmail: item.userEmail ?? undefined,
+    userName: item.userName ?? undefined,
+    createdAt: item.createdAt,
+  })));
+});
 
 router.get("/admin/analytics", requireAdmin, async (_req, res): Promise<void> => {
   const now = new Date();
