@@ -95,21 +95,26 @@ for (const [from, to] of literalPairs) {
   translations = translations.replaceAll(from, to);
 }
 
-function addVideoEffectMap(source) {
-  if (source.includes('video_effect: "Vídeo com Efeito"') || source.includes('video_effect: { label: "Vídeo com Efeito"')) return source;
-  if (source.includes('video_script: "Scripts de Vídeo",')) {
-    return source.replace('video_script: "Scripts de Vídeo",', 'video_script: "Scripts de Vídeo",\n  video_effect: "Vídeo com Efeito",');
-  }
-  if (source.includes('video_script: { label: "Scripts de Vídeo"')) {
-    return source.replace(/(video_script: \{ label: "Scripts de Vídeo"[^\n]*\n)/, '$1  video_effect: { label: "Vídeo com Efeito", color: "#22D3EE", icon: Video },\n');
+function addFormattedVideoEffect(source) {
+  if (source.includes('"Video Effect": "Vídeo com Efeito"')) return source;
+  if (source.includes('"Video Script": "Scripts de Vídeo",')) {
+    return source.replace('"Video Script": "Scripts de Vídeo",', '"Video Script": "Scripts de Vídeo",\n  "Video Effect": "Vídeo com Efeito",');
   }
   return source;
 }
 
-overview = addVideoEffectMap(overview);
-analytics = addVideoEffectMap(analytics);
-activity = addVideoEffectMap(activity);
-translations = addVideoEffectMap(translations);
+overview = addFormattedVideoEffect(overview);
+analytics = addFormattedVideoEffect(analytics);
+
+function addSharedVideoEffect(source) {
+  if (source.includes('video_effect: "Vídeo com Efeito"')) return source;
+  if (source.includes('video_script: "Scripts de Vídeo",')) {
+    return source.replace('video_script: "Scripts de Vídeo",', 'video_script: "Scripts de Vídeo",\n  video_effect: "Vídeo com Efeito",');
+  }
+  return source;
+}
+
+translations = addSharedVideoEffect(translations);
 
 function splitActionRules(source) {
   source = source.replace(
@@ -128,14 +133,10 @@ analytics = splitActionRules(analytics);
 activity = splitActionRules(activity);
 
 if (!finance.includes("registeredResponse")) throw new Error("Canonical finance merge missing");
-for (const [name, source] of [["overview", overview], ["analytics", analytics]]) {
-  if (!source.includes("Gerar Imagem")) throw new Error(`${name} image label missing`);
-  if (!source.includes("Vídeo com Efeito")) throw new Error(`${name} video-effect label missing`);
-  if (source.includes('"Find Products": "Find Products"')) throw new Error(`${name} still contains untranslated Find Products mapping`);
-}
-if (!translations.includes("Gerar Imagem")) throw new Error("Shared activity image label missing");
-if (!translations.includes("Vídeo com Efeito")) throw new Error("Shared activity video-effect label missing");
-if (translations.includes('"Find Products": "Find Products"')) throw new Error("Shared activity translation still contains Find Products");
+if (!overview.includes("Gerar Imagem") || !overview.includes('"Video Effect": "Vídeo com Efeito"')) throw new Error("Overview image/video labels missing");
+if (!analytics.includes("Gerar Imagem") || !analytics.includes('"Video Effect": "Vídeo com Efeito"')) throw new Error("Analytics image/video labels missing");
+if (!translations.includes("Gerar Imagem") || !translations.includes('video_effect: "Vídeo com Efeito"')) throw new Error("Shared activity image/video labels missing");
+if ([overview, analytics, translations].some((source) => source.includes('"Find Products": "Find Products"'))) throw new Error("Untranslated Find Products mapping remains");
 
 fs.writeFileSync(financePath, finance);
 fs.writeFileSync(overviewPath, overview);
