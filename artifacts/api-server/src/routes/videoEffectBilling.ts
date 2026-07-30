@@ -1,6 +1,6 @@
 import { Router, type IRouter, type NextFunction, type Response } from "express";
 import { and, eq, sql } from "drizzle-orm";
-import { db, historyTable, users, videoTransactions } from "@workspace/db";
+import { creditsTransactions, db, historyTable, users, videoTransactions } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
 import {
   FalProviderError,
@@ -39,18 +39,17 @@ async function getCommercialUser(clerkUserId: string): Promise<CommercialUser | 
 async function passAdminOrRequirePaid(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ): Promise<CommercialUser | null> {
   const user = await getCommercialUser(req.clerkUserId);
   if (!user) {
     res.status(404).json({ error: "User not found" });
     return null;
   }
-  if (user.role === "admin") {
-    next();
-    return null;
-  }
-  if (!PAID_PLANS.has(user.plan ?? "")) {
+
+  // O administrador também passa pela camada comercial durante os testes reais.
+  // Assim o saldo comprado, o desconto e o histórico seguem exatamente o mesmo fluxo do usuário final.
+  if (user.role !== "admin" && !PAID_PLANS.has(user.plan ?? "")) {
     res.status(403).json({ error: "Recurso disponível apenas para planos elegíveis." });
     return null;
   }
@@ -175,6 +174,15 @@ router.get("/image-motion/result/:requestId", requireAuth, async (req, res, next
         clerkUserId: authReq.clerkUserId,
         amount: -1,
         type: "use",
+        description,
+        balanceBefore,
+        balanceAfter: newBalance,
+      });
+      await tx.insert(creditsTransactions).values({
+        clerkUserId: authReq.clerkUserId,
+        amount: -1,
+        type: "debit",
+        balanceType: "video",
         description,
         balanceBefore,
         balanceAfter: newBalance,
