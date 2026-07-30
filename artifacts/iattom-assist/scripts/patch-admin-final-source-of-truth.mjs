@@ -11,18 +11,15 @@ let analytics = fs.readFileSync(analyticsPath, "utf8");
 let activity = fs.readFileSync(activityPath, "utf8");
 
 if (!finance.includes("registeredResponse")) {
-  const oldBlock = `        const response = await fetch(\`${"${BASE}"}/api/admin/financial-summary\`, {
-          headers: token ? { Authorization: \`Bearer \${token}\` } : {},
-          credentials: "include",
-        });
-        if (!response.ok) throw new Error(\`Financial summary failed: \${response.status}\`);
-        const data = await response.json() as FinancialSummary;
-        if (!cancelled) setSummary(data);`;
+  const fetchStart = finance.indexOf('        const response = await fetch(`${BASE}/api/admin/financial-summary?refresh=${Date.now()}`, {');
+  const fetchEndMarker = "        if (!cancelled) setSummary(data);";
+  const fetchEnd = finance.indexOf(fetchEndMarker, fetchStart);
+  if (fetchStart === -1 || fetchEnd === -1) throw new Error("Finance fetch section not found");
 
-  const newBlock = `        const headers = token ? { Authorization: \`Bearer \${token}\` } : {};
+  const replacement = `        const headers = token ? { Authorization: \`Bearer \${token}\` } : {};
         const [response, registeredResponse] = await Promise.all([
-          fetch(\`${"${BASE}"}/api/admin/financial-summary?t=\${Date.now()}\`, { headers, credentials: "include", cache: "no-store" }),
-          fetch(\`${"${BASE}"}/api/admin/registered-plan-stats?t=\${Date.now()}\`, { headers, credentials: "include", cache: "no-store" }),
+          fetch(\`${"${BASE}"}/api/admin/financial-summary?refresh=\${Date.now()}\`, { headers, credentials: "include", cache: "no-store" }),
+          fetch(\`${"${BASE}"}/api/admin/registered-plan-stats?refresh=\${Date.now()}\`, { headers, credentials: "include", cache: "no-store" }),
         ]);
         if (!response.ok) throw new Error(\`Financial summary failed: \${response.status}\`);
         if (!registeredResponse.ok) throw new Error(\`Registered plan stats failed: \${registeredResponse.status}\`);
@@ -47,8 +44,7 @@ if (!finance.includes("registeredResponse")) {
           },
         });`;
 
-  if (!finance.includes(oldBlock)) throw new Error("Finance fetch block not found");
-  finance = finance.replace(oldBlock, newBlock);
+  finance = finance.slice(0, fetchStart) + replacement + finance.slice(fetchEnd + fetchEndMarker.length);
 }
 
 finance = finance
