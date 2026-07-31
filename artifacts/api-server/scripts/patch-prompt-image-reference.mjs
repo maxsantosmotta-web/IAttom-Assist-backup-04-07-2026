@@ -26,7 +26,7 @@ Identifique silenciosamente: assunto principal, cenário, enquadramento, profund
 Defina movimentos coerentes de câmera e dos elementos visuais, usando profundidade, parallax, reflexos, luz, atmosfera e movimentos ambientais somente quando fizerem sentido para a imagem.
 Preserve integralmente identidade, rosto, mãos, anatomia, produto, veículo, logotipo, textos, cores, materiais, proporções, composição e enquadramento. Não acrescente objetos, não remova elementos e não altere o design original.
 Evite deformações, duplicações, derretimento, troca de identidade, mudança de texto, câmera agressiva, movimentos artificiais e efeitos exagerados.
-O PROMPT final deve ter no máximo 1.200 caracteres, ser direto, específico para a imagem analisada e imediatamente utilizável em um gerador image-to-video.\`,
+Mire entre 1.200 e 1.450 caracteres e nunca ultrapasse 1.500 caracteres. O PROMPT final deve ser direto, específico para a imagem analisada e imediatamente utilizável em um gerador image-to-video.\`,
 `;
 if (!source.includes("Para VÍDEO COM IMAGEM")) {
   if (!source.includes(videoRuleMarker)) throw new Error("Prompt video rule marker not found");
@@ -83,8 +83,8 @@ if (!source.includes('tipoKey === "videocomimagem" && !referenceImage')) {
 }
 
 const generalRuleMarker = '- Use entre 140 e 420 palavras para Imagem ou Vídeo; entre 100 e 320 palavras para os demais tipos.';
-const generalRuleBlock = '- Para Vídeo com Imagem, respeite obrigatoriamente o máximo de 1.200 caracteres no PROMPT. Para Imagem ou Vídeo, use entre 140 e 420 palavras; para os demais tipos, entre 100 e 320 palavras.';
-if (!source.includes("Para Vídeo com Imagem, respeite obrigatoriamente")) {
+const generalRuleBlock = '- Para Vídeo com Imagem, mire entre 1.200 e 1.450 caracteres e respeite obrigatoriamente o máximo de 1.500 caracteres no PROMPT. Para Imagem ou Vídeo, use entre 140 e 420 palavras; para os demais tipos, entre 100 e 320 palavras.';
+if (!source.includes("Para Vídeo com Imagem, mire entre 1.200 e 1.450 caracteres")) {
   if (!source.includes(generalRuleMarker)) throw new Error("Prompt general length rule marker not found");
   source = source.replace(generalRuleMarker, generalRuleBlock);
 }
@@ -132,23 +132,23 @@ const activityResponseMarker = `    const generatedTitle = titleMatch[1].trim().
 
 const responseBlock = `    let finalPrompt = promptMatch[1].trim();
 
-    if (tipoKey === "videocomimagem" && finalPrompt.length > 1200) {
+    if (tipoKey === "videocomimagem" && finalPrompt.length > 1500) {
       const compacted = await openai.chat.completions.create({
         model: "gpt-5-mini",
         messages: [
           {
             role: "system",
-            content: "Reduza o prompt image-to-video para no máximo 1.200 caracteres. Preserve movimentos de câmera, movimentos naturais, profundidade, parallax, iluminação, fidelidade visual e restrições contra deformações. Não transforme em roteiro, não acrescente explicações e devolva somente o prompt final.",
+            content: "Reduza o prompt image-to-video para no máximo 1.500 caracteres. Preserve movimentos de câmera, movimentos naturais, profundidade, parallax, iluminação, fidelidade visual e restrições contra deformações. Não transforme em roteiro, não acrescente explicações e devolva somente o prompt final.",
           },
           { role: "user", content: finalPrompt },
         ],
-        max_completion_tokens: 900,
+        max_completion_tokens: 1100,
       });
       finalPrompt = (compacted.choices[0]?.message?.content ?? finalPrompt).trim();
     }
 
-    if (tipoKey === "videocomimagem" && finalPrompt.length > 1200) {
-      finalPrompt = finalPrompt.slice(0, 1200).trimEnd();
+    if (tipoKey === "videocomimagem" && finalPrompt.length > 1500) {
+      finalPrompt = finalPrompt.slice(0, 1500).trimEnd();
     }
 
     const generatedTitle = titleMatch[1].trim().slice(0, 120);
@@ -178,9 +178,10 @@ for (const marker of [
   "sem pedir briefing adicional",
   "let finalPrompt = promptMatch[1].trim();",
   'module: "prompts"',
+  "finalPrompt.length > 1500",
 ]) {
   if (!source.includes(marker)) throw new Error(`Prompt image-aware backend marker missing: ${marker}`);
 }
 
 writeFileSync(fileUrl, source, "utf8");
-console.log("Vídeo com Imagem now generates from the reference image alone with a 1,200-character limit.");
+console.log("Vídeo com Imagem now targets 1,200–1,450 characters with an absolute 1,500-character limit.");
