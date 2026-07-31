@@ -19,7 +19,7 @@ if (!source.includes("const [referenceImage, setReferenceImage]")) {
 
 const clearMarker = '    setGuidedSubject("");\n    setGenerated(false);';
 const clearBlock = '    setGuidedSubject("");\n    setReferenceImage(null);\n    setGenerated(false);';
-if (!source.includes("setReferenceImage(null);")) {
+if (!source.includes('setGuidedSubject("");\n    setReferenceImage(null);\n    setGenerated(false);')) {
   if (!source.includes(clearMarker)) throw new Error("Prompt clear-form marker not found");
   source = source.replace(clearMarker, clearBlock);
 }
@@ -62,7 +62,10 @@ if (!source.includes("const requiresReferenceImage")) {
 
 const subjectBlockMarker = `          <div className="space-y-1.5">
             <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Assunto</label>`;
-const pickerBlock = `          {guidedTipo === "Vídeo com Imagem" && (
+
+if (!source.includes("<PromptImageReferencePicker")) {
+  if (!source.includes(subjectBlockMarker)) throw new Error("Prompt subject block marker not found for picker");
+  const pickerBlock = `          {guidedTipo === "Vídeo com Imagem" && (
             <PromptImageReferencePicker
               value={referenceImage}
               onChange={setReferenceImage}
@@ -70,11 +73,16 @@ const pickerBlock = `          {guidedTipo === "Vídeo com Imagem" && (
             />
           )}
 
-          {guidedTipo !== "Vídeo com Imagem" && (
 ${subjectBlockMarker}`;
-if (!source.includes("<PromptImageReferencePicker")) {
-  if (!source.includes(subjectBlockMarker)) throw new Error("Prompt subject block marker not found");
   source = source.replace(subjectBlockMarker, pickerBlock);
+}
+
+if (!source.includes('guidedTipo !== "Vídeo com Imagem" && (')) {
+  if (!source.includes(subjectBlockMarker)) throw new Error("Prompt subject block marker not found for visibility guard");
+  source = source.replace(
+    subjectBlockMarker,
+    `          {guidedTipo !== "Vídeo com Imagem" && (\n${subjectBlockMarker}`,
+  );
 }
 
 const subjectEndMarker = `            <p className="text-[10px] text-zinc-700 px-0.5">Ex: scooter, cadeira gamer, proteção veicular, emagrecimento...</p>
@@ -86,7 +94,7 @@ const subjectEndBlock = `            <p className="text-[10px] text-zinc-700 px-
           )}
 
           <CreditsGate`;
-if (!source.includes('guidedTipo !== "Vídeo com Imagem" && (') || !source.includes("          )}\n\n          <CreditsGate")) {
+if (!source.includes("          )}\n\n          <CreditsGate")) {
   if (!source.includes(subjectEndMarker)) throw new Error("Prompt subject block end marker not found");
   source = source.replace(subjectEndMarker, subjectEndBlock);
 }
@@ -98,9 +106,10 @@ for (const marker of [
   "<PromptImageReferencePicker",
   "const requiresReferenceImage",
   'guidedTipo !== "Vídeo com Imagem" && (',
+  "          )}\n\n          <CreditsGate",
 ]) {
   if (!source.includes(marker)) throw new Error(`Prompt image reference marker missing: ${marker}`);
 }
 
 writeFileSync(fileUrl, source, "utf8");
-console.log("Vídeo com Imagem now generates from the selected reference image without requiring an assunto.");
+console.log("Vídeo com Imagem now hides Assunto and generates from the selected reference image only.");
