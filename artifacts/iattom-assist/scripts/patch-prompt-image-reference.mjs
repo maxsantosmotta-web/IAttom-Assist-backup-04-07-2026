@@ -113,3 +113,5 @@ for (const marker of [
 
 writeFileSync(fileUrl, source, "utf8");
 console.log("Vídeo com Imagem now hides Assunto and generates from the selected reference image only.");
+
+await import("./patch-prompt-charge-after-success.mjs");
