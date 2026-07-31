@@ -117,3 +117,4 @@ console.log("Vídeo com Imagem now hides Assunto and generates from the selected
 await import("./patch-prompt-charge-after-success.mjs");
 await import("./patch-image-motion-prompt-limit.mjs");
 await import("./patch-prompt-navigation-and-chunk-recovery.mjs");
+await import("./patch-credit-history-infinite-scroll.mjs");
