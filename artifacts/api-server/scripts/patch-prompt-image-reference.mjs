@@ -116,11 +116,20 @@ if (!source.includes("sem pedir briefing adicional")) {
   source = source.replace(messagesMarker, messagesBlock);
 }
 
-const responseMarker = `    res.json({
-      title: titleMatch[1].trim().slice(0, 120),
+const activityResponseMarker = `    const generatedTitle = titleMatch[1].trim().slice(0, 120);
+    await logAiUsage({
+      clerkUserId,
+      action: \`Prompt criado: \${generatedTitle}\`,
+      module: "prompts",
+      projectName: generatedTitle,
+    });
+
+    res.json({
+      title: generatedTitle,
       prompt: promptMatch[1].trim(),
       module,
     });`;
+
 const responseBlock = `    let finalPrompt = promptMatch[1].trim();
 
     if (tipoKey === "videocomimagem" && finalPrompt.length > 1200) {
@@ -142,14 +151,23 @@ const responseBlock = `    let finalPrompt = promptMatch[1].trim();
       finalPrompt = finalPrompt.slice(0, 1200).trimEnd();
     }
 
+    const generatedTitle = titleMatch[1].trim().slice(0, 120);
+    await logAiUsage({
+      clerkUserId,
+      action: \`Prompt criado: \${generatedTitle}\`,
+      module: "prompts",
+      projectName: generatedTitle,
+    });
+
     res.json({
-      title: titleMatch[1].trim().slice(0, 120),
+      title: generatedTitle,
       prompt: finalPrompt,
       module,
     });`;
+
 if (!source.includes("let finalPrompt = promptMatch[1].trim();")) {
-  if (!source.includes(responseMarker)) throw new Error("Prompt response marker not found");
-  source = source.replace(responseMarker, responseBlock);
+  if (!source.includes(activityResponseMarker)) throw new Error("Prompt activity response marker not found");
+  source = source.replace(activityResponseMarker, responseBlock);
 }
 
 for (const marker of [
@@ -159,6 +177,7 @@ for (const marker of [
   'tipoKey === "videocomimagem" && !referenceImage',
   "sem pedir briefing adicional",
   "let finalPrompt = promptMatch[1].trim();",
+  'module: "prompts"',
 ]) {
   if (!source.includes(marker)) throw new Error(`Prompt image-aware backend marker missing: ${marker}`);
 }
