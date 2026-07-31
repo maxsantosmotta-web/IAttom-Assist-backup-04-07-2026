@@ -4,16 +4,39 @@ import { logger } from "./lib/logger.js";
 import { getStripeSync } from "./lib/stripeClient.js";
 import { rehydrateMLTokens } from "./lib/mlTokenStartup.js";
 
+function normalizePublicOrigin(value: string): string {
+  const normalized = value.trim().replace(/\/$/, "");
+  if (!normalized) return normalized;
+
+  try {
+    const url = new URL(
+      /^https?:\/\//i.test(normalized) ? normalized : `https://${normalized}`,
+    );
+
+    if (url.hostname === "iattomassist.com.br") {
+      url.hostname = "www.iattomassist.com.br";
+    }
+
+    url.protocol = "https:";
+    url.pathname = url.pathname.replace(/\/$/, "");
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return normalized;
+  }
+}
+
 function resolvePublicOrigin(): string | null {
   const explicit = process.env.APP_PUBLIC_URL?.trim();
-  if (explicit) return explicit.replace(/\/$/, "");
+  if (explicit) return normalizePublicOrigin(explicit);
 
   const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
-  if (railwayDomain) return `https://${railwayDomain.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+  if (railwayDomain) return normalizePublicOrigin(railwayDomain);
 
   const replitDomains = process.env.REPLIT_DOMAINS?.trim();
   const replitDomain = replitDomains?.split(",")[0]?.trim();
-  if (replitDomain) return `https://${replitDomain.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+  if (replitDomain) return normalizePublicOrigin(replitDomain);
 
   return null;
 }
@@ -47,7 +70,7 @@ async function initStripe() {
     return;
   }
 
-  // Step 3: Register webhook against the real production origin and start backfill.
+  // Step 3: Register webhook against the canonical production origin and start backfill.
   try {
     const publicOrigin = resolvePublicOrigin();
     if (publicOrigin) {
