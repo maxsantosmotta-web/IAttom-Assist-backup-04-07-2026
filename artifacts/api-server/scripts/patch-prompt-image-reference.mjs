@@ -39,7 +39,7 @@ const schemaMarker = `const GeneratePromptBody = z.object({
 });`;
 const schemaBlock = `const GeneratePromptBody = z.object({
   tipo: z.string().min(1).max(50),
-  subject: z.string().min(1).max(3000),
+  subject: z.string().max(3000).default(""),
   referenceImage: z.object({
     base64: z.string().min(1).max(12_000_000),
     mimeType: z.enum(["image/png", "image/jpeg"]),
@@ -50,8 +50,16 @@ if (!source.includes("referenceImage: z.object")) {
   source = source.replace(schemaMarker, schemaBlock);
 }
 
-const parseMarker = '  const { tipo, subject: rawSubject } = parsed.data;';
-const parseBlock = '  const { tipo, subject: rawSubject, referenceImage } = parsed.data;';
+const parseMarker = `  const { tipo, subject: rawSubject } = parsed.data;
+  const subject = semanticNormalize(rawSubject.trim());
+  const tipoKey = tipo.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/\\s+/g, "");`;
+const parseBlock = `  const { tipo, subject: rawSubject, referenceImage } = parsed.data;
+  const tipoKey = tipo.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/\\s+/g, "");
+  const subject = semanticNormalize(
+    rawSubject.trim() || (tipoKey === "videocomimagem"
+      ? "Analise a imagem de referência e crie o melhor prompt técnico para dar movimento a ela."
+      : ""),
+  );`;
 if (!source.includes("rawSubject, referenceImage")) {
   if (!source.includes(parseMarker)) throw new Error("Prompt generation parse marker not found");
   source = source.replace(parseMarker, parseBlock);
@@ -62,6 +70,11 @@ const typeKeyBlock = `  const typeRules = TYPE_RULES[tipoKey] ?? TYPE_RULES.pers
 
   if (tipoKey === "videocomimagem" && !referenceImage) {
     res.status(400).json({ error: "Selecione uma imagem de referência." });
+    return;
+  }
+
+  if (tipoKey !== "videocomimagem" && !rawSubject.trim()) {
+    res.status(400).json({ error: "Informe o assunto do prompt." });
     return;
   }`;
 if (!source.includes('tipoKey === "videocomimagem" && !referenceImage')) {
@@ -88,7 +101,7 @@ const messagesBlock = `      messages: [
             ? ([
                 {
                   type: "text",
-                  text: \`Tipo selecionado: \${tipo}\\nUse exclusivamente a solicitação atual descrita no sistema e analise a imagem enviada como referência obrigatória.\`,
+                  text: \`Tipo selecionado: \${tipo}\\nA imagem enviada é a referência obrigatória. Analise-a e gere diretamente o melhor prompt técnico de movimento, sem pedir briefing adicional.\`,
                 },
                 {
                   type: "image_url",
@@ -98,7 +111,7 @@ const messagesBlock = `      messages: [
             : \`Tipo selecionado: \${tipo}\\nUse exclusivamente a solicitação atual descrita no sistema.\`,
         },
       ],`;
-if (!source.includes("analise a imagem enviada como referência obrigatória")) {
+if (!source.includes("sem pedir briefing adicional")) {
   if (!source.includes(messagesMarker)) throw new Error("Prompt OpenAI messages marker not found");
   source = source.replace(messagesMarker, messagesBlock);
 }
@@ -144,11 +157,11 @@ for (const marker of [
   "Para VÍDEO COM IMAGEM",
   "referenceImage: z.object",
   'tipoKey === "videocomimagem" && !referenceImage',
-  "analise a imagem enviada como referência obrigatória",
+  "sem pedir briefing adicional",
   "let finalPrompt = promptMatch[1].trim();",
 ]) {
   if (!source.includes(marker)) throw new Error(`Prompt image-aware backend marker missing: ${marker}`);
 }
 
 writeFileSync(fileUrl, source, "utf8");
-console.log("Prompt generation now enforces image-aware Vídeo com Imagem output with a 1,200-character limit.");
+console.log("Vídeo com Imagem now generates from the reference image alone with a 1,200-character limit.");
