@@ -41,7 +41,7 @@ if (!source.includes('if (tipo !== "Vídeo com Imagem") setReferenceImage(null);
 const payloadMarker = '        body: JSON.stringify({ tipo: guidedTipo, subject: guidedSubject.trim() }),';
 const payloadBlock = `        body: JSON.stringify({
           tipo: guidedTipo,
-          subject: guidedSubject.trim(),
+          subject: guidedTipo === "Vídeo com Imagem" ? "" : guidedSubject.trim(),
           ...(guidedTipo === "Vídeo com Imagem" && referenceImage
             ? { referenceImage: { base64: referenceImage.base64, mimeType: referenceImage.mimeType } }
             : {}),
@@ -54,8 +54,7 @@ if (!source.includes("referenceImage: { base64: referenceImage.base64")) {
 const canGenerateMarker = '  const canGenerate = !!guidedTipo && guidedSubject.trim().length > 0;';
 const canGenerateBlock = `  const requiresReferenceImage = guidedTipo === "Vídeo com Imagem";
   const canGenerate = !!guidedTipo
-    && guidedSubject.trim().length > 0
-    && (!requiresReferenceImage || referenceImage !== null);`;
+    && (requiresReferenceImage ? referenceImage !== null : guidedSubject.trim().length > 0);`;
 if (!source.includes("const requiresReferenceImage")) {
   if (!source.includes(canGenerateMarker)) throw new Error("Prompt canGenerate marker not found");
   source = source.replace(canGenerateMarker, canGenerateBlock);
@@ -71,10 +70,25 @@ const pickerBlock = `          {guidedTipo === "Vídeo com Imagem" && (
             />
           )}
 
+          {guidedTipo !== "Vídeo com Imagem" && (
 ${subjectBlockMarker}`;
 if (!source.includes("<PromptImageReferencePicker")) {
   if (!source.includes(subjectBlockMarker)) throw new Error("Prompt subject block marker not found");
   source = source.replace(subjectBlockMarker, pickerBlock);
+}
+
+const subjectEndMarker = `            <p className="text-[10px] text-zinc-700 px-0.5">Ex: scooter, cadeira gamer, proteção veicular, emagrecimento...</p>
+          </div>
+
+          <CreditsGate`;
+const subjectEndBlock = `            <p className="text-[10px] text-zinc-700 px-0.5">Ex: scooter, cadeira gamer, proteção veicular, emagrecimento...</p>
+          </div>
+          )}
+
+          <CreditsGate`;
+if (!source.includes('guidedTipo !== "Vídeo com Imagem" && (') || !source.includes("          )}\n\n          <CreditsGate")) {
+  if (!source.includes(subjectEndMarker)) throw new Error("Prompt subject block end marker not found");
+  source = source.replace(subjectEndMarker, subjectEndBlock);
 }
 
 for (const marker of [
@@ -83,9 +97,10 @@ for (const marker of [
   'guidedTipo === "Vídeo com Imagem" && referenceImage',
   "<PromptImageReferencePicker",
   "const requiresReferenceImage",
+  'guidedTipo !== "Vídeo com Imagem" && (',
 ]) {
   if (!source.includes(marker)) throw new Error(`Prompt image reference marker missing: ${marker}`);
 }
 
 writeFileSync(fileUrl, source, "utf8");
-console.log("Prompt module now uses a temporary gallery/library image reference only for Vídeo com Imagem.");
+console.log("Vídeo com Imagem now generates from the selected reference image without requiring an assunto.");
