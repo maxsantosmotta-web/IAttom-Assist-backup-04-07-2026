@@ -3,27 +3,97 @@ import { readFileSync, writeFileSync } from "node:fs";
 const fileUrl = new URL("../src/components/layout/SidebarLayout.tsx", import.meta.url);
 let source = readFileSync(fileUrl, "utf8");
 
-const routeConfigMarker = "const basePath = import.meta.env.BASE_URL.replace(/\\\/$/, \"\");";
-const routeConfig = `${routeConfigMarker}\n\nconst backButtonRoutes = new Set([\n  \"/dashboard\",\n  \"/dashboard/settings\",\n  \"/dashboard/credits\",\n  \"/dashboard/billing\",\n  \"/dashboard/trash\",\n  \"/dashboard/projects\",\n  \"/dashboard/prompts\",\n  \"/dashboard/creative-generator\",\n  \"/dashboard/create-campaign\",\n  \"/dashboard/history\",\n]);\n\nconst fullPageRefreshRoutes = new Set([\n  \"/dashboard\",\n  \"/dashboard/settings\",\n  \"/dashboard/credits\",\n  \"/dashboard/trash\",\n  \"/dashboard/create-campaign\",\n  \"/dashboard/history\",\n]);`;
+const currentPageBlock = `  const currentPage = location === "/dashboard/creative-generator"
+    ? (creativeEntry === "video" ? "Vídeo com efeito" : "Gerar imagem")
+    : navItems.find((item) => item.href === location)?.label || "Dashboard";`;
 
-if (!source.includes("const backButtonRoutes = new Set")) {
-  source = source.replace(routeConfigMarker, routeConfig);
-}
+const safeControlsBlock = `${currentPageBlock}
 
-const currentPageBlock = `  const currentPage = location === \"/dashboard/creative-generator\"\n    ? (creativeEntry === \"video\" ? \"Vídeo com efeito\" : \"Gerar imagem\")\n    : navItems.find((item) => item.href === location)?.label || \"Dashboard\";`;
+  useEffect(() => {
+    const routeTitles: Record<string, string> = {
+      "/dashboard": "Bem-vindo",
+      "/dashboard/settings": "Configurações",
+      "/dashboard/credits": "Créditos",
+      "/dashboard/billing": "Assinatura e Planos",
+      "/dashboard/trash": "Lixeira",
+      "/dashboard/projects": "Biblioteca",
+      "/dashboard/prompts": "Criar Prompt",
+      "/dashboard/creative-generator": creativeEntry === "video" ? "Vídeo com efeito" : "Gerar imagem",
+      "/dashboard/create-campaign": "Criar Campanha",
+      "/dashboard/history": "Atividades",
+    };
 
-const safeControlsBlock = `${currentPageBlock}\n  const showBackButton = backButtonRoutes.has(location);\n\n  useEffect(() => {\n    if (!fullPageRefreshRoutes.has(location) && location !== \"/dashboard/prompts\") return;\n\n    const updateControls = () => {\n      const controls = Array.from(document.querySelectorAll<HTMLElement>(\"button, a\"));\n\n      for (const control of controls) {\n        const label = control.textContent?.trim() ?? \"\";\n\n        if (location === \"/dashboard/prompts\" && /voltar ao painel|voltar para o painel|voltar ao dashboard|voltar para o dashboard/i.test(label)) {\n          for (const node of Array.from(control.childNodes)) {\n            if (node.nodeType === Node.TEXT_NODE && /voltar/i.test(node.textContent ?? \"\")) {\n              node.textContent = \" Voltar\";\n            }\n          }\n          if (control.childNodes.length === 1) control.textContent = \"Voltar\";\n        }\n\n        if (!fullPageRefreshRoutes.has(location) || label !== \"Atualizar\") continue;\n\n        control.classList.add(\n          \"!h-9\", \"!px-3\", \"!text-sm\", \"!font-semibold\",\n          \"!text-primary\", \"!border-primary/35\", \"!bg-primary/10\",\n          \"hover:!bg-primary/20\", \"hover:!text-primary\",\n        );\n\n        if (location === \"/dashboard\") {\n          control.classList.add(\"!h-10\", \"!px-4\", \"!border-primary/50\", \"!bg-primary/15\");\n        }\n      }\n    };\n\n    const handleRefreshClick = (event: MouseEvent) => {\n      const target = event.target instanceof Element ? event.target.closest(\"button, a\") : null;\n      if (!target || target.textContent?.trim() !== \"Atualizar\") return;\n\n      event.preventDefault();\n      event.stopPropagation();\n      window.location.reload();\n    };\n\n    updateControls();\n    const observer = new MutationObserver(updateControls);\n    observer.observe(document.body, { childList: true, subtree: true });\n    document.addEventListener(\"click\", handleRefreshClick, true);\n\n    return () => {\n      observer.disconnect();\n      document.removeEventListener(\"click\", handleRefreshClick, true);\n    };\n  }, [location]);`;
+    const title = routeTitles[location];
+    if (!title) return;
 
-if (!source.includes("const showBackButton = backButtonRoutes.has(location)")) {
+    let refreshCleanup: (() => void) | null = null;
+
+    const placeControls = () => {
+      const main = document.querySelector("main");
+      if (!main) return;
+
+      main.querySelectorAll("[data-iattom-back-to-dashboard]").forEach((node) => node.remove());
+
+      const headings = Array.from(main.querySelectorAll<HTMLElement>("h1, h2"));
+      const heading = headings.find((node) => (node.textContent ?? "").trim().startsWith(title));
+      if (!heading) return;
+
+      let header: HTMLElement | null = heading.parentElement;
+      for (let depth = 0; header && depth < 5; depth += 1) {
+        if (header.classList.contains("justify-between")) break;
+        header = header.parentElement;
+      }
+      if (!header) return;
+
+      const back = document.createElement("button");
+      back.type = "button";
+      back.dataset.iattomBackToDashboard = "true";
+      back.textContent = "Voltar";
+      back.className = "inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-white/10 bg-transparent px-3 text-sm font-medium text-zinc-400 transition-colors hover:border-white/20 hover:text-white";
+      back.addEventListener("click", () => window.location.assign("/dashboard"));
+      header.appendChild(back);
+
+      if (location === "/dashboard/history") {
+        const refresh = Array.from(main.querySelectorAll<HTMLButtonElement>("button"))
+          .find((button) => (button.textContent ?? "").trim() === "Atualizar");
+        if (refresh) {
+          const reload = (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            window.location.reload();
+          };
+          refresh.addEventListener("click", reload, true);
+          refreshCleanup = () => refresh.removeEventListener("click", reload, true);
+        }
+      }
+
+      if (location === "/dashboard/prompts") {
+        const promptBack = Array.from(main.querySelectorAll<HTMLElement>("button, a"))
+          .find((control) => /voltar ao painel|voltar para o painel|voltar ao dashboard|voltar para o dashboard/i.test((control.textContent ?? "").trim()));
+        if (promptBack) promptBack.textContent = "Voltar";
+      }
+    };
+
+    const timer = window.setTimeout(placeControls, 0);
+    const observer = new MutationObserver(() => {
+      if (!document.querySelector("[data-iattom-back-to-dashboard]")) placeControls();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+      refreshCleanup?.();
+      document.querySelectorAll("[data-iattom-back-to-dashboard]").forEach((node) => node.remove());
+    };
+  }, [location, creativeEntry]);`;
+
+if (!source.includes("data-iattom-back-to-dashboard")) {
+  if (!source.includes(currentPageBlock)) {
+    throw new Error("Sidebar current-page marker not found");
+  }
   source = source.replace(currentPageBlock, safeControlsBlock);
 }
 
-const mobileButtonEnd = `            </Button>\n            {location !== \"/dashboard/billing\" && (`;
-const backButtonInsertion = `            </Button>\n            {showBackButton && (\n              <Button\n                type=\"button\"\n                variant=\"outline\"\n                size=\"sm\"\n                onClick={() => {\n                  if (window.history.length > 1) window.history.back();\n                  else window.location.assign(\"/dashboard\");\n                }}\n                className=\"h-9 border-white/15 bg-white/[0.04] px-3 text-sm font-medium text-zinc-200 hover:border-white/25 hover:bg-white/[0.08] hover:text-white\"\n              >\n                Voltar\n              </Button>\n            )}\n            {location !== \"/dashboard/billing\" && (`;
-
-if (!source.includes("{showBackButton && (")) {
-  source = source.replace(mobileButtonEnd, backButtonInsertion);
-}
-
 writeFileSync(fileUrl, source, "utf8");
-console.log("Safe route navigation controls applied without changing module internals.");
+console.log("Back controls moved into module headers with direct dashboard destination.");
