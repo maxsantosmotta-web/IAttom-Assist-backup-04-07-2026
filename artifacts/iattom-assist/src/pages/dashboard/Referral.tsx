@@ -4,7 +4,6 @@ import { Gift, Copy, Check, Users, Zap, ArrowRight, ExternalLink, AlertCircle, R
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@clerk/react";
 
 interface ReferralData {
   code: string;
@@ -26,7 +25,7 @@ const REFERRAL_CACHE_TTL_MS = 60_000;
 let referralCache: { data: ReferralData; fetchedAt: number } | null = null;
 let referralRequest: Promise<ReferralData> | null = null;
 
-async function fetchReferralData(getToken: () => Promise<string | null>, force = false): Promise<ReferralData> {
+async function fetchReferralData(force = false): Promise<ReferralData> {
   const now = Date.now();
   if (!force && referralCache && now - referralCache.fetchedAt < REFERRAL_CACHE_TTL_MS) {
     return referralCache.data;
@@ -35,11 +34,7 @@ async function fetchReferralData(getToken: () => Promise<string | null>, force =
   if (referralRequest) return referralRequest;
 
   referralRequest = (async () => {
-    const token = await getToken();
-    if (!token) throw new Error("Sessão indisponível.");
-
     const res = await fetch(`${basePath}/api/referral/my`, {
-      headers: { Authorization: `Bearer ${token}` },
       credentials: "include",
     });
 
@@ -60,8 +55,6 @@ async function fetchReferralData(getToken: () => Promise<string | null>, force =
 
 export function Referral() {
   const { toast } = useToast();
-  const { getToken } = useAuth();
-  const getTokenRef = useRef(getToken);
   const mountedRef = useRef(true);
   const [data, setData] = useState<ReferralData | null>(() => referralCache?.data ?? null);
   const [loading, setLoading] = useState(() => !referralCache);
@@ -72,10 +65,6 @@ export function Referral() {
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState("");
   const [applySuccess, setApplySuccess] = useState("");
-
-  useEffect(() => {
-    getTokenRef.current = getToken;
-  }, [getToken]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -94,7 +83,7 @@ export function Referral() {
     setError("");
 
     try {
-      const nextData = await fetchReferralData(() => getTokenRef.current(), force);
+      const nextData = await fetchReferralData(force);
       if (mountedRef.current) setData(nextData);
     } catch (err) {
       if (mountedRef.current) {
@@ -130,12 +119,10 @@ export function Referral() {
     setApplyError("");
     setApplySuccess("");
     try {
-      const token = await getTokenRef.current();
-      if (!token) throw new Error("Sessão indisponível.");
       const res = await fetch(`${basePath}/api/referral/use`, {
         method: "POST",
         credentials: "include",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: applyCode.trim() }),
       });
       const json = await res.json().catch(() => ({})) as { error?: string; creditsAwarded?: number };
@@ -172,13 +159,7 @@ export function Referral() {
             <h1 className="text-2xl font-bold text-white">Indique e Ganhe</h1>
             <p className="text-sm text-muted-foreground mt-1">Indique amigos e ambos ganham créditos quando eles entram.</p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void loadReferral(true)}
-            disabled={loading}
-            className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1"
-          >
+          <Button size="sm" variant="outline" onClick={() => void loadReferral(true)} disabled={loading} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
@@ -216,7 +197,7 @@ export function Referral() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 flex items-center gap-3 bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3">
               <span className="text-2xl font-mono font-bold text-primary tracking-widest">{data?.code ?? "—"}</span>
-              <button onClick={copyCode} className="ml-auto p-1.5 text-zinc-500 hover:text-zinc-200 rounded-lg hover:bg-white/[0.06] transition-colors">
+              <button onClick={copyCode} disabled={!data} className="ml-auto p-1.5 text-zinc-500 hover:text-zinc-200 rounded-lg hover:bg-white/[0.06] transition-colors disabled:opacity-30">
                 {codeCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
