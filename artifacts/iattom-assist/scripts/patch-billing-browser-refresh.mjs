@@ -108,19 +108,21 @@ if (sidebar.includes(oldCreativeHandler)) {
   throw new Error("Creative module lifecycle handler marker not found.");
 }
 
-const pageTransitionPattern = /<PageTransition>\s*\{children\}\s*<\/PageTransition>/;
-const keyedPageTransition = '<PageTransition key={`${location}:${creativeEntry}`}>{children}</PageTransition>';
-if (pageTransitionPattern.test(sidebar)) {
-  sidebar = sidebar.replace(pageTransitionPattern, keyedPageTransition);
-} else if (!sidebar.includes(keyedPageTransition)) {
+const plainPageTransition = '<PageTransition>{children}</PageTransition>';
+const desiredPageTransition = '<PageTransition key={`${location}:${creativeEntry}`}>{children}</PageTransition>';
+const existingEquivalentPageTransition = '<PageTransition key={location === "/dashboard/creative-generator" ? creativeEntry : location}>{children}</PageTransition>';
+
+if (sidebar.includes(plainPageTransition)) {
+  sidebar = sidebar.replace(plainPageTransition, desiredPageTransition);
+} else if (sidebar.includes(existingEquivalentPageTransition)) {
+  // Já existe ciclo independente: rota para módulos comuns e modo para imagem/vídeo.
+} else if (!sidebar.includes(desiredPageTransition)) {
   throw new Error("Sidebar PageTransition lifecycle marker not found.");
 }
 
-for (const marker of [
-  'window.dispatchEvent(new CustomEvent("iattom-module-change"',
-  'key={`${location}:${creativeEntry}`}',
-]) {
-  if (!sidebar.includes(marker)) throw new Error(`Sidebar module lifecycle marker missing: ${marker}`);
+const hasPageLifecycle = sidebar.includes(desiredPageTransition) || sidebar.includes(existingEquivalentPageTransition);
+if (!sidebar.includes('window.dispatchEvent(new CustomEvent("iattom-module-change"')) || !hasPageLifecycle) {
+  throw new Error("Sidebar module lifecycle markers are incomplete.");
 }
 
 await writeFile(sidebarUrl, sidebar, "utf8");
