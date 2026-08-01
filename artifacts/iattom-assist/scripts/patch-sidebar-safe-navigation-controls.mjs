@@ -145,3 +145,5 @@ if (!historySource.includes('onClick={() => window.location.assign("/dashboard")
 
 writeFileSync(historyUrl, historySource, "utf8");
 console.log("Dashboard controls preserved and Activities controls standardized in the real module header.");
+
+await import("./patch-refresh-functions-only.mjs");
