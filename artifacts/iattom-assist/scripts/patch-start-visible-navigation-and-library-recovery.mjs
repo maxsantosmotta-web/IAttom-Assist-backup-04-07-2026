@@ -83,7 +83,6 @@ for (const [path, name] of [
   ["pages/dashboard/Settings.tsx", "Settings"],
   ["pages/dashboard/Credits.tsx", "Credits"],
   ["pages/dashboard/Trash.tsx", "Trash"],
-  ["pages/dashboard/CreateCampaign.tsx", "CreateCampaign"],
   ["pages/dashboard/History.tsx", "History"],
 ]) {
   const hasRefresh = makeExistingRefreshReload(path, name, false);
@@ -96,6 +95,22 @@ insertActions("pages/dashboard/DashboardHome.tsx", "DashboardHome", !dashboardHa
 insertActions("pages/dashboard/Billing.tsx", "Billing", false);
 insertActions("pages/dashboard/Projects.tsx", "Projects", false);
 insertActions("pages/dashboard/CreativeGenerator.tsx", "CreativeGenerator", false);
+
+// Criar Campanha possui returns internos. Altera o Atualizar existente e injeta
+// o Voltar somente no container raiz confirmado do componente.
+{
+  const hasRefresh = makeExistingRefreshReload("pages/dashboard/CreateCampaign.tsx", "CreateCampaign", false);
+  const { url, source: original } = read("pages/dashboard/CreateCampaign.tsx");
+  let source = original;
+  if (!source.includes("Ações simples do módulo")) {
+    const marker = '    <div className="space-y-8">\n      {/* Header */}';
+    source = source.replace(
+      marker,
+      `    <div className="space-y-8">${actionBar(!hasRefresh)}      {/* Header */}`,
+    );
+  }
+  write(url, source);
+}
 
 {
   const { url, source: original } = read("pages/dashboard/SavedPrompts.tsx");
