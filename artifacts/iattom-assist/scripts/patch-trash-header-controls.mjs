@@ -48,25 +48,11 @@ if (!source.includes('data-iattom-trash-controls="true"')) {
 
   if (!source.includes(oldHeader)) throw new Error("Trash header marker not found");
   source = source.replace(oldHeader, newHeader);
+}
 
-  const oldRefresh = `            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                void loadIntegrations();
-                void loadProjects();
-                void loadPrompts();
-                void loadActivities();
-              }}
-              disabled={loading}
-              className="h-7 px-2.5 text-zinc-500 hover:text-white gap-1.5 text-xs"
-            >
-              <RefreshCw className={\`w-3 h-3 \${loading ? "animate-spin" : ""}\`} />
-              Atualizar
-            </Button>`;
-
-  if (!source.includes(oldRefresh)) throw new Error("Trash card refresh marker not found");
-  source = source.replace(oldRefresh, "");
+const internalRefreshPattern = /\s*<Button\b(?=[\s\S]*?loadIntegrations\(\))(?=[\s\S]*?loadProjects\(\))(?=[\s\S]*?loadPrompts\(\))(?=[\s\S]*?loadActivities\(\))[\s\S]*?Atualizar\s*<\/Button>/;
+if (internalRefreshPattern.test(source)) {
+  source = source.replace(internalRefreshPattern, "");
 }
 
 writeFileSync(trashUrl, source, "utf8");
