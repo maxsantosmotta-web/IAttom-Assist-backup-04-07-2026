@@ -63,13 +63,10 @@ function removeJsxCardContaining(source, marker) {
   throw new Error(`Unable to close Credits card containing: ${marker}`);
 }
 
-// Remove o cartão inteiro do IAttom Help no módulo Créditos do usuário.
-// Não altera o painel Help, o histórico, a cobrança geral nem o ADM.
 while (credits.includes("IAttom Help")) {
   credits = removeJsxCardContaining(credits, "IAttom Help");
 }
 
-// Remove estados e função exclusivos do contador antigo do Help.
 credits = credits
   .replace(/\n\s*const\s*\[\s*helpUsed\s*,\s*setHelpUsed\s*\]\s*=\s*useState(?:<[^>]*>)?\([^;]*\);?/g, "")
   .replace(/\n\s*const\s*\[\s*helpLoading\s*,\s*setHelpLoading\s*\]\s*=\s*useState(?:<[^>]*>)?\([^;]*\);?/g, "")
@@ -79,7 +76,6 @@ credits = credits
 
 credits = removeFunctionByMarker(credits, "const loadHelpUsage = async");
 
-// Converte qualquer carga coordenada antiga em carga exclusiva do vídeo.
 credits = credits
   .replace(
     /const \[videoOk, helpOk\] = await Promise\.all\(\[\s*loadVideoBalance\([^)]*\),\s*loadHelpUsage\([^)]*\),\s*\]\);/g,
@@ -90,7 +86,6 @@ credits = credits
   .replace(/void loadVideoBalance\([^)]*\);\s*void loadHelpUsage\([^)]*\);/g, "void loadVideoBalance();")
   .replace(/\n\s*void loadHelpUsage\([^)]*\);/g, "");
 
-// Mantém somente uma leitura adicional no módulo: saldo de vídeos.
 const oldVideoLoader = `  const loadVideoBalance = async () => {
     setVideoLoading(true);
     try {
@@ -106,16 +101,38 @@ const oldVideoLoader = `  const loadVideoBalance = async () => {
   };`;
 
 const isolatedVideoLoader = `  const loadVideoBalance = async (signal?: AbortSignal): Promise<boolean> => {
-    setVideoLoading(true);
+    const cacheKey = "iattom-video-balance";
+    const cachedValue = window.sessionStorage.getItem(cacheKey);
+    if (cachedValue !== null) {
+      const parsed = Number(cachedValue);
+      if (Number.isFinite(parsed)) setVideoBalance(parsed);
+      setVideoLoading(false);
+    } else {
+      setVideoLoading(true);
+    }
+
+    const timeoutController = new AbortController();
+    const timeoutId = window.setTimeout(() => timeoutController.abort("video-balance-timeout"), 3500);
+    const abortFromParent = () => timeoutController.abort("credits-unmounted");
+    signal?.addEventListener("abort", abortFromParent, { once: true });
+
     try {
-      const response = await fetch("/api/videos/balance", { credentials: "include", cache: "no-store", signal });
+      const response = await fetch("/api/videos/balance", {
+        credentials: "include",
+        cache: "no-store",
+        signal: timeoutController.signal,
+      });
       if (!response.ok) throw new Error("video balance request failed");
       const video = await response.json() as { videoBalance?: number };
-      setVideoBalance(Number(video.videoBalance ?? 0));
+      const nextBalance = Number(video.videoBalance ?? 0);
+      setVideoBalance(nextBalance);
+      window.sessionStorage.setItem(cacheKey, String(nextBalance));
       return true;
     } catch {
       return false;
     } finally {
+      window.clearTimeout(timeoutId);
+      signal?.removeEventListener("abort", abortFromParent);
       if (!signal?.aborted) setVideoLoading(false);
     }
   };`;
@@ -137,14 +154,11 @@ if (credits.includes(simpleVideoEntry)) {
   credits = credits.replace(simpleVideoEntry, isolatedVideoEntry);
 }
 
-// Remove recuperação coordenada antiga com retry/timer e instala uma única
-// carga de vídeo por entrada no módulo.
 credits = credits.replace(
   /  useEffect\(\(\) => \{\n\s*let cancelled = false;[\s\S]*?const loadOnEntry = async \(\) => \{[\s\S]*?const videoOk = await loadVideoBalance\(\);[\s\S]*?\n\s*};\n[\s\S]*?return \(\) => \{[\s\S]*?\n\s*};\n\s*}, \[\]\);/g,
   isolatedVideoEntry,
 );
 
-// O Help continua invalidando apenas o saldo geral e o histórico após uso.
 if (!help.includes('import { useQueryClient } from "@tanstack/react-query";')) {
   help = help.replace(
     'import { useUser } from "@clerk/react";',
@@ -185,10 +199,16 @@ for (const forbidden of [
   if (credits.includes(forbidden)) throw new Error(`User Credits still contains Help-specific loading: ${forbidden}`);
 }
 
-if (!credits.includes("/api/videos/balance")) {
-  throw new Error("User Credits video balance was removed unexpectedly");
+for (const marker of [
+  "/api/videos/balance",
+  'sessionStorage.getItem(cacheKey)',
+  'sessionStorage.setItem(cacheKey',
+  'video-balance-timeout',
+  '3500',
+]) {
+  if (!credits.includes(marker)) throw new Error(`Fast video balance marker missing: ${marker}`);
 }
 
 writeFileSync(helpUrl, help);
 writeFileSync(creditsUrl, credits);
-console.log("User Credits contains only general, image and video counters; Help remains in general balance, history and ADM.");
+console.log("User Credits keeps Help removed and loads video balance from cache with a bounded background refresh.");
