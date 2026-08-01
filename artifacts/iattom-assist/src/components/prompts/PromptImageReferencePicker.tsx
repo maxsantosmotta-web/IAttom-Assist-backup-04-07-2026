@@ -3,17 +3,14 @@ import { ArrowLeft, Image as ImageIcon, Loader2, RefreshCw, Upload, X } from "lu
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { loadProjectAssets } from "@/lib/assetStorage";
-import { useSavedItems, type AssetData, type SavedItemRecord } from "@/hooks/useSavedItems";
+import { useSavedItems } from "@/hooks/useSavedItems";
+import {
+  getSavedImageLibraryCache,
+  loadSavedImageLibrary,
+  type SavedImageLibraryEntry,
+} from "@/lib/savedImageLibrary";
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
-const LIBRARY_CACHE_TTL_MS = 60_000;
-const LIBRARY_CONCURRENCY = 3;
-
-type LibraryEntry = { project: SavedItemRecord; asset: AssetData };
-
-let libraryCache: { entries: LibraryEntry[]; fetchedAt: number } | null = null;
-let libraryRequest: Promise<LibraryEntry[]> | null = null;
 
 export interface PromptImageReference {
   base64: string;
@@ -41,63 +38,13 @@ function inferMime(label: string): "image/png" | "image/jpeg" {
   return /\.jpe?g$/i.test(label) ? "image/jpeg" : "image/png";
 }
 
-async function loadLibraryEntries(
-  getItems: () => Promise<SavedItemRecord[]>,
-  getItemAssets: (id: string) => Promise<AssetData[]>,
-  force = false,
-): Promise<LibraryEntry[]> {
-  const now = Date.now();
-  if (!force && libraryCache && now - libraryCache.fetchedAt < LIBRARY_CACHE_TTL_MS) {
-    return libraryCache.entries;
-  }
-  if (libraryRequest) return libraryRequest;
-
-  libraryRequest = (async () => {
-    const items = (await getItems()).filter((item) => !item.deletedAt);
-    const results: LibraryEntry[][] = new Array(items.length);
-    let nextIndex = 0;
-
-    const worker = async () => {
-      while (true) {
-        const index = nextIndex;
-        nextIndex += 1;
-        if (index >= items.length) return;
-
-        const project = items[index];
-        let projectAssets = await getItemAssets(project.id).catch(() => [] as AssetData[]);
-        if (projectAssets.length === 0) {
-          const localAssets = await loadProjectAssets(project.id).catch(() => []);
-          projectAssets = localAssets.map((asset) => ({
-            conceptIndex: asset.conceptIndex,
-            base64: asset.base64,
-            label: asset.label,
-            format: asset.format,
-          }));
-        }
-        results[index] = projectAssets.map((asset) => ({ project, asset }));
-      }
-    };
-
-    const workerCount = Math.min(LIBRARY_CONCURRENCY, Math.max(items.length, 1));
-    await Promise.all(Array.from({ length: workerCount }, () => worker()));
-
-    const entries = results.flatMap((entry) => entry ?? []);
-    libraryCache = { entries, fetchedAt: Date.now() };
-    return entries;
-  })().finally(() => {
-    libraryRequest = null;
-  });
-
-  return libraryRequest;
-}
-
 export function PromptImageReferencePicker({ value, onChange, disabled = false }: PromptImageReferencePickerProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const mountedRef = useRef(true);
   const libraryLoadIdRef = useRef(0);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [choosingSource, setChoosingSource] = useState(false);
-  const [assets, setAssets] = useState<LibraryEntry[]>(() => libraryCache?.entries ?? []);
+  const [assets, setAssets] = useState<SavedImageLibraryEntry[]>(() => getSavedImageLibraryCache());
   const [loadingLibrary, setLoadingLibrary] = useState(false);
   const [error, setError] = useState("");
   const { getItems, getItemAssets } = useSavedItems();
@@ -145,18 +92,19 @@ export function PromptImageReferencePicker({ value, onChange, disabled = false }
     setLibraryOpen(true);
     setError("");
 
-    if (libraryCache) setAssets(libraryCache.entries);
+    const cached = getSavedImageLibraryCache();
+    if (cached.length > 0) setAssets(cached);
 
     const loadId = ++libraryLoadIdRef.current;
-    setLoadingLibrary(!libraryCache);
+    setLoadingLibrary(cached.length === 0);
 
     try {
-      const loaded = await loadLibraryEntries(getItems, getItemAssets, false);
+      const loaded = await loadSavedImageLibrary(getItems, getItemAssets);
       if (!mountedRef.current || loadId !== libraryLoadIdRef.current) return;
       setAssets(loaded);
     } catch {
       if (!mountedRef.current || loadId !== libraryLoadIdRef.current) return;
-      if (!libraryCache) setError("Não foi possível carregar as imagens da Biblioteca.");
+      if (cached.length === 0) setError("Não foi possível carregar as imagens da Biblioteca.");
     } finally {
       if (mountedRef.current && loadId === libraryLoadIdRef.current) setLoadingLibrary(false);
     }
