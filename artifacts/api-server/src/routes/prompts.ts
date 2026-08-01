@@ -10,6 +10,7 @@ import { semanticNormalize } from "../lib/ai/semanticNormalize.js";
 const router: IRouter = Router();
 
 const TRASH_TTL_MS = 48 * 60 * 60 * 1000;
+const IMAGE_MOTION_PROMPT_LIMIT = 1500;
 
 const CreatePromptBody = z.object({
   title: z.string().min(1).max(120),
@@ -17,7 +18,6 @@ const CreatePromptBody = z.object({
   module: z.string().min(1),
 });
 
-// ── GET /prompts — only active (not in trash) ─────────────────────────────────
 router.get("/prompts", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const module = req.query.module as string | undefined;
@@ -43,7 +43,6 @@ router.get("/prompts", requireAuth, async (req, res): Promise<void> => {
   res.json(items);
 });
 
-// ── GET /prompts/trash — items in trash (purges expired first) ────────────────
 router.get("/prompts/trash", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const now = new Date();
@@ -73,7 +72,6 @@ router.get("/prompts/trash", requireAuth, async (req, res): Promise<void> => {
   res.json(items);
 });
 
-// ── POST /prompts ─────────────────────────────────────────────────────────────
 router.post("/prompts", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = CreatePromptBody.safeParse(req.body);
@@ -91,6 +89,7 @@ router.post("/prompts", requireAuth, requirePlan(["pro", "business", "agency"]),
 
 const TIPO_TO_MODULE: Record<string, string> = {
   imagem: "creative",
+  videocomimagem: "video_script",
   video: "video_script",
   copy: "campaign",
   anuncio: "campaign",
@@ -103,6 +102,7 @@ const TIPO_TO_MODULE: Record<string, string> = {
 
 const TIPO_CONTEXT: Record<string, string> = {
   imagem: "prompt para geração de imagem publicitária",
+  videocomimagem: "prompt técnico para dar movimento a uma imagem pronta",
   video: "prompt para geração de vídeo publicitário",
   copy: "prompt para copywriting de alta conversão",
   anuncio: "prompt para anúncio pago",
@@ -122,6 +122,15 @@ Não use automaticamente neon, fundo escuro, luxo, pedestal, luz dramática ou e
 O prompt final deve conter, quando fizer sentido: Contexto; Direção criativa; Instruções de composição; sujeito e posição; ambiente e fundo; espaço negativo; enquadramento e lente; iluminação; paleta; materiais e texturas; estilo fotográfico; apelo emocional; restrições; critérios de qualidade.
 Priorize coerência entre produto, cenário, público e objetivo. Evite elementos genéricos ou decorativos que roubem a atenção do assunto.
 Não peça textos, logotipos ou marcas visíveis, salvo quando o usuário solicitar explicitamente.`,
+  videocomimagem: `
+Para VÍDEO COM IMAGEM, atue como especialista em image-to-video, direção de movimento e preservação visual.
+Analise obrigatoriamente a imagem de referência enviada nesta solicitação antes de escrever.
+Entregue somente um prompt técnico para dar movimento à imagem pronta. Não crie roteiro, narração, falas, personagens novos, sequência de cenas, divisão por tomadas, CTA ou estrutura de vídeo tradicional.
+Identifique silenciosamente o assunto principal, cenário, enquadramento, profundidade, primeiro plano, fundo, iluminação, elementos que podem se mover naturalmente e elementos que devem permanecer fixos.
+Defina movimentos coerentes de câmera e dos elementos visuais, usando profundidade, parallax, reflexos, luz, atmosfera e movimentos ambientais somente quando fizerem sentido para a imagem.
+Preserve integralmente identidade, rosto, mãos, anatomia, produto, veículo, logotipo, textos, cores, materiais, proporções, composição e enquadramento. Não acrescente objetos, não remova elementos e não altere o design original.
+Evite deformações, duplicações, derretimento, troca de identidade, mudança de texto, câmera agressiva, movimentos artificiais e efeitos exagerados.
+O prompt final deve ter no máximo ${IMAGE_MOTION_PROMPT_LIMIT} caracteres, terminar com uma frase completa e ser imediatamente utilizável em um gerador image-to-video.`,
   video: `
 Para VÍDEO, atue como diretor criativo, roteirista, diretor de fotografia e especialista em movimento.
 Antes de escrever, interprete silenciosamente: assunto, objetivo, público provável, formato de comunicação e emoção desejada.
@@ -147,8 +156,32 @@ Para PERSONALIZADO, identifique a intenção real do usuário e construa uma ins
 
 const GeneratePromptBody = z.object({
   tipo: z.string().min(1).max(50),
-  subject: z.string().min(1).max(3000),
+  subject: z.string().max(3000).default(""),
+  referenceImage: z.object({
+    base64: z.string().min(1).max(12_000_000),
+    mimeType: z.enum(["image/png", "image/jpeg"]),
+  }).optional(),
 });
+
+function isCompletePrompt(value: string): boolean {
+  const text = value.trim();
+  return text.length > 0 && /[.!?)]$/.test(text) && !/[\p{L}\p{N}]$/u.test(text.slice(-1));
+}
+
+async function compactImageMotionPrompt(value: string): Promise<string> {
+  const completion = await openai.chat.completions.create({
+    model: "gpt-5-mini",
+    messages: [
+      {
+        role: "system",
+        content: `Reescreva o prompt image-to-video abaixo com no máximo ${IMAGE_MOTION_PROMPT_LIMIT} caracteres. Preserve movimentos, câmera, profundidade, parallax, iluminação, fidelidade visual e restrições contra deformações. Não corte palavras ou frases. Termine com uma frase completa. Não acrescente explicações e devolva somente o prompt final.`,
+      },
+      { role: "user", content: value },
+    ],
+    max_completion_tokens: 900,
+  });
+  return (completion.choices[0]?.message?.content ?? "").trim();
+}
 
 router.post("/prompts/generate", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
   const parsed = GeneratePromptBody.safeParse(req.body);
@@ -156,9 +189,22 @@ router.post("/prompts/generate", requireAuth, requirePlan(["pro", "business", "a
     res.status(400).json({ error: "Dados inválidos" });
     return;
   }
-  const { tipo, subject: rawSubject } = parsed.data;
-  const subject = semanticNormalize(rawSubject.trim());
+
+  const { tipo, subject: rawSubject, referenceImage } = parsed.data;
   const tipoKey = tipo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "");
+  const isImageMotion = tipoKey === "videocomimagem";
+
+  if (isImageMotion && !referenceImage) {
+    res.status(400).json({ error: "Selecione uma imagem de referência." });
+    return;
+  }
+
+  const subject = isImageMotion ? "Analise exclusivamente a imagem de referência enviada." : semanticNormalize(rawSubject.trim());
+  if (!isImageMotion && !subject) {
+    res.status(400).json({ error: "Informe o assunto do prompt." });
+    return;
+  }
+
   const module = TIPO_TO_MODULE[tipoKey] ?? "content";
   const tipoCtx = TIPO_CONTEXT[tipoKey] ?? "prompt profissional reutilizável";
   const typeRules = TYPE_RULES[tipoKey] ?? TYPE_RULES.personalizado;
@@ -184,7 +230,8 @@ REGRAS GERAIS:
 - Não invente preço, composição, certificação, desempenho, garantia ou alegação de saúde.
 - Não mencione que fez inferências nem explique seu raciocínio.
 - O resultado deve ser imediatamente reutilizável e específico para a solicitação atual.
-- Use entre 140 e 420 palavras para Imagem ou Vídeo; entre 100 e 320 palavras para os demais tipos.
+- Para Vídeo com Imagem, respeite obrigatoriamente o máximo de ${IMAGE_MOTION_PROMPT_LIMIT} caracteres e finalize o texto completamente.
+- Para Imagem ou Vídeo, use entre 140 e 420 palavras; para os demais tipos, entre 100 e 320 palavras.
 - Use seções com títulos claros quando isso melhorar a execução.
 - Não use placeholders como [produto], [nicho], [público] ou campos para preencher.
 - Não inclua múltiplos prompts concorrentes: entregue a melhor direção final, completa e coerente.
@@ -194,17 +241,29 @@ TITULO: título específico e profissional
 PROMPT: prompt completo`;
 
   try {
+    const userContent = referenceImage
+      ? ([
+          {
+            type: "text",
+            text: `Tipo selecionado: ${tipo}\nAnalise a imagem enviada como referência obrigatória e use exclusivamente esta solicitação.`,
+          },
+          {
+            type: "image_url",
+            image_url: { url: `data:${referenceImage.mimeType};base64,${referenceImage.base64}` },
+          },
+        ] as any)
+      : `Tipo selecionado: ${tipo}\nUse exclusivamente a solicitação atual descrita no sistema.`;
+
     const completion = await openai.chat.completions.create({
       model: "gpt-5-mini",
       messages: [
         { role: "system", content: systemMsg },
-        { role: "user", content: `Tipo selecionado: ${tipo}\nUse exclusivamente a solicitação atual descrita no sistema.` },
+        { role: "user", content: userContent },
       ],
       max_completion_tokens: 4000,
     });
 
     const raw = (completion.choices[0]?.message?.content ?? "").trim();
-
     const titleMatch = raw.match(/^TITULO:\s*(.+)/m);
     const promptMatch = raw.match(/PROMPT:\s*([\s\S]+)$/m);
 
@@ -214,9 +273,20 @@ PROMPT: prompt completo`;
       return;
     }
 
+    let finalPrompt = promptMatch[1].trim();
+    if (isImageMotion && (finalPrompt.length > IMAGE_MOTION_PROMPT_LIMIT || !isCompletePrompt(finalPrompt))) {
+      finalPrompt = await compactImageMotionPrompt(finalPrompt);
+    }
+
+    if (isImageMotion && (finalPrompt.length > IMAGE_MOTION_PROMPT_LIMIT || !isCompletePrompt(finalPrompt))) {
+      req.log.error({ promptLength: finalPrompt.length, finalPrompt }, "prompts/generate: incomplete image-motion prompt after compaction");
+      res.status(502).json({ error: "O prompt não foi concluído corretamente. Gere novamente sem consumo adicional." });
+      return;
+    }
+
     res.json({
       title: titleMatch[1].trim().slice(0, 120),
-      prompt: promptMatch[1].trim(),
+      prompt: finalPrompt,
       module,
     });
   } catch (err) {
@@ -251,7 +321,6 @@ router.put("/prompts/:id", requireAuth, async (req, res): Promise<void> => {
   res.json(updated);
 });
 
-// ── DELETE /prompts/:id — soft delete (move to trash, 48h TTL) ────────────────
 router.delete("/prompts/:id", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const id = parseInt(req.params.id as string, 10);
@@ -264,7 +333,6 @@ router.delete("/prompts/:id", requireAuth, async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
-// ── POST /prompts/:id/restore — restore from trash ────────────────────────────
 router.post("/prompts/:id/restore", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const id = parseInt(req.params.id as string, 10);
@@ -275,7 +343,6 @@ router.post("/prompts/:id/restore", requireAuth, async (req, res): Promise<void>
   res.json({ ok: true });
 });
 
-// ── DELETE /prompts/:id/permanent — permanent delete ──────────────────────────
 router.delete("/prompts/:id/permanent", requireAuth, async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const id = parseInt(req.params.id as string, 10);
