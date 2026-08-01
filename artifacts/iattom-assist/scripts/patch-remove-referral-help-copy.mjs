@@ -29,5 +29,3 @@ source = source
 
 writeFileSync(fileUrl, source, "utf8");
 console.log("Referral and referral-credit information removed from the public Help page.");
-
-await import("./patch-start-visible-navigation-and-library-recovery.mjs");
