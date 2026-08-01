@@ -50,8 +50,8 @@ source = source.replace(
 for (const marker of [
   'localStorage.getItem("iattom_creative_tab_v1") === "video" ? "video" : "image"',
   'creativeType === "video" ? "Vídeo com efeito" : "Gerar imagem"',
-  '{creativeType === "image" && (',
-  '{creativeType === "video" && (',
+  'creativeType === "image"',
+  'creativeType === "video"',
   'Formulário condicional — modo definido exclusivamente pela entrada do menu',
 ]) {
   if (!source.includes(marker)) throw new Error(`Creative isolated-entry marker missing: ${marker}`);
