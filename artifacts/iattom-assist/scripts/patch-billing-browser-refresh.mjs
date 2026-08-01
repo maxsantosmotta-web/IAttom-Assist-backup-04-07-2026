@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 const fileUrl = new URL("../src/pages/dashboard/Billing.tsx", import.meta.url);
-const source = await readFile(fileUrl, "utf8");
+let source = await readFile(fileUrl, "utf8");
 const oldCode = "const handleBillingRefresh = () => { void refetchPlans(); void refetchSub(); void refetchMe(); void refetchCredits(); };";
 const newCode = "const handleBillingRefresh = () => { window.location.reload(); };";
 
@@ -11,9 +11,23 @@ if (source.includes(newCode)) {
   if (!source.includes(oldCode)) {
     throw new Error("Billing refresh handler marker not found.");
   }
-  await writeFile(fileUrl, source.replace(oldCode, newCode), "utf8");
+  source = source.replace(oldCode, newCode);
   console.log("Billing refresh now reloads the browser page.");
 }
+
+const referralBlockPattern = /\n\s*\{\/\* ── Referral CTA \(only shown when user has active plan\) ─+ \*\/\}[\s\S]*?\n\s*\{\/\* ── Bottom note/;
+if (referralBlockPattern.test(source)) {
+  source = source.replace(referralBlockPattern, "\n\n      {/* ── Bottom note");
+} else if (source.includes("Indique amigos e ganhe créditos") || source.includes("Ver Indicações")) {
+  throw new Error("Billing referral block marker changed and was not removed.");
+}
+
+if (source.includes("Indique amigos e ganhe créditos") || source.includes("Ver Indicações")) {
+  throw new Error("Billing referral CTA is still visible.");
+}
+
+await writeFile(fileUrl, source, "utf8");
+console.log("Billing referral CTA removed from footer.");
 
 // Run last so Help/Credits synchronization is applied after all source-rewriting patches.
 await import("./patch-help-credit-react-query-sync.mjs");
