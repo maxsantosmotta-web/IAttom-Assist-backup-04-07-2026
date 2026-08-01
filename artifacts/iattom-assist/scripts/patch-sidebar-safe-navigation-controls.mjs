@@ -140,26 +140,21 @@ writeFileSync(historyUrl, historySource, "utf8");
 const creativeUrl = new URL("../src/pages/dashboard/CreativeGenerator.tsx", import.meta.url);
 let creativeSource = readFileSync(creativeUrl, "utf8");
 
-const creativeRefreshButton = `        <Button size="sm" variant="outline" onClick={() => { setIsRefreshing(true); void refetchCredits(); setTimeout(() => { try { const p = loadModuleState<{ type: "image" | "video"; form: Record<string, unknown>; result: unknown }>("creative"); if (p?.type === "image" && p.result && typeof p.result === "object" && "concepts" in (p.result as object)) { setRestoredResult(p.result as CreativeIdeasResult); } else if (p?.type === "video" && p.result) { setRestoredVideoResult(p.result as VideoGenerationResult); } } catch {} setIsRefreshing(false); }, 750); }} disabled={fetchingCredits || isRefreshing} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
-          <RefreshCw className={\`w-3.5 h-3.5 \${(fetchingCredits || isRefreshing) ? "animate-spin" : ""}\`} />
-          Atualizar
-        </Button>`;
-
-const creativeControls = `        <div className="flex items-center gap-2 shrink-0 mt-1">
-          <Button size="sm" variant="outline" onClick={() => { setIsRefreshing(true); void refetchCredits(); setTimeout(() => { try { const p = loadModuleState<{ type: "image" | "video"; form: Record<string, unknown>; result: unknown }>("creative"); if (p?.type === "image" && p.result && typeof p.result === "object" && "concepts" in (p.result as object)) { setRestoredResult(p.result as CreativeIdeasResult); } else if (p?.type === "video" && p.result) { setRestoredVideoResult(p.result as VideoGenerationResult); } } catch {} setIsRefreshing(false); }, 750); }} disabled={fetchingCredits || isRefreshing} className="h-9 border-white/10 text-xs gap-1.5">
-            <RefreshCw className={\`w-3.5 h-3.5 \${(fetchingCredits || isRefreshing) ? "animate-spin" : ""}\`} />
-            Atualizar
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => window.location.assign("/dashboard")} className="h-9 border-white/10 text-xs">
-            Voltar
-          </Button>
-        </div>`;
-
-if (!creativeSource.includes('onClick={() => window.location.assign("/dashboard")} className="h-9 border-white/10 text-xs"')) {
-  if (!creativeSource.includes(creativeRefreshButton)) {
-    throw new Error("CreativeGenerator control marker not found");
+const creativeAlreadyPatched = creativeSource.includes('data-iattom-creative-controls="true"');
+if (!creativeAlreadyPatched) {
+  const creativeButtonPattern = /([ \t]*)<Button\b(?=[\s\S]*?setIsRefreshing\(true\))(?=[\s\S]*?>\s*<RefreshCw[\s\S]*?Atualizar\s*<\/Button>)[\s\S]*?<\/Button>/;
+  const match = creativeSource.match(creativeButtonPattern);
+  if (!match) {
+    throw new Error("CreativeGenerator refresh control not found");
   }
-  creativeSource = creativeSource.replace(creativeRefreshButton, creativeControls);
+
+  const indent = match[1];
+  const originalButton = match[0].trimStart()
+    .replace(/className="[^"]*"/, 'className="h-9 border-white/10 text-xs gap-1.5"');
+
+  const creativeControls = `${indent}<div data-iattom-creative-controls="true" className="flex items-center gap-2 shrink-0 mt-1">\n${indent}  ${originalButton.replace(/\n/g, `\n${indent}  `)}\n${indent}  <Button type="button" size="sm" variant="outline" onClick={() => window.location.assign("/dashboard")} className="h-9 border-white/10 text-xs">\n${indent}    Voltar\n${indent}  </Button>\n${indent}</div>`;
+
+  creativeSource = creativeSource.replace(match[0], creativeControls);
 }
 
 writeFileSync(creativeUrl, creativeSource, "utf8");
