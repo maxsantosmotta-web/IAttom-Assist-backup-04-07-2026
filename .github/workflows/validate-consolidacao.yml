@@ -39,5 +39,8 @@ jobs:
       - name: Run complete typecheck
         run: pnpm run typecheck
 
-      - name: Trace API patch that rewrites Credits
-        run: node .github/scripts/trace-credits-rewrite.mjs
+      - name: Build API
+        run: pnpm --filter @workspace/api-server build
+
+      - name: Build frontend
+        run: pnpm --filter @workspace/iattom-assist build
