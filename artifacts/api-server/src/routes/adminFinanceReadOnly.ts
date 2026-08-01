@@ -16,12 +16,16 @@ const PLAN_NAMES: Record<string, string> = {
   premium: "PREMIUM",
 };
 
+type CommercialPlan = "free" | "pro" | "business" | "agency";
+
 type CommercialUser = {
   email: string;
   name: string | null;
-  plan: string;
+  plan: CommercialPlan;
   stripeCustomerId: string | null;
 };
+
+type CommercialUserWithCustomer = CommercialUser & { stripeCustomerId: string };
 
 type FinancialMovement = {
   id: string;
@@ -112,7 +116,7 @@ function monthlyEquivalentCents(subscription: any): number {
 }
 
 router.get("/admin/financial-summary", requireAdmin, async (req, res): Promise<void> => {
-  const commercialUsers = await db
+  const commercialUsers: CommercialUser[] = await db
     .select({
       email: users.email,
       name: users.name,
@@ -125,10 +129,11 @@ router.get("/admin/financial-summary", requireAdmin, async (req, res): Promise<v
       sql`lower(coalesce(${users.email}, '')) <> ${OWNER_EMAIL}`,
     ));
 
-  const userByCustomer = new Map(
-    commercialUsers
-      .filter((user): user is CommercialUser & { stripeCustomerId: string } => Boolean(user.stripeCustomerId))
-      .map((user) => [user.stripeCustomerId, user]),
+  const usersWithCustomer = commercialUsers.filter(
+    (user): user is CommercialUserWithCustomer => user.stripeCustomerId !== null,
+  );
+  const userByCustomer = new Map<string, CommercialUserWithCustomer>(
+    usersWithCustomer.map((user) => [user.stripeCustomerId, user]),
   );
 
   const empty = {
@@ -172,7 +177,7 @@ router.get("/admin/financial-summary", requireAdmin, async (req, res): Promise<v
 
     const paidUsers = [...activeByCustomer.keys()]
       .map((customerId) => userByCustomer.get(customerId))
-      .filter((user): user is CommercialUser & { stripeCustomerId: string } => Boolean(user) && user!.plan !== "free");
+      .filter((user): user is CommercialUserWithCustomer => user !== undefined && user.plan !== "free");
 
     const planBreakdown = {
       free: commercialUsers.filter((user) => user.plan === "free").length,
@@ -185,7 +190,7 @@ router.get("/admin/financial-summary", requireAdmin, async (req, res): Promise<v
     for (const [customerId, subscription] of activeByCustomer) {
       const user = userByCustomer.get(customerId);
       if (!user || user.plan === "free" || !(user.plan in mrrByPlan)) continue;
-      mrrByPlan[user.plan as keyof typeof mrrByPlan] += monthlyEquivalentCents(subscription);
+      mrrByPlan[user.plan] += monthlyEquivalentCents(subscription);
     }
 
     const paidInvoices = invoices.filter((invoice) => {
