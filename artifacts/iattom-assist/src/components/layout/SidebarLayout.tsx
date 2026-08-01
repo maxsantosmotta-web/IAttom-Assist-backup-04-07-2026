@@ -36,7 +36,8 @@ const navItems = [
   { href: "/dashboard/validate-products", label: "Validar Produto", icon: CheckCircle },
   { href: "/dashboard/create-campaign", label: "Criar Campanha", icon: Megaphone },
   { href: "/dashboard/create-content", label: "Criar Conteúdo", icon: FileText },
-  { href: "/dashboard/creative-generator", label: "Criar Imagem e Vídeo", icon: Sparkles },
+  { href: "/dashboard/creative-generator", label: "Gerar imagem", icon: Sparkles },
+  { href: "/dashboard/creative-generator", label: "Vídeo com efeito", icon: Video },
   { href: "/dashboard/prompts", label: "Criar Prompt", icon: BookMarked },
   { href: "/dashboard/video-scripts", label: "Scripts de Vídeo", icon: Video },
   { href: "/dashboard/projects", label: "Biblioteca", icon: FolderOpen },
@@ -61,6 +62,13 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const [creativeEntry, setCreativeEntry] = useState<"image" | "video">(() => {
+    try {
+      return localStorage.getItem("iattom_creative_tab_v1") === "video" ? "video" : "image";
+    } catch {
+      return "image";
+    }
+  });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [helpUsage, setHelpUsage] = useState<{
@@ -71,9 +79,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [helpOpen, setHelpOpen] = useState(
     () => sessionStorage.getItem("iattom_help_open") === "1"
   );
-  // When Help was already open at page load (sessionStorage restore), skip the
-  // slide-in animation on first mount so pull-to-refresh doesn't feel like the
-  // panel flying in from the side.  Cleared as soon as the user manually closes.
   const helpRestoredRef = useRef(sessionStorage.getItem("iattom_help_open") === "1");
   const { user, isLoaded, isSignedIn } = useUser();
   const { signOut } = useClerk();
@@ -81,12 +86,10 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const syncUser = useSyncUser({
     mutation: {
       onSuccess: () => {
-        // Invalidate both me and credits so the sidebar reflects real balance immediately after claim/sync.
         void qc.invalidateQueries({ queryKey: getGetMeQueryKey() });
         void qc.invalidateQueries({ queryKey: getGetCreditsBalanceQueryKey() });
       },
       onError: () => {
-        // Sync failure is non-blocking — sidebar may show stale data until next mount.
       },
     },
   });
@@ -148,7 +151,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     };
   }, [isSignedIn, helpOpen]);
 
-  // Bloco 4: persist Help panel state across refresh
   useEffect(() => {
     sessionStorage.setItem("iattom_help_open", helpOpen ? "1" : "0");
   }, [helpOpen]);
@@ -166,7 +168,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const currentPage = navItems.find((item) => item.href === location)?.label || "Dashboard";
+  const currentPage = location === "/dashboard/creative-generator"
+    ? (creativeEntry === "video" ? "Vídeo com efeito" : "Gerar imagem")
+    : navItems.find((item) => item.href === location)?.label || "Dashboard";
   const displayName = user?.fullName || user?.firstName || user?.username || "User";
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
   const initials = displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -195,7 +199,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
 
   const SidebarContent = () => (
     <>
-      {/* Logo */}
       <div className="flex items-center justify-between h-16 px-5 border-b border-white/[0.06] shrink-0">
         <div className="flex items-center gap-2.5">
           <Link href="/dashboard">
@@ -212,7 +215,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         </Button>
       </div>
 
-      {/* Command Palette trigger */}
       <div className="px-3 py-3 border-b border-white/[0.06] shrink-0">
         <button
           onClick={openPalette}
@@ -227,7 +229,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         </button>
       </div>
 
-      {/* Nav */}
       <div className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5 sidebar-scroll">
         <p className="px-3 pb-2 text-[9px] font-black tracking-widest text-zinc-700 uppercase">
           Espaço de Trabalho
@@ -236,12 +237,19 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           if ("separator" in item) {
             return <div key={`sep-${idx}`} className="my-1.5 border-t border-white/[0.06]" />;
           }
-          const isActive = location === item.href;
+          const creativeMode = item.label === "Vídeo com efeito" ? "video" : item.label === "Gerar imagem" ? "image" : null;
+          const isActive = location === item.href && (!creativeMode || creativeEntry === creativeMode);
           const Icon = item.icon;
           return (
             <Link
-              key={item.href}
+              key={`${item.href}-${item.label}`}
               href={item.href}
+              onClick={() => {
+                if (!creativeMode) return;
+                try { localStorage.setItem("iattom_creative_tab_v1", creativeMode); } catch { /* ignore */ }
+                setCreativeEntry(creativeMode);
+                if (location === item.href) window.location.reload();
+              }}
               className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium group overflow-hidden transition-colors duration-150 ${
                 isActive
                   ? "text-primary"
@@ -270,7 +278,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           );
         })}
 
-        {/* IAttom Help */}
         <div className="pt-3 mt-2 border-t border-white/[0.06]">
           <p className="px-3 pb-2 text-[9px] font-black tracking-widest text-zinc-700 uppercase">
             Suporte
@@ -331,11 +338,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {/* Credits Widget */}
       {creditsData && (
         <div className="px-4 py-3.5 border-t border-white/[0.06] shrink-0">
           <Link href="/dashboard/credits" className="block group space-y-2.5">
-            {/* Créditos Gerais */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
@@ -357,7 +362,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
                 <p className="text-[10px] text-red-400 mt-1 font-medium">Créditos baixos</p>
               )}
             </div>
-            {/* Quantidade de imagens */}
             {creativePlanLimit > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -381,7 +385,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
-            {/* Franquia do IAttom Help */}
             {helpLimit > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -410,7 +413,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* User */}
       <div className="p-3 border-t border-white/[0.06] shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -482,8 +484,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-[#080808] text-foreground overflow-hidden">
-
-      {/* Mobile overlay */}
       <AnimatePresence>
         {isMobileOpen && (
           <motion.div
@@ -497,7 +497,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0a0a0a] border-r border-white/[0.06] transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static flex flex-col ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
@@ -506,10 +505,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         <SidebarContent />
       </aside>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-
-        {/* Top bar */}
         <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-white/[0.06] glass shrink-0 sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <Button
@@ -525,7 +521,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {/* Cmd+K shortcut hint (desktop) */}
             <button
               onClick={openPalette}
               className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.09] transition-all duration-150 group"
@@ -534,7 +529,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               <span className="text-[10px] font-mono text-zinc-600 group-hover:text-zinc-400 transition-colors">K</span>
             </button>
 
-            {/* Notifications */}
             <NotificationsPanel />
 
             {isLowCredit && (
