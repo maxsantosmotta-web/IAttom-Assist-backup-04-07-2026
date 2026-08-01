@@ -99,12 +99,14 @@ export function PromptImageReferencePicker({ value, onChange, disabled = false }
 
   const fetchLibraryAssets = async (): Promise<LibraryAsset[]> => {
     const items = (await getItems())
-      .filter((item) => !item.deletedAt)
+      .filter((item) => !item.deletedAt && (item.hasImages || item.type === "creative"))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, MAX_LIBRARY_PROJECTS);
 
     const loaded = await loadWithConcurrency(items, LIBRARY_CONCURRENCY, async (project) => {
-      let projectAssets = await getItemAssets(project.id).catch(() => [] as AssetData[]);
+      let projectAssets = project.hasImages
+        ? await getItemAssets(project.id).catch(() => [] as AssetData[])
+        : [] as AssetData[];
       if (projectAssets.length === 0) {
         const localAssets = await loadProjectAssets(project.id).catch(() => []);
         projectAssets = localAssets.map((asset) => ({
