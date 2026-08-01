@@ -122,3 +122,4 @@ await import("./patch-hide-legacy-creative-video-tab.mjs");
 await import("./patch-sidebar-safe-navigation-controls.mjs");
 await import("./patch-analytics-controls.mjs");
 await import("./patch-trash-header-controls.mjs");
+await import("./patch-credits-header-controls.mjs");
