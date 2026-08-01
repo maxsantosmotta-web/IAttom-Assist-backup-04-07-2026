@@ -50,6 +50,7 @@ type PendingImageTrash = {
 };
 
 const pendingImageTrash = new Map<string, PendingImageTrash>();
+let tokenRequest: Promise<string> | null = null;
 
 function parseImageMotionTrash(payload: SavedItemPayload): boolean {
   if (!payload.data || payload.type !== "creative") return false;
@@ -78,15 +79,23 @@ async function apiFetch<T>(path: string, token: string, init?: RequestInit): Pro
 }
 
 async function resolveToken(getToken: () => Promise<string | null>): Promise<string> {
-  const retryDelays = [0, 250, 500, 750, 1000, 1000, 1000];
+  if (tokenRequest) return tokenRequest;
 
-  for (const delay of retryDelays) {
-    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
-    const token = await getToken();
-    if (token) return token;
-  }
+  tokenRequest = (async () => {
+    const retryDelays = [0, 300, 700];
 
-  throw new Error("Sessão ainda carregando. Tente novamente.");
+    for (const delay of retryDelays) {
+      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+      const token = await getToken();
+      if (token) return token;
+    }
+
+    throw new Error("Sessão ainda carregando. Tente novamente.");
+  })().finally(() => {
+    tokenRequest = null;
+  });
+
+  return tokenRequest;
 }
 
 export function useSavedItems() {
