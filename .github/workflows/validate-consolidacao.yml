@@ -42,5 +42,9 @@ jobs:
       - name: Build API
         run: pnpm --filter @workspace/api-server build
 
+      - name: Locate credit patch import chain
+        run: |
+          grep -R -n -E 'patch-credit-history-ui|patch-centralize-credit-balances' artifacts/iattom-assist/scripts artifacts/iattom-assist/package.json || true
+
       - name: Build frontend
         run: pnpm --filter @workspace/iattom-assist build
