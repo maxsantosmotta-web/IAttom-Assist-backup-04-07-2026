@@ -28,11 +28,21 @@ const safeControlsBlock = `${currentPageBlock}
 
     let refreshCleanup: (() => void) | null = null;
 
+    const makeBackButton = () => {
+      const back = document.createElement("button");
+      back.type = "button";
+      back.dataset.iattomBackToDashboard = "true";
+      back.textContent = "Voltar";
+      back.className = "inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-white/15 bg-white/[0.04] px-3 text-sm font-medium text-zinc-200 transition-colors hover:border-white/25 hover:bg-white/[0.08] hover:text-white";
+      back.addEventListener("click", () => window.location.assign("/dashboard"));
+      return back;
+    };
+
     const placeControls = () => {
       const main = document.querySelector("main");
       if (!main) return;
 
-      main.querySelectorAll("[data-iattom-back-to-dashboard]").forEach((node) => node.remove());
+      main.querySelectorAll("[data-iattom-back-to-dashboard], [data-iattom-dashboard-refresh]").forEach((node) => node.remove());
 
       const headings = Array.from(main.querySelectorAll<HTMLElement>("h1, h2"));
       const heading = headings.find((node) => (node.textContent ?? "").trim().startsWith(title));
@@ -45,13 +55,25 @@ const safeControlsBlock = `${currentPageBlock}
       }
       if (!header) return;
 
-      const back = document.createElement("button");
-      back.type = "button";
-      back.dataset.iattomBackToDashboard = "true";
-      back.textContent = "Voltar";
-      back.className = "inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-white/10 bg-transparent px-3 text-sm font-medium text-zinc-400 transition-colors hover:border-white/20 hover:text-white";
-      back.addEventListener("click", () => window.location.assign("/dashboard"));
-      header.appendChild(back);
+      if (location === "/dashboard") {
+        const rightBlock = header.lastElementChild as HTMLElement | null;
+        if (!rightBlock || rightBlock === heading.parentElement) return;
+
+        rightBlock.replaceChildren();
+        rightBlock.className = "shrink-0 flex items-center gap-2";
+        rightBlock.appendChild(makeBackButton());
+
+        const refresh = document.createElement("button");
+        refresh.type = "button";
+        refresh.dataset.iattomDashboardRefresh = "true";
+        refresh.textContent = "↻ Atualizar";
+        refresh.className = "inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-white/15 bg-white/[0.04] px-3 text-sm font-semibold text-zinc-200 transition-colors hover:border-white/25 hover:bg-white/[0.08] hover:text-white";
+        refresh.addEventListener("click", () => window.location.reload());
+        rightBlock.appendChild(refresh);
+        return;
+      }
+
+      header.appendChild(makeBackButton());
 
       if (location === "/dashboard/history") {
         const refresh = Array.from(main.querySelectorAll<HTMLButtonElement>("button"))
@@ -84,7 +106,7 @@ const safeControlsBlock = `${currentPageBlock}
       window.clearTimeout(timer);
       observer.disconnect();
       refreshCleanup?.();
-      document.querySelectorAll("[data-iattom-back-to-dashboard]").forEach((node) => node.remove());
+      document.querySelectorAll("[data-iattom-back-to-dashboard], [data-iattom-dashboard-refresh]").forEach((node) => node.remove());
     };
   }, [location, creativeEntry]);`;
 
@@ -96,4 +118,4 @@ if (!source.includes("data-iattom-back-to-dashboard")) {
 }
 
 writeFileSync(fileUrl, source, "utf8");
-console.log("Back controls moved into module headers with direct dashboard destination.");
+console.log("Dashboard plan block removed and Back/Refresh controls aligned safely.");
