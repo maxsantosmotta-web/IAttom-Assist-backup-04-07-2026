@@ -1,10 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { transformSync } from "esbuild";
+import { createRequire } from "node:module";
 
 const root = process.cwd();
 const frontendDir = path.join(root, "artifacts/iattom-assist");
+const requireFromFrontend = createRequire(path.join(frontendDir, "package.json"));
+const { transformSync } = requireFromFrontend("esbuild");
 const packageJson = JSON.parse(fs.readFileSync(path.join(frontendDir, "package.json"), "utf8"));
 const commands = String(packageJson.scripts.build)
   .split("&&")
