@@ -51,13 +51,28 @@ if (!source.includes('data-iattom-trash-controls="true"')) {
 }
 
 const cardHeaderStart = source.indexOf("      <CardHeader");
-const cardHeaderEnd = cardHeaderStart >= 0 ? source.indexOf("      </CardHeader>", cardHeaderStart) : -1;
+const cardHeaderClose = "      </CardHeader>";
+const cardHeaderEnd = cardHeaderStart >= 0 ? source.indexOf(cardHeaderClose, cardHeaderStart) : -1;
 if (cardHeaderStart >= 0 && cardHeaderEnd > cardHeaderStart) {
-  const endWithTag = cardHeaderEnd + "      </CardHeader>".length;
-  const cardHeader = source.slice(cardHeaderStart, endWithTag);
-  const oldInternalRefresh = /\n\s*<Button\b[\s\S]*?onClick=\{\(\) => \{[\s\S]*?void loadIntegrations\(\);[\s\S]*?void loadProjects\(\);[\s\S]*?void loadPrompts\(\);[\s\S]*?void loadActivities\(\);[\s\S]*?<\/Button>/;
-  const cleanedCardHeader = cardHeader.replace(oldInternalRefresh, "");
-  source = source.slice(0, cardHeaderStart) + cleanedCardHeader + source.slice(endWithTag);
+  const endWithTag = cardHeaderEnd + cardHeaderClose.length;
+  let cardHeader = source.slice(cardHeaderStart, endWithTag);
+  const refreshTextIndex = cardHeader.indexOf("Atualizar");
+
+  if (refreshTextIndex >= 0) {
+    const buttonStart = cardHeader.lastIndexOf("<Button", refreshTextIndex);
+    const buttonEnd = cardHeader.indexOf("</Button>", refreshTextIndex);
+
+    if (buttonStart >= 0 && buttonEnd > buttonStart) {
+      const buttonBlock = cardHeader.slice(buttonStart, buttonEnd + "</Button>".length);
+      if (buttonBlock.includes("loadIntegrations") && buttonBlock.includes("loadProjects") && buttonBlock.includes("loadPrompts") && buttonBlock.includes("loadActivities")) {
+        const lineStart = cardHeader.lastIndexOf("\n", buttonStart);
+        const removeStart = lineStart >= 0 ? lineStart : buttonStart;
+        cardHeader = cardHeader.slice(0, removeStart) + cardHeader.slice(buttonEnd + "</Button>".length);
+      }
+    }
+  }
+
+  source = source.slice(0, cardHeaderStart) + cardHeader + source.slice(endWithTag);
 }
 
 writeFileSync(trashUrl, source, "utf8");
