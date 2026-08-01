@@ -8,7 +8,7 @@ let sidebar = readFileSync(sidebarUrl, "utf8");
 let credits = readFileSync(creditsUrl, "utf8");
 let dashboard = readFileSync(dashboardUrl, "utf8");
 
-// 1) Remove all credit balance visibility from the shared dashboard layout.
+// 1) Remove saldos do layout compartilhado. A fonte oficial fica em Créditos.
 sidebar = sidebar.replace(
   /\n\s*\{\/\* Credits Widget \*\/\}[\s\S]*?\n\s*\{\/\* User \*\/\}/,
   "\n\n      {/* User */}",
@@ -25,7 +25,7 @@ if (sidebar.includes("Créditos Baixos") || sidebar.includes("creditBalance.toLo
   throw new Error("Top bar credit visibility was not removed");
 }
 
-// 2) Remove credit warnings and numeric balance visibility from DashboardHome.
+// 2) Remove avisos e saldos numéricos do Dashboard.
 dashboard = dashboard.replace(/\nimport \{ UpgradeNudge \} from "@\/components\/UpgradeNudge";/, "");
 dashboard = dashboard.replace(
   /\n\s*const \{ planName, credits, balance \} = useUserAccess\(\);/,
@@ -41,7 +41,7 @@ if (dashboard.includes("<UpgradeNudge") || dashboard.includes("créditos restant
   throw new Error("Dashboard credit visibility was not removed");
 }
 
-// 3) Add live video balance and Help usage counters to the Credits module.
+// 3) Adiciona saldos independentes de vídeo e uso do Help na tela Créditos.
 if (!credits.includes('import { useEffect, useState } from "react";')) {
   credits = credits.replace(
     'import { motion } from "framer-motion";',
@@ -56,28 +56,36 @@ credits = credits.replace(
 const componentMarker = `export function Credits() {\n  const [, navigate] = useLocation();`;
 const resilientStateBlock = `export function Credits() {
   const [, navigate] = useLocation();
-  const [videoBalance, setVideoBalance] = useState(0);
-  const [helpUsed, setHelpUsed] = useState(0);
+  const [videoBalance, setVideoBalance] = useState<number | null>(null);
+  const [helpUsed, setHelpUsed] = useState<number | null>(null);
+  const [videoLoading, setVideoLoading] = useState(true);
+  const [helpLoading, setHelpLoading] = useState(true);
 
   const loadVideoBalance = async () => {
+    setVideoLoading(true);
     try {
       const response = await fetch("/api/videos/balance", { credentials: "include", cache: "no-store" });
       if (!response.ok) throw new Error("video balance request failed");
       const video = await response.json() as { videoBalance?: number };
       setVideoBalance(Number(video.videoBalance ?? 0));
     } catch {
-      // Não substitui um saldo válido por zero quando houver falha temporária.
+      // Mantém o último saldo válido em falhas temporárias.
+    } finally {
+      setVideoLoading(false);
     }
   };
 
   const loadHelpUsage = async () => {
+    setHelpLoading(true);
     try {
       const response = await fetch("/api/help/usage", { credentials: "include", cache: "no-store" });
       if (!response.ok) throw new Error("help usage request failed");
       const help = await response.json() as { used?: number };
       setHelpUsed(Number(help.used ?? 0));
     } catch {
-      // O uso do Help é independente do saldo de vídeos.
+      // Mantém o último contador válido em falhas temporárias.
+    } finally {
+      setHelpLoading(false);
     }
   };
 
@@ -90,7 +98,7 @@ if (credits.includes(componentMarker) && !credits.includes("const loadVideoBalan
   credits = credits.replace(componentMarker, resilientStateBlock);
 } else {
   credits = credits.replace(
-    /export function Credits\(\) \{\n  const \[, navigate\] = useLocation\(\);\n  const \[videoBalance, setVideoBalance\] = useState\(0\);\n  const \[helpUsed, setHelpUsed\] = useState\(0\);[\s\S]*?\n  \}, \[\]\);/,
+    /export function Credits\(\) \{\n  const \[, navigate\] = useLocation\(\);\n  const \[videoBalance, setVideoBalance\][\s\S]*?\n  \}, \[\]\);/,
     resilientStateBlock,
   );
 }
@@ -122,13 +130,13 @@ if (!credits.includes('data-testid="centralized-credit-balances"')) {
         </CardContent></Card>
         <Card className="bg-[#111111] border-white/5"><CardContent className="p-5">
           <div className="flex items-center gap-2 mb-3"><Video className="w-4 h-4 text-emerald-400" /><span className="text-xs uppercase tracking-widest text-muted-foreground">Vídeos com efeito</span></div>
-          <p className="text-3xl font-bold text-white tabular-nums">{videoBalance.toLocaleString("pt-BR")}</p>
-          <p className="text-xs text-muted-foreground mt-1">Saldo disponível</p>
+          {videoBalance === null ? <Skeleton className="h-9 w-16 bg-white/5" /> : <p className="text-3xl font-bold text-white tabular-nums">{videoBalance.toLocaleString("pt-BR")}</p>}
+          <p className="text-xs text-muted-foreground mt-1">{videoLoading && videoBalance !== null ? "Atualizando..." : "Saldo disponível"}</p>
         </CardContent></Card>
         <Card className="bg-[#111111] border-white/5"><CardContent className="p-5">
           <div className="flex items-center gap-2 mb-3"><HelpCircle className="w-4 h-4 text-sky-400" /><span className="text-xs uppercase tracking-widest text-muted-foreground">IAttom Help</span></div>
-          <p className="text-3xl font-bold text-white tabular-nums">{helpUsed.toLocaleString("pt-BR")}</p>
-          <p className="text-xs text-muted-foreground mt-1">Mensagens utilizadas</p>
+          {helpUsed === null ? <Skeleton className="h-9 w-16 bg-white/5" /> : <p className="text-3xl font-bold text-white tabular-nums">{helpUsed.toLocaleString("pt-BR")}</p>}
+          <p className="text-xs text-muted-foreground mt-1">{helpLoading && helpUsed !== null ? "Atualizando..." : "Mensagens utilizadas"}</p>
         </CardContent></Card>
       </motion.div>
 
@@ -136,13 +144,26 @@ if (!credits.includes('data-testid="centralized-credit-balances"')) {
   credits = credits.replace(balanceCardMarker, compactCards + balanceCardMarker);
 }
 
-// 4) O botão Atualizar funciona como recuperação total da tela.
+// 4) Atualiza os quatro dados sem recarregar a plataforma.
+const refreshHandler = 'onClick={() => { void refetchBalance(); void refetchTx(); void loadVideoBalance(); void loadHelpUsage(); }}';
 credits = credits.replace(
   /onClick=\{\(\) => \{ void refetchBalance\(\); void refetchTx\(\); \}\}/,
+  refreshHandler,
+);
+credits = credits.replace(
   'onClick={() => window.location.reload()}',
+  refreshHandler,
+);
+credits = credits.replace(
+  /disabled=\{fetchingBalance \|\| fetchingTx\}/,
+  'disabled={fetchingBalance || fetchingTx || videoLoading || helpLoading}',
+);
+credits = credits.replace(
+  /\$\{\(fetchingBalance \|\| fetchingTx\) \? "animate-spin" : ""\}/,
+  '${(fetchingBalance || fetchingTx || videoLoading || helpLoading) ? "animate-spin" : ""}',
 );
 
-// 5) Transações de vídeo usam unidade própria e não são confundidas com créditos gerais.
+// 5) Transações de vídeo usam unidade própria.
 if (!credits.includes("function isVideoTransaction")) {
   credits = credits.replace(
     `function isCreativeTransaction(tx: { balanceType?: string | null; description?: string }): boolean {
@@ -196,8 +217,11 @@ if (!credits.includes('data-testid="centralized-credit-balances"')) {
 if (!credits.includes("Vídeos com efeito") || !credits.includes("Mensagens utilizadas")) {
   throw new Error("Centralized credit card labels are missing");
 }
-if (!credits.includes("const loadVideoBalance = async") || !credits.includes("window.location.reload()")) {
-  throw new Error("Credits recovery loading was not applied");
+if (!credits.includes("const loadVideoBalance = async") || !credits.includes("void loadHelpUsage()")) {
+  throw new Error("Independent credit loading was not applied");
+}
+if (credits.includes("window.location.reload()")) {
+  throw new Error("Credits refresh still reloads the whole application");
 }
 if (!credits.includes("function isVideoTransaction")) {
   throw new Error("Video transaction formatting was not applied");
@@ -206,4 +230,4 @@ if (!credits.includes("function isVideoTransaction")) {
 writeFileSync(sidebarUrl, sidebar);
 writeFileSync(creditsUrl, credits);
 writeFileSync(dashboardUrl, dashboard);
-console.log("Credit balances load independently; video history and full refresh are preserved.");
+console.log("Credit balances refresh independently without reloading the application.");
