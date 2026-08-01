@@ -17,7 +17,6 @@ const safeControlsBlock = `${currentPageBlock}
       "/dashboard/billing": "Assinatura e Planos",
       "/dashboard/trash": "Lixeira",
       "/dashboard/projects": "Biblioteca",
-      "/dashboard/create-campaign": "Criar Campanha",
     };
 
     const title = routeTitles[location];
@@ -158,4 +157,22 @@ if (!creativeAlreadyPatched) {
 }
 
 writeFileSync(creativeUrl, creativeSource, "utf8");
-console.log("Dashboard controls preserved, Activities retained and CreativeGenerator controls standardized.");
+
+const campaignUrl = new URL("../src/pages/dashboard/CreateCampaign.tsx", import.meta.url);
+let campaignSource = readFileSync(campaignUrl, "utf8");
+
+if (!campaignSource.includes('data-iattom-campaign-controls="true"')) {
+  const campaignButtonPattern = /([ \t]*)\{showResult && \(\s*(<Button\b[\s\S]*?<RefreshCw[\s\S]*?Atualizar\s*<\/Button>)\s*\)\}/;
+  const match = campaignSource.match(campaignButtonPattern);
+  if (!match) {
+    throw new Error("CreateCampaign refresh control not found");
+  }
+
+  const indent = match[1];
+  const campaignControls = `${indent}<div data-iattom-campaign-controls="true" className="flex items-center gap-2 shrink-0 mt-1">\n${indent}  <Button type="button" size="sm" variant="outline" onClick={() => window.location.reload()} className="h-9 border-white/10 text-xs gap-1.5">\n${indent}    <RefreshCw className="w-3.5 h-3.5" />\n${indent}    Atualizar\n${indent}  </Button>\n${indent}  <Button type="button" size="sm" variant="outline" onClick={() => window.location.assign("/dashboard")} className="h-9 border-white/10 text-xs">\n${indent}    Voltar\n${indent}  </Button>\n${indent}</div>`;
+
+  campaignSource = campaignSource.replace(match[0], campaignControls);
+}
+
+writeFileSync(campaignUrl, campaignSource, "utf8");
+console.log("Dashboard controls preserved; Activities, CreativeGenerator and CreateCampaign controls standardized.");
