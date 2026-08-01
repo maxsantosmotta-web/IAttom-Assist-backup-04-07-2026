@@ -16,19 +16,34 @@ source = source.replace(
   });`,
 );
 
+// Compatibilidade caso um patch anterior já tenha removido o setter, mas ainda
+// tenha mantido a inicialização antiga.
+source = source.replace(
+  /  const \[creativeType\] = useState<CreativeType>\(\(\) => \{[\s\S]*?\n  \}\);/,
+  `  const [creativeType] = useState<CreativeType>(() => {
+    try {
+      return localStorage.getItem("iattom_creative_tab_v1") === "video" ? "video" : "image";
+    } catch {
+      return "image";
+    }
+  });`,
+);
+
 // Remove o seletor interno completo. Assim Gerar imagem não mostra Vídeo e
 // Vídeo com efeito não mostra Imagem, sem apagar as implementações.
 source = source.replace(
-  /\n\s*\{\/\* Tipo de criativo \*\/\}[\s\S]*?\n\s*\{\/\* Formulário condicional \*\/\}/,
+  /\n\s*\{\/\* Tipo de criativo \*\/\}[\s\S]*?\n\s*\{\/\* Formulário condicional(?:[^*]|\*(?!\/))*\*\/\}/,
   `\n\n      {/* Formulário condicional — modo definido exclusivamente pela entrada do menu */}`,
 );
 
+// Torna título e subtítulo dinâmicos, independentemente do texto deixado por
+// patches anteriores.
 source = source.replace(
-  '<h2 className="text-2xl font-bold text-white mb-1">Criar Imagem e Vídeo</h2>',
+  /<h2 className="text-2xl font-bold text-white mb-1">[\s\S]*?<\/h2>/,
   '<h2 className="text-2xl font-bold text-white mb-1">{creativeType === "video" ? "Vídeo com efeito" : "Gerar imagem"}</h2>',
 );
 source = source.replace(
-  '<p className="text-muted-foreground text-sm">Gere imagens e vídeos prontos para publicação.</p>',
+  /<p className="text-muted-foreground text-sm">[\s\S]*?<\/p>/,
   '<p className="text-muted-foreground text-sm">{creativeType === "video" ? "Transforme uma imagem em vídeo com efeito." : "Gere imagens prontas para publicação."}</p>',
 );
 
