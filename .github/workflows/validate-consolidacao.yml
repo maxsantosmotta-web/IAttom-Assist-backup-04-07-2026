@@ -1,5 +1,6 @@
 name: Validate consolidation branch
 
+# Validation only: this workflow does not deploy or merge.
 on:
   push:
     branches:
