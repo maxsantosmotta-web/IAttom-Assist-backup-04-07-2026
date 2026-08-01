@@ -257,7 +257,6 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
                 if (!creativeMode) return;
                 try { localStorage.setItem("iattom_creative_tab_v1", creativeMode); } catch { /* ignore */ }
                 setCreativeEntry(creativeMode);
-                if (location === item.href) window.location.reload();
               }}
               className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium group overflow-hidden transition-colors duration-150 ${
                 isActive
@@ -577,7 +576,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto bg-[#0a0a0a] relative p-5 md:p-6 lg:p-8">
           <div className="absolute top-0 inset-x-0 h-56 pointer-events-none" style={{ background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(201,168,76,0.055) 0%, transparent 70%)" }} />
           <div className="max-w-5xl mx-auto relative">
-            <PageTransition>{children}</PageTransition>
+            <PageTransition key={location === "/dashboard/creative-generator" ? creativeEntry : location}>{children}</PageTransition>
           </div>
         </main>
       </div>
