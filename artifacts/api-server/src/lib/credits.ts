@@ -73,7 +73,7 @@ export async function deductCredits(clerkId: string, feature: FeatureKey) {
           FOR UPDATE`,
     );
 
-    const locked = lockedResult.rows[0] as LockedCreditBalances | undefined;
+    const locked = lockedResult.rows[0] as unknown as LockedCreditBalances | undefined;
     if (!locked) {
       return { success: false as const, error: "user_not_found" as const };
     }
