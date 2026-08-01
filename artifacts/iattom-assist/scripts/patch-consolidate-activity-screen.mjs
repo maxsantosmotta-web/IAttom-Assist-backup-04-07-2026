@@ -7,6 +7,7 @@ sidebar = sidebar
   .replace('  { href: "/dashboard/history", label: "Atividades", icon: Clock },\n', '')
   .replace('  { href: "/dashboard/analytics", label: "Análises", icon: BarChart2 },\n', '')
   .replace('  { href: "/dashboard/analytics", label: "Atividades", icon: BarChart2 },\n', '')
+  .replace('  { href: "/dashboard/referral", label: "Indicações", icon: Gift },\n', '')
   .replace(
     '  { href: "/dashboard", label: "Painel", icon: LayoutDashboard },\n',
     '  { href: "/dashboard", label: "Painel", icon: LayoutDashboard },\n  { href: "/dashboard/analytics", label: "Atividades", icon: BarChart2 },\n',
@@ -14,6 +15,9 @@ sidebar = sidebar
 
 if (sidebar.includes('href: "/dashboard/history", label: "Atividades"')) {
   throw new Error("Old activity navigation item still exists");
+}
+if (sidebar.includes('href: "/dashboard/referral", label: "Indicações"')) {
+  throw new Error("Referral navigation item still exists");
 }
 if (!sidebar.includes(
   '{ href: "/dashboard", label: "Painel", icon: LayoutDashboard },\n  { href: "/dashboard/analytics", label: "Atividades", icon: BarChart2 },',
@@ -35,4 +39,4 @@ if (!app.includes('<Route path="/dashboard/history"><Redirect to="/dashboard/ana
 }
 writeFileSync(appUrl, app);
 
-console.log("Activity navigation consolidated directly below dashboard.");
+console.log("Activity navigation consolidated and referral removed from the visible menu.");
