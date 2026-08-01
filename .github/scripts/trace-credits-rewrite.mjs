@@ -8,11 +8,16 @@ const frontendDir = path.join(root, "artifacts/iattom-assist");
 const apiDir = path.join(root, "artifacts/api-server");
 const requireFromRoot = createRequire(path.join(root, "package.json"));
 const ts = requireFromRoot("typescript");
-const packageJson = JSON.parse(fs.readFileSync(path.join(apiDir, "package.json"), "utf8"));
-const commands = String(packageJson.scripts.build)
+const apiPackage = JSON.parse(fs.readFileSync(path.join(apiDir, "package.json"), "utf8"));
+const frontendPackage = JSON.parse(fs.readFileSync(path.join(frontendDir, "package.json"), "utf8"));
+const apiCommands = String(apiPackage.scripts.build)
   .split("&&")
   .map((command) => command.trim())
   .filter((command) => command.startsWith("node "));
+const frontendCommands = String(frontendPackage.scripts.build)
+  .split("&&")
+  .map((command) => command.trim())
+  .filter((command) => command.startsWith("node scripts/"));
 const creditsPath = path.join(frontendDir, "src/pages/dashboard/Credits.tsx");
 
 function assertCreditsSyntax(command) {
@@ -40,10 +45,14 @@ function assertCreditsSyntax(command) {
   process.exit(1);
 }
 
-assertCreditsSyntax("initial source before API build");
-for (const command of commands) {
+assertCreditsSyntax("initial source");
+for (const command of apiCommands) {
   execSync(command, { cwd: apiDir, stdio: "inherit" });
-  assertCreditsSyntax(command);
+  assertCreditsSyntax(`API: ${command}`);
+}
+for (const command of frontendCommands) {
+  execSync(command, { cwd: frontendDir, stdio: "inherit" });
+  assertCreditsSyntax(`FRONTEND: ${command}`);
 }
 
-console.log("Todos os comandos do build da API preservaram a sintaxe de Credits.tsx.");
+console.log("Todos os comandos da API e do frontend preservaram a sintaxe de Credits.tsx.");
