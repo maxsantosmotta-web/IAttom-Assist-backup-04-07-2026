@@ -102,9 +102,10 @@ const isolatedCreativeHandler = `              onClick={() => {
                 setCreativeEntry(creativeMode);
               }}`;
 
+const moduleChangeMarker = 'iattom-module-change';
 if (sidebar.includes(oldCreativeHandler)) {
   sidebar = sidebar.replace(oldCreativeHandler, isolatedCreativeHandler);
-} else if (!sidebar.includes('window.dispatchEvent(new CustomEvent("iattom-module-change"')) {
+} else if (!sidebar.includes(moduleChangeMarker)) {
   throw new Error("Creative module lifecycle handler marker not found.");
 }
 
@@ -123,8 +124,12 @@ if (!/\bkey\s*=/.test(existingAttributes)) {
 }
 
 const finalPageTransitionMatch = sidebar.match(pageTransitionPattern);
-const hasPageLifecycle = Boolean(finalPageTransitionMatch && /\bkey\s*=/.test(finalPageTransitionMatch[1] ?? ""));
-if (!sidebar.includes('window.dispatchEvent(new CustomEvent("iattom-module-change"')) || !hasPageLifecycle) {
+const hasPageLifecycle = Boolean(
+  finalPageTransitionMatch && /\bkey\s*=/.test(finalPageTransitionMatch[1] ?? ""),
+);
+const hasModuleChangeDispatch = sidebar.includes(moduleChangeMarker);
+
+if (!hasModuleChangeDispatch || !hasPageLifecycle) {
   throw new Error("Sidebar module lifecycle markers are incomplete.");
 }
 
