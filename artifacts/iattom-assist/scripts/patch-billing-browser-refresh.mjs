@@ -17,3 +17,40 @@ if (source.includes(newCode)) {
 
 // Run last so Help/Credits synchronization is applied after all source-rewriting patches.
 await import("./patch-help-credit-react-query-sync.mjs");
+
+// Isolamento global: somente o módulo interno atualmente aberto mantém leituras em andamento.
+const appUrl = new URL("../src/App.tsx", import.meta.url);
+let app = await readFile(appUrl, "utf8");
+
+const isolationImport = 'import { RouteRequestIsolation } from "@/components/RouteRequestIsolation";';
+if (!app.includes(isolationImport)) {
+  const importMarker = 'import { ErrorBoundary } from "@/components/ErrorBoundary";';
+  if (!app.includes(importMarker)) throw new Error("Route isolation import marker not found.");
+  app = app.replace(importMarker, `${importMarker}\n${isolationImport}`);
+}
+
+const oldRetry = 'defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 30_000 } },';
+const isolatedRetry = 'defaultOptions: { queries: { retry: (failureCount, error) => error instanceof DOMException && error.name === "AbortError" ? false : failureCount < 1, refetchOnWindowFocus: false, staleTime: 30_000 } },';
+if (app.includes(oldRetry)) {
+  app = app.replace(oldRetry, isolatedRetry);
+} else if (!app.includes(isolatedRetry)) {
+  throw new Error("React Query retry marker not found for route isolation.");
+}
+
+const isolationMount = '      <RouteRequestIsolation />';
+if (!app.includes(isolationMount)) {
+  const mountMarker = '      <ClerkQueryInvalidator />';
+  if (!app.includes(mountMarker)) throw new Error("Route isolation mount marker not found.");
+  app = app.replace(mountMarker, `${mountMarker}\n${isolationMount}`);
+}
+
+for (const marker of [
+  isolationImport,
+  isolationMount,
+  'error.name === "AbortError" ? false',
+]) {
+  if (!app.includes(marker)) throw new Error(`Route isolation marker missing: ${marker}`);
+}
+
+await writeFile(appUrl, app, "utf8");
+console.log("Global dashboard route request isolation applied; platform routes remain excluded.");
