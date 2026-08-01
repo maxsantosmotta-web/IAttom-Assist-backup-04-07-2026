@@ -37,11 +37,11 @@ if (app.includes(oldRetry)) {
   throw new Error("React Query retry marker not found for route isolation.");
 }
 
-const isolationMount = '      <RouteRequestIsolation />';
+const isolationMount = '<RouteRequestIsolation />';
 if (!app.includes(isolationMount)) {
-  const mountMarker = '      <ClerkQueryInvalidator />';
-  if (!app.includes(mountMarker)) throw new Error("Route isolation mount marker not found.");
-  app = app.replace(mountMarker, `${mountMarker}\n${isolationMount}`);
+  const providerPattern = /(<QueryClientProvider client=\{queryClient\}>\s*<TooltipProvider>)/;
+  if (!providerPattern.test(app)) throw new Error("Route isolation provider marker not found.");
+  app = app.replace(providerPattern, `$1\n      <RouteRequestIsolation />`);
 }
 
 for (const marker of [
