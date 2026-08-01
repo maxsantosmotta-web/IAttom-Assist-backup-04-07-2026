@@ -124,3 +124,4 @@ await import("./patch-analytics-controls.mjs");
 await import("./patch-trash-header-controls.mjs");
 await import("./patch-credits-header-controls.mjs");
 await import("./patch-library-header-controls.mjs");
+await import("./patch-billing-header-controls.mjs");
