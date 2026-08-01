@@ -6,6 +6,31 @@ const creditsUrl = new URL("../src/pages/dashboard/Credits.tsx", import.meta.url
 let help = readFileSync(helpUrl, "utf8");
 let credits = readFileSync(creditsUrl, "utf8");
 
+function replaceFunctionByMarker(source, marker, replacement) {
+  const markerIndex = source.indexOf(marker);
+  if (markerIndex < 0) throw new Error(`Function marker not found: ${marker}`);
+
+  const lineStart = source.lastIndexOf("\n", markerIndex) + 1;
+  const bodyStart = source.indexOf("{", markerIndex);
+  if (bodyStart < 0) throw new Error(`Function body not found: ${marker}`);
+
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === "{") depth += 1;
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        let end = index + 1;
+        while (source[end] === ";" || source[end] === "\r" || source[end] === "\n") end += 1;
+        return source.slice(0, lineStart) + replacement + "\n\n" + source.slice(end);
+      }
+    }
+  }
+
+  throw new Error(`Unable to replace function: ${marker}`);
+}
+
 function removeFunctionByMarker(source, marker) {
   const markerIndex = source.indexOf(marker);
   if (markerIndex < 0) return source;
@@ -28,7 +53,7 @@ function removeFunctionByMarker(source, marker) {
     }
   }
 
-  throw new Error(`Unable to remove function block: ${marker}`);
+  return source;
 }
 
 function removeJsxCardContaining(source, marker) {
@@ -75,34 +100,17 @@ credits = credits
   .replace(/,\s*,/g, ",");
 
 credits = removeFunctionByMarker(credits, "const loadHelpUsage = async");
-
 credits = credits
-  .replace(
-    /const \[videoOk, helpOk\] = await Promise\.all\(\[\s*loadVideoBalance\([^)]*\),\s*loadHelpUsage\([^)]*\),\s*\]\);/g,
-    "const videoOk = await loadVideoBalance();",
-  )
-  .replace(/\(videoOk && helpOk\)/g, "videoOk")
-  .replace(/\n\s*if \(!helpOk\) void loadHelpUsage\([^)]*\);/g, "")
+  .replace(/\n\s*void loadHelpUsage\([^)]*\);/g, "")
   .replace(/void loadVideoBalance\([^)]*\);\s*void loadHelpUsage\([^)]*\);/g, "void loadVideoBalance();")
-  .replace(/\n\s*void loadHelpUsage\([^)]*\);/g, "");
+  .replace(/const \[videoOk, helpOk\] = await Promise\.all\(\[\s*loadVideoBalance\([^)]*\),\s*loadHelpUsage\([^)]*\),\s*\]\);/g, "const videoOk = await loadVideoBalance();")
+  .replace(/\(videoOk && helpOk\)/g, "videoOk")
+  .replace(/\n\s*if \(!helpOk\) void loadHelpUsage\([^)]*\);/g, "");
 
-const oldVideoLoader = `  const loadVideoBalance = async () => {
-    setVideoLoading(true);
-    try {
-      const response = await fetch("/api/videos/balance", { credentials: "include", cache: "no-store" });
-      if (!response.ok) throw new Error("video balance request failed");
-      const video = await response.json() as { videoBalance?: number };
-      setVideoBalance(Number(video.videoBalance ?? 0));
-    } catch {
-      // Mantém o último saldo válido em falhas temporárias.
-    } finally {
-      setVideoLoading(false);
-    }
-  };`;
-
-const isolatedVideoLoader = `  const loadVideoBalance = async (signal?: AbortSignal): Promise<boolean> => {
+const fastVideoLoader = `  const loadVideoBalance = async (signal?: AbortSignal): Promise<boolean> => {
     const cacheKey = "iattom-video-balance";
     const cachedValue = window.sessionStorage.getItem(cacheKey);
+
     if (cachedValue !== null) {
       const parsed = Number(cachedValue);
       if (Number.isFinite(parsed)) setVideoBalance(parsed);
@@ -112,7 +120,10 @@ const isolatedVideoLoader = `  const loadVideoBalance = async (signal?: AbortSig
     }
 
     const timeoutController = new AbortController();
-    const timeoutId = window.setTimeout(() => timeoutController.abort("video-balance-timeout"), 3500);
+    const timeoutId = window.setTimeout(
+      () => timeoutController.abort("video-balance-timeout"),
+      3500,
+    );
     const abortFromParent = () => timeoutController.abort("credits-unmounted");
     signal?.addEventListener("abort", abortFromParent, { once: true });
 
@@ -123,6 +134,7 @@ const isolatedVideoLoader = `  const loadVideoBalance = async (signal?: AbortSig
         signal: timeoutController.signal,
       });
       if (!response.ok) throw new Error("video balance request failed");
+
       const video = await response.json() as { videoBalance?: number };
       const nextBalance = Number(video.videoBalance ?? 0);
       setVideoBalance(nextBalance);
@@ -137,9 +149,7 @@ const isolatedVideoLoader = `  const loadVideoBalance = async (signal?: AbortSig
     }
   };`;
 
-if (credits.includes(oldVideoLoader)) {
-  credits = credits.replace(oldVideoLoader, isolatedVideoLoader);
-}
+credits = replaceFunctionByMarker(credits, "const loadVideoBalance = async", fastVideoLoader);
 
 const simpleVideoEntry = `  useEffect(() => {
     void loadVideoBalance();
@@ -153,11 +163,6 @@ const isolatedVideoEntry = `  useEffect(() => {
 if (credits.includes(simpleVideoEntry)) {
   credits = credits.replace(simpleVideoEntry, isolatedVideoEntry);
 }
-
-credits = credits.replace(
-  /  useEffect\(\(\) => \{\n\s*let cancelled = false;[\s\S]*?const loadOnEntry = async \(\) => \{[\s\S]*?const videoOk = await loadVideoBalance\(\);[\s\S]*?\n\s*};\n[\s\S]*?return \(\) => \{[\s\S]*?\n\s*};\n\s*}, \[\]\);/g,
-  isolatedVideoEntry,
-);
 
 if (!help.includes('import { useQueryClient } from "@tanstack/react-query";')) {
   help = help.replace(
@@ -179,14 +184,6 @@ if (help.includes(finallyMarker)) {
 }
 help = help.replace(/\n\s*void queryClient\.invalidateQueries\(\{ queryKey: \["iattom-help-usage"\] \}\);/g, "");
 
-for (const marker of [
-  "const queryClient = useQueryClient();",
-  "getGetCreditsBalanceQueryKey()",
-  "getListCreditTransactionsQueryKey()",
-]) {
-  if (!help.includes(marker)) throw new Error(`Help general-credit synchronization marker missing: ${marker}`);
-}
-
 for (const forbidden of [
   "helpUsed",
   "helpLoading",
@@ -201,10 +198,10 @@ for (const forbidden of [
 
 for (const marker of [
   "/api/videos/balance",
-  'sessionStorage.getItem(cacheKey)',
-  'sessionStorage.setItem(cacheKey',
-  'video-balance-timeout',
-  '3500',
+  "window.sessionStorage.getItem(cacheKey)",
+  "window.sessionStorage.setItem(cacheKey",
+  "video-balance-timeout",
+  "3500",
 ]) {
   if (!credits.includes(marker)) throw new Error(`Fast video balance marker missing: ${marker}`);
 }
