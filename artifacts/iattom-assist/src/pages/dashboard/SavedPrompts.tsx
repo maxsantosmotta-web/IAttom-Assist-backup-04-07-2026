@@ -10,6 +10,7 @@ import { useSavedItems } from "@/hooks/useSavedItems";
 import { CreditsGate } from "@/components/CreditsGate";
 import { ModuleLockGate } from "@/components/ModuleLockGate";
 import { useUserAccess } from "@/hooks/useUserAccess";
+import { PromptImageReferencePicker, type PromptImageReference } from "@/components/prompts/PromptImageReferencePicker";
 
 interface LegacyPrompt {
   id: number;
@@ -85,12 +86,13 @@ export function SavedPrompts() {
   const [guidedTipo, setGuidedTipo] = useState("");
   const [pendingTipo, setPendingTipo] = useState<string | null>(null);
   const [guidedSubject, setGuidedSubject] = useState("");
+  const [referenceImage, setReferenceImage] = useState<PromptImageReference | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newPrompt, setNewPrompt] = useState("");
   const [saving, setSaving] = useState(false);
-  const chargedRef = useRef(false);
+  const pendingChargeRef = useRef<(() => void) | null>(null);
   const generateTriggerRef = useRef<(() => void) | null>(null);
   const migrationStartedRef = useRef(false);
   const subjectInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -158,58 +160,59 @@ export function SavedPrompts() {
     setGuidedTipo("");
     setPendingTipo(null);
     setGuidedSubject("");
+    setReferenceImage(null);
     setGenerated(false);
     setNewTitle("");
     setNewPrompt("");
+    pendingChargeRef.current = null;
   };
 
   const selectPromptType = (tipo: string) => {
     setGuidedTipo(tipo);
     setPendingTipo(tipo);
+    if (tipo !== "Vídeo com Imagem") setReferenceImage(null);
   };
 
   const continueWithType = () => {
     setPendingTipo(null);
-    window.setTimeout(() => subjectInputRef.current?.focus(), 0);
+    if (guidedTipo !== "Vídeo com Imagem") {
+      window.setTimeout(() => subjectInputRef.current?.focus(), 0);
+    }
   };
 
   const generatePromptCore = async () => {
+    if (generating) return;
     setGenerating(true);
     setGenerated(false);
     try {
       const res = await fetch("/api/prompts/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: guidedTipo, subject: guidedSubject.trim() }),
+        body: JSON.stringify({
+          tipo: guidedTipo,
+          subject: guidedTipo === "Vídeo com Imagem" ? "" : guidedSubject.trim(),
+          ...(guidedTipo === "Vídeo com Imagem" && referenceImage
+            ? { referenceImage: { base64: referenceImage.base64, mimeType: referenceImage.mimeType } }
+            : {}),
+        }),
       });
       const data = await res.json() as { title?: string; prompt?: string; error?: string };
-      if (res.ok && data.title && data.prompt) {
-        setNewTitle(data.title);
-        setNewPrompt(data.prompt);
+      if (res.ok && data.title?.trim() && data.prompt?.trim()) {
+        pendingChargeRef.current?.();
+        pendingChargeRef.current = null;
+        setNewTitle(data.title.trim());
+        setNewPrompt(data.prompt.trim());
         setGenerated(true);
         toast({ description: "Prompt gerado. Revise e salve." });
       } else {
-        if (chargedRef.current) {
-          void fetch("/api/credits/refund", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ feature: "prompt_creation" }),
-          });
-        }
+        pendingChargeRef.current = null;
         toast({ description: data.error ?? "Erro ao gerar prompt. Tente novamente.", variant: "destructive" });
       }
     } catch {
-      if (chargedRef.current) {
-        void fetch("/api/credits/refund", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ feature: "prompt_creation" }),
-        });
-      }
+      pendingChargeRef.current = null;
       toast({ description: "Erro de conexão. Tente novamente.", variant: "destructive" });
     } finally {
       setGenerating(false);
-      chargedRef.current = false;
     }
   };
 
@@ -227,7 +230,12 @@ export function SavedPrompts() {
       const title = newTitle.trim();
       const content = newPrompt.trim();
       const data = JSON.stringify({
-        briefing: { tipo: guidedTipo, subject: guidedSubject.trim() },
+        briefing: {
+          tipo: guidedTipo,
+          subject: guidedTipo === "Vídeo com Imagem" ? "" : guidedSubject.trim(),
+          referenceImageName: referenceImage?.name,
+          referenceImageOrigin: referenceImage?.origin,
+        },
         result: { title, prompt: content },
       });
       try {
@@ -245,7 +253,9 @@ export function SavedPrompts() {
     }
   };
 
-  const canGenerate = !!guidedTipo && guidedSubject.trim().length > 0;
+  const requiresReferenceImage = guidedTipo === "Vídeo com Imagem";
+  const canGenerate = !!guidedTipo
+    && (requiresReferenceImage ? referenceImage !== null : guidedSubject.trim().length > 0);
   const canUseResult = newTitle.trim().length > 0 && newPrompt.trim().length > 0;
 
   if (!isAdmin && !["pro", "business", "agency"].includes(planSlug)) {
@@ -307,25 +317,34 @@ export function SavedPrompts() {
             </AnimatePresence>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Assunto</label>
-            <Textarea
-              ref={subjectInputRef}
-              value={guidedSubject}
-              onChange={(event) => setGuidedSubject(event.target.value)}
-              onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && canGenerate && !generating) { event.preventDefault(); generateTriggerRef.current?.(); } }}
-              placeholder="Digite o assunto principal do prompt"
+          {guidedTipo === "Vídeo com Imagem" && (
+            <PromptImageReferencePicker
+              value={referenceImage}
+              onChange={setReferenceImage}
               disabled={generating || saving}
-              className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 min-h-24 resize-none text-xs"
             />
-            <p className="text-[10px] text-zinc-700 px-0.5">Ex: scooter, cadeira gamer, proteção veicular, emagrecimento...</p>
-          </div>
+          )}
+
+          {guidedTipo !== "Vídeo com Imagem" && (
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Assunto</label>
+              <Textarea
+                ref={subjectInputRef}
+                value={guidedSubject}
+                onChange={(event) => setGuidedSubject(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && canGenerate && !generating) { event.preventDefault(); generateTriggerRef.current?.(); } }}
+                placeholder="Digite o assunto principal do prompt"
+                disabled={generating || saving}
+                className="bg-[#111111] border-white/[0.08] text-zinc-200 placeholder:text-zinc-700 min-h-24 resize-none text-xs"
+              />
+              <p className="text-[10px] text-zinc-700 px-0.5">Ex: scooter, cadeira gamer, proteção veicular, emagrecimento...</p>
+            </div>
+          )}
 
           <CreditsGate
             feature="prompt_creation"
             onSuccess={(charge) => {
-              charge();
-              chargedRef.current = true;
+              pendingChargeRef.current = charge;
               void generatePromptCore();
             }}
             disabled={!canGenerate || generating || saving}
