@@ -12,7 +12,7 @@ import {
 
 const router: IRouter = Router();
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const MAX_PROMPT_LENGTH = 1200;
+const MAX_PROMPT_LENGTH = 1500;
 
 function decodeImageDataUrl(value: unknown): { dataUrl: string; bytes: number } | null {
   if (typeof value !== "string") return null;
