@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
+import { transformSync } from "esbuild";
 
 const root = process.cwd();
 const frontendDir = path.join(root, "artifacts/iattom-assist");
@@ -11,19 +12,28 @@ const commands = String(packageJson.scripts.build)
   .filter((command) => command.startsWith("node scripts/"));
 const creditsPath = path.join(frontendDir, "src/pages/dashboard/Credits.tsx");
 
-function hasBrokenRewrite(source) {
-  return source.includes("tx as typeof tx & { balanceType?: string | null }");
-}
-
-for (const command of commands) {
-  execSync(command, { cwd: frontendDir, stdio: "inherit" });
+function assertCreditsSyntax(command) {
   const source = fs.readFileSync(creditsPath, "utf8");
-  if (hasBrokenRewrite(source)) {
+  try {
+    transformSync(source, {
+      loader: "tsx",
+      jsx: "automatic",
+      sourcemap: false,
+      sourcefile: "Credits.tsx",
+    });
+  } catch (error) {
     const lines = source.split("\n");
     console.error(`BROKEN_CREDITS_INTRODUCED_BY=${command}`);
     console.error(lines.slice(374, 390).join("\n"));
+    console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }
 
-console.log("Nenhum patch direto do build introduziu os casts obsoletos.");
+assertCreditsSyntax("initial source");
+for (const command of commands) {
+  execSync(command, { cwd: frontendDir, stdio: "inherit" });
+  assertCreditsSyntax(command);
+}
+
+console.log("Todos os patches diretos preservaram a sintaxe de Credits.tsx.");
