@@ -11,7 +11,13 @@ if (!prompts.includes('useLocation')) {
 
 const iconImport = 'import { Copy, Plus, Save, Wand2 } from "lucide-react";';
 if (prompts.includes(iconImport)) {
-  prompts = prompts.replace(iconImport, 'import { ArrowLeft, Copy, Plus, RefreshCw, Save, Wand2 } from "lucide-react";');
+  prompts = prompts.replace(iconImport, 'import { Copy, Plus, RefreshCw, Save, Wand2 } from "lucide-react";');
+}
+if (prompts.includes('import { ArrowLeft, Copy, Plus, RefreshCw, Save, Wand2 } from "lucide-react";')) {
+  prompts = prompts.replace(
+    'import { ArrowLeft, Copy, Plus, RefreshCw, Save, Wand2 } from "lucide-react";',
+    'import { Copy, Plus, RefreshCw, Save, Wand2 } from "lucide-react";',
+  );
 }
 
 const accessMarker = '  const { planSlug, isAdmin } = useUserAccess();';
@@ -40,19 +46,42 @@ const newHeader = `      <motion.div variants={fadeUp} initial="hidden" animate=
               <RefreshCw className="mr-2 h-3.5 w-3.5" /> Atualizar
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={() => setLocation("/dashboard")} className="h-9 border-white/10 text-xs">
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </motion.div>`;
+
+const legacyHeader = `      <motion.div variants={fadeUp} initial="hidden" animate="show" transition={{ duration: 0.4 }}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] text-primary font-bold tracking-widest uppercase">Biblioteca</p>
+            <h2 className="text-2xl font-black tracking-tight text-white">Criar Prompt</h2>
+            <p className="text-sm text-zinc-500">Crie, salve e reutilize seus prompts.</p>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-start">
+            <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()} className="h-9 border-white/10 text-xs">
+              <RefreshCw className="mr-2 h-3.5 w-3.5" /> Atualizar
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setLocation("/dashboard")} className="h-9 border-white/10 text-xs">
               <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Voltar ao Painel
             </Button>
           </div>
         </div>
       </motion.div>`;
 
-if (!prompts.includes('Voltar ao Painel')) {
+if (prompts.includes(legacyHeader)) {
+  prompts = prompts.replace(legacyHeader, newHeader);
+} else if (!prompts.includes('>\n              Voltar\n            </Button>')) {
   if (!prompts.includes(oldHeader)) throw new Error("SavedPrompts header marker not found");
   prompts = prompts.replace(oldHeader, newHeader);
 }
 
-for (const marker of ['window.location.reload()', 'setLocation("/dashboard")', 'Voltar ao Painel', '> Atualizar']) {
+for (const marker of ['window.location.reload()', 'setLocation("/dashboard")', '>\n              Voltar\n            </Button>', '> Atualizar']) {
   if (!prompts.includes(marker)) throw new Error(`SavedPrompts navigation marker missing: ${marker}`);
+}
+if (prompts.includes('Voltar ao Painel') || prompts.includes('<ArrowLeft')) {
+  throw new Error("SavedPrompts ainda contém seta ou texto Painel no botão Voltar");
 }
 writeFileSync(promptsUrl, prompts, "utf8");
 
@@ -71,4 +100,4 @@ for (const marker of [recoveryMarker, 'vite:preloadError', 'Failed to fetch dyna
 }
 writeFileSync(mainUrl, main, "utf8");
 
-console.log("Criar Prompt navigation restored and global lazy-chunk recovery installed.");
+console.log("Criar Prompt navigation restored with plain Voltar button and global lazy-chunk recovery installed.");
