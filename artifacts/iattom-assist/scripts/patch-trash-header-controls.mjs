@@ -50,10 +50,15 @@ if (!source.includes('data-iattom-trash-controls="true"')) {
   source = source.replace(oldHeader, newHeader);
 }
 
-const internalRefreshPattern = /\s*<Button\b(?=[\s\S]*?loadIntegrations\(\))(?=[\s\S]*?loadProjects\(\))(?=[\s\S]*?loadPrompts\(\))(?=[\s\S]*?loadActivities\(\))[\s\S]*?Atualizar\s*<\/Button>/;
-if (internalRefreshPattern.test(source)) {
-  source = source.replace(internalRefreshPattern, "");
+const cardHeaderStart = source.indexOf("      <CardHeader");
+const cardHeaderEnd = cardHeaderStart >= 0 ? source.indexOf("      </CardHeader>", cardHeaderStart) : -1;
+if (cardHeaderStart >= 0 && cardHeaderEnd > cardHeaderStart) {
+  const endWithTag = cardHeaderEnd + "      </CardHeader>".length;
+  const cardHeader = source.slice(cardHeaderStart, endWithTag);
+  const oldInternalRefresh = /\n\s*<Button\b[\s\S]*?onClick=\{\(\) => \{[\s\S]*?void loadIntegrations\(\);[\s\S]*?void loadProjects\(\);[\s\S]*?void loadPrompts\(\);[\s\S]*?void loadActivities\(\);[\s\S]*?<\/Button>/;
+  const cleanedCardHeader = cardHeader.replace(oldInternalRefresh, "");
+  source = source.slice(0, cardHeaderStart) + cleanedCardHeader + source.slice(endWithTag);
 }
 
 writeFileSync(trashUrl, source, "utf8");
-console.log("Trash controls moved to the header; refresh reloads the full page and back keeps its dashboard destination.");
+console.log("Trash header controls retained and the obsolete card refresh removed.");
