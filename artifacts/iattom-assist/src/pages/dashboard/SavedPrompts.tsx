@@ -92,7 +92,7 @@ export function SavedPrompts() {
   const [newTitle, setNewTitle] = useState("");
   const [newPrompt, setNewPrompt] = useState("");
   const [saving, setSaving] = useState(false);
-  const pendingChargeRef = useRef<(() => void) | null>(null);
+  const pendingChargeRef = useRef<(() => Promise<void>) | null>(null);
   const generateTriggerRef = useRef<(() => void) | null>(null);
   const migrationStartedRef = useRef(false);
   const subjectInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -198,8 +198,9 @@ export function SavedPrompts() {
       });
       const data = await res.json() as { title?: string; prompt?: string; error?: string };
       if (res.ok && data.title?.trim() && data.prompt?.trim()) {
-        pendingChargeRef.current?.();
+        const charge = pendingChargeRef.current;
         pendingChargeRef.current = null;
+        if (charge) await charge();
         setNewTitle(data.title.trim());
         setNewPrompt(data.prompt.trim());
         setGenerated(true);
@@ -210,7 +211,7 @@ export function SavedPrompts() {
       }
     } catch {
       pendingChargeRef.current = null;
-      toast({ description: "Erro de conexão. Tente novamente.", variant: "destructive" });
+      toast({ description: "Não foi possível concluir a geração e a cobrança do prompt. Tente novamente.", variant: "destructive" });
     } finally {
       setGenerating(false);
     }
@@ -238,12 +239,6 @@ export function SavedPrompts() {
         },
         result: { title, prompt: content },
       });
-      try {
-        const raw = localStorage.getItem("iattom_saved_items_v1");
-        const existing = raw ? (JSON.parse(raw) as object[]) : [];
-        existing.unshift({ id, title, type: "prompt", content, data, createdAt: new Date().toISOString() });
-        localStorage.setItem("iattom_saved_items_v1", JSON.stringify(existing));
-      } catch {}
       await saveItem({ id, title, type: "prompt", content, data });
       toast({ description: "Prompt salvo na Biblioteca" });
     } catch {
