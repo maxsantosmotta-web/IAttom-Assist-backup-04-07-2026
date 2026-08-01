@@ -7,6 +7,11 @@ import { loadProjectAssets } from "@/lib/assetStorage";
 import { useSavedItems, type AssetData, type SavedItemRecord } from "@/hooks/useSavedItems";
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
+const MAX_LIBRARY_PROJECTS = 40;
+const LIBRARY_CONCURRENCY = 4;
+const LIBRARY_CACHE_MS = 60_000;
+
+type LibraryAsset = { project: SavedItemRecord; asset: AssetData };
 
 export interface PromptImageReference {
   base64: string;
@@ -34,11 +39,29 @@ function inferMime(label: string): "image/png" | "image/jpeg" {
   return /\.jpe?g$/i.test(label) ? "image/jpeg" : "image/png";
 }
 
+async function loadWithConcurrency<T, R>(items: T[], limit: number, worker: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  const run = async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await worker(items[currentIndex]);
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => run()));
+  return results;
+}
+
 export function PromptImageReferencePicker({ value, onChange, disabled = false }: PromptImageReferencePickerProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const libraryCacheRef = useRef<{ loadedAt: number; assets: LibraryAsset[] } | null>(null);
+  const libraryRequestRef = useRef<Promise<LibraryAsset[]> | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [choosingSource, setChoosingSource] = useState(false);
-  const [assets, setAssets] = useState<Array<{ project: SavedItemRecord; asset: AssetData }>>([]);
+  const [assets, setAssets] = useState<LibraryAsset[]>([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
   const [error, setError] = useState("");
   const { getItems, getItemAssets } = useSavedItems();
@@ -74,30 +97,52 @@ export function PromptImageReferencePicker({ value, onChange, disabled = false }
     reader.readAsDataURL(file);
   };
 
+  const fetchLibraryAssets = async (): Promise<LibraryAsset[]> => {
+    const items = (await getItems())
+      .filter((item) => !item.deletedAt)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, MAX_LIBRARY_PROJECTS);
+
+    const loaded = await loadWithConcurrency(items, LIBRARY_CONCURRENCY, async (project) => {
+      let projectAssets = await getItemAssets(project.id).catch(() => [] as AssetData[]);
+      if (projectAssets.length === 0) {
+        const localAssets = await loadProjectAssets(project.id).catch(() => []);
+        projectAssets = localAssets.map((asset) => ({
+          conceptIndex: asset.conceptIndex,
+          base64: asset.base64,
+          label: asset.label,
+          format: asset.format,
+        }));
+      }
+      return { project, assets: projectAssets };
+    });
+
+    return loaded.flatMap(({ project, assets: projectAssets }) =>
+      projectAssets.map((asset) => ({ project, asset })),
+    );
+  };
+
   const openLibrary = async () => {
     setLibraryOpen(true);
-    setLoadingLibrary(true);
     setError("");
+
+    const cached = libraryCacheRef.current;
+    if (cached && Date.now() - cached.loadedAt < LIBRARY_CACHE_MS) {
+      setAssets(cached.assets);
+      return;
+    }
+
+    setLoadingLibrary(true);
     try {
-      const items = (await getItems()).filter((item) => !item.deletedAt);
-      const loaded = await Promise.all(items.map(async (project) => {
-        let projectAssets = await getItemAssets(project.id).catch(() => [] as AssetData[]);
-        if (projectAssets.length === 0) {
-          const localAssets = await loadProjectAssets(project.id).catch(() => []);
-          projectAssets = localAssets.map((asset) => ({
-            conceptIndex: asset.conceptIndex,
-            base64: asset.base64,
-            label: asset.label,
-            format: asset.format,
-          }));
-        }
-        return { project, assets: projectAssets };
-      }));
-      setAssets(loaded.flatMap(({ project, assets: projectAssets }) =>
-        projectAssets.map((asset) => ({ project, asset })),
-      ));
+      if (!libraryRequestRef.current) {
+        libraryRequestRef.current = fetchLibraryAssets().finally(() => {
+          libraryRequestRef.current = null;
+        });
+      }
+      const loadedAssets = await libraryRequestRef.current;
+      libraryCacheRef.current = { loadedAt: Date.now(), assets: loadedAssets };
+      setAssets(loadedAssets);
     } catch {
-      setAssets([]);
       setError("Não foi possível carregar as imagens da Biblioteca.");
     } finally {
       setLoadingLibrary(false);
@@ -177,38 +222,45 @@ export function PromptImageReferencePicker({ value, onChange, disabled = false }
             <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
           </Button>
 
-          {loadingLibrary ? (
+          {loadingLibrary && assets.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-zinc-400">
               <Loader2 className="w-4 h-4 animate-spin" /> Carregando imagens...
             </div>
           ) : assets.length === 0 ? (
             <div className="py-12 text-center text-sm text-zinc-500">Nenhuma imagem disponível na Biblioteca.</div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {assets.map(({ project, asset }, index) => (
-                <button
-                  key={`${project.id}-${asset.conceptIndex}-${index}`}
-                  type="button"
-                  onClick={() => {
-                    selectSource({
-                      base64: asset.base64,
-                      mimeType: inferMime(asset.label),
-                      name: asset.label || project.title,
-                      origin: "library",
-                    });
-                    setLibraryOpen(false);
-                  }}
-                  className="overflow-hidden rounded-lg border border-white/10 bg-black text-left hover:border-primary/40 transition-colors"
-                >
-                  <div className="aspect-square overflow-hidden">
-                    <img src={`data:${inferMime(asset.label)};base64,${asset.base64}`} alt={asset.label} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="p-2">
-                    <p className="text-xs text-zinc-300 truncate">{asset.label || project.title}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
+            <>
+              {loadingLibrary && (
+                <div className="flex items-center justify-center gap-2 pb-3 text-xs text-zinc-500">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Atualizando imagens...
+                </div>
+              )}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {assets.map(({ project, asset }, index) => (
+                  <button
+                    key={`${project.id}-${asset.conceptIndex}-${index}`}
+                    type="button"
+                    onClick={() => {
+                      selectSource({
+                        base64: asset.base64,
+                        mimeType: inferMime(asset.label),
+                        name: asset.label || project.title,
+                        origin: "library",
+                      });
+                      setLibraryOpen(false);
+                    }}
+                    className="overflow-hidden rounded-lg border border-white/10 bg-black text-left hover:border-primary/40 transition-colors"
+                  >
+                    <div className="aspect-square overflow-hidden">
+                      <img src={`data:${inferMime(asset.label)};base64,${asset.base64}`} alt={asset.label} className="w-full h-full object-cover" loading="lazy" />
+                    </div>
+                    <div className="p-2">
+                      <p className="text-xs text-zinc-300 truncate">{asset.label || project.title}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
