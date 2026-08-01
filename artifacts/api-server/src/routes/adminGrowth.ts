@@ -4,6 +4,7 @@ import { db, users, historyTable, creditsTransactions } from "@workspace/db";
 import { referralsTable, referralUsesTable } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
+import type Stripe from "stripe";
 
 const router: IRouter = Router();
 const OWNER_EMAIL = "maxsantosmotta@gmail.com";
@@ -71,8 +72,8 @@ function customerIdOf(value: unknown): string | null {
   return null;
 }
 
-function monthlyEquivalentCents(subscription: Awaited<ReturnType<ReturnType<typeof getUncachableStripeClient>["subscriptions"]["list"]>>["data"][number]): number {
-  return subscription.items.data.reduce((sum, item) => {
+function monthlyEquivalentCents(subscription: Stripe.Subscription): number {
+  return subscription.items.data.reduce((sum: number, item: Stripe.SubscriptionItem) => {
     const unitAmount = item.price.unit_amount ?? 0;
     const quantity = item.quantity ?? 1;
     const recurring = item.price.recurring;
@@ -141,7 +142,7 @@ async function getFinancialSnapshot(req: Parameters<IRouter["get"]>[1] extends n
       stripe.checkout.sessions.list({ created: { gte: createdGte }, limit: 100 }).autoPagingToArray({ limit: 1000 }),
     ]);
 
-    const activeByCustomer = new Map<string, (typeof subscriptions)[number]>();
+    const activeByCustomer = new Map<string, Stripe.Subscription>();
     for (const subscription of subscriptions) {
       if (subscription.status !== "active" && subscription.status !== "trialing") continue;
       const customerId = customerIdOf(subscription.customer);
