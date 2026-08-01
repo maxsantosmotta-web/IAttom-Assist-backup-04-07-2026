@@ -32,7 +32,7 @@ console.log("Billing referral CTA removed from footer.");
 // Run last so Help/Credits synchronization is applied after all source-rewriting patches.
 await import("./patch-help-credit-react-query-sync.mjs");
 
-// Isolamento global: somente o módulo interno atualmente aberto mantém leituras em andamento.
+// Isolamento por módulo: cada tela nasce com um ciclo novo e encerra o anterior.
 const appUrl = new URL("../src/App.tsx", import.meta.url);
 let app = await readFile(appUrl, "utf8");
 
@@ -51,6 +51,22 @@ if (app.includes(oldRetry)) {
   throw new Error("React Query retry marker not found for route isolation.");
 }
 
+const oldDashboardStart = 'function ProtectedDashboard() {\n  return <>';
+const keyedDashboardStart = 'function ProtectedDashboard() {\n  const [dashboardLocation] = useLocation();\n  return <>';
+if (app.includes(oldDashboardStart)) {
+  app = app.replace(oldDashboardStart, keyedDashboardStart);
+} else if (!app.includes(keyedDashboardStart)) {
+  throw new Error("ProtectedDashboard lifecycle marker not found.");
+}
+
+const dashboardSwitch = '<Suspense fallback={<PageLoader />}><Switch>';
+const keyedDashboardSwitch = '<Suspense fallback={<PageLoader />}><Switch key={dashboardLocation}>';
+if (app.includes(dashboardSwitch)) {
+  app = app.replace(dashboardSwitch, keyedDashboardSwitch);
+} else if (!app.includes(keyedDashboardSwitch)) {
+  throw new Error("Dashboard Switch key marker not found.");
+}
+
 const isolationMount = '<RouteRequestIsolation />';
 if (!app.includes(isolationMount)) {
   const providerPattern = /(<QueryClientProvider client=\{queryClient\}>\s*<TooltipProvider>)/;
@@ -62,9 +78,50 @@ for (const marker of [
   isolationImport,
   isolationMount,
   'error.name === "AbortError" ? false',
+  'const [dashboardLocation] = useLocation();',
+  '<Switch key={dashboardLocation}>',
 ]) {
-  if (!app.includes(marker)) throw new Error(`Route isolation marker missing: ${marker}`);
+  if (!app.includes(marker)) throw new Error(`Module lifecycle marker missing: ${marker}`);
 }
 
 await writeFile(appUrl, app, "utf8");
-console.log("Global dashboard route request isolation applied; platform routes remain excluded.");
+
+const sidebarUrl = new URL("../src/components/layout/SidebarLayout.tsx", import.meta.url);
+let sidebar = await readFile(sidebarUrl, "utf8");
+
+const oldCreativeHandler = `              onClick={() => {
+                if (!creativeMode) return;
+                try { localStorage.setItem("iattom_creative_tab_v1", creativeMode); } catch { /* ignore */ }
+                setCreativeEntry(creativeMode);
+              }}`;
+const isolatedCreativeHandler = `              onClick={() => {
+                if (!creativeMode) return;
+                const moduleKey = \`/dashboard/creative-generator:\${creativeMode}\`;
+                window.dispatchEvent(new CustomEvent("iattom-module-change", { detail: { moduleKey } }));
+                try { localStorage.setItem("iattom_creative_tab_v1", creativeMode); } catch { /* ignore */ }
+                setCreativeEntry(creativeMode);
+              }}`;
+
+if (sidebar.includes(oldCreativeHandler)) {
+  sidebar = sidebar.replace(oldCreativeHandler, isolatedCreativeHandler);
+} else if (!sidebar.includes('window.dispatchEvent(new CustomEvent("iattom-module-change"')) {
+  throw new Error("Creative module lifecycle handler marker not found.");
+}
+
+const pageTransitionPattern = /<PageTransition>\s*\{children\}\s*<\/PageTransition>/;
+const keyedPageTransition = '<PageTransition key={`${location}:${creativeEntry}`}>{children}</PageTransition>';
+if (pageTransitionPattern.test(sidebar)) {
+  sidebar = sidebar.replace(pageTransitionPattern, keyedPageTransition);
+} else if (!sidebar.includes(keyedPageTransition)) {
+  throw new Error("Sidebar PageTransition lifecycle marker not found.");
+}
+
+for (const marker of [
+  'window.dispatchEvent(new CustomEvent("iattom-module-change"',
+  'key={`${location}:${creativeEntry}`}',
+]) {
+  if (!sidebar.includes(marker)) throw new Error(`Sidebar module lifecycle marker missing: ${marker}`);
+}
+
+await writeFile(sidebarUrl, sidebar, "utf8");
+console.log("Dashboard modules now remount independently; abandoned reads are cancelled and duplicate reads are coalesced.");
