@@ -55,3 +55,5 @@ if (source.includes('Label className="text-sm text-muted-foreground block mb-3">
 
 writeFileSync(fileUrl, source, "utf8");
 console.log("Gerar imagem and Vídeo com efeito share the route and open in isolated visual modes.");
+
+await import("./patch-remove-referral-help-copy.mjs");
