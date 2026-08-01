@@ -41,7 +41,9 @@ if (dashboard.includes("<UpgradeNudge") || dashboard.includes("créditos restant
   throw new Error("Dashboard credit visibility was not removed");
 }
 
-// 3) Adiciona saldos independentes de vídeo e uso do Help na tela Créditos.
+// 3) A tela do usuário possui apenas três contadores:
+// créditos gerais, imagens e vídeos com efeito.
+// O IAttom Help consome o saldo geral e permanece apenas no histórico e no ADM.
 if (!credits.includes('import { useEffect, useState } from "react";')) {
   credits = credits.replace(
     'import { motion } from "framer-motion";',
@@ -50,57 +52,45 @@ if (!credits.includes('import { useEffect, useState } from "react";')) {
 }
 credits = credits.replace(
   'import { Zap, TrendingUp, RefreshCw } from "lucide-react";',
-  'import { Zap, TrendingUp, RefreshCw, Image, Video, HelpCircle } from "lucide-react";',
+  'import { Zap, TrendingUp, RefreshCw, Image, Video } from "lucide-react";',
 );
 
 const componentMarker = `export function Credits() {\n  const [, navigate] = useLocation();`;
-const resilientStateBlock = `export function Credits() {
+const stateBlock = `export function Credits() {
   const [, navigate] = useLocation();
   const [videoBalance, setVideoBalance] = useState<number | null>(null);
-  const [helpUsed, setHelpUsed] = useState<number | null>(null);
   const [videoLoading, setVideoLoading] = useState(true);
-  const [helpLoading, setHelpLoading] = useState(true);
 
-  const loadVideoBalance = async () => {
+  const loadVideoBalance = async (signal?: AbortSignal): Promise<boolean> => {
     setVideoLoading(true);
     try {
-      const response = await fetch("/api/videos/balance", { credentials: "include", cache: "no-store" });
+      const response = await fetch("/api/videos/balance", {
+        credentials: "include",
+        cache: "no-store",
+        signal,
+      });
       if (!response.ok) throw new Error("video balance request failed");
       const video = await response.json() as { videoBalance?: number };
       setVideoBalance(Number(video.videoBalance ?? 0));
-    } catch {
-      // Mantém o último saldo válido em falhas temporárias.
+      return true;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return false;
+      return false;
     } finally {
-      setVideoLoading(false);
-    }
-  };
-
-  const loadHelpUsage = async () => {
-    setHelpLoading(true);
-    try {
-      const response = await fetch("/api/help/usage", { credentials: "include", cache: "no-store" });
-      if (!response.ok) throw new Error("help usage request failed");
-      const help = await response.json() as { used?: number };
-      setHelpUsed(Number(help.used ?? 0));
-    } catch {
-      // Mantém o último contador válido em falhas temporárias.
-    } finally {
-      setHelpLoading(false);
+      if (!signal?.aborted) setVideoLoading(false);
     }
   };
 
   useEffect(() => {
-    void loadVideoBalance();
-    void loadHelpUsage();
+    const controller = new AbortController();
+    void loadVideoBalance(controller.signal);
+    return () => controller.abort("credits-unmounted");
   }, []);`;
 
 if (credits.includes(componentMarker) && !credits.includes("const loadVideoBalance = async")) {
-  credits = credits.replace(componentMarker, resilientStateBlock);
-} else {
-  credits = credits.replace(
-    /export function Credits\(\) \{\n  const \[, navigate\] = useLocation\(\);\n  const \[videoBalance, setVideoBalance\][\s\S]*?\n  \}, \[\]\);/,
-    resilientStateBlock,
-  );
+  credits = credits.replace(componentMarker, stateBlock);
+} else if (!credits.includes("const loadVideoBalance = async")) {
+  throw new Error("Credits component marker not found");
 }
 
 const balanceCardMarker = `      <motion.div
@@ -116,7 +106,7 @@ if (!credits.includes('data-testid="centralized-credit-balances"')) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.08 }}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
       >
         <Card className="bg-[#111111] border-white/5"><CardContent className="p-5">
           <div className="flex items-center gap-2 mb-3"><Zap className="w-4 h-4 text-primary" /><span className="text-xs uppercase tracking-widest text-muted-foreground">Créditos gerais</span></div>
@@ -133,34 +123,26 @@ if (!credits.includes('data-testid="centralized-credit-balances"')) {
           {videoBalance === null ? <Skeleton className="h-9 w-16 bg-white/5" /> : <p className="text-3xl font-bold text-white tabular-nums">{videoBalance.toLocaleString("pt-BR")}</p>}
           <p className="text-xs text-muted-foreground mt-1">{videoLoading && videoBalance !== null ? "Atualizando..." : "Saldo disponível"}</p>
         </CardContent></Card>
-        <Card className="bg-[#111111] border-white/5"><CardContent className="p-5">
-          <div className="flex items-center gap-2 mb-3"><HelpCircle className="w-4 h-4 text-sky-400" /><span className="text-xs uppercase tracking-widest text-muted-foreground">IAttom Help</span></div>
-          {helpUsed === null ? <Skeleton className="h-9 w-16 bg-white/5" /> : <p className="text-3xl font-bold text-white tabular-nums">{helpUsed.toLocaleString("pt-BR")}</p>}
-          <p className="text-xs text-muted-foreground mt-1">{helpLoading && helpUsed !== null ? "Atualizando..." : "Mensagens utilizadas"}</p>
-        </CardContent></Card>
       </motion.div>
 
 `;
   credits = credits.replace(balanceCardMarker, compactCards + balanceCardMarker);
 }
 
-// 4) Atualiza os quatro dados sem recarregar a plataforma.
-const refreshHandler = 'onClick={() => { void refetchBalance(); void refetchTx(); void loadVideoBalance(); void loadHelpUsage(); }}';
+// 4) Atualiza os três dados sem recarregar a plataforma.
+const refreshHandler = 'onClick={() => { void refetchBalance(); void refetchTx(); void loadVideoBalance(); }}';
 credits = credits.replace(
   /onClick=\{\(\) => \{ void refetchBalance\(\); void refetchTx\(\); \}\}/,
   refreshHandler,
 );
-credits = credits.replace(
-  'onClick={() => window.location.reload()}',
-  refreshHandler,
-);
+credits = credits.replace('onClick={() => window.location.reload()}', refreshHandler);
 credits = credits.replace(
   /disabled=\{fetchingBalance \|\| fetchingTx\}/,
-  'disabled={fetchingBalance || fetchingTx || videoLoading || helpLoading}',
+  'disabled={fetchingBalance || fetchingTx || videoLoading}',
 );
 credits = credits.replace(
   /\$\{\(fetchingBalance \|\| fetchingTx\) \? "animate-spin" : ""\}/,
-  '${(fetchingBalance || fetchingTx || videoLoading || helpLoading) ? "animate-spin" : ""}',
+  '${(fetchingBalance || fetchingTx || videoLoading) ? "animate-spin" : ""}',
 );
 
 // 5) Transações de vídeo usam unidade própria.
@@ -211,14 +193,26 @@ credits = credits.replace(
   'if (lower.includes("criação de prompt")) return "Criação de prompt";\n  if (lower.includes("vídeo com efeito entregue")) return "Geração de vídeo com efeito";',
 );
 
+for (const forbidden of [
+  "helpUsed",
+  "helpLoading",
+  "loadHelpUsage",
+  'fetch("/api/help/usage"',
+  "Mensagens utilizadas",
+  "HelpCircle",
+]) {
+  if (credits.includes(forbidden)) {
+    throw new Error(`User Credits still contains Help-specific loading: ${forbidden}`);
+  }
+}
 if (!credits.includes('data-testid="centralized-credit-balances"')) {
   throw new Error("Centralized credit cards were not inserted");
 }
-if (!credits.includes("Vídeos com efeito") || !credits.includes("Mensagens utilizadas")) {
-  throw new Error("Centralized credit card labels are missing");
+if (!credits.includes("Vídeos com efeito") || !credits.includes("Créditos gerais") || !credits.includes("Imagens")) {
+  throw new Error("Three user credit cards are missing");
 }
-if (!credits.includes("const loadVideoBalance = async") || !credits.includes("void loadHelpUsage()")) {
-  throw new Error("Independent credit loading was not applied");
+if (!credits.includes("const loadVideoBalance = async")) {
+  throw new Error("Video balance loading was not applied");
 }
 if (credits.includes("window.location.reload()")) {
   throw new Error("Credits refresh still reloads the whole application");
@@ -230,4 +224,4 @@ if (!credits.includes("function isVideoTransaction")) {
 writeFileSync(sidebarUrl, sidebar);
 writeFileSync(creditsUrl, credits);
 writeFileSync(dashboardUrl, dashboard);
-console.log("Credit balances refresh independently without reloading the application.");
+console.log("User Credits contains only general, image and video counters; Help remains in general balance, history and ADM.");
