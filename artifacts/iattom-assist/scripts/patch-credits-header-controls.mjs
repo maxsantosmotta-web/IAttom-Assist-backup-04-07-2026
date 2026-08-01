@@ -36,3 +36,5 @@ if (source.includes('onClick={() => { void refetchBalance(); void refetchTx(); }
 
 writeFileSync(creditsUrl, source, "utf8");
 console.log("Credits controls standardized with full-page refresh and Voltar.");
+
+await import("./patch-settings-header-controls.mjs");
