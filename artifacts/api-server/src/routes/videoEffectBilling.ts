@@ -12,7 +12,7 @@ import {
 
 const router: IRouter = Router();
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const MAX_PROMPT_LENGTH = 1200;
+const MAX_PROMPT_LENGTH = 1500;
 const PAID_PLANS = new Set(["pro", "business", "agency"]);
 const DELIVERY_PREFIX = "Vídeo com Efeito entregue • requestId:";
 const HISTORY_PREFIX = "Vídeo com Efeito gerado • requestId:";
