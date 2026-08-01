@@ -108,19 +108,22 @@ if (sidebar.includes(oldCreativeHandler)) {
   throw new Error("Creative module lifecycle handler marker not found.");
 }
 
-const plainPageTransition = '<PageTransition>{children}</PageTransition>';
-const desiredPageTransition = '<PageTransition key={`${location}:${creativeEntry}`}>{children}</PageTransition>';
-const existingEquivalentPageTransition = '<PageTransition key={location === "/dashboard/creative-generator" ? creativeEntry : location}>{children}</PageTransition>';
-
-if (sidebar.includes(plainPageTransition)) {
-  sidebar = sidebar.replace(plainPageTransition, desiredPageTransition);
-} else if (sidebar.includes(existingEquivalentPageTransition)) {
-  // Já existe ciclo independente: rota para módulos comuns e modo para imagem/vídeo.
-} else if (!sidebar.includes(desiredPageTransition)) {
+const pageTransitionPattern = /<PageTransition([^>]*)>\s*\{children\}\s*<\/PageTransition>/;
+const pageTransitionMatch = sidebar.match(pageTransitionPattern);
+if (!pageTransitionMatch) {
   throw new Error("Sidebar PageTransition lifecycle marker not found.");
 }
 
-const hasPageLifecycle = sidebar.includes(desiredPageTransition) || sidebar.includes(existingEquivalentPageTransition);
+const existingAttributes = pageTransitionMatch[1] ?? "";
+if (!/\bkey\s*=/.test(existingAttributes)) {
+  sidebar = sidebar.replace(
+    pageTransitionPattern,
+    '<PageTransition key={location === "/dashboard/creative-generator" ? creativeEntry : location}>{children}</PageTransition>',
+  );
+}
+
+const finalPageTransitionMatch = sidebar.match(pageTransitionPattern);
+const hasPageLifecycle = Boolean(finalPageTransitionMatch && /\bkey\s*=/.test(finalPageTransitionMatch[1] ?? ""));
 if (!sidebar.includes('window.dispatchEvent(new CustomEvent("iattom-module-change"')) || !hasPageLifecycle) {
   throw new Error("Sidebar module lifecycle markers are incomplete.");
 }
