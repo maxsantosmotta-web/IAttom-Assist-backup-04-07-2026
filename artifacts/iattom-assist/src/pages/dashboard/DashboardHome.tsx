@@ -23,7 +23,8 @@ const quickActions = [
   { href: "/dashboard/validate-products", label: "Validar Produtos", icon: CheckCircle, desc: "Teste a demanda do mercado", color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(52,211,153,0.15)]", module: "product_validation" },
   { href: "/dashboard/create-campaign", label: "Criar Campanha", icon: Megaphone, desc: "Lance campanhas direcionadas", color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(251,191,36,0.15)]", module: "campaign" },
   { href: "/dashboard/create-content", label: "Criar Conteúdo", icon: FileText, desc: "Gere textos persuasivos", color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(96,165,250,0.15)]", module: "content" },
-  { href: "/dashboard/creative-generator", label: "Criar Imagem e Vídeo", icon: Sparkles, desc: "Crie imagens e vídeos com IA", color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(192,132,252,0.15)]", module: "creative" },
+  { href: "/dashboard/creative-generator", label: "Gerar imagem", icon: Sparkles, desc: "Crie imagens prontas para publicação", color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(192,132,252,0.15)]", module: "creative" },
+  { href: "/dashboard/creative-generator", label: "Vídeo com efeito", icon: Video, desc: "Crie vídeos com efeito de movimento", color: "text-cyan-400", bg: "bg-cyan-400/10 border-cyan-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(34,211,238,0.15)]", module: "creative" },
   { href: "/dashboard/video-scripts", label: "Scripts de Vídeo", icon: Video, desc: "Escreva scripts virais", color: "text-rose-400", bg: "bg-rose-400/10 border-rose-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(251,113,133,0.15)]", module: "video_script" },
 ];
 
@@ -238,7 +239,7 @@ export function DashboardHome() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Módulos</p>
-          <span className="text-[10px] text-zinc-700">6 disponíveis</span>
+          <span className="text-[10px] text-zinc-700">7 disponíveis</span>
         </div>
         <motion.div
           variants={containerVariants}
@@ -248,9 +249,18 @@ export function DashboardHome() {
         >
           {quickActions.map((action) => {
             const Icon = action.icon;
+            const creativeMode = action.label === "Vídeo com efeito" ? "video" : action.label === "Gerar imagem" ? "image" : null;
             return (
-              <motion.div key={action.href} variants={itemVariants}>
-                <Link href={action.href} data-testid={`quick-action-${action.label.toLowerCase().replace(/\s+/g, "-")}`}>
+              <motion.div key={`${action.href}-${action.label}`} variants={itemVariants}>
+                <Link
+                  href={action.href}
+                  onClick={() => {
+                    if (creativeMode) {
+                      try { localStorage.setItem("iattom_creative_tab_v1", creativeMode); } catch { /* ignore */ }
+                    }
+                  }}
+                  data-testid={`quick-action-${action.label.toLowerCase().replace(/\s+/g, "-")}`}
+                >
                   <div className={`group flex items-center gap-4 p-4 rounded-xl bg-[#0f0f0f] border border-white/[0.06] hover:border-white/[0.12] hover:bg-[#131313] transition-all duration-250 cursor-pointer ${action.glow}`}>
                     <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 ${action.bg}`}>
                       <Icon className={`w-4.5 h-4.5 ${action.color}`} />

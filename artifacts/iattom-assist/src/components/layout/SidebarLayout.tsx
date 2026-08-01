@@ -36,7 +36,8 @@ const navItems = [
   { href: "/dashboard/validate-products", label: "Validar Produto", icon: CheckCircle },
   { href: "/dashboard/create-campaign", label: "Criar Campanha", icon: Megaphone },
   { href: "/dashboard/create-content", label: "Criar Conteúdo", icon: FileText },
-  { href: "/dashboard/creative-generator", label: "Criar Imagem e Vídeo", icon: Sparkles },
+  { href: "/dashboard/creative-generator", label: "Gerar imagem", icon: Sparkles, creativeMode: "image" as const },
+  { href: "/dashboard/creative-generator", label: "Vídeo com efeito", icon: Video, creativeMode: "video" as const },
   { href: "/dashboard/prompts", label: "Criar Prompt", icon: BookMarked },
   { href: "/dashboard/video-scripts", label: "Scripts de Vídeo", icon: Video },
   { href: "/dashboard/projects", label: "Biblioteca", icon: FolderOpen },
@@ -61,6 +62,13 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const [creativeEntry, setCreativeEntry] = useState<"image" | "video">(() => {
+    try {
+      return localStorage.getItem("iattom_creative_tab_v1") === "video" ? "video" : "image";
+    } catch {
+      return "image";
+    }
+  });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [helpUsage, setHelpUsage] = useState<{
@@ -166,7 +174,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const currentPage = navItems.find((item) => item.href === location)?.label || "Dashboard";
+  const currentPage = location === "/dashboard/creative-generator"
+    ? (creativeEntry === "video" ? "Vídeo com efeito" : "Gerar imagem")
+    : navItems.find((item) => item.href === location)?.label || "Dashboard";
   const displayName = user?.fullName || user?.firstName || user?.username || "User";
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
   const initials = displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -236,12 +246,19 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           if ("separator" in item) {
             return <div key={`sep-${idx}`} className="my-1.5 border-t border-white/[0.06]" />;
           }
-          const isActive = location === item.href;
+          const creativeMode = "creativeMode" in item ? item.creativeMode : null;
+          const isActive = location === item.href && (!creativeMode || creativeEntry === creativeMode);
           const Icon = item.icon;
           return (
             <Link
-              key={item.href}
+              key={`${item.href}-${item.label}`}
               href={item.href}
+              onClick={() => {
+                if (!creativeMode) return;
+                try { localStorage.setItem("iattom_creative_tab_v1", creativeMode); } catch { /* ignore */ }
+                setCreativeEntry(creativeMode);
+                if (location === item.href) window.location.reload();
+              }}
               className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium group overflow-hidden transition-colors duration-150 ${
                 isActive
                   ? "text-primary"
