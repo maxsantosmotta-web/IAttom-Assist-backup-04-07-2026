@@ -20,13 +20,10 @@ const safeControlsBlock = `${currentPageBlock}
       "/dashboard/prompts": "Criar Prompt",
       "/dashboard/creative-generator": creativeEntry === "video" ? "Vídeo com efeito" : "Gerar imagem",
       "/dashboard/create-campaign": "Criar Campanha",
-      "/dashboard/history": "Atividades",
     };
 
     const title = routeTitles[location];
     if (!title) return;
-
-    let refreshCleanup: (() => void) | null = null;
 
     const makeBackButton = () => {
       const back = document.createElement("button");
@@ -75,20 +72,6 @@ const safeControlsBlock = `${currentPageBlock}
 
       header.appendChild(makeBackButton());
 
-      if (location === "/dashboard/history") {
-        const refresh = Array.from(main.querySelectorAll<HTMLButtonElement>("button"))
-          .find((button) => (button.textContent ?? "").trim() === "Atualizar");
-        if (refresh) {
-          const reload = (event: MouseEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-            window.location.reload();
-          };
-          refresh.addEventListener("click", reload, true);
-          refreshCleanup = () => refresh.removeEventListener("click", reload, true);
-        }
-      }
-
       if (location === "/dashboard/prompts") {
         const promptBack = Array.from(main.querySelectorAll<HTMLElement>("button, a"))
           .find((control) => /voltar ao painel|voltar para o painel|voltar ao dashboard|voltar para o dashboard/i.test((control.textContent ?? "").trim()));
@@ -105,7 +88,6 @@ const safeControlsBlock = `${currentPageBlock}
     return () => {
       window.clearTimeout(timer);
       observer.disconnect();
-      refreshCleanup?.();
       document.querySelectorAll("[data-iattom-back-to-dashboard], [data-iattom-dashboard-refresh]").forEach((node) => node.remove());
     };
   }, [location, creativeEntry]);`;
@@ -118,4 +100,48 @@ if (!source.includes("data-iattom-back-to-dashboard")) {
 }
 
 writeFileSync(fileUrl, source, "utf8");
-console.log("Dashboard plan block removed and Back/Refresh controls aligned safely.");
+
+const historyUrl = new URL("../src/pages/dashboard/History.tsx", import.meta.url);
+let historySource = readFileSync(historyUrl, "utf8");
+
+const historyRefreshButton = `          <Button
+            size="sm" variant="outline"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1"
+          >
+            <RefreshCw className={\`w-3.5 h-3.5 \${isFetching ? "animate-spin" : ""}\`} />
+            Atualizar
+          </Button>`;
+
+const historyControls = `          <div className="flex shrink-0 items-center gap-2 mt-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => window.location.assign("/dashboard")}
+              className="h-9 border-white/15 bg-white/[0.04] px-3 text-sm font-medium text-zinc-200 hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
+            >
+              Voltar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => window.location.reload()}
+              className="h-9 border-white/15 bg-white/[0.04] px-3 text-sm font-semibold text-zinc-200 hover:border-white/25 hover:bg-white/[0.08] hover:text-white gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Atualizar
+            </Button>
+          </div>`;
+
+if (!historySource.includes('onClick={() => window.location.assign("/dashboard")}')) {
+  if (!historySource.includes(historyRefreshButton)) {
+    throw new Error("History refresh button marker not found");
+  }
+  historySource = historySource.replace(historyRefreshButton, historyControls);
+}
+
+writeFileSync(historyUrl, historySource, "utf8");
+console.log("Dashboard controls preserved and Activities controls standardized in the real module header.");
