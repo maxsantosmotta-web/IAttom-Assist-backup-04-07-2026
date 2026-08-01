@@ -42,9 +42,5 @@ jobs:
       - name: Build API
         run: pnpm --filter @workspace/api-server build
 
-      - name: Locate obsolete Credits rewrites
-        run: |
-          grep -R -n -E 'formatTransactionAmount\(tx as|formatTransactionBalance\(tx as|balanceType\?: string \| null' artifacts/iattom-assist/scripts || true
-
       - name: Build frontend
         run: pnpm --filter @workspace/iattom-assist build
