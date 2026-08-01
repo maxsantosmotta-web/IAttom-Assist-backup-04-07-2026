@@ -71,8 +71,6 @@ function removeFirstUpdateButton(relativePath, functionName) {
   write(url, source);
 }
 
-// Configurações, Créditos, Lixeira, Campanha, Atividades e Painel:
-// remove o Atualizar antigo e instala Voltar + Atualizar que recarrega a tela.
 for (const [path, name] of [
   ["pages/dashboard/Settings.tsx", "Settings"],
   ["pages/dashboard/Credits.tsx", "Credits"],
@@ -85,14 +83,10 @@ for (const [path, name] of [
   insertActions(path, name, true);
 }
 
-// Faturamento e Biblioteca: somente Voltar.
 insertActions("pages/dashboard/Billing.tsx", "Billing", false);
 insertActions("pages/dashboard/Projects.tsx", "Projects", false);
-
-// Gerar imagem e Vídeo com efeito compartilham o componente e recebem o mesmo Voltar.
 insertActions("pages/dashboard/CreativeGenerator.tsx", "CreativeGenerator", false);
 
-// Criar Prompt já tinha navegação; apenas simplifica o texto.
 {
   const { url, source: original } = read("pages/dashboard/SavedPrompts.tsx");
   const source = original
@@ -103,8 +97,6 @@ insertActions("pages/dashboard/CreativeGenerator.tsx", "CreativeGenerator", fals
   write(url, source);
 }
 
-// O START pode abrir a Biblioteca logo após um reload, antes do token do Clerk
-// ficar pronto. Aumenta a janela de tentativa sem mudar autenticação ou regras.
 {
   const { url, source: original } = read("hooks/useSavedItems.ts");
   const source = original.replace(
@@ -114,8 +106,6 @@ insertActions("pages/dashboard/CreativeGenerator.tsx", "CreativeGenerator", fals
   write(url, source);
 }
 
-// A Biblioteca global carrega mais projetos em paralelo e repete a listagem uma
-// vez se a sessão ainda estiver acordando após a atualização da página.
 {
   const { url, source: original } = read("lib/savedImageLibrary.ts");
   let source = original.replace("const CONCURRENCY = 3;", "const CONCURRENCY = 8;");
@@ -146,29 +136,4 @@ addLibraryPrefetch(
   "  const { getItems, getItemAssets } = useSavedItems();",
 );
 
-// Remove de forma definitiva os cards públicos de Ajuda ligados a indicação,
-// referência ou bônus por convite, sem tocar nas demais orientações.
-{
-  const { url, source: original } = read("pages/HelpPage.tsx");
-  let source = original;
-  const cardStart = '<div className="bg-white/[0.03] border border-white/5 rounded-xl p-5">';
-  const forbidden = /indica(?:ç|c)|referênc|referenc|bônus de convite|bonus de convite/i;
-  let cursor = 0;
-  while (true) {
-    const start = source.indexOf(cardStart, cursor);
-    if (start < 0) break;
-    const endToken = "              </div>";
-    const end = source.indexOf(endToken, start + cardStart.length);
-    if (end < 0) break;
-    const card = source.slice(start, end + endToken.length);
-    if (forbidden.test(card)) {
-      source = source.slice(0, start) + source.slice(end + endToken.length);
-      cursor = start;
-    } else {
-      cursor = end + endToken.length;
-    }
-  }
-  write(url, source);
-}
-
-console.log("Navigation, full-page refresh, library recovery and referral-help cleanup applied.");
+console.log("Navigation, full-page refresh and library recovery applied after all previous patches.");
