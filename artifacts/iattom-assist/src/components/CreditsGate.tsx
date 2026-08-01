@@ -26,7 +26,7 @@ const FEATURE_MODULE_NAMES: Record<FeatureKey, string> = {
 
 interface CreditsGateProps {
   feature: FeatureKey;
-  onSuccess: (charge: () => void) => void;
+  onSuccess: (charge: () => Promise<void>) => void;
   disabled?: boolean;
   hideCostBadge?: boolean;
   children: (props: { trigger: () => void; isLoading: boolean }) => React.ReactNode;
@@ -80,14 +80,14 @@ export function CreditsGate({ feature, onSuccess, disabled, hideCostBadge, child
   const trigger = () => {
     if (disabled) return;
     if (GLOBAL_BETA || isOwner || me?.role === "admin") {
-      onSuccess(() => {});
+      onSuccess(async () => {});
       return;
     }
     if (balanceData && currentBalance < cost) {
       setInsufficient({ balance: currentBalance, required: cost, isCreative: isCreativeFeature });
       return;
     }
-    onSuccess(() => mutation.mutate({ data: { feature } }));
+    onSuccess(() => mutation.mutateAsync({ data: { feature } }).then(() => undefined));
   };
 
   const currentPlanLimit = isOwner
