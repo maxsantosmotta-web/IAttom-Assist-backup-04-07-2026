@@ -1,6 +1,8 @@
+import { useEffect, useState, type UIEvent } from "react";
 import { motion } from "framer-motion";
-import { Zap, TrendingUp, RefreshCw } from "lucide-react";
+import { Zap, TrendingUp, RefreshCw, Video, MessageCircle } from "lucide-react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -141,9 +143,87 @@ export function Credits() {
     { query: { queryKey: getListCreditTransactionsQueryKey(), staleTime: 0 } },
   );
 
-  const percentage = balance?.percentage ?? 0;
+  const { data: videoBalanceData, isFetching: fetchingVideo, refetch: refetchVideo } = useQuery({
+    queryKey: ["iattom-video-balance"],
+    queryFn: async () => {
+      const response = await fetch("/api/videos/balance", { credentials: "include", cache: "no-store" });
+      if (!response.ok) throw new Error("video balance request failed");
+      const payload = await response.json() as { videoBalance?: number };
+      return Number(payload.videoBalance ?? 0);
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: helpUsageData, isFetching: fetchingHelp, refetch: refetchHelp } = useQuery({
+    queryKey: ["iattom-help-usage"],
+    queryFn: async () => {
+      const response = await fetch("/api/help/usage", { credentials: "include", cache: "no-store" });
+      if (!response.ok) throw new Error("help usage request failed");
+      return response.json() as Promise<{ used?: number; limit?: number; remaining?: number }>;
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+
+  const [loadedTransactions, setLoadedTransactions] = useState<any[]>([]);
+  const [visibleTransactionCount, setVisibleTransactionCount] = useState(10);
+  const [fetchedTransactionCount, setFetchedTransactionCount] = useState(0);
+  const [loadingMoreTransactions, setLoadingMoreTransactions] = useState(false);
+
+  useEffect(() => {
+    const initialTransactions = txData?.transactions ?? [];
+    setLoadedTransactions(initialTransactions.filter((tx) => !isTechnicalMaintenanceDescription(tx.description)));
+    setFetchedTransactionCount(initialTransactions.length);
+    setVisibleTransactionCount(10);
+  }, [txData]);
+
+  const handleTransactionHistoryScroll = async (event: UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    const nearBottom = element.scrollTop + element.clientHeight >= element.scrollHeight - 80;
+    if (!nearBottom || loadingMoreTransactions) return;
+
+    if (visibleTransactionCount < loadedTransactions.length) {
+      setVisibleTransactionCount((current) => Math.min(current + 10, loadedTransactions.length));
+      return;
+    }
+
+    const totalTransactions = txData?.total ?? loadedTransactions.length;
+    if (fetchedTransactionCount >= totalTransactions) return;
+
+    setLoadingMoreTransactions(true);
+    try {
+      const response = await fetch(
+        `/api/credits/transactions?limit=50&offset=${fetchedTransactionCount}`,
+        { credentials: "include" },
+      );
+      if (!response.ok) throw new Error("Failed to load additional credit transactions");
+      const nextPage = await response.json() as { transactions?: any[] };
+      const rawTransactions = nextPage.transactions ?? [];
+      const visibleNextTransactions = rawTransactions.filter(
+        (tx) => !isTechnicalMaintenanceDescription(tx.description),
+      );
+
+      setFetchedTransactionCount((current) => current + rawTransactions.length);
+      setLoadedTransactions((current) => {
+        const existingIds = new Set(current.map((tx) => tx.id));
+        return [...current, ...visibleNextTransactions.filter((tx) => !existingIds.has(tx.id))];
+      });
+      setVisibleTransactionCount((current) => current + 10);
+    } catch (error) {
+      console.error("Unable to load more credit transactions", error);
+    } finally {
+      setLoadingMoreTransactions(false);
+    }
+  };
+
+  const rawBalance = Number(balance?.balance ?? 0);
+  const planLimit = Number(balance?.planLimit ?? 0);
+  const calculatedPercentage = planLimit > 0 ? Math.min(100, Math.round((rawBalance / planLimit) * 100)) : Number(balance?.percentage ?? 0);
+  const percentage = Number.isFinite(calculatedPercentage) ? calculatedPercentage : 0;
   const barColor = getCreditBarColor(percentage);
   const textColor = getCreditColor(percentage);
+  const genuinelyLowCredit = rawBalance <= 0 || (planLimit > 0 && rawBalance < planLimit * 0.15);
 
   const upgradePlans = balance
     ? (Object.keys(PLAN_CREDITS) as Array<keyof typeof PLAN_CREDITS>).filter(
@@ -152,9 +232,15 @@ export function Credits() {
     : [];
 
   const currentPlanDisplay = balance?.plan ? (planDisplayNames[balance.plan] ?? balance.plan) : "FREE";
-  const visibleTransactions = (txData?.transactions.filter(
-    (tx) => !isTechnicalMaintenanceDescription(tx.description),
-  ) ?? []).slice(0, 10);
+  const visibleTransactions = loadedTransactions.slice(0, visibleTransactionCount);
+  const refreshing = fetchingBalance || fetchingTx || fetchingVideo || fetchingHelp;
+
+  const refreshAll = () => {
+    void refetchBalance();
+    void refetchTx();
+    void refetchVideo();
+    void refetchHelp();
+  };
 
   return (
     <div className="space-y-8">
@@ -163,22 +249,16 @@ export function Credits() {
           <div>
             <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Créditos e Uso</p>
             <h2 className="text-2xl font-bold text-white mb-1">Créditos</h2>
-            <p className="text-muted-foreground text-sm">
-              Acompanhe seu saldo e histórico de uso dos créditos.
-            </p>
+            <p className="text-muted-foreground text-sm">Acompanhe seu saldo e histórico de uso dos créditos.</p>
           </div>
-          <Button size="sm" variant="outline" onClick={() => { void refetchBalance(); void refetchTx(); }} disabled={fetchingBalance || fetchingTx} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
-            <RefreshCw className={`w-3.5 h-3.5 ${(fetchingBalance || fetchingTx) ? "animate-spin" : ""}`} />
+          <Button size="sm" variant="outline" onClick={refreshAll} disabled={refreshing} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
         <Card className="bg-[#111111] border-white/5">
           <CardContent className="p-6">
             {balanceLoading ? (
@@ -190,33 +270,24 @@ export function Credits() {
               <>
                 <div className="flex items-start justify-between mb-5">
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Saldo</p>
-                    <p className={`text-5xl font-bold tabular-nums ${textColor}`}>
-                      {(balance?.balance ?? 0).toLocaleString()}
-                    </p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Saldo disponível</p>
+                    <p className={`text-5xl font-bold tabular-nums ${textColor}`}>{rawBalance.toLocaleString("pt-BR")}</p>
                     <p className="text-sm text-muted-foreground mt-1.5">
-                      de {(balance?.planLimit ?? 0).toLocaleString()} créditos &middot;{" "}
-                      <span className={`capitalize font-medium ${planColors[balance?.plan ?? "free"]}`}>
-                        Plano {currentPlanDisplay}
-                      </span>
+                      <span className={`capitalize font-medium ${planColors[balance?.plan ?? "free"]}`}>Plano {currentPlanDisplay}</span>
+                      {planLimit > 0 && <span> · franquia mensal de {planLimit.toLocaleString("pt-BR")} créditos</span>}
                     </p>
                   </div>
-                  {balance?.lowCredit && (
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-medium shrink-0">
-                      Créditos Baixos
-                    </span>
+                  {genuinelyLowCredit && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-medium shrink-0">Créditos Baixos</span>
                   )}
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Créditos restantes</span>
+                    <span>Créditos disponíveis em relação à franquia</span>
                     <span>{percentage}%</span>
                   </div>
                   <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                      style={{ width: `${Math.min(percentage, 100)}%` }}
-                    />
+                    <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${percentage}%` }} />
                   </div>
                 </div>
               </>
@@ -225,7 +296,27 @@ export function Credits() {
         </Card>
       </motion.div>
 
-      {balance?.lowCredit && upgradePlans.length > 0 && (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Card className="bg-[#111111] border-white/5">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-zinc-400 mb-3"><Video className="w-4 h-4" /><span className="text-xs uppercase tracking-widest">Vídeos</span></div>
+            {videoBalanceData === undefined ? <Skeleton className="h-9 w-20 bg-white/5" /> : <p className="text-3xl font-bold text-white tabular-nums">{videoBalanceData.toLocaleString("pt-BR")}</p>}
+          </CardContent>
+        </Card>
+        <Card className="bg-[#111111] border-white/5">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 text-zinc-400 mb-3"><MessageCircle className="w-4 h-4" /><span className="text-xs uppercase tracking-widest">IAttom Help</span></div>
+            {helpUsageData === undefined ? <Skeleton className="h-9 w-20 bg-white/5" /> : (
+              <>
+                <p className="text-3xl font-bold text-white tabular-nums">{Number(helpUsageData.remaining ?? 0).toLocaleString("pt-BR")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{Number(helpUsageData.used ?? 0).toLocaleString("pt-BR")} usados</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {genuinelyLowCredit && upgradePlans.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <Card className="bg-amber-950/20 border-amber-500/20">
             <CardContent className="p-4">
@@ -234,19 +325,13 @@ export function Credits() {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-amber-400">Créditos acabando</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Atualize para{" "}
-                    <span className="text-white font-medium">{PLAN_NAMES[upgradePlans[0]] ?? upgradePlans[0]}</span>{" "}
-                    e tenha {PLAN_CREDITS[upgradePlans[0]].toLocaleString()} créditos/mês.
+                    Atualize para <span className="text-white font-medium">{PLAN_NAMES[upgradePlans[0]] ?? upgradePlans[0]}</span> e tenha {PLAN_CREDITS[upgradePlans[0]].toLocaleString()} créditos/mês.
                   </p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 pl-8">
                 {upgradePlans.slice(0, 2).map((plan) => (
-                  <button
-                    key={plan}
-                    onClick={() => navigate("/dashboard/billing")}
-                    className="text-xs px-3 py-1.5 rounded-md bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors font-medium"
-                  >
+                  <button key={plan} onClick={() => navigate("/dashboard/billing")} className="text-xs px-3 py-1.5 rounded-md bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors font-medium">
                     {PLAN_NAMES[plan] ?? plan} — {PLAN_PRICES[plan].monthlyDisplay}
                   </button>
                 ))}
@@ -256,26 +341,14 @@ export function Credits() {
         </motion.div>
       )}
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
-            Histórico de Transações
-          </h3>
-          {txData && (
-            <span className="text-xs text-muted-foreground">{visibleTransactions.length} movimentações</span>
-          )}
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Histórico de Transações</h3>
+          {txData && <span className="text-xs text-muted-foreground">{txData.total.toLocaleString("pt-BR")} movimentações</span>}
         </div>
         <Card className="bg-[#111111] border-white/5 overflow-hidden">
           {txLoading ? (
-            <div className="p-6 space-y-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full bg-white/5" />
-              ))}
-            </div>
+            <div className="p-6 space-y-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full bg-white/5" />)}</div>
           ) : txError ? (
             <div className="py-16 text-center">
               <Zap className="w-8 h-8 text-red-400/30 mx-auto mb-3" />
@@ -289,9 +362,9 @@ export function Credits() {
               <p className="text-xs text-muted-foreground mt-1">Compras, upgrades e consumos aparecerão aqui.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div onScroll={handleTransactionHistoryScroll} className="max-h-[560px] overflow-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-[#111111]">
                   <tr className="border-b border-white/5">
                     <th className="text-left px-5 py-3 text-xs text-muted-foreground font-medium">Data</th>
                     <th className="text-left px-4 py-3 text-xs text-muted-foreground font-medium">Descrição</th>
@@ -302,40 +375,18 @@ export function Credits() {
                 </thead>
                 <tbody>
                   {visibleTransactions.map((tx) => (
-                    <tr
-                      key={tx.id}
-                      className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
-                    >
+                    <tr key={tx.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                       <td className="px-5 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(tx.createdAt).toLocaleDateString("pt-BR")} {" "}
-                        <span className="text-white/30">
-                          {new Date(tx.createdAt).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
+                        {new Date(tx.createdAt).toLocaleDateString("pt-BR")} <span className="text-white/30">{new Date(tx.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
                       </td>
                       <td className="px-4 py-3 text-sm text-white max-w-xs">
                         <span className="truncate block">{translateDescription(tx.description)}</span>
-                        {tx.feature && (
-                          <span className="text-xs text-muted-foreground">
-                            {featureLabels[tx.feature] ?? tx.feature}
-                          </span>
-                        )}
+                        {tx.feature && <span className="text-xs text-muted-foreground">{featureLabels[tx.feature] ?? tx.feature}</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs capitalize ${txTypeStyles[tx.type] ?? "text-muted-foreground bg-white/5 border-white/10"}`}
-                        >
-                          {txTypeLabels[tx.type] ?? tx.type}
-                        </Badge>
+                        <Badge variant="outline" className={`text-xs capitalize ${txTypeStyles[tx.type] ?? "text-muted-foreground bg-white/5 border-white/10"}`}>{txTypeLabels[tx.type] ?? tx.type}</Badge>
                       </td>
-                      <td
-                        className={`px-4 py-3 text-right font-mono font-semibold text-sm ${
-                          tx.amount >= 0 ? "text-emerald-400" : "text-red-400"
-                        }`}
-                      >
+                      <td className={`px-4 py-3 text-right font-mono font-semibold text-sm ${tx.amount >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                         {formatTransactionAmount(tx as typeof tx & { balanceType?: string | null })}
                       </td>
                       <td className="px-5 py-3 text-right font-mono text-sm text-white tabular-nums">
@@ -343,6 +394,9 @@ export function Credits() {
                       </td>
                     </tr>
                   ))}
+                  {loadingMoreTransactions && (
+                    <tr><td colSpan={5} className="px-5 py-4 text-center text-xs text-muted-foreground">Carregando mais movimentações...</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
