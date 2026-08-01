@@ -387,10 +387,10 @@ export function Credits() {
                         <Badge variant="outline" className={`text-xs capitalize ${txTypeStyles[tx.type] ?? "text-muted-foreground bg-white/5 border-white/10"}`}>{txTypeLabels[tx.type] ?? tx.type}</Badge>
                       </td>
                       <td className={`px-4 py-3 text-right font-mono font-semibold text-sm ${tx.amount >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        {formatTransactionAmount(tx as typeof tx & { balanceType?: string | null })}
+                        {formatTransactionAmount(tx)}
                       </td>
                       <td className="px-5 py-3 text-right font-mono text-sm text-white tabular-nums">
-                        {formatTransactionBalance(tx as typeof tx & { balanceType?: string | null })}
+                        {formatTransactionBalance(tx)}
                       </td>
                     </tr>
                   ))}
