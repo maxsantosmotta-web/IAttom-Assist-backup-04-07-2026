@@ -44,3 +44,5 @@ update(financeUrl, (source) => source
 );
 
 console.log("Admin Finance module wired into menu and routes");
+
+await import("./patch-dashboard-runtime-safe.mjs");
