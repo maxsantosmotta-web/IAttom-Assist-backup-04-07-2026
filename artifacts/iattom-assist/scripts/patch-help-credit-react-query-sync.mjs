@@ -13,6 +13,118 @@ const hasCoordinatedCreditLoading =
   credits.includes("const loadHelpUsage = async") &&
   credits.includes("void loadVideoBalance(); void loadHelpUsage();");
 
+if (hasCoordinatedCreditLoading) {
+  const oldVideoLoader = `  const loadVideoBalance = async () => {
+    setVideoLoading(true);
+    try {
+      const response = await fetch("/api/videos/balance", { credentials: "include", cache: "no-store" });
+      if (!response.ok) throw new Error("video balance request failed");
+      const video = await response.json() as { videoBalance?: number };
+      setVideoBalance(Number(video.videoBalance ?? 0));
+    } catch {
+      // Mantém o último saldo válido em falhas temporárias.
+    } finally {
+      setVideoLoading(false);
+    }
+  };`;
+  const resilientVideoLoader = `  const loadVideoBalance = async (): Promise<boolean> => {
+    setVideoLoading(true);
+    try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch("/api/videos/balance", { credentials: "include", cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("video balance request failed");
+        const video = await response.json() as { videoBalance?: number };
+        setVideoBalance(Number(video.videoBalance ?? 0));
+        return true;
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    } catch {
+      return false;
+    } finally {
+      setVideoLoading(false);
+    }
+  };`;
+
+  const oldHelpLoader = `  const loadHelpUsage = async () => {
+    setHelpLoading(true);
+    try {
+      const response = await fetch("/api/help/usage", { credentials: "include", cache: "no-store" });
+      if (!response.ok) throw new Error("help usage request failed");
+      const help = await response.json() as { used?: number };
+      setHelpUsed(Number(help.used ?? 0));
+    } catch {
+      // Mantém o último contador válido em falhas temporárias.
+    } finally {
+      setHelpLoading(false);
+    }
+  };`;
+  const resilientHelpLoader = `  const loadHelpUsage = async (): Promise<boolean> => {
+    setHelpLoading(true);
+    try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch("/api/help/usage", { credentials: "include", cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("help usage request failed");
+        const help = await response.json() as { used?: number };
+        setHelpUsed(Number(help.used ?? 0));
+        return true;
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    } catch {
+      return false;
+    } finally {
+      setHelpLoading(false);
+    }
+  };`;
+
+  if (credits.includes(oldVideoLoader)) credits = credits.replace(oldVideoLoader, resilientVideoLoader);
+  if (credits.includes(oldHelpLoader)) credits = credits.replace(oldHelpLoader, resilientHelpLoader);
+
+  const oldEntryEffect = `  useEffect(() => {
+    void loadVideoBalance();
+    void loadHelpUsage();
+  }, []);`;
+  const resilientEntryEffect = `  useEffect(() => {
+    let cancelled = false;
+    let retryTimer: number | undefined;
+
+    const loadOnEntry = async () => {
+      const [videoOk, helpOk] = await Promise.all([
+        loadVideoBalance(),
+        loadHelpUsage(),
+      ]);
+      if (cancelled || (videoOk && helpOk)) return;
+
+      retryTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        if (!videoOk) void loadVideoBalance();
+        if (!helpOk) void loadHelpUsage();
+      }, 900);
+    };
+
+    const entryTimer = window.setTimeout(() => {
+      void loadOnEntry();
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(entryTimer);
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+    };
+  }, []);`;
+
+  if (credits.includes(oldEntryEffect)) {
+    credits = credits.replace(oldEntryEffect, resilientEntryEffect);
+  } else if (!credits.includes("const loadOnEntry = async")) {
+    throw new Error("Credits automatic entry loading marker not found");
+  }
+}
+
 if (!hasCoordinatedCreditLoading) {
   // Compatibilidade com a implementação antiga baseada em React Query.
   if (!credits.includes('import { useQuery } from "@tanstack/react-query";')) {
@@ -116,6 +228,9 @@ const hasValidCreditCards = hasCoordinatedCreditLoading || (
 if (!hasValidCreditCards) {
   throw new Error("Credits Help/video synchronization was not installed");
 }
+if (hasCoordinatedCreditLoading && !credits.includes("const loadOnEntry = async")) {
+  throw new Error("Credits automatic entry recovery was not installed");
+}
 if (credits.includes("const [videoBalance, setVideoBalance] = useState(0)") || credits.includes("const [helpUsed, setHelpUsed] = useState(0)")) {
   throw new Error("False zero Help/video state still exists");
 }
@@ -125,4 +240,4 @@ if (help.includes('window.dispatchEvent(new CustomEvent("iattom-help-usage-updat
 
 writeFileSync(helpUrl, help);
 writeFileSync(creditsUrl, credits);
-console.log("Help synchronization is compatible with the current Credits loading flow.");
+console.log("Credits loads video and Help automatically on entry, with timeout and one recovery attempt.");
