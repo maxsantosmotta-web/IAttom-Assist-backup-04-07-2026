@@ -44,6 +44,3 @@ jobs:
 
       - name: Trace Credits rewrite patch
         run: node .github/scripts/trace-credits-rewrite.mjs
-
-      - name: Build frontend
-        run: pnpm --filter @workspace/iattom-assist build
