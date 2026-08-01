@@ -17,4 +17,4 @@ export const logger = pino({
           options: { colorize: true },
         },
       }),
-}) as Logger;
+}) as unknown as Logger<string>;
