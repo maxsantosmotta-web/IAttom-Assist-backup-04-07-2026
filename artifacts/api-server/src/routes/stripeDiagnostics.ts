@@ -9,7 +9,8 @@ router.get(
   requireAuth,
   async (req: Request, res: Response) => {
     const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
-    const sessionId = req.params.sessionId?.trim();
+    const rawSessionId = req.params.sessionId;
+    const sessionId = (Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId)?.trim();
 
     if (!sessionId || !sessionId.startsWith("cs_")) {
       return res.status(400).json({ error: "Invalid Stripe checkout session id" });
