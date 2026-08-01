@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Gift, Copy, Check, Users, Zap, ArrowRight, ExternalLink, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,51 @@ interface ReferralData {
 }
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const REFERRAL_CACHE_TTL_MS = 60_000;
+
+let referralCache: { data: ReferralData; fetchedAt: number } | null = null;
+let referralRequest: Promise<ReferralData> | null = null;
+
+async function fetchReferralData(getToken: () => Promise<string | null>, force = false): Promise<ReferralData> {
+  const now = Date.now();
+  if (!force && referralCache && now - referralCache.fetchedAt < REFERRAL_CACHE_TTL_MS) {
+    return referralCache.data;
+  }
+
+  if (referralRequest) return referralRequest;
+
+  referralRequest = (async () => {
+    const token = await getToken();
+    if (!token) throw new Error("Sessão indisponível.");
+
+    const res = await fetch(`${basePath}/api/referral/my`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null) as { error?: string } | null;
+      throw new Error(payload?.error ?? `Não foi possível carregar as indicações (${res.status}).`);
+    }
+
+    const data = await res.json() as ReferralData;
+    referralCache = { data, fetchedAt: Date.now() };
+    return data;
+  })().finally(() => {
+    referralRequest = null;
+  });
+
+  return referralRequest;
+}
 
 export function Referral() {
   const { toast } = useToast();
   const { getToken } = useAuth();
-  const [data, setData] = useState<ReferralData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshTick, setRefreshTick] = useState(0);
+  const getTokenRef = useRef(getToken);
+  const mountedRef = useRef(true);
+  const [data, setData] = useState<ReferralData | null>(() => referralCache?.data ?? null);
+  const [loading, setLoading] = useState(() => !referralCache);
+  const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [applyCode, setApplyCode] = useState("");
@@ -36,56 +74,81 @@ export function Referral() {
   const [applySuccess, setApplySuccess] = useState("");
 
   useEffect(() => {
-    setLoading(true);
-    (async () => {
-      try {
-        const token = await getToken();
-        const res = await fetch(`${basePath}/api/referral/my`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) setData(await res.json());
-      } finally {
-        setLoading(false);
+    getTokenRef.current = getToken;
+  }, [getToken]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const loadReferral = useCallback(async (force = false) => {
+    if (!force && referralCache) {
+      setData(referralCache.data);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+    setError("");
+
+    try {
+      const nextData = await fetchReferralData(() => getTokenRef.current(), force);
+      if (mountedRef.current) setData(nextData);
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : "Não foi possível carregar as indicações.");
       }
-    })();
-  }, [refreshTick, getToken]);
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadReferral(false);
+  }, [loadReferral]);
 
   const copyLink = async () => {
     if (!data) return;
     await navigator.clipboard.writeText(data.shareUrl);
     setCopied(true);
     toast({ title: "Link copiado", description: "Envie para amigos e ganhe créditos quando eles entrarem." });
-    setTimeout(() => setCopied(false), 2500);
+    window.setTimeout(() => setCopied(false), 2500);
   };
 
   const copyCode = async () => {
     if (!data) return;
     await navigator.clipboard.writeText(data.code);
     setCodeCopied(true);
-    setTimeout(() => setCodeCopied(false), 2000);
+    window.setTimeout(() => setCodeCopied(false), 2000);
   };
 
   const applyReferral = async () => {
-    if (!applyCode.trim()) return;
+    if (!applyCode.trim() || applying) return;
     setApplying(true);
     setApplyError("");
     setApplySuccess("");
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
+      if (!token) throw new Error("Sessão indisponível.");
       const res = await fetch(`${basePath}/api/referral/use`, {
         method: "POST",
+        credentials: "include",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ code: applyCode.trim() }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({})) as { error?: string; creditsAwarded?: number };
       if (!res.ok) {
         setApplyError(json.error ?? "Algo deu errado.");
       } else {
-        setApplySuccess(`${json.creditsAwarded} créditos de bônus adicionados à sua conta.`);
+        setApplySuccess(`${json.creditsAwarded ?? 0} créditos de bônus adicionados à sua conta.`);
         setApplyCode("");
+        referralCache = null;
+        await loadReferral(true);
       }
-    } catch {
-      setApplyError("Erro de rede. Tente novamente.");
+    } catch (err) {
+      setApplyError(err instanceof Error ? err.message : "Erro de rede. Tente novamente.");
     } finally {
       setApplying(false);
     }
@@ -107,30 +170,35 @@ export function Referral() {
               <p className="text-xs text-primary uppercase tracking-widest font-semibold">Indicações</p>
             </div>
             <h1 className="text-2xl font-bold text-white">Indique e Ganhe</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Indique amigos e ambos ganham créditos quando eles entram.
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Indique amigos e ambos ganham créditos quando eles entram.</p>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setRefreshTick((t) => t + 1)} disabled={loading} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void loadReferral(true)}
+            disabled={loading}
+            className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1"
+          >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
         </div>
       </motion.div>
 
+      {error && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-xs text-red-300">
+          <div className="flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" />{error}</div>
+          <button onClick={() => void loadReferral(true)} className="text-red-200 hover:text-white font-semibold">Tentar novamente</button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: "Amigos Indicados", value: loading ? "—" : (data?.totalUses ?? 0).toString(), icon: Users, color: "text-primary" },
-          { label: "Créditos Ganhos", value: loading ? "—" : (data?.creditsEarned ?? 0).toString(), icon: Zap, color: "text-amber-400" },
+          { label: "Amigos Indicados", value: loading && !data ? "—" : (data?.totalUses ?? 0).toString(), icon: Users, color: "text-primary" },
+          { label: "Créditos Ganhos", value: loading && !data ? "—" : (data?.creditsEarned ?? 0).toString(), icon: Zap, color: "text-amber-400" },
           { label: "Créditos por Indicação", value: `${data?.referrerBonus ?? 50}`, icon: Gift, color: "text-emerald-400" },
         ].map((stat) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
-            className="glass-surface rounded-xl border border-white/[0.07] p-5 card-hover"
-          >
+          <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }} className="glass-surface rounded-xl border border-white/[0.07] p-5 card-hover">
             <stat.icon className={`w-4 h-4 ${stat.color} mb-3`} />
             <p className="text-2xl font-bold text-white">{stat.value}</p>
             <p className="text-xs text-zinc-500 mt-0.5">{stat.label}</p>
@@ -138,135 +206,66 @@ export function Referral() {
         ))}
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.1 }}
-        className="rounded-2xl border border-primary/20 bg-[#111111] p-6 relative overflow-hidden"
-      >
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1 }} className="rounded-2xl border border-primary/20 bg-[#111111] p-6 relative overflow-hidden">
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         <div className="absolute top-0 right-0 w-64 h-64 pointer-events-none" style={{ background: "radial-gradient(ellipse at top right, rgba(201,168,76,0.06) 0%, transparent 65%)" }} />
-
         <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest mb-4">Seu Código de Indicação</p>
-
-        {loading ? (
+        {loading && !data ? (
           <div className="h-16 skeleton-shimmer rounded-xl" />
         ) : (
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 flex items-center gap-3 bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3">
-              <span className="text-2xl font-mono font-bold text-primary tracking-widest">{data?.code ?? "Carregando..."}</span>
-              <button
-                onClick={copyCode}
-                className="ml-auto p-1.5 text-zinc-500 hover:text-zinc-200 rounded-lg hover:bg-white/[0.06] transition-colors"
-              >
+              <span className="text-2xl font-mono font-bold text-primary tracking-widest">{data?.code ?? "—"}</span>
+              <button onClick={copyCode} className="ml-auto p-1.5 text-zinc-500 hover:text-zinc-200 rounded-lg hover:bg-white/[0.06] transition-colors">
                 {codeCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
-            <Button
-              onClick={copyLink}
-              className="bg-primary text-black hover:bg-primary/90 font-semibold px-5 gap-2 shrink-0"
-            >
+            <Button onClick={copyLink} disabled={!data} className="bg-primary text-black hover:bg-primary/90 font-semibold px-5 gap-2 shrink-0">
               {copied ? <Check className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
               {copied ? "Copiado!" : "Copiar link"}
             </Button>
           </div>
         )}
-
-        {data && (
-          <p className="text-xs text-zinc-600 mt-3 font-mono truncate">{data.shareUrl}</p>
-        )}
+        {data && <p className="text-xs text-zinc-600 mt-3 font-mono truncate">{data.shareUrl}</p>}
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.15 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.15 }}>
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-4">Como funciona</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {steps.map((step) => (
             <div key={step.n} className="flex gap-3 p-4 rounded-xl border border-white/[0.06] bg-[#111111]">
-              <div className="w-7 h-7 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
-                <span className="text-xs font-bold text-primary">{step.n}</span>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white mb-0.5">{step.label}</p>
-                <p className="text-xs text-zinc-500 leading-relaxed">{step.desc}</p>
-              </div>
+              <div className="w-7 h-7 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0"><span className="text-xs font-bold text-primary">{step.n}</span></div>
+              <div><p className="text-sm font-semibold text-white mb-0.5">{step.label}</p><p className="text-xs text-zinc-500 leading-relaxed">{step.desc}</p></div>
             </div>
           ))}
         </div>
       </motion.div>
 
       {data && data.recentReferrals.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.2 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.2 }}>
           <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-3">Indicações Recentes</h2>
           <div className="rounded-xl border border-white/[0.06] bg-[#111111] divide-y divide-white/[0.04]">
             {data.recentReferrals.map((r, i) => (
-              <div key={i} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-white/[0.05] flex items-center justify-center">
-                    <Users className="w-3.5 h-3.5 text-zinc-500" />
-                  </div>
-                  <span className="text-xs text-zinc-400 font-mono">{r.referredUserId}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] px-2">
-                    +{r.creditsAwarded} créditos
-                  </Badge>
-                  <span className="text-[10px] text-zinc-600">
-                    {new Date(r.createdAt).toLocaleDateString("pt-BR", { month: "short", day: "numeric" })}
-                  </span>
-                </div>
+              <div key={`${r.referredUserId}-${r.createdAt}-${i}`} className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-full bg-white/[0.05] flex items-center justify-center"><Users className="w-3.5 h-3.5 text-zinc-500" /></div><span className="text-xs text-zinc-400 font-mono">{r.referredUserId}</span></div>
+                <div className="flex items-center gap-3"><Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] px-2">+{r.creditsAwarded} créditos</Badge><span className="text-[10px] text-zinc-600">{new Date(r.createdAt).toLocaleDateString("pt-BR", { month: "short", day: "numeric" })}</span></div>
               </div>
             ))}
           </div>
         </motion.div>
       )}
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.25 }}
-        className="rounded-xl border border-white/[0.06] bg-[#111111] p-5"
-      >
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.25 }} className="rounded-xl border border-white/[0.06] bg-[#111111] p-5">
         <h2 className="text-sm font-semibold text-white mb-1">Tem um código de indicação?</h2>
-        <p className="text-xs text-zinc-500 mb-4">
-          Insira o código de um amigo para receber {data?.referredBonus ?? 25} créditos de bônus na sua conta.
-        </p>
+        <p className="text-xs text-zinc-500 mb-4">Insira o código de um amigo para receber {data?.referredBonus ?? 25} créditos de bônus na sua conta.</p>
         <div className="flex gap-3">
-          <input
-            value={applyCode}
-            onChange={(e) => { setApplyCode(e.target.value.toUpperCase()); setApplyError(""); setApplySuccess(""); }}
-            placeholder="XXXX-XXXX"
-            maxLength={9}
-            className="flex-1 bg-[#0a0a0a] border border-white/10 rounded-lg px-3 py-2 text-sm font-mono text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/40 transition-colors"
-            onKeyDown={(e) => e.key === "Enter" && applyReferral()}
-          />
-          <Button
-            onClick={applyReferral}
-            disabled={applying || !applyCode.trim()}
-            className="bg-white/8 hover:bg-white/12 border border-white/10 text-zinc-200 text-sm gap-1.5"
-          >
+          <input value={applyCode} onChange={(e) => { setApplyCode(e.target.value.toUpperCase()); setApplyError(""); setApplySuccess(""); }} placeholder="XXXX-XXXX" maxLength={9} className="flex-1 bg-[#0a0a0a] border border-white/10 rounded-lg px-3 py-2 text-sm font-mono text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary/40 transition-colors" onKeyDown={(e) => e.key === "Enter" && void applyReferral()} />
+          <Button onClick={() => void applyReferral()} disabled={applying || !applyCode.trim()} className="bg-white/8 hover:bg-white/12 border border-white/10 text-zinc-200 text-sm gap-1.5">
             {applying ? "Aplicando..." : <>Aplicar <ArrowRight className="w-3.5 h-3.5" /></>}
           </Button>
         </div>
-        {applyError && (
-          <div className="flex items-center gap-2 mt-2.5 text-xs text-red-400">
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-            {applyError}
-          </div>
-        )}
-        {applySuccess && (
-          <div className="flex items-center gap-2 mt-2.5 text-xs text-emerald-400">
-            <Check className="w-3.5 h-3.5 shrink-0" />
-            {applySuccess}
-          </div>
-        )}
+        {applyError && <div className="flex items-center gap-2 mt-2.5 text-xs text-red-400"><AlertCircle className="w-3.5 h-3.5 shrink-0" />{applyError}</div>}
+        {applySuccess && <div className="flex items-center gap-2 mt-2.5 text-xs text-emerald-400"><Check className="w-3.5 h-3.5 shrink-0" />{applySuccess}</div>}
       </motion.div>
     </div>
   );
