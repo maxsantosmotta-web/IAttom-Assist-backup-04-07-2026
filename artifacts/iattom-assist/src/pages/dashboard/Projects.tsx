@@ -21,26 +21,29 @@ interface SavedItem extends SavedItemBase {
   type: "campaign" | "content" | "creative" | "video_script" | "product_discovery" | "product_validation" | "prompt";
 }
 
-type TabKey = "all" | "campaign" | "content" | "creative" | "video_script" | "product_discovery" | "prompt";
+type TabKey = "all" | "campaign" | "content" | "creative" | "video_script" | "video_effect" | "prompt" | "product_discovery" | "product_validation";
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
-  { key: "all",               label: "Todos",            icon: BookOpen   },
-  { key: "campaign",          label: "Campanhas",        icon: Megaphone  },
-  { key: "content",           label: "Conteúdos",        icon: FileText   },
-  { key: "creative",          label: "Criativos",        icon: Sparkles   },
-  { key: "video_script",      label: "Scripts de Vídeo", icon: Video      },
-  { key: "prompt",            label: "Prompts",          icon: BookMarked },
-  { key: "product_discovery", label: "Produtos",         icon: Search     },
+  { key: "all",                label: "Todos",            icon: BookOpen   },
+  { key: "campaign",           label: "Campanhas",        icon: Megaphone  },
+  { key: "content",            label: "Conteúdos",        icon: FileText   },
+  { key: "creative",           label: "Imagens",          icon: Sparkles   },
+  { key: "video_script",       label: "Scripts de Vídeo", icon: Video      },
+  { key: "video_effect",       label: "Vídeo com Efeito", icon: Video      },
+  { key: "prompt",             label: "Prompts",          icon: BookMarked },
+  { key: "product_discovery",  label: "Produtos",         icon: Search     },
+  { key: "product_validation", label: "Validar Produto",  icon: Search     },
 ];
 
 const TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; badge: string; cardIcon: string }> = {
-  campaign:           { label: "Campanha",        icon: Megaphone,  badge: "text-primary bg-primary/10 border-primary/20",           cardIcon: "text-primary" },
-  content:            { label: "Conteúdo",         icon: FileText,   badge: "text-blue-400 bg-blue-500/10 border-blue-500/20",         cardIcon: "text-blue-400" },
-  creative:           { label: "Criativo",         icon: Sparkles,   badge: "text-violet-400 bg-violet-500/10 border-violet-500/20",   cardIcon: "text-violet-400" },
-  video_script:       { label: "Script de Vídeo",  icon: Video,      badge: "text-pink-400 bg-pink-500/10 border-pink-500/20",         cardIcon: "text-pink-400" },
-  prompt:             { label: "Prompt",           icon: BookMarked, badge: "text-amber-400 bg-amber-500/10 border-amber-500/20",       cardIcon: "text-amber-400" },
-  product_discovery:  { label: "Produtos",         icon: Search,     badge: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", cardIcon: "text-emerald-400" },
-  product_validation: { label: "Validação",        icon: Search,     badge: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", cardIcon: "text-emerald-400" },
+  campaign:           { label: "Campanha",         icon: Megaphone,  badge: "text-primary bg-primary/10 border-primary/20",           cardIcon: "text-primary" },
+  content:            { label: "Conteúdo",          icon: FileText,   badge: "text-blue-400 bg-blue-500/10 border-blue-500/20",         cardIcon: "text-blue-400" },
+  creative:           { label: "Imagem",            icon: Sparkles,   badge: "text-violet-400 bg-violet-500/10 border-violet-500/20",   cardIcon: "text-violet-400" },
+  video_script:       { label: "Script de Vídeo",   icon: Video,      badge: "text-pink-400 bg-pink-500/10 border-pink-500/20",         cardIcon: "text-pink-400" },
+  video_effect:       { label: "Vídeo com Efeito",  icon: Video,      badge: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",          cardIcon: "text-cyan-400" },
+  prompt:             { label: "Prompt",            icon: BookMarked, badge: "text-amber-400 bg-amber-500/10 border-amber-500/20",       cardIcon: "text-amber-400" },
+  product_discovery:  { label: "Produtos",          icon: Search,     badge: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", cardIcon: "text-emerald-400" },
+  product_validation: { label: "Validar Produto",   icon: Search,     badge: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", cardIcon: "text-emerald-400" },
 };
 
 const platformLabels: Record<string, string> = {
@@ -59,14 +62,29 @@ function readStorage(): SavedItem[] {
   } catch { return []; }
 }
 
+function isVideoEffectItem(item: SavedItem): boolean {
+  try {
+    const parsed = item.data ? JSON.parse(item.data) as { type?: string; provider?: string } : null;
+    return parsed?.type === "image-motion-video"
+      || parsed?.type === "image-motion-source"
+      || parsed?.provider === "fal";
+  } catch {
+    return /vídeo com imagem|vídeo com efeito|movimento de imagem/i.test(item.content ?? "");
+  }
+}
+
+function itemTabKey(item: SavedItem): TabKey {
+  return isVideoEffectItem(item) ? "video_effect" : item.type;
+}
+
 const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const itemVariants = { hidden: { opacity: 0, scale: 0.97 }, show: { opacity: 1, scale: 1, transition: { duration: 0.2 } } };
 
 export function Projects() {
   const { getItems, trashItem, saveItem } = useSavedItems();
   const [savedItems, setSavedItems] = useState<SavedItem[]>(readStorage);
-  const [tab, setTab]               = useState<TabKey>("all");
-  const [search, setSearch]         = useState("");
+  const [tab, setTab] = useState<TabKey>("all");
+  const [search, setSearch] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -80,17 +98,12 @@ export function Projects() {
       setSavedItems(apiItems as SavedItem[]);
 
       if (apiItems.length > 0) {
-        // Banco tem dados → banco é a fonte da verdade, sincroniza localStorage
         try { localStorage.setItem("iattom_saved_items_v1", JSON.stringify(apiItems)); } catch { /* noop */ }
       } else {
-        // Banco retornou vazio — lê localStorage ANTES de modificá-lo
         const local = readStorage();
-        // Limpa localStorage imediatamente: banco é fonte da verdade, evita re-inserção futura de itens deletados
         try { localStorage.setItem("iattom_saved_items_v1", JSON.stringify([])); } catch { /* noop */ }
 
         if (local.length > 0) {
-          // Migração one-time: sobe itens locais ao banco
-          // ON CONFLICT DO UPDATE não toca deletedAt → itens já excluídos no banco não ressurgem
           try {
             await Promise.all(
               local.map(item =>
@@ -100,10 +113,10 @@ export function Projects() {
             const migrated = await getItems();
             setSavedItems(migrated as SavedItem[]);
             try { localStorage.setItem("iattom_saved_items_v1", JSON.stringify(migrated)); } catch { /* noop */ }
-          } catch { /* migração falhou — mantém visão local */ }
+          } catch { /* mantém visão local */ }
         }
       }
-    } catch { /* API offline — mantém dados do localStorage */ }
+    } catch { /* API offline — mantém dados locais */ }
     finally { if (showSpinner) setIsRefreshing(false); }
   }
 
@@ -120,13 +133,16 @@ export function Projects() {
   }, []);
 
   const filteredItems = savedItems.filter((item) => {
-    const matchTab    = tab === "all" || item.type === tab;
+    const itemKey = itemTabKey(item);
+    const matchTab = tab === "all" || itemKey === tab;
     const matchSearch = !search || item.title.toLowerCase().includes(search.toLowerCase());
     return matchTab && matchSearch;
   });
 
-  const counts = TABS.reduce<Record<string, number>>((acc, t) => {
-    acc[t.key] = t.key === "all" ? savedItems.length : savedItems.filter((i) => i.type === t.key).length;
+  const counts = TABS.reduce<Record<string, number>>((acc, currentTab) => {
+    acc[currentTab.key] = currentTab.key === "all"
+      ? savedItems.length
+      : savedItems.filter((item) => itemTabKey(item) === currentTab.key).length;
     return acc;
   }, {});
 
@@ -154,107 +170,55 @@ export function Projects() {
 
   return (
     <div className="flex min-h-0 flex-col gap-8 lg:h-[calc(100dvh-7rem)]">
-
-      {/* Header */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs text-primary uppercase tracking-widest font-medium mb-1">Espaço de Trabalho</p>
             <h2 className="text-2xl font-bold text-white mb-1">Biblioteca</h2>
-            <p className="text-muted-foreground text-sm">
-              Campanhas, conteúdos, criativos, scripts e prompts gerados e salvos.
-            </p>
+            <p className="text-muted-foreground text-sm">Campanhas, conteúdos, imagens, scripts de vídeo, vídeos com efeito, prompts, produtos e validações salvos.</p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => window.location.reload()}
-            disabled={isRefreshing}
-            className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1"
-          >
+          <Button size="sm" variant="outline" onClick={() => window.location.reload()} disabled={isRefreshing} className="border-white/10 text-zinc-400 hover:text-white hover:border-white/20 gap-1.5 shrink-0 mt-1">
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
         </div>
       </motion.div>
 
-      {/* Tabs com contadores */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }}
-        className="flex flex-wrap gap-2"
-      >
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = tab === t.key;
-          const count = counts[t.key] ?? 0;
-          if (t.key !== "all" && count === 0) return null;
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }} className="flex flex-wrap gap-2">
+        {TABS.map((currentTab) => {
+          const Icon = currentTab.icon;
+          const active = tab === currentTab.key;
+          const count = counts[currentTab.key] ?? 0;
+          if (currentTab.key !== "all" && count === 0) return null;
           return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                active
-                  ? "bg-primary/15 text-primary border-primary/30"
-                  : "text-zinc-500 border-white/8 hover:border-white/20 hover:text-zinc-300"
-              }`}
-            >
+            <button key={currentTab.key} onClick={() => setTab(currentTab.key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${active ? "bg-primary/15 text-primary border-primary/30" : "text-zinc-500 border-white/8 hover:border-white/20 hover:text-zinc-300"}`}>
               <Icon className="w-3.5 h-3.5" />
-              {t.label}
-              <span className={`text-[10px] ${active ? "text-primary/70" : "text-zinc-700"}`}>
-                {count}
-              </span>
+              {currentTab.label}
+              <span className={`text-[10px] ${active ? "text-primary/70" : "text-zinc-700"}`}>{count}</span>
             </button>
           );
         })}
       </motion.div>
 
-      {/* Busca */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }}
-        className="relative"
-      >
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }} className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        <Input
-          placeholder="Buscar projetos salvos..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10 bg-[#111111] border-white/5 focus-visible:ring-primary/50"
-        />
+        <Input placeholder="Buscar projetos salvos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-[#111111] border-white/5 focus-visible:ring-primary/50" />
       </motion.div>
 
-      {/* Grid de cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}
-        className={`min-h-0 max-h-[65dvh] flex-1 overflow-y-auto overscroll-contain pr-1 pb-4 transition-opacity duration-150 lg:max-h-none ${isRefreshing ? "opacity-50 pointer-events-none" : ""}`}
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }} className={`min-h-0 max-h-[65dvh] flex-1 overflow-y-auto overscroll-contain pr-1 pb-4 transition-opacity duration-150 lg:max-h-none ${isRefreshing ? "opacity-50 pointer-events-none" : ""}`}>
         {filteredItems.length === 0 ? (
           <div className="flex min-h-full flex-col items-center justify-center py-24 text-center">
             <div className="relative mb-6">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-white/[0.04] to-transparent border border-white/[0.07] flex items-center justify-center">
-                <FolderOpen className="w-8 h-8 text-white/[0.15]" />
-              </div>
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-primary/[0.12] border border-primary/25 flex items-center justify-center">
-                <Plus className="w-4 h-4 text-primary" />
-              </div>
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-white/[0.04] to-transparent border border-white/[0.07] flex items-center justify-center"><FolderOpen className="w-8 h-8 text-white/[0.15]" /></div>
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-primary/[0.12] border border-primary/25 flex items-center justify-center"><Plus className="w-4 h-4 text-primary" /></div>
             </div>
-            <p className="text-base font-semibold text-zinc-300 mb-1.5">
-              {search || tab !== "all" ? "Nenhum item encontrado" : "Sem projetos salvos ainda"}
-            </p>
-            <p className="text-sm text-zinc-600 max-w-[260px] leading-relaxed">
-              {search || tab !== "all"
-                ? "Tente outro filtro ou termo de busca."
-                : "Gere e salve campanhas, criativos, conteúdos, scripts e prompts."}
-            </p>
+            <p className="text-base font-semibold text-zinc-300 mb-1.5">{search || tab !== "all" ? "Nenhum item encontrado" : "Sem projetos salvos ainda"}</p>
+            <p className="text-sm text-zinc-600 max-w-[260px] leading-relaxed">{search || tab !== "all" ? "Tente outro filtro ou termo de busca." : "Gere e salve campanhas, imagens, scripts de vídeo, vídeos com efeito, prompts, conteúdos, produtos e validações."}</p>
           </div>
         ) : (
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
+          <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredItems.map((item) => {
-              const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.campaign;
+              const cfg = TYPE_CONFIG[itemTabKey(item)] ?? TYPE_CONFIG.campaign;
               const Icon = cfg.icon;
               const preview = item.content?.slice(0, 120).trim() ?? "";
               return (
@@ -263,38 +227,23 @@ export function Projects() {
                     <CardContent className="p-4 flex flex-col gap-3 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                            <Icon className={`w-4 h-4 ${cfg.cardIcon}`} />
-                          </div>
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0"><Icon className={`w-4 h-4 ${cfg.cardIcon}`} /></div>
                           <p className="text-sm font-semibold text-white truncate">{item.title}</p>
                         </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(item.id); }}
-                          className="text-zinc-700 hover:text-red-400 transition-colors p-1 opacity-0 group-hover:opacity-100 shrink-0"
-                          title="Mover para lixeira"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(item.id); }} className="text-zinc-700 hover:text-red-400 transition-colors p-1 opacity-0 group-hover:opacity-100 shrink-0" title="Mover para lixeira"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
 
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${cfg.badge}`}>
-                          {cfg.label}
-                        </Badge>
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${cfg.badge}`}>{cfg.label}</Badge>
                         {item.platform && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-zinc-500 bg-white/[0.03] border-white/10">
-                            <Globe className="w-2.5 h-2.5 mr-1" />
-                            {platformLabels[item.platform] ?? item.platform}
+                            <Globe className="w-2.5 h-2.5 mr-1" />{platformLabels[item.platform] ?? item.platform}
                           </Badge>
                         )}
                         <MediaTagBadges data={item.data} />
                       </div>
 
-                      {preview && (
-                        <p className="text-[11px] text-zinc-500 leading-relaxed line-clamp-3 flex-1">
-                          {preview}{item.content && item.content.length > 120 ? "…" : ""}
-                        </p>
-                      )}
+                      {preview && <p className="text-[11px] text-zinc-500 leading-relaxed line-clamp-3 flex-1">{preview}{item.content && item.content.length > 120 ? "…" : ""}</p>}
 
                       <div className="flex items-center justify-between gap-2 text-[10px] text-zinc-700 mt-auto pt-1">
                         <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(item.createdAt)}</span>
@@ -311,14 +260,8 @@ export function Projects() {
 
       <Dialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open && !deletingId) setConfirmDeleteId(null); }}>
         <DialogContent className="bg-[#111111] border-white/10 max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base text-white">Mover para a lixeira?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-zinc-400 leading-relaxed">
-            {confirmItem
-              ? `“${confirmItem.title}” será movido para a lixeira. Você poderá restaurá-lo depois.`
-              : "Este projeto será movido para a lixeira."}
-          </p>
+          <DialogHeader><DialogTitle className="text-base text-white">Mover para a lixeira?</DialogTitle></DialogHeader>
+          <p className="text-sm text-zinc-400 leading-relaxed">{confirmItem ? `“${confirmItem.title}” será movido para a lixeira. Você poderá restaurá-lo depois.` : "Este projeto será movido para a lixeira."}</p>
           <DialogFooter className="gap-2 mt-3">
             <Button variant="outline" onClick={() => setConfirmDeleteId(null)} disabled={!!deletingId} className="border-white/10 text-zinc-400 hover:text-white">Cancelar</Button>
             <Button onClick={() => confirmDeleteId && void handleConfirmTrash(confirmDeleteId)} disabled={!!deletingId} className="bg-red-600 hover:bg-red-700 text-white gap-2">
@@ -328,7 +271,6 @@ export function Projects() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
