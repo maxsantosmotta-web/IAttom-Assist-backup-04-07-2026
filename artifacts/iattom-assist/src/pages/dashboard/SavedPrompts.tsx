@@ -120,7 +120,7 @@ export function SavedPrompts() {
         const existingPromptKeys = new Set(
           currentItems
             .filter((item) => item.type === "prompt")
-            .map((item) => `${item.title.trim()}\n${item.content.trim()}`),
+            .map((item) => `${item.title.trim()}\n${(item.content ?? "").trim()}`),
         );
 
         let migrated = 0;

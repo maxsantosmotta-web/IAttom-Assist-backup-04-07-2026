@@ -188,7 +188,7 @@ export function AdminOverview() {
     (async () => {
       try {
         const token = await getToken();
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
         const [growthResponse, financialResponse, creditsResponse] = await Promise.all([
           fetch(`${BASE}/api/admin/growth-stats`, { headers, credentials: "include" }),
           fetch(`${BASE}/api/admin/financial-summary`, { headers, credentials: "include" }),

@@ -104,17 +104,16 @@ export function DashboardHome() {
   const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "você";
   const planLabel = planName;
 
-  const recentModules = historyData
-    ? Array.from(new Map(
-        historyData
-          .map((historyItem) => {
-            const normalizedModule = MODULE_ALIASES[historyItem.module] ?? historyItem.module;
-            const action = quickActions.find((candidate) => candidate.module === normalizedModule);
-            return action ? [`${action.module}:${action.creativeMode ?? "default"}`, action] as const : null;
-          })
-          .filter((entry): entry is readonly [string, QuickAction] => entry !== null),
-      ).values()).slice(0, 3)
-    : [];
+  const recentModules = (() => {
+  const unique = new Map<string, QuickAction>();
+  for (const historyItem of historyData ?? []) {
+    const normalizedModule = MODULE_ALIASES[historyItem.module] ?? historyItem.module;
+    const action = quickActions.find((candidate) => candidate.module === normalizedModule);
+    if (!action) continue;
+    unique.set(`${action.module}:${action.creativeMode ?? "default"}`, action);
+  }
+  return [...unique.values()].slice(0, 3);
+})();
 
   const summaryForBadges = {
     totalActions: summary?.totalActions ?? 0,
