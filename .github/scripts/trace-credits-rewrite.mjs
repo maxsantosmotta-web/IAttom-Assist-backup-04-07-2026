@@ -4,11 +4,12 @@ import { execSync } from "node:child_process";
 
 const root = process.cwd();
 const frontendDir = path.join(root, "artifacts/iattom-assist");
-const packageJson = JSON.parse(fs.readFileSync(path.join(frontendDir, "package.json"), "utf8"));
+const apiDir = path.join(root, "artifacts/api-server");
+const packageJson = JSON.parse(fs.readFileSync(path.join(apiDir, "package.json"), "utf8"));
 const commands = String(packageJson.scripts.build)
   .split("&&")
   .map((command) => command.trim())
-  .filter((command) => command.startsWith("node scripts/"));
+  .filter((command) => command.startsWith("node "));
 const creditsPath = path.join(frontendDir, "src/pages/dashboard/Credits.tsx");
 
 function assertCreditsSyntax(command) {
@@ -31,10 +32,10 @@ function assertCreditsSyntax(command) {
   }
 }
 
-assertCreditsSyntax("initial source");
+assertCreditsSyntax("initial source before API build");
 for (const command of commands) {
-  execSync(command, { cwd: frontendDir, stdio: "inherit" });
+  execSync(command, { cwd: apiDir, stdio: "inherit" });
   assertCreditsSyntax(command);
 }
 
-console.log("Todos os patches diretos preservaram a sintaxe de Credits.tsx.");
+console.log("Todos os comandos do build da API preservaram a sintaxe de Credits.tsx.");
