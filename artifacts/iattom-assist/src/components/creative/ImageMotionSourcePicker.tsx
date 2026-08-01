@@ -8,6 +8,13 @@ import { useSavedItems, type AssetData, type SavedItemRecord } from "@/hooks/use
 
 const DRAFT_PROJECT_ID = "__iattom_image_motion_draft__";
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
+const LIBRARY_CACHE_TTL_MS = 60_000;
+const LIBRARY_CONCURRENCY = 3;
+
+type LibraryEntry = { project: SavedItemRecord; asset: AssetData };
+
+let libraryCache: { entries: LibraryEntry[]; fetchedAt: number } | null = null;
+let libraryRequest: Promise<LibraryEntry[]> | null = null;
 
 export interface ImageMotionSource {
   base64: string;
@@ -34,16 +41,78 @@ function inferMime(label: string): "image/png" | "image/jpeg" {
   return /\.jpe?g$/i.test(label) ? "image/jpeg" : "image/png";
 }
 
+async function loadLibraryEntries(
+  getItems: () => Promise<SavedItemRecord[]>,
+  getItemAssets: (id: string) => Promise<AssetData[]>,
+  force = false,
+): Promise<LibraryEntry[]> {
+  const now = Date.now();
+  if (!force && libraryCache && now - libraryCache.fetchedAt < LIBRARY_CACHE_TTL_MS) {
+    return libraryCache.entries;
+  }
+
+  if (libraryRequest) return libraryRequest;
+
+  libraryRequest = (async () => {
+    const items = (await getItems()).filter((item) => !item.deletedAt);
+    const results: LibraryEntry[][] = new Array(items.length);
+    let nextIndex = 0;
+
+    const worker = async () => {
+      while (true) {
+        const index = nextIndex;
+        nextIndex += 1;
+        if (index >= items.length) return;
+
+        const project = items[index];
+        let projectAssets = await getItemAssets(project.id).catch(() => [] as AssetData[]);
+        if (projectAssets.length === 0) {
+          const localAssets = await loadProjectAssets(project.id).catch(() => []);
+          projectAssets = localAssets.map((asset) => ({
+            conceptIndex: asset.conceptIndex,
+            base64: asset.base64,
+            label: asset.label,
+            format: asset.format,
+          }));
+        }
+
+        results[index] = projectAssets.map((asset) => ({ project, asset }));
+      }
+    };
+
+    const workerCount = Math.min(LIBRARY_CONCURRENCY, Math.max(items.length, 1));
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+    const entries = results.flatMap((entry) => entry ?? []);
+    libraryCache = { entries, fetchedAt: Date.now() };
+    return entries;
+  })().finally(() => {
+    libraryRequest = null;
+  });
+
+  return libraryRequest;
+}
+
 export function ImageMotionSourcePicker({ value, onChange, onExit, disabled = false, resetSignal = 0 }: ImageMotionSourcePickerProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const mountedRef = useRef(true);
+  const libraryLoadIdRef = useRef(0);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const [choosingSource, setChoosingSource] = useState(false);
-  const [assets, setAssets] = useState<Array<{ project: SavedItemRecord; asset: AssetData }>>([]);
+  const [assets, setAssets] = useState<LibraryEntry[]>(() => libraryCache?.entries ?? []);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [error, setError] = useState("");
   const { getItems, getItemAssets } = useSavedItems();
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      libraryLoadIdRef.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     void loadProjectAssets(DRAFT_PROJECT_ID)
@@ -127,29 +196,24 @@ export function ImageMotionSourcePicker({ value, onChange, onExit, disabled = fa
 
   const openLibrary = async () => {
     setLibraryOpen(true);
-    setLoadingLibrary(true);
     setError("");
+
+    if (libraryCache) {
+      setAssets(libraryCache.entries);
+    }
+
+    const loadId = ++libraryLoadIdRef.current;
+    setLoadingLibrary(!libraryCache);
+
     try {
-      const items = (await getItems()).filter((item) => !item.deletedAt);
-      const loaded = await Promise.all(items.map(async (project) => {
-        let projectAssets = await getItemAssets(project.id).catch(() => [] as AssetData[]);
-        if (projectAssets.length === 0) {
-          const localAssets = await loadProjectAssets(project.id).catch(() => []);
-          projectAssets = localAssets.map((asset) => ({
-            conceptIndex: asset.conceptIndex,
-            base64: asset.base64,
-            label: asset.label,
-            format: asset.format,
-          }));
-        }
-        return { project, assets: projectAssets };
-      }));
-      setAssets(loaded.flatMap(({ project, assets: projectAssets }) => projectAssets.map((asset) => ({ project, asset }))));
+      const loaded = await loadLibraryEntries(getItems, getItemAssets, false);
+      if (!mountedRef.current || loadId !== libraryLoadIdRef.current) return;
+      setAssets(loaded);
     } catch {
-      setAssets([]);
-      setError("Não foi possível carregar as imagens da Biblioteca.");
+      if (!mountedRef.current || loadId !== libraryLoadIdRef.current) return;
+      if (!libraryCache) setError("Não foi possível carregar as imagens da Biblioteca.");
     } finally {
-      setLoadingLibrary(false);
+      if (mountedRef.current && loadId === libraryLoadIdRef.current) setLoadingLibrary(false);
     }
   };
 
@@ -191,7 +255,7 @@ export function ImageMotionSourcePicker({ value, onChange, onExit, disabled = fa
         <DialogContent className="max-w-4xl max-h-[88vh] overflow-y-auto bg-[#111111] border-white/10">
           <div className="flex items-center justify-between"><strong className="text-white">Buscar na biblioteca</strong><button type="button" onClick={() => setLibraryOpen(false)} className="text-zinc-400 hover:text-white">×</button></div>
           <Button type="button" variant="ghost" onClick={() => setLibraryOpen(false)} className="w-fit px-0 text-zinc-400 hover:text-zinc-200"><ArrowLeft className="w-4 h-4 mr-2" /> Voltar</Button>
-          {loadingLibrary ? (
+          {loadingLibrary && assets.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-12 text-sm text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /> Carregando imagens...</div>
           ) : assets.length === 0 ? (
             <div className="py-12 text-center text-sm text-zinc-500">Nenhuma imagem disponível na Biblioteca.</div>
