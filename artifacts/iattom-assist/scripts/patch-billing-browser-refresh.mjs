@@ -14,6 +14,3 @@ if (source.includes(newCode)) {
   await writeFile(fileUrl, source.replace(oldCode, newCode), "utf8");
   console.log("Billing refresh now reloads the browser page.");
 }
-
-// Run last so Help/Credits synchronization is applied after all source-rewriting patches.
-await import("./patch-help-credit-react-query-sync.mjs");
