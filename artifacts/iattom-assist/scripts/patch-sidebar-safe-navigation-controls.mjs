@@ -17,7 +17,6 @@ const safeControlsBlock = `${currentPageBlock}
       "/dashboard/billing": "Assinatura e Planos",
       "/dashboard/trash": "Lixeira",
       "/dashboard/projects": "Biblioteca",
-      "/dashboard/prompts": "Criar Prompt",
       "/dashboard/creative-generator": creativeEntry === "video" ? "Vídeo com efeito" : "Gerar imagem",
       "/dashboard/create-campaign": "Criar Campanha",
     };
@@ -71,12 +70,6 @@ const safeControlsBlock = `${currentPageBlock}
       }
 
       header.appendChild(makeBackButton());
-
-      if (location === "/dashboard/prompts") {
-        const promptBack = Array.from(main.querySelectorAll<HTMLElement>("button, a"))
-          .find((control) => /voltar ao painel|voltar para o painel|voltar ao dashboard|voltar para o dashboard/i.test((control.textContent ?? "").trim()));
-        if (promptBack) promptBack.textContent = "Voltar";
-      }
     };
 
     const timer = window.setTimeout(placeControls, 0);
