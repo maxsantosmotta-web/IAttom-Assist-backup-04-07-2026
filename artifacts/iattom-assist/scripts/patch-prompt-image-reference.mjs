@@ -118,3 +118,4 @@ await import("./patch-prompt-charge-after-success.mjs");
 await import("./patch-image-motion-prompt-limit.mjs");
 await import("./patch-prompt-navigation-and-chunk-recovery.mjs");
 await import("./patch-credit-history-infinite-scroll.mjs");
+await import("./patch-hide-legacy-creative-video-tab.mjs");
