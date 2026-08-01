@@ -56,19 +56,15 @@ const cardHeaderEnd = cardHeaderStart >= 0 ? source.indexOf(cardHeaderClose, car
 if (cardHeaderStart >= 0 && cardHeaderEnd > cardHeaderStart) {
   const endWithTag = cardHeaderEnd + cardHeaderClose.length;
   let cardHeader = source.slice(cardHeaderStart, endWithTag);
-  const refreshTextIndex = cardHeader.indexOf("Atualizar");
+  const ghostIndex = cardHeader.indexOf('variant="ghost"');
 
-  if (refreshTextIndex >= 0) {
-    const buttonStart = cardHeader.lastIndexOf("<Button", refreshTextIndex);
-    const buttonEnd = cardHeader.indexOf("</Button>", refreshTextIndex);
-
+  if (ghostIndex >= 0) {
+    const buttonStart = cardHeader.lastIndexOf("<Button", ghostIndex);
+    const buttonEnd = cardHeader.indexOf("</Button>", ghostIndex);
     if (buttonStart >= 0 && buttonEnd > buttonStart) {
-      const buttonBlock = cardHeader.slice(buttonStart, buttonEnd + "</Button>".length);
-      if (buttonBlock.includes("loadIntegrations") && buttonBlock.includes("loadProjects") && buttonBlock.includes("loadPrompts") && buttonBlock.includes("loadActivities")) {
-        const lineStart = cardHeader.lastIndexOf("\n", buttonStart);
-        const removeStart = lineStart >= 0 ? lineStart : buttonStart;
-        cardHeader = cardHeader.slice(0, removeStart) + cardHeader.slice(buttonEnd + "</Button>".length);
-      }
+      const lineStart = cardHeader.lastIndexOf("\n", buttonStart);
+      const removeStart = lineStart >= 0 ? lineStart : buttonStart;
+      cardHeader = cardHeader.slice(0, removeStart) + cardHeader.slice(buttonEnd + "</Button>".length);
     }
   }
 
@@ -76,4 +72,4 @@ if (cardHeaderStart >= 0 && cardHeaderEnd > cardHeaderStart) {
 }
 
 writeFileSync(trashUrl, source, "utf8");
-console.log("Trash header controls retained and the obsolete card refresh removed.");
+console.log("Trash header controls retained and ghost refresh removed from the card header.");
