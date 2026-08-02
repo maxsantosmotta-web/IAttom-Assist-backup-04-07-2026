@@ -39,7 +39,18 @@ const duplicateLibraryBlock = `      const platformLabel = PLATFORMS.find((p) =>
 
       toast({ description: "Imagem adicionada ao projeto e salva na Biblioteca." });`;
 
-const mirroredProjectBlock = `      try {
+const singleProjectBlock = `      try {
+        const raw = localStorage.getItem("iattom_saved_items_v1");
+        if (raw) {
+          const items = JSON.parse(raw) as Array<Record<string, unknown>>;
+          const patched = items.map((item) => item.id === projectId ? { ...item, hasImages: true } : item);
+          localStorage.setItem("iattom_saved_items_v1", JSON.stringify(patched));
+        }
+      } catch { /* banco continua como fonte da verdade */ }
+
+      toast({ description: "Imagem adicionada ao projeto." });`;
+
+const previousMirrorBlock = `      try {
         const raw = localStorage.getItem("iattom_saved_items_v1");
         if (raw) {
           const items = JSON.parse(raw) as Array<Record<string, unknown>>;
@@ -51,32 +62,40 @@ const mirroredProjectBlock = `      try {
       toast({ description: "Imagem adicionada ao projeto e refletida na Biblioteca." });`;
 
 if (generator.includes(duplicateLibraryBlock)) {
-  generator = generator.replace(duplicateLibraryBlock, mirroredProjectBlock);
+  generator = generator.replace(duplicateLibraryBlock, singleProjectBlock);
+}
+if (generator.includes(previousMirrorBlock)) {
+  generator = generator.replace(previousMirrorBlock, singleProjectBlock);
 }
 
 if (generator.includes('source: "linked-project-save"') || generator.includes("const libraryId = crypto.randomUUID();")) {
   throw new Error("Existing-project image save still creates a duplicate Library record");
 }
-if (!generator.includes("Imagem adicionada ao projeto e refletida na Biblioteca.")) {
-  throw new Error("Single-record project image mirror was not installed");
+if (!generator.includes('toast({ description: "Imagem adicionada ao projeto." });')) {
+  throw new Error("Single-record project image save was not installed");
 }
 
+// Projeto permanece na categoria original. Ter imagem vinculada não transforma Prompt,
+// Campanha ou Conteúdo em um segundo card da categoria Imagens.
 projects = projects.replace(
-  '(tab === "creative" && item.type === "creative" && !videoEffect)',
   '(tab === "creative" && item.hasImages && !videoEffect)',
+  '(tab === "creative" && item.type === "creative" && !videoEffect)',
 );
 projects = projects.replace(
-  '? savedItems.filter((item) => item.type === "creative" && !isVideoEffectItem(item)).length',
   '? savedItems.filter((item) => item.hasImages && !isVideoEffectItem(item)).length',
+  '? savedItems.filter((item) => item.type === "creative" && !isVideoEffectItem(item)).length',
 );
 
-if (!projects.includes('(tab === "creative" && item.hasImages && !videoEffect)')) {
-  throw new Error("Library Images filter was not changed to mirror image-bearing projects");
+if (!projects.includes('(tab === "creative" && item.type === "creative" && !videoEffect)')) {
+  throw new Error("Library Images filter was not restored to true image records");
 }
-if (!projects.includes('savedItems.filter((item) => item.hasImages && !isVideoEffectItem(item)).length')) {
-  throw new Error("Library Images count was not changed to single-record mirror logic");
+if (!projects.includes('savedItems.filter((item) => item.type === "creative" && !isVideoEffectItem(item)).length')) {
+  throw new Error("Library Images count was not restored to true image records");
+}
+if (projects.includes('(tab === "creative" && item.hasImages && !videoEffect)')) {
+  throw new Error("Library still mirrors Prompt/Campaign projects as duplicate image cards");
 }
 
 writeFileSync(generatorUrl, generator, "utf8");
 writeFileSync(projectsUrl, projects, "utf8");
-console.log("Project images now use one saved record: visible in the project and mirrored in the Images filter without creating a duplicate item.");
+console.log("Linked images remain inside their original project without creating a second record or a duplicate cross-category card.");
