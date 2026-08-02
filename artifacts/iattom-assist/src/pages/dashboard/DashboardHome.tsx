@@ -25,6 +25,7 @@ const quickActions = [
   { href: "/dashboard/create-content", label: "Criar Conteúdo", icon: FileText, desc: "Gere textos persuasivos", color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(96,165,250,0.15)]", module: "content" },
   { href: "/dashboard/creative-generator", label: "Gerar imagem", icon: Sparkles, desc: "Crie imagens prontas para publicação", color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(192,132,252,0.15)]", module: "creative" },
   { href: "/dashboard/creative-generator", label: "Vídeo com efeito", icon: Video, desc: "Crie vídeos com efeito de movimento", color: "text-cyan-400", bg: "bg-cyan-400/10 border-cyan-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(34,211,238,0.15)]", module: "creative" },
+  { href: "/dashboard/prompts", label: "Criar Prompt", icon: BookMarked, desc: "Crie prompts personalizados", color: "text-fuchsia-400", bg: "bg-fuchsia-400/10 border-fuchsia-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(232,121,249,0.15)]", module: "prompt" },
   { href: "/dashboard/video-scripts", label: "Scripts de Vídeo", icon: Video, desc: "Escreva scripts virais", color: "text-rose-400", bg: "bg-rose-400/10 border-rose-400/20", glow: "hover:shadow-[0_0_30px_-6px_rgba(251,113,133,0.15)]", module: "video_script" },
 ];
 
@@ -36,6 +37,8 @@ const MODULE_TO_ACTION: Record<string, string> = {
   campaign: "create-campaign",
   content: "create-content",
   creative: "creative-generator",
+  prompt: "prompts",
+  prompt_generation: "prompts",
   video_script: "video-scripts",
   marketing: "create-campaign",
 };
@@ -239,7 +242,7 @@ export function DashboardHome() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Módulos</p>
-          <span className="text-[10px] text-zinc-700">7 disponíveis</span>
+          <span className="text-[10px] text-zinc-700">{quickActions.length} disponíveis</span>
         </div>
         <motion.div
           variants={containerVariants}
