@@ -112,19 +112,26 @@ if (!currentFunction.includes("generationRecovering")) {
 }
 
 source = source.replace(
-  '{generating ? "Gerando prompt..." : "Gerar Prompt"}',
   '{generating ? (generationRecovering ? "Aguardando liberação..." : "Gerando prompt...") : "Gerar Prompt"}',
+  '{generating ? "Gerando prompt..." : "Gerar Prompt"}',
+);
+source = source.replace(
+  '{generating ? "Gerando prompt..." : "Gerar Prompt"}',
+  '{generating ? "Gerando prompt..." : "Gerar Prompt"}',
 );
 
 for (const marker of [
   "const [generationRecovering, setGenerationRecovering]",
   "const promptGenerationAbortRef = useRef<AbortController | null>(null);",
   "[429, 502, 503, 504].includes(res.status)",
-  'generationRecovering ? "Aguardando liberação..." : "Gerando prompt..."',
+  '{generating ? "Gerando prompt..." : "Gerar Prompt"}',
   "if (charge) await charge();",
 ]) {
   if (!source.includes(marker)) throw new Error(`Prompt transient recovery marker missing: ${marker}`);
 }
+if (source.includes("Aguardando liberação")) {
+  throw new Error("Technical retry message must not be visible to the user");
+}
 
 writeFileSync(promptUrl, source, "utf8");
-console.log("Prompt generation now remains visibly active and retries transient request limits without charging again.");
+console.log("Prompt generation remains loading continuously during transient retries, without technical status messages.");
