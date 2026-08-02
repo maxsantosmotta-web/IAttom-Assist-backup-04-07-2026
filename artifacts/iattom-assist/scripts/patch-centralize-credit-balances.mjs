@@ -44,10 +44,14 @@ if (dashboard.includes("<UpgradeNudge") || dashboard.includes("créditos restant
 // 3) A tela do usuário possui apenas três contadores:
 // créditos gerais, imagens e vídeos com efeito.
 // O IAttom Help consome o saldo geral e permanece apenas no histórico e no ADM.
-if (!credits.includes('import { useEffect, useState } from "react";')) {
+if (!credits.includes('import { useEffect, useRef, useState } from "react";')) {
   credits = credits.replace(
     'import { motion } from "framer-motion";',
-    'import { motion } from "framer-motion";\nimport { useEffect, useState } from "react";',
+    'import { motion } from "framer-motion";\nimport { useEffect, useRef, useState } from "react";',
+  );
+  credits = credits.replace(
+    'import { useEffect, useState } from "react";',
+    'import { useEffect, useRef, useState } from "react";',
   );
 }
 credits = credits.replace(
@@ -60,9 +64,15 @@ const stateBlock = `export function Credits() {
   const [, navigate] = useLocation();
   const [videoBalance, setVideoBalance] = useState<number | null>(null);
   const [videoLoading, setVideoLoading] = useState(true);
+  const videoRetryRef = useRef<number | null>(null);
+  const videoRequestInFlightRef = useRef(false);
+  const videoMountedRef = useRef(true);
 
   const loadVideoBalance = async (signal?: AbortSignal): Promise<boolean> => {
-    setVideoLoading(true);
+    if (videoRequestInFlightRef.current) return false;
+    videoRequestInFlightRef.current = true;
+    if (videoMountedRef.current) setVideoLoading(true);
+
     try {
       const response = await fetch("/api/videos/balance", {
         credentials: "include",
@@ -71,26 +81,53 @@ const stateBlock = `export function Credits() {
       });
       if (!response.ok) throw new Error("video balance request failed");
       const video = await response.json() as { videoBalance?: number };
+      if (!videoMountedRef.current || signal?.aborted) return false;
       setVideoBalance(Number(video.videoBalance ?? 0));
+      setVideoLoading(false);
+      if (videoRetryRef.current !== null) {
+        window.clearTimeout(videoRetryRef.current);
+        videoRetryRef.current = null;
+      }
       return true;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return false;
+      if (videoMountedRef.current && videoRetryRef.current === null) {
+        videoRetryRef.current = window.setTimeout(() => {
+          videoRetryRef.current = null;
+          void loadVideoBalance();
+        }, 3000);
+      }
       return false;
     } finally {
-      if (!signal?.aborted) setVideoLoading(false);
+      videoRequestInFlightRef.current = false;
     }
   };
 
   useEffect(() => {
+    videoMountedRef.current = true;
     const controller = new AbortController();
     void loadVideoBalance(controller.signal);
-    return () => controller.abort("credits-unmounted");
+    return () => {
+      videoMountedRef.current = false;
+      controller.abort("credits-unmounted");
+      if (videoRetryRef.current !== null) {
+        window.clearTimeout(videoRetryRef.current);
+        videoRetryRef.current = null;
+      }
+    };
   }, []);`;
 
 if (credits.includes(componentMarker) && !credits.includes("const loadVideoBalance = async")) {
   credits = credits.replace(componentMarker, stateBlock);
 } else if (!credits.includes("const loadVideoBalance = async")) {
   throw new Error("Credits component marker not found");
+} else if (!credits.includes("const videoRetryRef = useRef<number | null>(null);")) {
+  const existingStateStart = credits.indexOf("export function Credits() {");
+  const existingStateEnd = existingStateStart >= 0 ? credits.indexOf("\n  const { data: balance", existingStateStart) : -1;
+  if (existingStateStart < 0 || existingStateEnd < 0) {
+    throw new Error("Existing Credits video state boundaries not found");
+  }
+  credits = `${credits.slice(0, existingStateStart)}${stateBlock}${credits.slice(existingStateEnd)}`;
 }
 
 const balanceCardMarker = `      <motion.div
@@ -214,6 +251,12 @@ if (!credits.includes("Vídeos com efeito") || !credits.includes("Créditos gera
 if (!credits.includes("const loadVideoBalance = async")) {
   throw new Error("Video balance loading was not applied");
 }
+if (!credits.includes("const videoRetryRef = useRef<number | null>(null);")) {
+  throw new Error("Video balance automatic recovery was not applied");
+}
+if (!credits.includes("void loadVideoBalance();") || !credits.includes("}, 3000);")) {
+  throw new Error("Video balance retry scheduling was not applied");
+}
 if (credits.includes("window.location.reload()")) {
   throw new Error("Credits refresh still reloads the whole application");
 }
@@ -224,4 +267,4 @@ if (!credits.includes("function isVideoTransaction")) {
 writeFileSync(sidebarUrl, sidebar);
 writeFileSync(creditsUrl, credits);
 writeFileSync(dashboardUrl, dashboard);
-console.log("User Credits contains only general, image and video counters; Help remains in general balance, history and ADM.");
+console.log("Video balance now retries automatically in isolation until it loads, without changing other credit blocks.");
