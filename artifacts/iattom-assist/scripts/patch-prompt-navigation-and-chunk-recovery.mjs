@@ -26,6 +26,77 @@ if (!prompts.includes('const [, setLocation] = useLocation();')) {
   prompts = prompts.replace(accessMarker, `${accessMarker}\n  const [, setLocation] = useLocation();`);
 }
 
+const draftConstantMarker = 'const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };';
+if (!prompts.includes('const PROMPT_DRAFT_KEY = "iattom_create_prompt_draft_v1";')) {
+  if (!prompts.includes(draftConstantMarker)) throw new Error("SavedPrompts fade marker not found");
+  prompts = prompts.replace(
+    draftConstantMarker,
+    `${draftConstantMarker}\nconst PROMPT_DRAFT_KEY = "iattom_create_prompt_draft_v1";`,
+  );
+}
+
+const subjectRefMarker = '  const subjectInputRef = useRef<HTMLTextAreaElement | null>(null);';
+const persistenceBlock = `  const subjectInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PROMPT_DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw) as {
+          tipo?: string;
+          subject?: string;
+          title?: string;
+          prompt?: string;
+          generated?: boolean;
+        };
+        setGuidedTipo(typeof draft.tipo === "string" ? draft.tipo : "");
+        setGuidedSubject(typeof draft.subject === "string" ? draft.subject : "");
+        setNewTitle(typeof draft.title === "string" ? draft.title : "");
+        setNewPrompt(typeof draft.prompt === "string" ? draft.prompt : "");
+        setGenerated(Boolean(draft.generated && draft.title && draft.prompt));
+      }
+    } catch {
+      localStorage.removeItem(PROMPT_DRAFT_KEY);
+    } finally {
+      setDraftReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    const hasDraft = Boolean(
+      guidedTipo || guidedSubject.trim() || newTitle.trim() || newPrompt.trim(),
+    );
+    if (!hasDraft) {
+      localStorage.removeItem(PROMPT_DRAFT_KEY);
+      return;
+    }
+    localStorage.setItem(PROMPT_DRAFT_KEY, JSON.stringify({
+      tipo: guidedTipo,
+      subject: guidedSubject,
+      title: newTitle,
+      prompt: newPrompt,
+      generated,
+      updatedAt: new Date().toISOString(),
+    }));
+  }, [draftReady, guidedTipo, guidedSubject, newTitle, newPrompt, generated]);`;
+
+if (!prompts.includes('const [draftReady, setDraftReady] = useState(false);')) {
+  if (!prompts.includes(subjectRefMarker)) throw new Error("SavedPrompts subject ref marker not found");
+  prompts = prompts.replace(subjectRefMarker, persistenceBlock);
+}
+
+const clearMarker = `  const clearForm = () => {
+    setGuidedTipo("");`;
+const clearBlock = `  const clearForm = () => {
+    localStorage.removeItem(PROMPT_DRAFT_KEY);
+    setGuidedTipo("");`;
+if (!prompts.includes('const clearForm = () => {\n    localStorage.removeItem(PROMPT_DRAFT_KEY);')) {
+  if (!prompts.includes(clearMarker)) throw new Error("SavedPrompts clear marker not found");
+  prompts = prompts.replace(clearMarker, clearBlock);
+}
+
 const oldHeader = `      <motion.div variants={fadeUp} initial="hidden" animate="show" transition={{ duration: 0.4 }}>
         <div className="space-y-1">
           <p className="text-[10px] text-primary font-bold tracking-widest uppercase">Biblioteca</p>
@@ -77,8 +148,17 @@ if (prompts.includes(legacyHeader)) {
   prompts = prompts.replace(oldHeader, newHeader);
 }
 
-for (const marker of ['window.location.reload()', 'setLocation("/dashboard")', '>\n              Voltar\n            </Button>', '> Atualizar']) {
-  if (!prompts.includes(marker)) throw new Error(`SavedPrompts navigation marker missing: ${marker}`);
+for (const marker of [
+  'window.location.reload()',
+  'setLocation("/dashboard")',
+  '>\n              Voltar\n            </Button>',
+  '> Atualizar',
+  'const PROMPT_DRAFT_KEY = "iattom_create_prompt_draft_v1";',
+  'const [draftReady, setDraftReady] = useState(false);',
+  'localStorage.setItem(PROMPT_DRAFT_KEY',
+  'localStorage.removeItem(PROMPT_DRAFT_KEY);',
+]) {
+  if (!prompts.includes(marker)) throw new Error(`SavedPrompts marker missing: ${marker}`);
 }
 if (prompts.includes('Voltar ao Painel') || prompts.includes('<ArrowLeft')) {
   throw new Error("SavedPrompts ainda contém seta ou texto Painel no botão Voltar");
@@ -100,4 +180,4 @@ for (const marker of [recoveryMarker, 'vite:preloadError', 'Failed to fetch dyna
 }
 writeFileSync(mainUrl, main, "utf8");
 
-console.log("Criar Prompt navigation restored with plain Voltar button and global lazy-chunk recovery installed.");
+console.log("Criar Prompt now preserves its current result across module changes and reloads, while keeping the approved navigation and chunk recovery.");
