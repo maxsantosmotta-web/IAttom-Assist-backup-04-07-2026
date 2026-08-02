@@ -22,3 +22,4 @@ console.log("Shared saved-item loading now waits safely for the Clerk session be
 
 await import("./patch-analytics-authenticated-loading.mjs");
 await import("./patch-billing-plans-resilient-loading.mjs");
+await import("./patch-trash-end-to-end-reliability.mjs");
