@@ -65,13 +65,22 @@ const getTrashOld = `  const getTrash = useCallback(async (): Promise<SavedItemR
     }
     return res.json() as Promise<SavedItemRecord[]>;
   }, []);`;
+const getTrashAuthenticated = `  const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
+    const token = await resolveToken(getToken);
+    return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);
+  }, [getToken]);`;
 const getTrashNew = `  const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
     const token = await resolveToken(getToken);
     return apiFetchWithTransientRetry<SavedItemRecord[]>("/api/saved-items/trash", token);
   }, [getToken]);`;
 if (!hookSource.includes('return apiFetchWithTransientRetry<SavedItemRecord[]>("/api/saved-items/trash", token);')) {
-  if (!hookSource.includes(getTrashOld)) throw new Error("Saved-items getTrash marker not found");
-  hookSource = hookSource.replace(getTrashOld, getTrashNew);
+  if (hookSource.includes(getTrashOld)) {
+    hookSource = hookSource.replace(getTrashOld, getTrashNew);
+  } else if (hookSource.includes(getTrashAuthenticated)) {
+    hookSource = hookSource.replace(getTrashAuthenticated, getTrashNew);
+  } else {
+    throw new Error("Saved-items getTrash marker not found");
+  }
 }
 
 writeFileSync(hookUrl, hookSource, "utf8");
