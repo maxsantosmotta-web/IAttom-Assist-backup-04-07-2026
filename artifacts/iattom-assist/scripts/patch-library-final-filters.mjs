@@ -125,3 +125,5 @@ if (source.includes('label: "Vídeos"')) throw new Error("Library incorrectly re
 
 writeFileSync(projectsUrl, source);
 console.log("Library preserves all existing filters and adds Prompts without replacing other categories.");
+
+await import("./patch-library-trash-recovery.mjs");
