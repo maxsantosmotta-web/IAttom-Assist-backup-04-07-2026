@@ -3,7 +3,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 const sidebarUrl = new URL("../src/components/layout/SidebarLayout.tsx", import.meta.url);
 let source = readFileSync(sidebarUrl, "utf8");
 
-if (!source.includes('data-iattom-dashboard-controls="true"')) {
+const dashboardDatasetMarker = 'rightBlock.dataset.iattomDashboardControls = "true"';
+
+if (!source.includes(dashboardDatasetMarker)) {
   const dashboardBlockPattern = /      if \(location === "\/dashboard"\) \{[\s\S]*?        return;\n      \}/;
   const match = source.match(dashboardBlockPattern);
 
@@ -37,7 +39,7 @@ if (!source.includes('data-iattom-dashboard-controls="true"')) {
 }
 
 for (const marker of [
-  'data-iattom-dashboard-controls="true"',
+  dashboardDatasetMarker,
   'refresh.textContent = "Atualizar"',
   'rightBlock.appendChild(refresh)',
   'rightBlock.appendChild(back)',
