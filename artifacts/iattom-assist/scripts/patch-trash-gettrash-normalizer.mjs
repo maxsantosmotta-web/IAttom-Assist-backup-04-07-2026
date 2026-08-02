@@ -15,31 +15,17 @@ if (start < 0 || end < 0) {
 const normalized = `  const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
     const token = await getToken();
     if (!token) throw new Error("Sessão da Lixeira ainda carregando");
-
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 4000);
-    try {
-      return await apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token, {
-        signal: controller.signal,
-      });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        throw new Error("Consulta da Lixeira demorou além do limite");
-      }
-      throw error;
-    } finally {
-      window.clearTimeout(timeoutId);
-    }
+    return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);
   }, [getToken]);`;
 
 source = `${source.slice(0, start)}${normalized}${source.slice(end)}`;
 
-if (!source.includes("Consulta da Lixeira demorou além do limite")) {
-  throw new Error("Saved-items getTrash timeout normalization failed");
+if (!source.includes('return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);')) {
+  throw new Error("Saved-items getTrash single-request normalization failed");
 }
 
 writeFileSync(hookUrl, source, "utf8");
-console.log("Saved-items getTrash now has a bounded request timeout for fast recovery.");
+console.log("Saved-items getTrash now uses one request without abort/retry storms.");
 
 const trashUrl = new URL("../src/pages/dashboard/Trash.tsx", import.meta.url);
 let trashSource = readFileSync(trashUrl, "utf8");
@@ -69,12 +55,10 @@ if (refreshStart < 0 || unifiedStart < 0) {
 const recoveredRefresh = `  const refreshTrash = async () => {
     if (loadAllInFlightRef.current) return;
     loadAllInFlightRef.current = true;
-    if (mountedRef.current) setLoading(true);
+    if (mountedRef.current && projectItems.length === 0) setLoading(true);
 
     const expired = purgeExpired();
     for (const id of expired) void deleteProjectAssets(id).catch(() => {});
-
-    const retryDelays = [0, 300, 700, 1200, 2000, 3000];
 
     const loadSecondarySources = async () => {
       const results = await Promise.allSettled([
@@ -90,38 +74,27 @@ const recoveredRefresh = `  const refreshTrash = async () => {
     };
 
     try {
-      for (const delay of retryDelays) {
-        if (!mountedRef.current) return;
-        if (delay > 0) await new Promise((resolve) => window.setTimeout(resolve, delay));
-        if (!mountedRef.current) return;
+      const projects = await getTrash();
+      if (!mountedRef.current) return;
 
-        try {
-          const projects = await getTrash();
-          if (!mountedRef.current) return;
+      setProjectItems(
+        projects
+          .filter((item) => item.deletedAt !== null)
+          .map((item) => ({
+            ...item,
+            deletedAt: item.deletedAt!,
+            expiresAt: item.expiresAt ?? new Date(new Date(item.deletedAt!).getTime() + 48 * 3600000).toISOString(),
+          })) as TrashedItem[],
+      );
 
-          setProjectItems(
-            projects
-              .filter((item) => item.deletedAt !== null)
-              .map((item) => ({
-                ...item,
-                deletedAt: item.deletedAt!,
-                expiresAt: item.expiresAt ?? new Date(new Date(item.deletedAt!).getTime() + 48 * 3600000).toISOString(),
-              })) as TrashedItem[],
-          );
-
-          setLoading(false);
-          void loadSecondarySources();
-          return;
-        } catch {
-          // Preserva os itens atuais e tenta novamente sem zerar a Lixeira.
-        }
-      }
-
+      setLoading(false);
+      void loadSecondarySources();
+    } catch {
       if (mountedRef.current && backgroundRetryRef.current === null) {
         backgroundRetryRef.current = window.setTimeout(() => {
           backgroundRetryRef.current = null;
           void refreshTrash();
-        }, 3000);
+        }, 8000);
       }
     } finally {
       loadAllInFlightRef.current = false;
@@ -149,18 +122,18 @@ trashSource = `${trashSource.slice(0, refreshStart)}${recoveredRefresh}${trashSo
 
 for (const marker of [
   "const loadAllInFlightRef = refreshInFlightRef;",
-  "const retryDelays = [0, 300, 700, 1200, 2000, 3000];",
   "const loadSecondarySources = async () =>",
   "const projects = await getTrash();",
   "void loadSecondarySources();",
   "backgroundRetryRef.current = window.setTimeout",
+  "}, 8000);",
   "mountedRef.current = false;",
   "const loadAll = refreshTrash;",
 ]) {
   if (!trashSource.includes(marker)) {
-    throw new Error(`Trash automatic recovery marker missing: ${marker}`);
+    throw new Error(`Trash single-request recovery marker missing: ${marker}`);
   }
 }
 
 writeFileSync(trashUrl, trashSource, "utf8");
-console.log("Trash project loading is now independent, bounded, preserved and automatically retried.");
+console.log("Trash now uses one project request per refresh and rate-limit-safe recovery.");
