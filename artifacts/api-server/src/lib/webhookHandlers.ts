@@ -20,6 +20,14 @@ const PLAN_CREATIVE_CREDITS: Record<string, number> = {
 };
 
 type ValidPlan = "free" | "pro" | "business" | "agency";
+type InvoiceWithSubscriptionReference = Stripe.Invoice & {
+  subscription?: string | Stripe.Subscription | null;
+  parent?: {
+    subscription_details?: {
+      subscription?: string | Stripe.Subscription | null;
+    } | null;
+  } | null;
+};
 
 async function handleSubscriptionChange(
   subscription: Stripe.Subscription,
@@ -87,7 +95,6 @@ async function handleSubscriptionChange(
     const balanceBefore = user.credits;
     const balanceAfter = newCredits;
 
-    // Only reset plan credits; extraCredits and extraCreativeCredits are preserved
     await db
       .update(users)
       .set({
@@ -126,7 +133,6 @@ async function handleSubscriptionChange(
     const balanceBefore = user.credits;
     const balanceAfter = PLAN_CREDITS.free;
 
-    // Only reset plan credits; extraCredits and extraCreativeCredits are preserved
     await db
       .update(users)
       .set({
@@ -177,7 +183,6 @@ async function handleSubscriptionDeleted(
   const balanceBefore = user.credits;
   const balanceAfter = PLAN_CREDITS.free;
 
-  // Only reset plan credits; extraCredits and extraCreativeCredits are preserved
   await db
     .update(users)
     .set({
@@ -223,7 +228,6 @@ async function handlePackagePurchase(
     return;
   }
 
-  // Idempotency — check per pack type
   if (isVideoPack) {
     const existing = await db
       .select({ id: videoTransactions.id })
@@ -346,6 +350,44 @@ async function handlePackagePurchase(
   }
 }
 
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const typedInvoice = invoice as InvoiceWithSubscriptionReference;
+  const reference =
+    typedInvoice.subscription ??
+    typedInvoice.parent?.subscription_details?.subscription ??
+    null;
+
+  if (!reference) return null;
+  return typeof reference === "string" ? reference : reference.id;
+}
+
+async function reconcileInvoiceSubscription(
+  invoice: Stripe.Invoice,
+  eventType: "invoice.payment_succeeded" | "invoice.payment_failed",
+): Promise<void> {
+  const subscriptionId = getInvoiceSubscriptionId(invoice);
+  if (!subscriptionId) {
+    logger.info({ invoiceId: invoice.id, eventType }, "Invoice has no subscription; renewal event ignored");
+    return;
+  }
+
+  const stripe = await getUncachableStripeClient();
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const result = await handleCanonicalSubscriptionChange(subscription);
+
+  logger.info(
+    {
+      invoiceId: invoice.id,
+      subscriptionId,
+      eventType,
+      result,
+    },
+    eventType === "invoice.payment_succeeded"
+      ? "Paid renewal invoice reconciled"
+      : "Failed renewal invoice blocked without changing balances",
+  );
+}
+
 export async function reconcileCheckoutSession(
   sessionId: string,
   expectedClerkUserId: string,
@@ -423,6 +465,18 @@ export class WebhookHandlers {
         case "customer.subscription.deleted":
           await handleSubscriptionDeleted(
             event.data.object as Stripe.Subscription,
+          );
+          break;
+        case "invoice.payment_succeeded":
+          await reconcileInvoiceSubscription(
+            event.data.object as Stripe.Invoice,
+            "invoice.payment_succeeded",
+          );
+          break;
+        case "invoice.payment_failed":
+          await reconcileInvoiceSubscription(
+            event.data.object as Stripe.Invoice,
+            "invoice.payment_failed",
           );
           break;
         case "checkout.session.completed": {
