@@ -162,6 +162,7 @@ export async function handleCanonicalSubscriptionChange(
     await db
       .update(users)
       .set({
+        plan: "free",
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscription.id,
         stripeSubscriptionStatus: subscription.status,
@@ -193,6 +194,7 @@ export async function handleCanonicalSubscriptionChange(
     await db
       .update(users)
       .set({
+        plan: "free",
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscription.id,
         stripeSubscriptionStatus: subscription.status,
