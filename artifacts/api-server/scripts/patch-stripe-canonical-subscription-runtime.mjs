@@ -1,66 +1,29 @@
 import fs from "node:fs";
 
 const canonicalPath = new URL("../src/lib/stripeCanonicalSubscription.ts", import.meta.url);
-let canonicalSource = fs.readFileSync(canonicalPath, "utf8");
+const canonicalSource = fs.readFileSync(canonicalPath, "utf8");
 
-const legacyKeyLine = '  const legacyChangeKey = `subscription:${subscription.id}:${itemPriceId}:${targetPlan}`;\n';
-canonicalSource = canonicalSource.replace(legacyKeyLine, "");
+for (const marker of [
+  'const ACTIVE_STATUSES = new Set<Stripe.Subscription.Status>(["active"])',
+  "async function hasConfirmedPayment(",
+  "function getCreditMultiplier(",
+  "const [existingGeneral] = await tx",
+  "PLAN_CREDITS[targetPlan] * multiplier",
+  'plan: "free"',
+  "access blocked while all balances were preserved",
+]) {
+  if (!canonicalSource.includes(marker)) {
+    throw new Error(`Canonical renewal source marker not found: ${marker}`);
+  }
+}
 
-const legacyGrantBlock = `    const [existingGeneralCurrent] = await tx
-      .select({ id: creditsTransactions.id })
-      .from(creditsTransactions)
-      .where(eq(creditsTransactions.stripeSessionId, \`\${changeKey}:general\`))
-      .limit(1);
-    const [existingGeneralLegacy] = existingGeneralCurrent
-      ? [existingGeneralCurrent]
-      : await tx
-          .select({ id: creditsTransactions.id })
-          .from(creditsTransactions)
-          .where(eq(creditsTransactions.stripeSessionId, \`\${legacyChangeKey}:general\`))
-          .limit(1);
-
-    const [existingCreativeCurrent] = await tx
-      .select({ id: creditsTransactions.id })
-      .from(creditsTransactions)
-      .where(eq(creditsTransactions.stripeSessionId, \`\${changeKey}:creative\`))
-      .limit(1);
-    const [existingCreativeLegacy] = existingCreativeCurrent
-      ? [existingCreativeCurrent]
-      : await tx
-          .select({ id: creditsTransactions.id })
-          .from(creditsTransactions)
-          .where(eq(creditsTransactions.stripeSessionId, \`\${legacyChangeKey}:creative\`))
-          .limit(1);
-
-    const existingGeneral = existingGeneralCurrent ?? existingGeneralLegacy;
-    const existingCreative = existingCreativeCurrent ?? existingCreativeLegacy;`;
-
-const periodGrantBlock = `    const [existingGeneral] = await tx
-      .select({ id: creditsTransactions.id })
-      .from(creditsTransactions)
-      .where(eq(creditsTransactions.stripeSessionId, \`\${changeKey}:general\`))
-      .limit(1);
-
-    const [existingCreative] = await tx
-      .select({ id: creditsTransactions.id })
-      .from(creditsTransactions)
-      .where(eq(creditsTransactions.stripeSessionId, \`\${changeKey}:creative\`))
-      .limit(1);`;
-
-if (canonicalSource.includes(legacyGrantBlock)) {
-  canonicalSource = canonicalSource.replace(legacyGrantBlock, periodGrantBlock);
-} else if (
-  !canonicalSource.includes("const [existingGeneral] = await tx") ||
-  !canonicalSource.includes("const [existingCreative] = await tx")
+if (
+  canonicalSource.includes("legacyChangeKey") ||
+  canonicalSource.includes("existingGeneralLegacy") ||
+  canonicalSource.includes("existingCreativeLegacy")
 ) {
-  throw new Error("Canonical subscription period idempotency marker not found");
+  throw new Error("Legacy subscription idempotency still exists");
 }
-
-if (canonicalSource.includes("legacyChangeKey") || canonicalSource.includes("existingGeneralLegacy") || canonicalSource.includes("existingCreativeLegacy")) {
-  throw new Error("Legacy subscription idempotency still blocks period compensation");
-}
-
-fs.writeFileSync(canonicalPath, canonicalSource);
 
 const webhookPath = new URL("../src/lib/webhookHandlers.ts", import.meta.url);
 let source = fs.readFileSync(webhookPath, "utf8");
@@ -205,4 +168,4 @@ if (latestStart === -1) {
 }
 
 fs.writeFileSync(stripeRoutePath, stripeRoute);
-console.log("Stripe canonical reconciliation uses only subscription, price and current billing period idempotency");
+console.log("Stripe renewal reconciliation requires confirmed payment, preserves balances, and distinguishes monthly from annual periods");
