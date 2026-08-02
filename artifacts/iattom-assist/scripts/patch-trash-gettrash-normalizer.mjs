@@ -20,41 +20,12 @@ const normalized = `  const getTrash = useCallback(async (): Promise<SavedItemRe
 
 source = `${source.slice(0, start)}${normalized}${source.slice(end)}`;
 
-const trashStartMarker = "  const trashItem = useCallback(async (id: string): Promise<void> => {";
-const trashStart = source.indexOf(trashStartMarker);
-const trashEnd = trashStart >= 0 ? source.indexOf("\n\n  const trashImageSource = useCallback", trashStart) : -1;
-if (trashStart < 0 || trashEnd < 0) {
-  throw new Error("Saved-items trashItem structural boundaries not found");
-}
-
-let trashBlock = source.slice(trashStart, trashEnd);
-const directDelete = '    await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}`, token, { method: "DELETE" });';
-const guardedDelete = `    try {
-      await apiFetch<{ ok: boolean }>(\`/api/saved-items/\${id}\`, token, { method: "DELETE" });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "";
-      if (!message.includes("HTTP 429")) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      await apiFetch<{ ok: boolean }>(\`/api/saved-items/\${id}\`, token, { method: "DELETE" });
-    }`;
-
-if (!trashBlock.includes("message.includes(\"HTTP 429\")")) {
-  if (!trashBlock.includes(directDelete)) {
-    throw new Error("Saved-items direct delete marker not found");
-  }
-  trashBlock = trashBlock.replace(directDelete, guardedDelete);
-  source = `${source.slice(0, trashStart)}${trashBlock}${source.slice(trashEnd)}`;
-}
-
 if (!source.includes('return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);')) {
-  throw new Error("Saved-items getTrash single-request normalization failed");
-}
-if (!source.includes('message.includes("HTTP 429")')) {
-  throw new Error("Saved-items delete rate-limit recovery was not installed");
+  throw new Error("Saved-items getTrash normalization failed");
 }
 
 writeFileSync(hookUrl, source, "utf8");
-console.log("Saved-items trash now uses one read and at most one delayed retry on HTTP 429.");
+console.log("Saved-items getTrash uses one authenticated request per attempt.");
 
 const projectsUrl = new URL("../src/pages/dashboard/Projects.tsx", import.meta.url);
 let projectsSource = readFileSync(projectsUrl, "utf8");
@@ -78,31 +49,24 @@ if (!projectsSource.includes("iattom_recent_trash_v1")) {
   }
   projectsSource = projectsSource.replace(removeOld, removeNew);
 }
+
 writeFileSync(projectsUrl, projectsSource, "utf8");
-console.log("Library hands confirmed deletions to Trash immediately.");
+console.log("Library preserves a confirmed deletion handoff for Trash reloads.");
 
 const trashUrl = new URL("../src/pages/dashboard/Trash.tsx", import.meta.url);
 let trashSource = readFileSync(trashUrl, "utf8");
 
-const refsOld = "  const refreshInFlightRef = useRef(false);";
-const refsNew = `  const refreshInFlightRef = useRef(false);
+if (!trashSource.includes("const loadAllInFlightRef = refreshInFlightRef;")) {
+  const refsOld = "  const refreshInFlightRef = useRef(false);";
+  const refsNew = `  const refreshInFlightRef = useRef(false);
   const loadAllInFlightRef = refreshInFlightRef;
   const mountedRef = useRef(true);
-  const backgroundRetryRef = useRef<number | null>(null);
-  const recoveryAttemptedRef = useRef(false);`;
-
-if (!trashSource.includes("const recoveryAttemptedRef = useRef(false);")) {
-  if (trashSource.includes("const backgroundRetryRef = useRef<number | null>(null);")) {
-    trashSource = trashSource.replace(
-      "  const backgroundRetryRef = useRef<number | null>(null);",
-      "  const backgroundRetryRef = useRef<number | null>(null);\n  const recoveryAttemptedRef = useRef(false);",
-    );
-  } else if (trashSource.includes(refsOld)) {
-    trashSource = trashSource.replace(refsOld, refsNew);
-  } else {
-    throw new Error("Trash refresh refs marker not found");
-  }
+  const backgroundRetryRef = useRef<number | null>(null);`;
+  if (!trashSource.includes(refsOld)) throw new Error("Trash refresh refs marker not found");
+  trashSource = trashSource.replace(refsOld, refsNew);
 }
+
+trashSource = trashSource.replace("\n  const recoveryAttemptedRef = useRef(false);", "");
 
 const refreshStartMarker = "  const refreshTrash = async () => {";
 const refreshStart = trashSource.indexOf(refreshStartMarker);
@@ -128,11 +92,11 @@ const recoveredRefresh = `  const refreshTrash = async () => {
           return Array.from(byId.values());
         });
         setLoading(false);
-      } else if (mountedRef.current && projectItems.length === 0) {
+      } else if (mountedRef.current) {
         setLoading(true);
       }
     } catch {
-      if (mountedRef.current && projectItems.length === 0) setLoading(true);
+      if (mountedRef.current) setLoading(true);
     }
 
     const expired = purgeExpired();
@@ -152,9 +116,22 @@ const recoveredRefresh = `  const refreshTrash = async () => {
 
       const byId = new Map([...optimisticProjects, ...confirmed].map((item) => [item.id, item]));
       setProjectItems(Array.from(byId.values()));
-      setLoading(false);
-      recoveryAttemptedRef.current = false;
-      try { sessionStorage.removeItem("iattom_recent_trash_v1"); } catch { /* sessão indisponível */ }
+
+      const confirmedIds = new Set(confirmed.map((item) => item.id));
+      const allOptimisticConfirmed = optimisticProjects.every((item) => confirmedIds.has(item.id));
+
+      if (allOptimisticConfirmed) {
+        try { sessionStorage.removeItem("iattom_recent_trash_v1"); } catch { /* sessão indisponível */ }
+        setLoading(false);
+      } else {
+        setLoading(optimisticProjects.length === 0);
+        if (backgroundRetryRef.current === null) {
+          backgroundRetryRef.current = window.setTimeout(() => {
+            backgroundRetryRef.current = null;
+            void refreshTrash();
+          }, 3000);
+        }
+      }
 
       void Promise.allSettled([
         apiFetch<PromptTrashItem[]>("/api/prompts/trash").then(setPromptItems),
@@ -162,17 +139,12 @@ const recoveredRefresh = `  const refreshTrash = async () => {
         apiFetch<TrashItemData[]>("/api/me/trash").then(setIntegrationItems),
       ]);
     } catch {
-      if (mountedRef.current) setLoading(false);
-      if (
-        mountedRef.current &&
-        !recoveryAttemptedRef.current &&
-        backgroundRetryRef.current === null
-      ) {
-        recoveryAttemptedRef.current = true;
+      if (mountedRef.current && optimisticProjects.length === 0) setLoading(true);
+      if (mountedRef.current && backgroundRetryRef.current === null) {
         backgroundRetryRef.current = window.setTimeout(() => {
           backgroundRetryRef.current = null;
           void refreshTrash();
-        }, 15000);
+        }, 3000);
       }
     } finally {
       loadAllInFlightRef.current = false;
@@ -200,15 +172,14 @@ trashSource = `${trashSource.slice(0, refreshStart)}${recoveredRefresh}${trashSo
 
 for (const marker of [
   "iattom_recent_trash_v1",
-  "const recoveryAttemptedRef = useRef(false);",
-  "!recoveryAttemptedRef.current",
-  "}, 15000);",
+  "const allOptimisticConfirmed = optimisticProjects.every",
+  "}, 3000);",
   "const loadAll = refreshTrash;",
 ]) {
   if (!trashSource.includes(marker) && !projectsSource.includes(marker)) {
-    throw new Error(`Trash final recovery marker missing: ${marker}`);
+    throw new Error(`Trash continuous recovery marker missing: ${marker}`);
   }
 }
 
 writeFileSync(trashUrl, trashSource, "utf8");
-console.log("Trash uses immediate handoff, one read, and only one automatic recovery attempt.");
+console.log("Trash preserves optimistic items until backend confirmation and retries serially every 3 seconds.");
