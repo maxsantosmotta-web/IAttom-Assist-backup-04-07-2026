@@ -13,7 +13,8 @@ if (start < 0 || end < 0) {
 }
 
 const normalized = `  const getTrash = useCallback(async (): Promise<SavedItemRecord[]> => {
-    const token = await resolveToken(getToken);
+    const token = await getToken();
+    if (!token) throw new Error("Sessão da Lixeira ainda carregando");
     return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);
   }, [getToken]);`;
 
@@ -24,12 +25,12 @@ if (!source.includes('return apiFetch<SavedItemRecord[]>("/api/saved-items/trash
 }
 
 writeFileSync(hookUrl, source, "utf8");
-console.log("Saved-items getTrash normalized structurally before trash reliability patches.");
+console.log("Saved-items getTrash normalized with fast token handoff for Trash recovery.");
 
 const trashUrl = new URL("../src/pages/dashboard/Trash.tsx", import.meta.url);
 let trashSource = readFileSync(trashUrl, "utf8");
 
-if (!trashSource.includes("const retryDelays = [0, 800, 1600, 3000, 5000, 8000, 10000];")) {
+if (!trashSource.includes("const retryDelays = [0, 300, 700, 1200, 2000, 3000];")) {
   const refsOld = "  const refreshInFlightRef = useRef(false);";
   const refsNew = `  const refreshInFlightRef = useRef(false);
   const loadAllInFlightRef = refreshInFlightRef;
@@ -60,7 +61,7 @@ if (!trashSource.includes("const retryDelays = [0, 800, 1600, 3000, 5000, 8000, 
     const expired = purgeExpired();
     for (const id of expired) void deleteProjectAssets(id).catch(() => {});
 
-    const retryDelays = [0, 800, 1600, 3000, 5000, 8000, 10000];
+    const retryDelays = [0, 300, 700, 1200, 2000, 3000];
 
     try {
       for (const delay of retryDelays) {
@@ -99,7 +100,7 @@ if (!trashSource.includes("const retryDelays = [0, 800, 1600, 3000, 5000, 8000, 
             backgroundRetryRef.current = window.setTimeout(() => {
               backgroundRetryRef.current = null;
               void refreshTrash();
-            }, 10000);
+            }, 3000);
           }
           return;
         }
@@ -109,7 +110,7 @@ if (!trashSource.includes("const retryDelays = [0, 800, 1600, 3000, 5000, 8000, 
         backgroundRetryRef.current = window.setTimeout(() => {
           backgroundRetryRef.current = null;
           void refreshTrash();
-        }, 10000);
+        }, 3000);
       }
     } finally {
       loadAllInFlightRef.current = false;
@@ -138,7 +139,7 @@ if (!trashSource.includes("const retryDelays = [0, 800, 1600, 3000, 5000, 8000, 
 
 for (const marker of [
   "const loadAllInFlightRef = refreshInFlightRef;",
-  "const retryDelays = [0, 800, 1600, 3000, 5000, 8000, 10000];",
+  "const retryDelays = [0, 300, 700, 1200, 2000, 3000];",
   'const projectsLoaded = results[0]?.status === "fulfilled";',
   "backgroundRetryRef.current = window.setTimeout",
   "mountedRef.current = false;",
@@ -150,4 +151,4 @@ for (const marker of [
 }
 
 writeFileSync(trashUrl, trashSource, "utf8");
-console.log("Trash coordinated refresh now preserves items and retries automatically after transient failures.");
+console.log("Trash coordinated refresh now retries quickly without clearing persisted items.");
