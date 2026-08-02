@@ -79,4 +79,6 @@ function patchPage(path, pageName, donutName) {
 patchPage(overviewPath, "Admin overview", "planDonut");
 patchPage(analyticsPath, "Admin analytics", "planDistributionDonut");
 
-console.log("Admin Overview and Analytics classify each active registration once as ADM, Sem plano, FREE, START, PREMIUM or PRO.");
+await import("./patch-video-credit-persistent-loading.mjs");
+
+console.log("Admin Overview and Analytics classify each active registration once as ADM, Sem plano, FREE, START, PREMIUM or PRO; video credit loading recovery also runs after balance consolidation.");
