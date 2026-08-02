@@ -106,55 +106,6 @@ writeFileSync(projectsUrl, projectsSource, "utf8");
 const trashUrl = new URL("../src/pages/dashboard/Trash.tsx", import.meta.url);
 let trashSource = readFileSync(trashUrl, "utf8");
 
-const loadersOld = `  const loadIntegrations = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch<TrashItemData[]>("/api/me/trash");
-      setIntegrationItems(data);
-    } catch { setIntegrationItems([]); }
-    finally { setLoading(false); }
-  };
-
-  const loadProjects = async () => {
-    const expired = purgeExpired();
-    for (const id of expired) void deleteProjectAssets(id).catch(() => {});
-    try {
-      const apiItems = await getTrash();
-      setProjectItems(
-        apiItems
-          .filter(i => i.deletedAt !== null)
-          .map(i => ({
-            ...i,
-            deletedAt: i.deletedAt!,
-            expiresAt: i.expiresAt ?? new Date(new Date(i.deletedAt!).getTime() + 48 * 3600000).toISOString(),
-          })) as TrashedItem[],
-      );
-    } catch {
-      setProjectItems([]);
-    }
-  };
-
-  const loadPrompts = async () => {
-    try {
-      const data = await apiFetch<PromptTrashItem[]>("/api/prompts/trash");
-      setPromptItems(data);
-    } catch { setPromptItems([]); }
-  };
-
-  const loadActivities = async () => {
-    try {
-      const data = await apiFetch<ActivityTrashItem[]>("/api/history/trash");
-      setActivityItems(data);
-    } catch { setActivityItems([]); }
-  };
-
-  useEffect(() => {
-    void loadIntegrations();
-    void loadProjects();
-    void loadPrompts();
-    void loadActivities();
-  }, []);`;
-
 const loadersNew = `  const loadIntegrations = async () => {
     const data = await apiFetch<TrashItemData[]>("/api/me/trash");
     setIntegrationItems(data);
@@ -206,11 +157,21 @@ const loadersNew = `  const loadIntegrations = async () => {
 
   useEffect(() => {
     void loadAll();
-  }, []);`;
+  }, []);
+
+`;
 
 if (!trashSource.includes("const loadAll = async () =>")) {
-  if (!trashSource.includes(loadersOld)) throw new Error("Trash loaders marker not found");
-  trashSource = trashSource.replace(loadersOld, loadersNew);
+  const loadersStartMarker = "  const loadIntegrations = async () => {";
+  const loadersEndMarker = "  // ── Unified list";
+  const loadersStart = trashSource.indexOf(loadersStartMarker);
+  const loadersEnd = loadersStart >= 0 ? trashSource.indexOf(loadersEndMarker, loadersStart) : -1;
+
+  if (loadersStart < 0 || loadersEnd < 0) {
+    throw new Error("Trash loader structural boundaries not found");
+  }
+
+  trashSource = `${trashSource.slice(0, loadersStart)}${loadersNew}${trashSource.slice(loadersEnd)}`;
 }
 
 for (const marker of [
