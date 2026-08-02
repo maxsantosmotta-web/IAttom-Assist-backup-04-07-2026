@@ -2,18 +2,12 @@ import type Stripe from "stripe";
 import { eq, sql } from "drizzle-orm";
 import { db, users, creditsTransactions } from "@workspace/db";
 import { getUncachableStripeClient } from "./stripeClient.js";
-import { PLAN_CREDITS, PLAN_CREATIVE_CREDITS, type PlanKey } from "./credits.js";
+import { PLAN_CREDITS, type PlanKey } from "./credits.js";
 import { logger } from "./logger.js";
 
-const ACTIVE_STATUSES = new Set<Stripe.Subscription.Status>([
-  "active",
-  "trialing",
-  "past_due",
-]);
+const ACTIVE_STATUSES = new Set<Stripe.Subscription.Status>(["active"]);
 const PLAN_ORDER: PlanKey[] = ["free", "pro", "business", "agency"];
 
-// Mesmos Price IDs já validados no catálogo Stripe do faturamento.
-// Este mapa é somente de identificação: não altera preços nem checkout.
 const PLAN_BY_PRICE_ID = new Map<string, PlanKey>([
   ["price_1TvgAOAYtu5nLhAZmgqhsTxJ", "pro"],
   ["price_1TvgDBAYtu5nLhAZsgenq5SJ", "pro"],
@@ -27,7 +21,6 @@ interface LockedUserBalances {
   clerk_id: string;
   plan: PlanKey;
   credits: number;
-  creative_credits: number;
   stripe_subscription_id: string | null;
 }
 
@@ -62,7 +55,7 @@ function failedResult(
     generalGranted: 0,
     creativeGranted: 0,
     generalAlreadyGranted: false,
-    creativeAlreadyGranted: false,
+    creativeAlreadyGranted: true,
   };
 }
 
@@ -110,6 +103,25 @@ function getBillingPeriod(subscription: Stripe.Subscription): {
   return { periodStart, periodEnd };
 }
 
+function getCreditMultiplier(subscription: Stripe.Subscription): number {
+  return subscription.items.data[0]?.price.recurring?.interval === "year" ? 12 : 1;
+}
+
+async function hasConfirmedPayment(
+  stripe: Stripe,
+  subscription: Stripe.Subscription,
+): Promise<boolean> {
+  const latestInvoice = subscription.latest_invoice;
+  if (!latestInvoice) return false;
+
+  const invoice =
+    typeof latestInvoice === "string"
+      ? await stripe.invoices.retrieve(latestInvoice)
+      : latestInvoice;
+
+  return invoice.paid === true || invoice.status === "paid";
+}
+
 async function findUserClerkId(subscription: Stripe.Subscription): Promise<string | null> {
   const customerId =
     typeof subscription.customer === "string"
@@ -151,6 +163,7 @@ export async function handleCanonicalSubscriptionChange(
       .update(users)
       .set({
         stripeCustomerId: customerId,
+        stripeSubscriptionId: subscription.id,
         stripeSubscriptionStatus: subscription.status,
         updatedAt: new Date(),
       })
@@ -176,13 +189,26 @@ export async function handleCanonicalSubscriptionChange(
     return failedResult(subscription, "Período de cobrança da assinatura não identificado");
   }
 
+  if (!(await hasConfirmedPayment(stripe, subscription))) {
+    await db
+      .update(users)
+      .set({
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscription.id,
+        stripeSubscriptionStatus: subscription.status,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.clerkId, clerkUserId));
+    return failedResult(subscription, "Pagamento do período ainda não confirmado");
+  }
+
   const { periodStart, periodEnd } = billingPeriod;
+  const multiplier = getCreditMultiplier(subscription);
   const changeKey = `subscription:${subscription.id}:${itemPriceId}:${periodStart}:${periodEnd}:${targetPlan}`;
-  const legacyChangeKey = `subscription:${subscription.id}:${itemPriceId}:${targetPlan}`;
 
   const result = await db.transaction(async (tx): Promise<CanonicalSubscriptionResult> => {
     const lockedResult = await tx.execute(
-      sql`SELECT clerk_id, plan, credits, creative_credits, stripe_subscription_id
+      sql`SELECT clerk_id, plan, credits, stripe_subscription_id
           FROM users
           WHERE clerk_id = ${clerkUserId}
           FOR UPDATE`,
@@ -194,51 +220,24 @@ export async function handleCanonicalSubscriptionChange(
 
     const previousPlan = locked.plan;
 
-    const [existingGeneralCurrent] = await tx
+    const [existingGeneral] = await tx
       .select({ id: creditsTransactions.id })
       .from(creditsTransactions)
       .where(eq(creditsTransactions.stripeSessionId, `${changeKey}:general`))
       .limit(1);
-    const [existingGeneralLegacy] = existingGeneralCurrent
-      ? [existingGeneralCurrent]
-      : await tx
-          .select({ id: creditsTransactions.id })
-          .from(creditsTransactions)
-          .where(eq(creditsTransactions.stripeSessionId, `${legacyChangeKey}:general`))
-          .limit(1);
 
-    const [existingCreativeCurrent] = await tx
-      .select({ id: creditsTransactions.id })
-      .from(creditsTransactions)
-      .where(eq(creditsTransactions.stripeSessionId, `${changeKey}:creative`))
-      .limit(1);
-    const [existingCreativeLegacy] = existingCreativeCurrent
-      ? [existingCreativeCurrent]
-      : await tx
-          .select({ id: creditsTransactions.id })
-          .from(creditsTransactions)
-          .where(eq(creditsTransactions.stripeSessionId, `${legacyChangeKey}:creative`))
-          .limit(1);
-
-    const existingGeneral = existingGeneralCurrent ?? existingGeneralLegacy;
-    const existingCreative = existingCreativeCurrent ?? existingCreativeLegacy;
-    const generalDelta = existingGeneral ? 0 : PLAN_CREDITS[targetPlan];
-    const creativeDelta = existingCreative ? 0 : PLAN_CREATIVE_CREDITS[targetPlan];
-
+    const generalDelta = existingGeneral ? 0 : PLAN_CREDITS[targetPlan] * multiplier;
     const generalBefore = Number(locked.credits);
-    const creativeBefore = Number(locked.creative_credits);
     const generalAfter = generalBefore + generalDelta;
-    const creativeAfter = creativeBefore + creativeDelta;
 
     await tx
       .update(users)
       .set({
         plan: targetPlan,
         credits: generalAfter,
-        creativeCredits: creativeAfter,
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscription.id,
-        stripeSubscriptionStatus: subscription.status,
+        stripeSubscriptionStatus: "active",
         planSelected: true,
         updatedAt: new Date(),
       })
@@ -250,40 +249,26 @@ export async function handleCanonicalSubscriptionChange(
         amount: generalDelta,
         type: "credit",
         balanceType: "general",
-        description: previousPlan === targetPlan
-          ? `Franquia geral do plano ${targetPlan.toUpperCase()}`
-          : previousPlan === "free"
-            ? `Assinatura ${targetPlan.toUpperCase()} ativada`
-            : `Upgrade ${previousPlan.toUpperCase()} → ${targetPlan.toUpperCase()}`,
+        description:
+          multiplier === 12
+            ? `Franquia anual do plano ${targetPlan.toUpperCase()} — 12 meses`
+            : previousPlan === targetPlan
+              ? `Renovação mensal do plano ${targetPlan.toUpperCase()}`
+              : previousPlan === "free"
+                ? `Assinatura ${targetPlan.toUpperCase()} ativada`
+                : `Alteração ${previousPlan.toUpperCase()} → ${targetPlan.toUpperCase()}`,
         balanceBefore: generalBefore,
         balanceAfter: generalAfter,
         stripeSessionId: `${changeKey}:general`,
       });
     }
 
-    if (creativeDelta > 0) {
-      await tx.insert(creditsTransactions).values({
-        clerkUserId,
-        amount: creativeDelta,
-        type: "credit",
-        balanceType: "creative",
-        description: previousPlan === targetPlan
-          ? `Franquia de imagens do plano ${targetPlan.toUpperCase()}`
-          : previousPlan === "free"
-            ? `Franquia de imagens do plano ${targetPlan.toUpperCase()}`
-            : `Upgrade de imagens ${previousPlan.toUpperCase()} → ${targetPlan.toUpperCase()}`,
-        balanceBefore: creativeBefore,
-        balanceAfter: creativeAfter,
-        stripeSessionId: `${changeKey}:creative`,
-      });
-    }
-
     return {
       ok: true,
       message:
-        generalDelta > 0 || creativeDelta > 0
-          ? "Assinatura e franquias reconciliadas"
-          : "Assinatura já reconciliada para este período",
+        generalDelta > 0
+          ? "Pagamento confirmado e franquia reconciliada"
+          : "Franquia já reconciliada para este período",
       clerkUserId,
       targetPlan,
       subscriptionId: subscription.id,
@@ -291,9 +276,9 @@ export async function handleCanonicalSubscriptionChange(
       periodStart,
       periodEnd,
       generalGranted: generalDelta,
-      creativeGranted: creativeDelta,
+      creativeGranted: 0,
       generalAlreadyGranted: Boolean(existingGeneral),
-      creativeAlreadyGranted: Boolean(existingCreative),
+      creativeAlreadyGranted: true,
     };
   });
 
@@ -304,10 +289,10 @@ export async function handleCanonicalSubscriptionChange(
       targetPlan,
       periodStart,
       periodEnd,
+      multiplier,
       generalGranted: result.generalGranted,
-      creativeGranted: result.creativeGranted,
     },
-    "Canonical Stripe subscription synchronized without touching extra balances or Help",
+    "Confirmed Stripe subscription period synchronized without touching extra balances",
   );
 
   return result;
@@ -333,6 +318,7 @@ export async function handleCanonicalSubscriptionDeleted(
   const remaining: Array<{ subscription: Stripe.Subscription; plan: PlanKey }> = [];
   for (const subscription of subscriptions.data) {
     if (subscription.id === deletedSubscription.id || !ACTIVE_STATUSES.has(subscription.status)) continue;
+    if (!(await hasConfirmedPayment(stripe, subscription))) continue;
     const plan = await identifyPlan(stripe, subscription);
     if (plan) remaining.push({ subscription, plan });
   }
@@ -359,8 +345,6 @@ export async function handleCanonicalSubscriptionDeleted(
     .update(users)
     .set({
       plan: "free",
-      credits: PLAN_CREDITS.free,
-      creativeCredits: PLAN_CREATIVE_CREDITS.free,
       stripeSubscriptionId: null,
       stripeSubscriptionStatus: "canceled",
       updatedAt: new Date(),
@@ -369,6 +353,6 @@ export async function handleCanonicalSubscriptionDeleted(
 
   logger.info(
     { clerkUserId, deletedSubscriptionId: deletedSubscription.id },
-    "Last Stripe subscription deleted; user reverted to FREE while extra balances were preserved",
+    "Last Stripe subscription deleted; access blocked while all balances were preserved",
   );
 }
