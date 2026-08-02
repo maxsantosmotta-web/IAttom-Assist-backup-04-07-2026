@@ -163,7 +163,7 @@ const loadersNew = `  const loadIntegrations = async () => {
 
 if (!trashSource.includes("const loadAll = async () =>")) {
   const loadersStartMarker = "  const loadIntegrations = async () => {";
-  const loadersEndMarker = "  // ── Unified list";
+  const loadersEndMarker = "  const all: UnifiedItem[] = [";
   const loadersStart = trashSource.indexOf(loadersStartMarker);
   const loadersEnd = loadersStart >= 0 ? trashSource.indexOf(loadersEndMarker, loadersStart) : -1;
 
