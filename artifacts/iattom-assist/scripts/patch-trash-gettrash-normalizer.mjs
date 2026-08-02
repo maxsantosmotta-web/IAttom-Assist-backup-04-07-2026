@@ -29,77 +29,125 @@ console.log("Saved-items getTrash normalized structurally before trash reliabili
 const trashUrl = new URL("../src/pages/dashboard/Trash.tsx", import.meta.url);
 let trashSource = readFileSync(trashUrl, "utf8");
 
-if (!trashSource.includes("const loadAll = async () =>")) {
-  const loadersNew = `  const loadIntegrations = async () => {
-    const data = await apiFetch<TrashItemData[]>("/api/me/trash");
-    setIntegrationItems(data);
-  };
+if (!trashSource.includes("const retryDelays = [0, 800, 1600, 3000, 5000, 8000, 10000];")) {
+  const refsOld = "  const refreshInFlightRef = useRef(false);";
+  const refsNew = `  const refreshInFlightRef = useRef(false);
+  const loadAllInFlightRef = refreshInFlightRef;
+  const mountedRef = useRef(true);
+  const backgroundRetryRef = useRef<number | null>(null);`;
 
-  const loadProjects = async () => {
+  if (!trashSource.includes(refsNew)) {
+    if (!trashSource.includes(refsOld)) {
+      throw new Error("Trash refresh refs marker not found");
+    }
+    trashSource = trashSource.replace(refsOld, refsNew);
+  }
+
+  const refreshStartMarker = "  const refreshTrash = async () => {";
+  const refreshStart = trashSource.indexOf(refreshStartMarker);
+  const unifiedMarker = "  const all: UnifiedItem[] = [";
+  const unifiedStart = refreshStart >= 0 ? trashSource.indexOf(unifiedMarker, refreshStart) : -1;
+
+  if (refreshStart < 0 || unifiedStart < 0) {
+    throw new Error("Trash coordinated refresh boundaries not found");
+  }
+
+  const recoveredRefresh = `  const refreshTrash = async () => {
+    if (loadAllInFlightRef.current) return;
+    loadAllInFlightRef.current = true;
+    if (mountedRef.current) setLoading(true);
+
     const expired = purgeExpired();
     for (const id of expired) void deleteProjectAssets(id).catch(() => {});
-    const apiItems = await getTrash();
-    setProjectItems(
-      apiItems
-        .filter(i => i.deletedAt !== null)
-        .map(i => ({
-          ...i,
-          deletedAt: i.deletedAt!,
-          expiresAt: i.expiresAt ?? new Date(new Date(i.deletedAt!).getTime() + 48 * 3600000).toISOString(),
-        })) as TrashedItem[],
-    );
-  };
 
-  const loadPrompts = async () => {
-    const data = await apiFetch<PromptTrashItem[]>("/api/prompts/trash");
-    setPromptItems(data);
-  };
+    const retryDelays = [0, 800, 1600, 3000, 5000, 8000, 10000];
 
-  const loadActivities = async () => {
-    const data = await apiFetch<ActivityTrashItem[]>("/api/history/trash");
-    setActivityItems(data);
-  };
+    try {
+      for (const delay of retryDelays) {
+        if (!mountedRef.current) return;
+        if (delay > 0) await new Promise((resolve) => window.setTimeout(resolve, delay));
+        if (!mountedRef.current) return;
 
-  const loadAll = async () => {
-    setLoading(true);
-    const results = await Promise.allSettled([
-      loadProjects(),
-      loadPrompts(),
-      loadActivities(),
-      loadIntegrations(),
-    ]);
-    setLoading(false);
+        const results = await Promise.allSettled([
+          getTrash(),
+          apiFetch<PromptTrashItem[]>("/api/prompts/trash"),
+          apiFetch<ActivityTrashItem[]>("/api/history/trash"),
+          apiFetch<TrashItemData[]>("/api/me/trash"),
+        ]);
 
-    if (results.every((result) => result.status === "rejected")) {
-      toast({
-        title: "Não foi possível carregar a Lixeira.",
-        description: "Os itens anteriores foram preservados. Use Atualizar em alguns instantes.",
-        variant: "destructive",
-      });
+        const projectsLoaded = results[0]?.status === "fulfilled";
+        const allLoaded = results.every((result) => result.status === "fulfilled");
+
+        if (results[0]?.status === "fulfilled") {
+          setProjectItems(
+            results[0].value
+              .filter((item) => item.deletedAt !== null)
+              .map((item) => ({
+                ...item,
+                deletedAt: item.deletedAt!,
+                expiresAt: item.expiresAt ?? new Date(new Date(item.deletedAt!).getTime() + 48 * 3600000).toISOString(),
+              })) as TrashedItem[],
+          );
+        }
+        if (results[1]?.status === "fulfilled") setPromptItems(results[1].value);
+        if (results[2]?.status === "fulfilled") setActivityItems(results[2].value);
+        if (results[3]?.status === "fulfilled") setIntegrationItems(results[3].value);
+
+        if (projectsLoaded) {
+          if (mountedRef.current) setLoading(false);
+          if (!allLoaded && mountedRef.current && backgroundRetryRef.current === null) {
+            backgroundRetryRef.current = window.setTimeout(() => {
+              backgroundRetryRef.current = null;
+              void refreshTrash();
+            }, 10000);
+          }
+          return;
+        }
+      }
+
+      if (mountedRef.current && backgroundRetryRef.current === null) {
+        backgroundRetryRef.current = window.setTimeout(() => {
+          backgroundRetryRef.current = null;
+          void refreshTrash();
+        }, 10000);
+      }
+    } finally {
+      loadAllInFlightRef.current = false;
     }
   };
 
+  const loadAll = refreshTrash;
+
   useEffect(() => {
-    void loadAll();
+    mountedRef.current = true;
+    void refreshTrash();
+    return () => {
+      mountedRef.current = false;
+      if (backgroundRetryRef.current !== null) {
+        window.clearTimeout(backgroundRetryRef.current);
+        backgroundRetryRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 `;
 
-  const startMatch = /\n\s*const\s+loadIntegrations\s*=\s*async\s*\(\)\s*=>\s*\{/.exec(trashSource);
-  const endMatch = /\n\s*(?:\/\/[^\n]*\n\s*)*const\s+all\s*:\s*UnifiedItem\[\]\s*=\s*\[/.exec(trashSource);
-
-  if (!startMatch || !endMatch || endMatch.index <= startMatch.index) {
-    throw new Error("Trash loader regex boundaries not found");
-  }
-
-  const startIndex = startMatch.index + 1;
-  const endIndex = endMatch.index + 1;
-  trashSource = `${trashSource.slice(0, startIndex)}${loadersNew}${trashSource.slice(endIndex)}`;
+  trashSource = `${trashSource.slice(0, refreshStart)}${recoveredRefresh}${trashSource.slice(unifiedStart)}`;
 }
 
-if (!trashSource.includes("const loadAll = async () =>")) {
-  throw new Error("Trash loader normalization failed");
+for (const marker of [
+  "const loadAllInFlightRef = refreshInFlightRef;",
+  "const retryDelays = [0, 800, 1600, 3000, 5000, 8000, 10000];",
+  'const projectsLoaded = results[0]?.status === "fulfilled";',
+  "backgroundRetryRef.current = window.setTimeout",
+  "mountedRef.current = false;",
+  "const loadAll = refreshTrash;",
+]) {
+  if (!trashSource.includes(marker)) {
+    throw new Error(`Trash automatic recovery marker missing: ${marker}`);
+  }
 }
 
 writeFileSync(trashUrl, trashSource, "utf8");
-console.log("Trash loaders normalized before reliability and automatic recovery patches.");
+console.log("Trash coordinated refresh now preserves items and retries automatically after transient failures.");
