@@ -128,3 +128,4 @@ await import("./patch-billing-header-controls.mjs");
 await import("./patch-dashboard-header-controls.mjs");
 await import("./patch-authenticated-loading-foundation.mjs");
 await import("./patch-prompt-transient-recovery.mjs");
+await import("./patch-image-motion-continuous-loading.mjs");
