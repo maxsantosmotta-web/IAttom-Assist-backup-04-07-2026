@@ -180,4 +180,6 @@ for (const marker of [recoveryMarker, 'vite:preloadError', 'Failed to fetch dyna
 }
 writeFileSync(mainUrl, main, "utf8");
 
-console.log("Criar Prompt now preserves its current result across module changes and reloads, while keeping the approved navigation and chunk recovery.");
+await import("./patch-prompt-video-reference-persistence.mjs");
+
+console.log("Criar Prompt now preserves its current result and the Vídeo com Imagem reference across module changes and reloads, while keeping the approved navigation and chunk recovery.");
