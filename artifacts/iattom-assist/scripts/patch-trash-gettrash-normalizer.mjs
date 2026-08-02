@@ -20,12 +20,41 @@ const normalized = `  const getTrash = useCallback(async (): Promise<SavedItemRe
 
 source = `${source.slice(0, start)}${normalized}${source.slice(end)}`;
 
+const trashStartMarker = "  const trashItem = useCallback(async (id: string): Promise<void> => {";
+const trashStart = source.indexOf(trashStartMarker);
+const trashEnd = trashStart >= 0 ? source.indexOf("\n\n  const trashImageSource = useCallback", trashStart) : -1;
+if (trashStart < 0 || trashEnd < 0) {
+  throw new Error("Saved-items trashItem structural boundaries not found");
+}
+
+let trashBlock = source.slice(trashStart, trashEnd);
+const directDelete = '    await apiFetch<{ ok: boolean }>(`/api/saved-items/${id}`, token, { method: "DELETE" });';
+const guardedDelete = `    try {
+      await apiFetch<{ ok: boolean }>(\`/api/saved-items/\${id}\`, token, { method: "DELETE" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (!message.includes("HTTP 429")) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await apiFetch<{ ok: boolean }>(\`/api/saved-items/\${id}\`, token, { method: "DELETE" });
+    }`;
+
+if (!trashBlock.includes("message.includes(\"HTTP 429\")")) {
+  if (!trashBlock.includes(directDelete)) {
+    throw new Error("Saved-items direct delete marker not found");
+  }
+  trashBlock = trashBlock.replace(directDelete, guardedDelete);
+  source = `${source.slice(0, trashStart)}${trashBlock}${source.slice(trashEnd)}`;
+}
+
 if (!source.includes('return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);')) {
   throw new Error("Saved-items getTrash single-request normalization failed");
 }
+if (!source.includes('message.includes("HTTP 429")')) {
+  throw new Error("Saved-items delete rate-limit recovery was not installed");
+}
 
 writeFileSync(hookUrl, source, "utf8");
-console.log("Saved-items getTrash now uses one authenticated request.");
+console.log("Saved-items trash now uses one read and at most one delayed retry on HTTP 429.");
 
 const projectsUrl = new URL("../src/pages/dashboard/Projects.tsx", import.meta.url);
 let projectsSource = readFileSync(projectsUrl, "utf8");
@@ -50,7 +79,7 @@ if (!projectsSource.includes("iattom_recent_trash_v1")) {
   projectsSource = projectsSource.replace(removeOld, removeNew);
 }
 writeFileSync(projectsUrl, projectsSource, "utf8");
-console.log("Library now hands deleted projects to Trash immediately after backend confirmation.");
+console.log("Library hands confirmed deletions to Trash immediately.");
 
 const trashUrl = new URL("../src/pages/dashboard/Trash.tsx", import.meta.url);
 let trashSource = readFileSync(trashUrl, "utf8");
@@ -59,13 +88,20 @@ const refsOld = "  const refreshInFlightRef = useRef(false);";
 const refsNew = `  const refreshInFlightRef = useRef(false);
   const loadAllInFlightRef = refreshInFlightRef;
   const mountedRef = useRef(true);
-  const backgroundRetryRef = useRef<number | null>(null);`;
+  const backgroundRetryRef = useRef<number | null>(null);
+  const recoveryAttemptedRef = useRef(false);`;
 
-if (!trashSource.includes(refsNew)) {
-  if (!trashSource.includes(refsOld)) {
+if (!trashSource.includes("const recoveryAttemptedRef = useRef(false);")) {
+  if (trashSource.includes("const backgroundRetryRef = useRef<number | null>(null);")) {
+    trashSource = trashSource.replace(
+      "  const backgroundRetryRef = useRef<number | null>(null);",
+      "  const backgroundRetryRef = useRef<number | null>(null);\n  const recoveryAttemptedRef = useRef(false);",
+    );
+  } else if (trashSource.includes(refsOld)) {
+    trashSource = trashSource.replace(refsOld, refsNew);
+  } else {
     throw new Error("Trash refresh refs marker not found");
   }
-  trashSource = trashSource.replace(refsOld, refsNew);
 }
 
 const refreshStartMarker = "  const refreshTrash = async () => {";
@@ -102,18 +138,6 @@ const recoveredRefresh = `  const refreshTrash = async () => {
     const expired = purgeExpired();
     for (const id of expired) void deleteProjectAssets(id).catch(() => {});
 
-    const loadSecondarySources = async () => {
-      const results = await Promise.allSettled([
-        apiFetch<PromptTrashItem[]>("/api/prompts/trash"),
-        apiFetch<ActivityTrashItem[]>("/api/history/trash"),
-        apiFetch<TrashItemData[]>("/api/me/trash"),
-      ]);
-      if (!mountedRef.current) return;
-      if (results[0]?.status === "fulfilled") setPromptItems(results[0].value);
-      if (results[1]?.status === "fulfilled") setActivityItems(results[1].value);
-      if (results[2]?.status === "fulfilled") setIntegrationItems(results[2].value);
-    };
-
     try {
       const projects = await getTrash();
       if (!mountedRef.current) return;
@@ -129,11 +153,22 @@ const recoveredRefresh = `  const refreshTrash = async () => {
       const byId = new Map([...optimisticProjects, ...confirmed].map((item) => [item.id, item]));
       setProjectItems(Array.from(byId.values()));
       setLoading(false);
+      recoveryAttemptedRef.current = false;
       try { sessionStorage.removeItem("iattom_recent_trash_v1"); } catch { /* sessão indisponível */ }
-      void loadSecondarySources();
+
+      void Promise.allSettled([
+        apiFetch<PromptTrashItem[]>("/api/prompts/trash").then(setPromptItems),
+        apiFetch<ActivityTrashItem[]>("/api/history/trash").then(setActivityItems),
+        apiFetch<TrashItemData[]>("/api/me/trash").then(setIntegrationItems),
+      ]);
     } catch {
       if (mountedRef.current) setLoading(false);
-      if (mountedRef.current && backgroundRetryRef.current === null) {
+      if (
+        mountedRef.current &&
+        !recoveryAttemptedRef.current &&
+        backgroundRetryRef.current === null
+      ) {
+        recoveryAttemptedRef.current = true;
         backgroundRetryRef.current = window.setTimeout(() => {
           backgroundRetryRef.current = null;
           void refreshTrash();
@@ -165,16 +200,15 @@ trashSource = `${trashSource.slice(0, refreshStart)}${recoveredRefresh}${trashSo
 
 for (const marker of [
   "iattom_recent_trash_v1",
-  "const loadSecondarySources = async () =>",
-  "const projects = await getTrash();",
+  "const recoveryAttemptedRef = useRef(false);",
+  "!recoveryAttemptedRef.current",
   "}, 15000);",
-  "mountedRef.current = false;",
   "const loadAll = refreshTrash;",
 ]) {
   if (!trashSource.includes(marker) && !projectsSource.includes(marker)) {
-    throw new Error(`Trash optimistic recovery marker missing: ${marker}`);
+    throw new Error(`Trash final recovery marker missing: ${marker}`);
   }
 }
 
 writeFileSync(trashUrl, trashSource, "utf8");
-console.log("Trash now shows confirmed deletions immediately and uses bounded low-frequency recovery.");
+console.log("Trash uses immediate handoff, one read, and only one automatic recovery attempt.");
