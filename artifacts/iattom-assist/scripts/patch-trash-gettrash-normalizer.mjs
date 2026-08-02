@@ -21,11 +21,11 @@ const normalized = `  const getTrash = useCallback(async (): Promise<SavedItemRe
 source = `${source.slice(0, start)}${normalized}${source.slice(end)}`;
 
 if (!source.includes('return apiFetch<SavedItemRecord[]>("/api/saved-items/trash", token);')) {
-  throw new Error("Saved-items getTrash normalization failed");
+  throw new Error("Saved-items getTrash single-request normalization failed");
 }
 
 writeFileSync(hookUrl, source, "utf8");
-console.log("Saved-items getTrash uses one authenticated request per attempt.");
+console.log("Saved-items getTrash now uses one authenticated request.");
 
 const projectsUrl = new URL("../src/pages/dashboard/Projects.tsx", import.meta.url);
 let projectsSource = readFileSync(projectsUrl, "utf8");
@@ -49,24 +49,24 @@ if (!projectsSource.includes("iattom_recent_trash_v1")) {
   }
   projectsSource = projectsSource.replace(removeOld, removeNew);
 }
-
 writeFileSync(projectsUrl, projectsSource, "utf8");
-console.log("Library preserves a confirmed deletion handoff for Trash reloads.");
+console.log("Library now hands deleted projects to Trash immediately after backend confirmation.");
 
 const trashUrl = new URL("../src/pages/dashboard/Trash.tsx", import.meta.url);
 let trashSource = readFileSync(trashUrl, "utf8");
 
-if (!trashSource.includes("const loadAllInFlightRef = refreshInFlightRef;")) {
-  const refsOld = "  const refreshInFlightRef = useRef(false);";
-  const refsNew = `  const refreshInFlightRef = useRef(false);
+const refsOld = "  const refreshInFlightRef = useRef(false);";
+const refsNew = `  const refreshInFlightRef = useRef(false);
   const loadAllInFlightRef = refreshInFlightRef;
   const mountedRef = useRef(true);
   const backgroundRetryRef = useRef<number | null>(null);`;
-  if (!trashSource.includes(refsOld)) throw new Error("Trash refresh refs marker not found");
+
+if (!trashSource.includes(refsNew)) {
+  if (!trashSource.includes(refsOld)) {
+    throw new Error("Trash refresh refs marker not found");
+  }
   trashSource = trashSource.replace(refsOld, refsNew);
 }
-
-trashSource = trashSource.replace("\n  const recoveryAttemptedRef = useRef(false);", "");
 
 const refreshStartMarker = "  const refreshTrash = async () => {";
 const refreshStart = trashSource.indexOf(refreshStartMarker);
@@ -92,15 +92,27 @@ const recoveredRefresh = `  const refreshTrash = async () => {
           return Array.from(byId.values());
         });
         setLoading(false);
-      } else if (mountedRef.current) {
+      } else if (mountedRef.current && projectItems.length === 0) {
         setLoading(true);
       }
     } catch {
-      if (mountedRef.current) setLoading(true);
+      if (mountedRef.current && projectItems.length === 0) setLoading(true);
     }
 
     const expired = purgeExpired();
     for (const id of expired) void deleteProjectAssets(id).catch(() => {});
+
+    const loadSecondarySources = async () => {
+      const results = await Promise.allSettled([
+        apiFetch<PromptTrashItem[]>("/api/prompts/trash"),
+        apiFetch<ActivityTrashItem[]>("/api/history/trash"),
+        apiFetch<TrashItemData[]>("/api/me/trash"),
+      ]);
+      if (!mountedRef.current) return;
+      if (results[0]?.status === "fulfilled") setPromptItems(results[0].value);
+      if (results[1]?.status === "fulfilled") setActivityItems(results[1].value);
+      if (results[2]?.status === "fulfilled") setIntegrationItems(results[2].value);
+    };
 
     try {
       const projects = await getTrash();
@@ -116,35 +128,16 @@ const recoveredRefresh = `  const refreshTrash = async () => {
 
       const byId = new Map([...optimisticProjects, ...confirmed].map((item) => [item.id, item]));
       setProjectItems(Array.from(byId.values()));
-
-      const confirmedIds = new Set(confirmed.map((item) => item.id));
-      const allOptimisticConfirmed = optimisticProjects.every((item) => confirmedIds.has(item.id));
-
-      if (allOptimisticConfirmed) {
-        try { sessionStorage.removeItem("iattom_recent_trash_v1"); } catch { /* sessão indisponível */ }
-        setLoading(false);
-      } else {
-        setLoading(optimisticProjects.length === 0);
-        if (backgroundRetryRef.current === null) {
-          backgroundRetryRef.current = window.setTimeout(() => {
-            backgroundRetryRef.current = null;
-            void refreshTrash();
-          }, 3000);
-        }
-      }
-
-      void Promise.allSettled([
-        apiFetch<PromptTrashItem[]>("/api/prompts/trash").then(setPromptItems),
-        apiFetch<ActivityTrashItem[]>("/api/history/trash").then(setActivityItems),
-        apiFetch<TrashItemData[]>("/api/me/trash").then(setIntegrationItems),
-      ]);
+      setLoading(false);
+      try { sessionStorage.removeItem("iattom_recent_trash_v1"); } catch { /* sessão indisponível */ }
+      void loadSecondarySources();
     } catch {
-      if (mountedRef.current && optimisticProjects.length === 0) setLoading(true);
+      if (mountedRef.current) setLoading(false);
       if (mountedRef.current && backgroundRetryRef.current === null) {
         backgroundRetryRef.current = window.setTimeout(() => {
           backgroundRetryRef.current = null;
           void refreshTrash();
-        }, 3000);
+        }, 15000);
       }
     } finally {
       loadAllInFlightRef.current = false;
@@ -172,14 +165,16 @@ trashSource = `${trashSource.slice(0, refreshStart)}${recoveredRefresh}${trashSo
 
 for (const marker of [
   "iattom_recent_trash_v1",
-  "const allOptimisticConfirmed = optimisticProjects.every",
-  "}, 3000);",
+  "const loadSecondarySources = async () =>",
+  "const projects = await getTrash();",
+  "}, 15000);",
+  "mountedRef.current = false;",
   "const loadAll = refreshTrash;",
 ]) {
   if (!trashSource.includes(marker) && !projectsSource.includes(marker)) {
-    throw new Error(`Trash continuous recovery marker missing: ${marker}`);
+    throw new Error(`Trash optimistic recovery marker missing: ${marker}`);
   }
 }
 
 writeFileSync(trashUrl, trashSource, "utf8");
-console.log("Trash preserves optimistic items until backend confirmation and retries serially every 3 seconds.");
+console.log("Trash now shows confirmed deletions immediately and uses bounded low-frequency recovery.");
