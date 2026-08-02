@@ -19,3 +19,5 @@ if (!source.includes(newDelays)) {
 
 writeFileSync(hookUrl, source, "utf8");
 console.log("Shared saved-item loading now waits safely for the Clerk session before failing.");
+
+await import("./patch-analytics-authenticated-loading.mjs");
