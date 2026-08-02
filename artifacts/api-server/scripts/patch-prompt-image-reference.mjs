@@ -22,11 +22,12 @@ const imageMotionRule = `  videocomimagem: \`
 Para VÍDEO COM IMAGEM, atue como especialista em image-to-video, direção de movimento e preservação visual.
 Analise obrigatoriamente a imagem de referência enviada nesta solicitação antes de escrever.
 Entregue somente um prompt técnico para dar movimento à imagem pronta. Não crie roteiro, narração, falas, personagens novos, sequência de cenas, divisão por tomadas, CTA ou estrutura de vídeo tradicional.
-Identifique silenciosamente: assunto principal, cenário, enquadramento, profundidade, primeiro plano, fundo, iluminação, elementos que podem se mover naturalmente e elementos que devem permanecer fixos.
+Identifique silenciosamente o assunto principal, cenário, enquadramento, profundidade, primeiro plano, fundo, iluminação, elementos que podem se mover naturalmente e elementos que devem permanecer fixos.
+Escolha somente movimentos visualmente plausíveis e relevantes para a imagem. Priorize, nesta ordem: movimento principal, movimento de câmera, movimentos naturais do ambiente, preservação da composição e restrições contra deformações.
 Defina movimentos coerentes de câmera e dos elementos visuais, usando profundidade, parallax, reflexos, luz, atmosfera e movimentos ambientais somente quando fizerem sentido para a imagem.
 Preserve integralmente identidade, rosto, mãos, anatomia, produto, veículo, logotipo, textos, cores, materiais, proporções, composição e enquadramento. Não acrescente objetos, não remova elementos e não altere o design original.
 Evite deformações, duplicações, derretimento, troca de identidade, mudança de texto, câmera agressiva, movimentos artificiais e efeitos exagerados.
-Mire entre 1.200 e 1.450 caracteres e nunca ultrapasse 1.500 caracteres. O PROMPT final deve ser direto, específico para a imagem analisada e imediatamente utilizável em um gerador image-to-video.\`,
+O PROMPT final deve ser refinado, específico, completo e imediatamente executável, com no máximo 1.350 caracteres. Use inteligência para condensar sem perder qualidade. Termine todas as frases e nunca gere conteúdo excedente para redução posterior.\`,
 `;
 if (!source.includes("Para VÍDEO COM IMAGEM")) {
   if (!source.includes(videoRuleMarker)) throw new Error("Prompt video rule marker not found");
@@ -83,8 +84,8 @@ if (!source.includes('tipoKey === "videocomimagem" && !referenceImage')) {
 }
 
 const generalRuleMarker = '- Use entre 140 e 420 palavras para Imagem ou Vídeo; entre 100 e 320 palavras para os demais tipos.';
-const generalRuleBlock = '- Para Vídeo com Imagem, mire entre 1.200 e 1.450 caracteres e respeite obrigatoriamente o máximo de 1.500 caracteres no PROMPT. Para Imagem ou Vídeo, use entre 140 e 420 palavras; para os demais tipos, entre 100 e 320 palavras.';
-if (!source.includes("Para Vídeo com Imagem, mire entre 1.200 e 1.450 caracteres")) {
+const generalRuleBlock = '- Para Vídeo com Imagem, entregue um prompt completo, refinado e executável com no máximo 1.350 caracteres, sem segunda geração, resumo posterior ou corte. Para Imagem ou Vídeo, use entre 140 e 420 palavras; para os demais tipos, entre 100 e 320 palavras.';
+if (!source.includes("no máximo 1.350 caracteres, sem segunda geração")) {
   if (!source.includes(generalRuleMarker)) throw new Error("Prompt general length rule marker not found");
   source = source.replace(generalRuleMarker, generalRuleBlock);
 }
@@ -101,7 +102,7 @@ const messagesBlock = `      messages: [
             ? ([
                 {
                   type: "text",
-                  text: \`Tipo selecionado: \${tipo}\\nA imagem enviada é a referência obrigatória. Analise-a e gere diretamente o melhor prompt técnico de movimento, sem pedir briefing adicional.\`,
+                  text: \`Tipo selecionado: \${tipo}\\nA imagem enviada é a referência obrigatória. Analise-a e gere diretamente uma única versão final, completa e refinada, com no máximo 1.350 caracteres. Selecione os movimentos mais plausíveis e impactantes sem perder fidelidade visual. Não gere texto excedente, não peça briefing adicional e não dependa de redução posterior.\`,
                 },
                 {
                   type: "image_url",
@@ -111,7 +112,7 @@ const messagesBlock = `      messages: [
             : \`Tipo selecionado: \${tipo}\\nUse exclusivamente a solicitação atual descrita no sistema.\`,
         },
       ],`;
-if (!source.includes("sem pedir briefing adicional")) {
+if (!source.includes("não dependa de redução posterior")) {
   if (!source.includes(messagesMarker)) throw new Error("Prompt OpenAI messages marker not found");
   source = source.replace(messagesMarker, messagesBlock);
 }
@@ -132,23 +133,25 @@ const activityResponseMarker = `    const generatedTitle = titleMatch[1].trim().
 
 const responseBlock = `    let finalPrompt = promptMatch[1].trim();
 
-    if (tipoKey === "videocomimagem" && finalPrompt.length > 1500) {
-      const compacted = await openai.chat.completions.create({
-        model: "gpt-5-mini",
-        messages: [
-          {
-            role: "system",
-            content: "Reduza o prompt image-to-video para no máximo 1.500 caracteres. Preserve movimentos de câmera, movimentos naturais, profundidade, parallax, iluminação, fidelidade visual e restrições contra deformações. Não transforme em roteiro, não acrescente explicações e devolva somente o prompt final.",
-          },
-          { role: "user", content: finalPrompt },
-        ],
-        max_completion_tokens: 1100,
-      });
-      finalPrompt = (compacted.choices[0]?.message?.content ?? finalPrompt).trim();
-    }
+    if (tipoKey === "videocomimagem") {
+      finalPrompt = finalPrompt
+        .normalize("NFC")
+        .replace(/[\\u2018\\u2019]/g, "'")
+        .replace(/[\\u201C\\u201D]/g, '"')
+        .replace(/[\\u2013\\u2014]/g, "-")
+        .replace(/\\u2026/g, "...")
+        .replace(/\\u00A0/g, " ")
+        .replace(/[\\u2022\\u25CF\\u25E6]/g, "-")
+        .replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, "")
+        .replace(/[ \\t]+\\n/g, "\\n")
+        .replace(/\\n{3,}/g, "\\n\\n")
+        .trim();
 
-    if (tipoKey === "videocomimagem" && finalPrompt.length > 1500) {
-      finalPrompt = finalPrompt.slice(0, 1500).trimEnd();
+      if (finalPrompt.length > 1350) {
+        req.log.error({ promptLength: finalPrompt.length }, "prompts/generate: image-motion prompt exceeded 1,350 characters");
+        res.status(500).json({ error: "Não foi possível finalizar o prompt dentro do limite com qualidade. Gere novamente." });
+        return;
+      }
     }
 
     const generatedTitle = titleMatch[1].trim().slice(0, 120);
@@ -175,13 +178,21 @@ for (const marker of [
   "Para VÍDEO COM IMAGEM",
   "referenceImage: z.object",
   'tipoKey === "videocomimagem" && !referenceImage',
-  "sem pedir briefing adicional",
+  "não dependa de redução posterior",
   "let finalPrompt = promptMatch[1].trim();",
   'module: "prompts"',
-  "finalPrompt.length > 1500",
+  "finalPrompt.length > 1350",
+  '.normalize("NFC")',
 ]) {
   if (!source.includes(marker)) throw new Error(`Prompt image-aware backend marker missing: ${marker}`);
 }
 
+if (source.includes("const compacted = await openai.chat.completions.create")) {
+  throw new Error("Prompt image-aware backend still contains the forbidden second AI reduction call");
+}
+if (source.includes("finalPrompt.slice(0,")) {
+  throw new Error("Prompt image-aware backend still contains forbidden prompt truncation");
+}
+
 writeFileSync(fileUrl, source, "utf8");
-console.log("Vídeo com Imagem now targets 1,200–1,450 characters with an absolute 1,500-character limit.");
+console.log("Vídeo com Imagem now generates one refined prompt up to 1,350 characters, normalizes compatible text, and never calls AI again to reduce it.");
