@@ -8,7 +8,7 @@ for (const marker of [
   "Para VÍDEO COM IMAGEM",
   "referenceImage: z.object",
   "let finalPrompt = promptMatch[1].trim();",
-  "finalPrompt.length > 1350",
+  "finalPrompt.length > 1850",
   '.normalize("NFC")',
   "não dependa de redução posterior",
 ]) {
@@ -23,9 +23,9 @@ if (source.includes("const compacted = await openai.chat.completions.create")) {
 if (source.includes("finalPrompt.slice(0,")) {
   throw new Error("Final prompt guard: forbidden prompt truncation remains");
 }
-if (source.includes("finalPrompt.length > 1500")) {
-  throw new Error("Final prompt guard: generation still targets the video receiver limit instead of the 1,350 safety target");
+if (source.includes("finalPrompt.length > 2000")) {
+  throw new Error("Final prompt guard: generation still targets the video receiver limit instead of the 1,850 safety target");
 }
 
 writeFileSync(fileUrl, source, "utf8");
-console.log("Final Criar Prompt guard confirmed: one refined compatible generation up to 1,350 characters, without reduction or truncation.");
+console.log("Final Criar Prompt guard confirmed: one refined compatible generation up to 1,850 characters, without reduction or truncation.");
