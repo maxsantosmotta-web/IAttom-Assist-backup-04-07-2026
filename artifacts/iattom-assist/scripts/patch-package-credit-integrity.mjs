@@ -3,21 +3,45 @@ import path from "node:path";
 
 const root = new URL("../src", import.meta.url);
 const billingPath = new URL("../src/pages/dashboard/Billing.tsx", import.meta.url);
+const creditsPath = new URL("../src/lib/credits.ts", import.meta.url);
 let billing = fs.readFileSync(billingPath, "utf8");
+let credits = fs.readFileSync(creditsPath, "utf8");
 
 billing = billing
-  .replace(/id: "creative_20", tag: "CRIATIVO 20", credits: 20,/g, 'id: "creative_20", tag: "20 IMAGENS", images: 20,')
-  .replace(/id: "creative_35", tag: "CRIATIVO 35", credits: 35,/g, 'id: "creative_35", tag: "35 IMAGENS", images: 35,')
-  .replace(/id: "creative_50", tag: "CRIATIVO 50", credits: 50,/g, 'id: "creative_50", tag: "50 IMAGENS", images: 50,')
-  .replace(/id: "creative_20", tag: "CRIATIVO 20", images: 20,/g, 'id: "creative_20", tag: "20 IMAGENS", images: 20,')
-  .replace(/id: "creative_35", tag: "CRIATIVO 35", images: 35,/g, 'id: "creative_35", tag: "35 IMAGENS", images: 35,')
-  .replace(/id: "creative_50", tag: "CRIATIVO 50", images: 50,/g, 'id: "creative_50", tag: "50 IMAGENS", images: 50,')
+  .replace(
+    /const CREDIT_PACKAGES = \[[\s\S]*?\] as const;/,
+    `const CREDIT_PACKAGES = [
+  { id: "credits_300", credits: 100, label: "100", price: "R$ 0,50", tag: "Acessível", perUnit: "" },
+  { id: "credits_700", credits: 200, label: "200", price: "R$ 0,55", tag: "Vantagem", perUnit: "" },
+  { id: "credits_1500", credits: 500, label: "500", price: "R$ 0,60", tag: "Melhor Valor", perUnit: "" },
+] as const;`,
+  )
+  .replace(/id: "creative_20", tag: "(?:CRIATIVO 20|20 IMAGENS)", (?:credits|images): 20,/g, 'id: "creative_20", tag: "10 IMAGENS", images: 10,')
+  .replace(/id: "creative_35", tag: "(?:CRIATIVO 35|35 IMAGENS)", (?:credits|images): 35,/g, 'id: "creative_35", tag: "20 IMAGENS", images: 20,')
+  .replace(/id: "creative_50", tag: "(?:CRIATIVO 50|50 IMAGENS)", (?:credits|images): 50,/g, 'id: "creative_50", tag: "30 IMAGENS", images: 30,')
+  .replaceAll(`tag: "20 IMAGENS"`, `tag: "10 IMAGENS"`)
+  .replaceAll(`tag: "35 IMAGENS"`, `tag: "20 IMAGENS"`)
+  .replaceAll(`tag: "50 IMAGENS"`, `tag: "30 IMAGENS"`)
+  .replace(/id: "creative_20"([^\n]*?)images: 20,/g, 'id: "creative_20"$1images: 10,')
+  .replace(/id: "creative_35"([^\n]*?)images: 35,/g, 'id: "creative_35"$1images: 20,')
+  .replace(/id: "creative_50"([^\n]*?)images: 50,/g, 'id: "creative_50"$1images: 30,')
   .replace(/\{pkg\.credits\}/g, "{pkg.images}")
   .replace(/<p className="text-\[10px\] text-zinc-600 mt-0\.5">créditos criativos<\/p>/g, '<p className="text-[10px] text-zinc-600 mt-0.5">imagens</p>')
   .replace("Adicione créditos criativos para continuar gerando imagens profissionais.", "Adicione imagens ao seu saldo para continuar criando materiais profissionais.")
   .replace("Crie mais imagens e amplie suas possibilidades de divulgação com materiais profissionais.", "Adicione imagens ao seu saldo e continue criando materiais profissionais.");
 
+credits = credits.replace(
+  /export const PLAN_CREDITS = \{[\s\S]*?\} as const;/,
+  `export const PLAN_CREDITS = {
+  free: 0,
+  pro: 200,
+  business: 500,
+  agency: 1000,
+} as const;`,
+);
+
 fs.writeFileSync(billingPath, billing);
+fs.writeFileSync(creditsPath, credits);
 
 function convertCreativeDisplays(source) {
   return source
@@ -63,5 +87,16 @@ function walk(dir) {
   }
 }
 
+for (const marker of [
+  'credits: 100, label: "100"',
+  'credits: 200, label: "200"',
+  'credits: 500, label: "500"',
+  'tag: "10 IMAGENS", images: 10',
+  'tag: "20 IMAGENS", images: 20',
+  'tag: "30 IMAGENS", images: 30',
+]) {
+  if (!billing.includes(marker)) throw new Error(`Billing package marker missing: ${marker}`);
+}
+
 walk(root.pathname);
-console.log("Creative balances are displayed only as image units; internal 10-credit-per-image accounting remains unchanged.");
+console.log("Billing shows 100/200/500 credits and 10/20/30 images while temporary checkout prices remain active.");
