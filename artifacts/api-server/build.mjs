@@ -9,6 +9,10 @@ import { rm } from "node:fs/promises";
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
+const sharedZodEntry = path.resolve(
+  artifactDir,
+  "../../lib/api-zod/node_modules/zod/index.js",
+);
 const sharedZodV4Entry = path.resolve(
   artifactDir,
   "../../lib/api-zod/node_modules/zod/v4/index.js",
@@ -27,6 +31,7 @@ async function buildAll() {
     outExtension: { ".js": ".mjs" },
     logLevel: "info",
     alias: {
+      zod: sharedZodEntry,
       "zod/v4": sharedZodV4Entry,
     },
     // Some packages may not be bundleable, so we externalize them, we can add more here as needed.
