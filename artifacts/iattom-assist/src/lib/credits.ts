@@ -12,9 +12,9 @@ export const FEATURE_COSTS = {
 
 export const PLAN_CREDITS = {
   free: 0,
-  pro: 400,
-  business: 1000,
-  agency: 2300,
+  pro: 200,
+  business: 500,
+  agency: 1000,
 } as const;
 
 export const PLAN_CREATIVE_CREDITS = {
