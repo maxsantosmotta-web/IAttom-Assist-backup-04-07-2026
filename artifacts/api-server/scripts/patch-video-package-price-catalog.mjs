@@ -10,25 +10,25 @@ const videoPackages = `const VIDEO_PACKAGES = [
   {
     id: "video_10",
     videos: 10,
-    unitAmountBrl: 3500,
+    unitAmountBrl: 5990,
     name: "Pacote 10 Vídeos com Efeito",
-    officialPriceId: "price_1TunidAYtu5nLhAZ4jIMKk3V",
+    officialPriceId: "price_1U0EDAAYtu5nLhAZpWhOVTvB",
     testPriceId: "price_1TyO8kAYtu5nLhAZFL8AJ8F9",
   },
   {
     id: "video_20",
     videos: 20,
-    unitAmountBrl: 6500,
+    unitAmountBrl: 8990,
     name: "Pacote 20 Vídeos com Efeito",
-    officialPriceId: "price_1TunhwAYtu5nLhAZtAIPYFPX",
+    officialPriceId: "price_1U0EEMAYtu5nLhAZj1VLUXRM",
     testPriceId: "price_1TyOBZAYtu5nLhAZ2JqbZb09",
   },
   {
     id: "video_30",
     videos: 30,
-    unitAmountBrl: 9000,
+    unitAmountBrl: 11990,
     name: "Pacote 30 Vídeos com Efeito",
-    officialPriceId: "price_1TungXAYtu5nLhAZDHUOzXF9",
+    officialPriceId: "price_1U0EFGAYtu5nLhAZgTswLJlM",
     testPriceId: "price_1TyOCZAYtu5nLhAZkTdXPnee",
   },
 ] as const;`;
@@ -82,6 +82,9 @@ if (/unitAmountBrl|price_data:/.test(videoFunction)) {
 service = service.replace(videoFunctionPattern, videoFunction);
 
 for (const marker of [
+  'officialPriceId: "price_1U0EDAAYtu5nLhAZpWhOVTvB"',
+  'officialPriceId: "price_1U0EEMAYtu5nLhAZj1VLUXRM"',
+  'officialPriceId: "price_1U0EFGAYtu5nLhAZgTswLJlM"',
   'testPriceId: "price_1TyO8kAYtu5nLhAZFL8AJ8F9"',
   'testPriceId: "price_1TyOBZAYtu5nLhAZ2JqbZb09"',
   'testPriceId: "price_1TyOCZAYtu5nLhAZkTdXPnee"',
@@ -94,4 +97,4 @@ if (/id: "video_(5|7)"/.test(route)) throw new Error("Legacy video packages rema
 
 writeFileSync(stripeRouteUrl, route);
 writeFileSync(stripeServiceUrl, service);
-console.log("Video checkout now uses only the verified test Stripe Price IDs.");
+console.log("Video checkout keeps verified test Price IDs active while new official Price IDs remain registered.");
