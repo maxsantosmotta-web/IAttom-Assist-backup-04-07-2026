@@ -66,12 +66,20 @@ if (reconcileStart >= 0 && reconcileEnd > reconcileStart) {
   const planValidation = `      if (planKey !== "pro" && planKey !== "business" && planKey !== "agency") {
         return res.status(422).json({ error: "Plano da assinatura não identificado" });
       }`;
-  const allowanceBlock = `${planValidation}
+  const allowanceLine = '      const planCredits = planKey === "pro" ? 200 : planKey === "business" ? 500 : 1000;';
 
-      const planCredits = planKey === "pro" ? 200 : planKey === "business" ? 500 : 1000;`;
-  if (block.includes(planValidation) && !block.includes("const planCredits =")) {
-    block = block.replace(planValidation, allowanceBlock);
+  block = block.replace(
+    /\n\s*const planCredits\s*=\s*planKey\s*===\s*"pro"\s*\?\s*\d+\s*:\s*planKey\s*===\s*"business"\s*\?\s*\d+\s*:\s*\d+\s*;/,
+    `\n\n${allowanceLine}`,
+  );
+
+  if (!/const planCredits\s*=/.test(block)) {
+    if (!block.includes(planValidation)) {
+      throw new Error("Plan validation block not found before allowance insertion");
+    }
+    block = block.replace(planValidation, `${planValidation}\n\n${allowanceLine}`);
   }
+
   block = block
     .replace("          credits: 20,", "          credits: planCredits,")
     .replace("      if (balanceBefore !== 20) {", "      if (balanceBefore !== planCredits) {")
@@ -88,9 +96,12 @@ for (const marker of [
   'creativeCredits: 100, unitAmountBrl: 50, name: "Pacote 10 Imagens Premium"',
   'creativeCredits: 200, unitAmountBrl: 55, name: "Pacote 20 Imagens Premium"',
   'creativeCredits: 300, unitAmountBrl: 60, name: "Pacote 30 Imagens Premium"',
-  "const planCredits = planKey === \"pro\" ? 200 : planKey === \"business\" ? 500 : 1000;",
 ]) {
   if (!route.includes(marker)) throw new Error(`Commercial catalog marker missing: ${marker}`);
+}
+
+if (!/const planCredits\s*=\s*planKey\s*===\s*"pro"\s*\?\s*200\s*:\s*planKey\s*===\s*"business"\s*\?\s*500\s*:\s*1000\s*;/.test(route)) {
+  throw new Error("Commercial plan allowance mapping missing or incorrect");
 }
 
 write(stripeRoutePath, route);
