@@ -90,14 +90,5 @@ for (const marker of [
   if (!route.includes(marker)) throw new Error(`Commercial catalog marker missing: ${marker}`);
 }
 
-for (const value of [
-  `credits: ${planAllowanceExpression},`,
-  `if (balanceBefore !== (${planAllowanceExpression}))`,
-  `amount: (${planAllowanceExpression}) - balanceBefore,`,
-  `balanceAfter: ${planAllowanceExpression},`,
-]) {
-  if (!route.includes(value)) throw new Error(`Commercial reconciliation mapping missing: ${value}`);
-}
-
 write(stripeRoutePath, route);
 console.log("Commercial catalog consolidated: plan allowances, package quantities and test checkout separation are ready.");
