@@ -27,7 +27,7 @@ Escolha somente movimentos visualmente plausíveis e relevantes para a imagem. P
 Defina movimentos coerentes de câmera e dos elementos visuais, usando profundidade, parallax, reflexos, luz, atmosfera e movimentos ambientais somente quando fizerem sentido para a imagem.
 Preserve integralmente identidade, rosto, mãos, anatomia, produto, veículo, logotipo, textos, cores, materiais, proporções, composição e enquadramento. Não acrescente objetos, não remova elementos e não altere o design original.
 Evite deformações, duplicações, derretimento, troca de identidade, mudança de texto, câmera agressiva, movimentos artificiais e efeitos exagerados.
-O PROMPT final deve ser refinado, específico, completo e imediatamente executável, com no máximo 1.350 caracteres. Use inteligência para condensar sem perder qualidade. Termine todas as frases e nunca gere conteúdo excedente para redução posterior.\`,
+O PROMPT final deve ser refinado, específico, completo e imediatamente executável, com no máximo 1.850 caracteres. Use inteligência para condensar sem perder qualidade. Termine todas as frases e nunca gere conteúdo excedente para redução posterior.\`,
 `;
 if (!source.includes("Para VÍDEO COM IMAGEM")) {
   if (!source.includes(videoRuleMarker)) throw new Error("Prompt video rule marker not found");
@@ -84,8 +84,8 @@ if (!source.includes('tipoKey === "videocomimagem" && !referenceImage')) {
 }
 
 const generalRuleMarker = '- Use entre 140 e 420 palavras para Imagem ou Vídeo; entre 100 e 320 palavras para os demais tipos.';
-const generalRuleBlock = '- Para Vídeo com Imagem, entregue um prompt completo, refinado e executável com no máximo 1.350 caracteres, sem segunda geração, resumo posterior ou corte. Para Imagem ou Vídeo, use entre 140 e 420 palavras; para os demais tipos, entre 100 e 320 palavras.';
-if (!source.includes("no máximo 1.350 caracteres, sem segunda geração")) {
+const generalRuleBlock = '- Para Vídeo com Imagem, entregue um prompt completo, refinado e executável com no máximo 1.850 caracteres, sem segunda geração, resumo posterior ou corte. Para Imagem ou Vídeo, use entre 140 e 420 palavras; para os demais tipos, entre 100 e 320 palavras.';
+if (!source.includes("no máximo 1.850 caracteres, sem segunda geração")) {
   if (!source.includes(generalRuleMarker)) throw new Error("Prompt general length rule marker not found");
   source = source.replace(generalRuleMarker, generalRuleBlock);
 }
@@ -102,7 +102,7 @@ const messagesBlock = `      messages: [
             ? ([
                 {
                   type: "text",
-                  text: \`Tipo selecionado: \${tipo}\\nA imagem enviada é a referência obrigatória. Analise-a e gere diretamente uma única versão final, completa e refinada, com no máximo 1.350 caracteres. Selecione os movimentos mais plausíveis e impactantes sem perder fidelidade visual. Não gere texto excedente, não peça briefing adicional e não dependa de redução posterior.\`,
+                  text: \`Tipo selecionado: \${tipo}\\nA imagem enviada é a referência obrigatória. Analise-a e gere diretamente uma única versão final, completa e refinada, com no máximo 1.850 caracteres. Selecione os movimentos mais plausíveis e impactantes sem perder fidelidade visual. Não gere texto excedente, não peça briefing adicional e não dependa de redução posterior.\`,
                 },
                 {
                   type: "image_url",
@@ -147,8 +147,8 @@ const responseBlock = `    let finalPrompt = promptMatch[1].trim();
         .replace(/\\n{3,}/g, "\\n\\n")
         .trim();
 
-      if (finalPrompt.length > 1350) {
-        req.log.error({ promptLength: finalPrompt.length }, "prompts/generate: image-motion prompt exceeded 1,350 characters");
+      if (finalPrompt.length > 1850) {
+        req.log.error({ promptLength: finalPrompt.length }, "prompts/generate: image-motion prompt exceeded 1,850 characters");
         res.status(500).json({ error: "Não foi possível finalizar o prompt dentro do limite com qualidade. Gere novamente." });
         return;
       }
@@ -181,7 +181,7 @@ for (const marker of [
   "não dependa de redução posterior",
   "let finalPrompt = promptMatch[1].trim();",
   'module: "prompts"',
-  "finalPrompt.length > 1350",
+  "finalPrompt.length > 1850",
   '.normalize("NFC")',
 ]) {
   if (!source.includes(marker)) throw new Error(`Prompt image-aware backend marker missing: ${marker}`);
@@ -195,4 +195,4 @@ if (source.includes("finalPrompt.slice(0,")) {
 }
 
 writeFileSync(fileUrl, source, "utf8");
-console.log("Vídeo com Imagem now generates one refined prompt up to 1,350 characters, normalizes compatible text, and never calls AI again to reduce it.");
+console.log("Vídeo com Imagem now generates one refined prompt up to 1,850 characters, normalizes compatible text, and never calls AI again to reduce it.");
