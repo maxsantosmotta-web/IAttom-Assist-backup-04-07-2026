@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, sql } from "drizzle-orm";
-import { db, users, creditsTransactions } from "@workspace/db";
+import { and, eq, desc, sql } from "drizzle-orm";
+import { db, users, creditsTransactions, videoTransactions } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { getOrCreateUserFromClerk } from "../lib/userSync";
 import {
@@ -99,26 +99,56 @@ router.get("/credits/transactions", requireAuth, async (req, res): Promise<void>
   const { clerkUserId } = req as AuthenticatedRequest;
   const limit = Math.min(parseInt((req.query.limit as string) || "50", 10), 100);
   const offset = parseInt((req.query.offset as string) || "0", 10);
+  const fetchLimit = limit + offset;
 
-  const [txList, total, [userRow]] = await Promise.all([
+  const [creditTxList, videoPurchaseTxList, creditTotal, [videoPurchaseTotal], [userRow]] = await Promise.all([
     db.select()
       .from(creditsTransactions)
       .where(eq(creditsTransactions.clerkUserId, clerkUserId))
       .orderBy(desc(creditsTransactions.createdAt))
-      .limit(limit)
-      .offset(offset),
+      .limit(fetchLimit),
+    db.select()
+      .from(videoTransactions)
+      .where(and(
+        eq(videoTransactions.clerkUserId, clerkUserId),
+        eq(videoTransactions.type, "purchase"),
+      ))
+      .orderBy(desc(videoTransactions.createdAt))
+      .limit(fetchLimit),
     getTransactionCount(clerkUserId),
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(videoTransactions)
+      .where(and(
+        eq(videoTransactions.clerkUserId, clerkUserId),
+        eq(videoTransactions.type, "purchase"),
+      )),
     db.select({ credits: users.credits, extraCredits: users.extraCredits }).from(users).where(eq(users.clerkId, clerkUserId)),
   ]);
 
-  const compatibleTransactions = txList.map((transaction) => ({
+  const compatibleCreditTransactions = creditTxList.map((transaction) => ({
     ...transaction,
     feature: transaction.feature ?? undefined,
   }));
 
+  const compatibleVideoPurchases = videoPurchaseTxList.map((transaction) => ({
+    id: -transaction.id,
+    clerkUserId: transaction.clerkUserId,
+    amount: transaction.amount,
+    type: "credit" as const,
+    feature: undefined,
+    description: transaction.description,
+    balanceBefore: transaction.balanceBefore,
+    balanceAfter: transaction.balanceAfter,
+    createdAt: transaction.createdAt,
+  }));
+
+  const transactions = [...compatibleCreditTransactions, ...compatibleVideoPurchases]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(offset, offset + limit);
+
   res.json(ListCreditTransactionsResponse.parse({
-    transactions: compatibleTransactions,
-    total,
+    transactions,
+    total: creditTotal + (videoPurchaseTotal?.count ?? 0),
     balance: (userRow?.credits ?? 0) + (userRow?.extraCredits ?? 0),
   }));
 });
