@@ -16,15 +16,18 @@ billing = billing
   { id: "credits_1500", credits: 500, label: "500", price: "R$ 0,60", tag: "Melhor Valor", perUnit: "" },
 ] as const;`,
   )
-  .replace(/id: "creative_20", tag: "(?:CRIATIVO 20|20 IMAGENS)", (?:credits|images): 20,/g, 'id: "creative_20", tag: "10 IMAGENS", images: 10,')
-  .replace(/id: "creative_35", tag: "(?:CRIATIVO 35|35 IMAGENS)", (?:credits|images): 35,/g, 'id: "creative_35", tag: "20 IMAGENS", images: 20,')
-  .replace(/id: "creative_50", tag: "(?:CRIATIVO 50|50 IMAGENS)", (?:credits|images): 50,/g, 'id: "creative_50", tag: "30 IMAGENS", images: 30,')
-  .replaceAll(`tag: "20 IMAGENS"`, `tag: "10 IMAGENS"`)
-  .replaceAll(`tag: "35 IMAGENS"`, `tag: "20 IMAGENS"`)
-  .replaceAll(`tag: "50 IMAGENS"`, `tag: "30 IMAGENS"`)
-  .replace(/id: "creative_20"([^\n]*?)images: 20,/g, 'id: "creative_20"$1images: 10,')
-  .replace(/id: "creative_35"([^\n]*?)images: 35,/g, 'id: "creative_35"$1images: 20,')
-  .replace(/id: "creative_50"([^\n]*?)images: 50,/g, 'id: "creative_50"$1images: 30,')
+  .replace(
+    /id: "creative_20", tag: "[^"]+", (?:credits|images): \d+, price: "[^"]+",/,
+    'id: "creative_20", tag: "10 IMAGENS", images: 10, price: "R$ 0,50",',
+  )
+  .replace(
+    /id: "creative_35", tag: "[^"]+", (?:credits|images): \d+, price: "[^"]+",/,
+    'id: "creative_35", tag: "20 IMAGENS", images: 20, price: "R$ 0,55",',
+  )
+  .replace(
+    /id: "creative_50", tag: "[^"]+", (?:credits|images): \d+, price: "[^"]+",/,
+    'id: "creative_50", tag: "30 IMAGENS", images: 30, price: "R$ 0,60",',
+  )
   .replace(/\{pkg\.credits\}/g, "{pkg.images}")
   .replace(/<p className="text-\[10px\] text-zinc-600 mt-0\.5">créditos criativos<\/p>/g, '<p className="text-[10px] text-zinc-600 mt-0.5">imagens</p>')
   .replace("Adicione créditos criativos para continuar gerando imagens profissionais.", "Adicione imagens ao seu saldo para continuar criando materiais profissionais.")
