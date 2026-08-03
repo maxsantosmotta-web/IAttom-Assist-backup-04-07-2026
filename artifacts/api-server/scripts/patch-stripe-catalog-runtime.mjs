@@ -9,21 +9,21 @@ const constantsMarker = 'const BASE_PATH = (process.env.BASE_PATH ?? "/").replac
 const packageConstants = `
 
 const CREDIT_PACKAGE_PRICE_IDS: Record<string, string> = {
-  credits_300: "price_1TunXfAYtu5nLhAZ68ObRJ7Z",
-  credits_700: "price_1TunYwAYtu5nLhAZwDmPGnis",
-  credits_1500: "price_1TunaAAYtu5nLhAZqplDY2BB",
+  credits_300: "price_1U0DyxAYtu5nLhAZAC4mb6al",
+  credits_700: "price_1U0E1PAYtu5nLhAZfVQHJe0W",
+  credits_1500: "price_1U0E2qAYtu5nLhAZ5jnO2ZsA",
 };
 
 const CREATIVE_PACKAGE_PRICE_IDS: Record<string, string> = {
-  creative_20: "price_1TunbfAYtu5nLhAZhuocDYRy",
-  creative_35: "price_1TuncoAYtu5nLhAZbxixdrAd",
-  creative_50: "price_1TundvAYtu5nLhAZBE4RJASZ",
+  creative_20: "price_1U0ENdAYtu5nLhAZh1owGZc2",
+  creative_35: "price_1U0EPSAYtu5nLhAZNbcb4TCJ",
+  creative_50: "price_1U0ERSAYtu5nLhAZKvYw4HjL",
 };
 
 const OFFICIAL_VIDEO_PACKAGE_PRICE_IDS: Record<string, string> = {
-  video_10: "price_1TunidAYtu5nLhAZ4jIMKk3V",
-  video_20: "price_1TunhwAYtu5nLhAZtAIPYFPX",
-  video_30: "price_1TungXAYtu5nLhAZDHUOzXF9",
+  video_10: "price_1U0EDAAYtu5nLhAZpWhOVTvB",
+  video_20: "price_1U0EEMAYtu5nLhAZj1VLUXRM",
+  video_30: "price_1U0EFGAYtu5nLhAZgTswLJlM",
 };
 
 const TEST_VIDEO_PACKAGE_PRICE_IDS: Record<string, string> = {
@@ -70,28 +70,51 @@ replaceLineItems("createCreditPurchaseCheckoutSession", "packageId", "CREDIT_PAC
 replaceLineItems("createCreativePurchaseCheckoutSession", "packageId", "CREATIVE_PACKAGE_PRICE_IDS");
 replaceLineItems("createVideoPackCheckoutSession", "packId", "VIDEO_PACKAGE_PRICE_IDS");
 
-routes = routes.replace(
-  /const VIDEO_PACKAGES = \[[\s\S]*?\] as const;/,
-  `const VIDEO_PACKAGES = [
-  { id: "video_10", videos: 10, unitAmountBrl: 3500, name: "Pacote 10 Vídeos com Efeito" },
-  { id: "video_20", videos: 20, unitAmountBrl: 6500, name: "Pacote 20 Vídeos com Efeito" },
-  { id: "video_30", videos: 30, unitAmountBrl: 9000, name: "Pacote 30 Vídeos com Efeito" },
+routes = routes
+  .replace(
+    /const CREDIT_PACKAGES = \[[\s\S]*?\] as const;/,
+    `const CREDIT_PACKAGES = [
+  { id: "credits_300", credits: 100, unitAmountBrl: 1990, name: "Pacote 100 Créditos", displayPrice: "R$ 19,90" },
+  { id: "credits_700", credits: 200, unitAmountBrl: 3990, name: "Pacote 200 Créditos", displayPrice: "R$ 39,90" },
+  { id: "credits_1500", credits: 500, unitAmountBrl: 6990, name: "Pacote 500 Créditos", displayPrice: "R$ 69,90" },
 ] as const;`,
-);
+  )
+  .replace(
+    /const CREATIVE_PACKAGES = \[[\s\S]*?\] as const;/,
+    `const CREATIVE_PACKAGES = [
+  { id: "creative_20", creativeCredits: 100, unitAmountBrl: 3990, name: "Pacote 10 Imagens Premium", displayPrice: "R$ 39,90" },
+  { id: "creative_35", creativeCredits: 200, unitAmountBrl: 6990, name: "Pacote 20 Imagens Premium", displayPrice: "R$ 69,90" },
+  { id: "creative_50", creativeCredits: 300, unitAmountBrl: 9990, name: "Pacote 30 Imagens Premium", displayPrice: "R$ 99,90" },
+] as const;`,
+  )
+  .replace(
+    /const VIDEO_PACKAGES = \[[\s\S]*?\] as const;/,
+    `const VIDEO_PACKAGES = [
+  { id: "video_10", videos: 10, unitAmountBrl: 5990, name: "Pacote 10 Vídeos com Efeito" },
+  { id: "video_20", videos: 20, unitAmountBrl: 8990, name: "Pacote 20 Vídeos com Efeito" },
+  { id: "video_30", videos: 30, unitAmountBrl: 11990, name: "Pacote 30 Vídeos com Efeito" },
+] as const;`,
+  );
 
 for (const marker of [
-  'video_10: "price_1TunidAYtu5nLhAZ4jIMKk3V"',
-  'video_20: "price_1TunhwAYtu5nLhAZtAIPYFPX"',
-  'video_30: "price_1TungXAYtu5nLhAZDHUOzXF9"',
+  'credits_300: "price_1U0DyxAYtu5nLhAZAC4mb6al"',
+  'credits_700: "price_1U0E1PAYtu5nLhAZfVQHJe0W"',
+  'credits_1500: "price_1U0E2qAYtu5nLhAZ5jnO2ZsA"',
+  'creative_20: "price_1U0ENdAYtu5nLhAZh1owGZc2"',
+  'creative_35: "price_1U0EPSAYtu5nLhAZNbcb4TCJ"',
+  'creative_50: "price_1U0ERSAYtu5nLhAZKvYw4HjL"',
+  'video_10: "price_1U0EDAAYtu5nLhAZpWhOVTvB"',
+  'video_20: "price_1U0EEMAYtu5nLhAZj1VLUXRM"',
+  'video_30: "price_1U0EFGAYtu5nLhAZgTswLJlM"',
   'video_10: "price_1TyO8kAYtu5nLhAZFL8AJ8F9"',
   'video_20: "price_1TyOBZAYtu5nLhAZ2JqbZb09"',
   'video_30: "price_1TyOCZAYtu5nLhAZkTdXPnee"',
   'VIDEO_PACKAGE_CATALOG_MODE: "official" | "test" = "official"',
 ]) {
-  if (!source.includes(marker)) throw new Error(`Video catalog marker missing: ${marker}`);
+  if (!source.includes(marker)) throw new Error(`Catalog marker missing: ${marker}`);
 }
 if (/id: "video_(5|7)"/.test(routes)) throw new Error("Legacy video packages are still active");
 
 fs.writeFileSync(servicePath, source);
 fs.writeFileSync(routePath, routes);
-console.log("Official video catalog active; temporary R$ 0,50 video prices registered separately for later testing.");
+console.log("New official package catalog registered; verified test video Price IDs remain separate and untouched.");
