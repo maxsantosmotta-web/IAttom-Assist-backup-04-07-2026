@@ -63,9 +63,6 @@ const reconcileStart = route.indexOf('router.post(\n  "/stripe/reconcile-latest"
 const reconcileEnd = route.indexOf('router.post(\n  "/stripe/reconcile-session"', reconcileStart);
 if (reconcileStart >= 0 && reconcileEnd > reconcileStart) {
   let block = route.slice(reconcileStart, reconcileEnd);
-  const planValidation = `      if (planKey !== "pro" && planKey !== "business" && planKey !== "agency") {
-        return res.status(422).json({ error: "Plano da assinatura não identificado" });
-      }`;
   const allowanceLine = '      const planCredits = planKey === "pro" ? 200 : planKey === "business" ? 500 : 1000;';
 
   block = block.replace(
@@ -74,10 +71,11 @@ if (reconcileStart >= 0 && reconcileEnd > reconcileStart) {
   );
 
   if (!/const planCredits\s*=/.test(block)) {
-    if (!block.includes(planValidation)) {
-      throw new Error("Plan validation block not found before allowance insertion");
+    const balanceMarker = "      const balanceBefore = user.credits ?? 0;";
+    if (!block.includes(balanceMarker)) {
+      throw new Error("Balance reconciliation marker not found before plan allowance insertion");
     }
-    block = block.replace(planValidation, `${planValidation}\n\n${allowanceLine}`);
+    block = block.replace(balanceMarker, `${allowanceLine}\n\n${balanceMarker}`);
   }
 
   block = block
