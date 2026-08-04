@@ -22,20 +22,24 @@ export function clearSavedImageLibraryCache(): void {
   cache = null;
 }
 
+function isVideoEffectItem(item: SavedItemRecord): boolean {
+  if (typeof item.videosData === "string" && item.videosData.trim() && item.videosData !== "[]") return true;
+  try {
+    const parsed = item.data ? JSON.parse(item.data) as { type?: unknown } : null;
+    return parsed?.type === "image-motion-source" || parsed?.type === "image-motion-video";
+  } catch {
+    return false;
+  }
+}
+
 function uniqueImageEntries(entries: SavedImageLibraryEntry[]): SavedImageLibraryEntry[] {
   const seen = new Set<string>();
   const unique: SavedImageLibraryEntry[] = [];
 
   for (const entry of entries) {
     const base64 = entry.asset.base64?.trim();
-    if (!base64) continue;
-
-    // O mesmo arquivo pode estar associado a mais de um registro legado ou cache local.
-    // A imagem deve aparecer apenas uma vez nos seletores de Vídeo com Imagem/Efeito.
-    const key = base64;
-    if (seen.has(key)) continue;
-
-    seen.add(key);
+    if (!base64 || seen.has(base64)) continue;
+    seen.add(base64);
     unique.push(entry);
   }
 
@@ -51,8 +55,10 @@ export async function loadSavedImageLibrary(
   if (pendingRequest) return pendingRequest;
 
   pendingRequest = (async () => {
+    // Mesma classificação usada por Biblioteca → Imagens:
+    // registro ativo, com assets de imagem confirmados e que não seja Vídeo com Efeito.
     const items = (await getItems())
-      .filter((item) => !item.deletedAt)
+      .filter((item) => !item.deletedAt && item.hasImages && !isVideoEffectItem(item))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     const results: SavedImageLibraryEntry[][] = new Array(items.length);
