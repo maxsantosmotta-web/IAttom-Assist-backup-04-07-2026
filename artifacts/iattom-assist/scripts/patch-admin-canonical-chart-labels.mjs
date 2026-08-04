@@ -91,6 +91,24 @@ if (!rawPromptFilterPattern.test(analytics)) {
   throw new Error("Canonical admin analytics raw prompt filter was not applied.");
 }
 
+const revenueChartBlock = `      <div className="grid gap-6 lg:grid-cols-2">
+        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18 }}>
+          {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : featureUsageDonut.length ? <DomnDonutChart data={featureUsageDonut} title="Execuções por Módulo" subtitle="Quantidade de ações por módulo" centerLabel="Ações" /> : <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><p className="text-sm text-muted-foreground">Sem dados de uso ainda.</p></Card>}
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
+          {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : <DomnDonutChart data={planRevenueDonut} title="Receita por Plano" subtitle="Receita recorrente mensal" centerLabel="MRR" />}
+        </motion.div>
+      </div>`;
+
+const analyticsModuleBlock = `      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18 }}>
+        {isLoading ? <Skeleton className="h-[330px] w-full rounded-2xl bg-white/5" /> : featureUsageDonut.length ? <DomnDonutChart data={featureUsageDonut} title="Execuções por Módulo" subtitle="Quantidade de ações por módulo" centerLabel="Ações" /> : <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><p className="text-sm text-muted-foreground">Sem dados de uso ainda.</p></Card>}
+      </motion.div>`;
+
+analytics = analytics.replace(revenueChartBlock, analyticsModuleBlock);
+if (analytics.includes('title="Receita por Plano"') || !analytics.includes(analyticsModuleBlock)) {
+  throw new Error("Admin analytics revenue by plan chart was not removed.");
+}
+
 const overviewFeatureNameMap = `const FEATURE_NAME_MAP: Record<string, string> = {
   "Product Discovery": "Buscar Produtos", "Find Products": "Buscar Produtos",
   product_discovery: "Buscar Produtos", find_products: "Buscar Produtos",
@@ -142,7 +160,6 @@ for (const marker of [
   'Prompts: "Criar Prompt"',
   'prompt_creation: "Criar Prompt"',
   'Help: "IAttom Help"',
-  'className="grid gap-6 lg:grid-cols-2"',
   'title="Execuções por Módulo"',
   'title="Resumo de Execuções por Módulo"',
 ]) {
@@ -155,4 +172,4 @@ fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Administrative charts now normalize capitalized prompt labels without changing values or filters.");
+console.log("Administrative charts keep canonical prompt labels and omit revenue by plan from Analytics.");
