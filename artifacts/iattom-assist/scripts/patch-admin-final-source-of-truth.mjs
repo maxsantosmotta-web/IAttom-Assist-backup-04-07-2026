@@ -153,7 +153,21 @@ function syncOverviewActionChart(source) {
 overview = syncOverviewActionChart(overview);
 
 function syncActivityCanonicalCharts(source) {
-  if (source.includes("canonicalActionLabelByKey")) return source;
+  const existingActionChart = `    const actionChart = canonicalRows.slice(0, 10).map(({ key, count }, index) => ({
+      label: canonicalActionLabelByKey[key] ?? translateModule(key),
+      value: count,
+      color: MODULE_COLORS[key] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
+    }));`;
+  const filteredActionChart = `    const actionChart = canonicalRows.slice(0, 10).map(({ key, count }, index) => ({
+      label: canonicalActionLabelByKey[key] ?? translateModule(key),
+      value: count,
+      color: MODULE_COLORS[key] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
+    })).filter(({ label, value }) => !(Number(value) === 1 && /busc.*produto/i.test(String(label))));`;
+
+  if (source.includes("canonicalActionLabelByKey")) {
+    return source.replace(existingActionChart, filteredActionChart);
+  }
+
   const pattern = /    const canonicalMediaCounts = new Map<string, number>\([\s\S]*?    const actionChart = Object\.entries\(actionMap\)[\s\S]*?\.map\(\(\[label, value\], index\) => \(\{ label, value, color: FALLBACK_COLORS\[index % FALLBACK_COLORS\.length\] \}\)\);/;
   if (!pattern.test(source)) throw new Error("Activity canonical chart block not found");
 
@@ -181,11 +195,7 @@ function syncActivityCanonicalCharts(source) {
       color: MODULE_COLORS[key] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
     }));
 
-    const actionChart = canonicalRows.slice(0, 10).map(({ key, count }, index) => ({
-      label: canonicalActionLabelByKey[key] ?? translateModule(key),
-      value: count,
-      color: MODULE_COLORS[key] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
-    })).filter(({ label, value }) => !(Number(value) === 1 && /busc.*produto/i.test(String(label))));`;
+${filteredActionChart}`;
 
   return source.replace(pattern, replacement);
 }
