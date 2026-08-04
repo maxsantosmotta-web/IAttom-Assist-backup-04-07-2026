@@ -64,3 +64,5 @@ for (const marker of [
 
 fs.writeFileSync(growthPath, source);
 console.log("Admin Finance now counts only active commercial registrations and separates users without a selected plan.");
+
+await import("./patch-admin-effective-plan-and-prompt-metrics.mjs");
