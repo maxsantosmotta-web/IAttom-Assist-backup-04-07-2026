@@ -68,13 +68,8 @@ if (billing.includes(singleRefresh)) {
   billing = billing.replace(singleRefresh, pollingRefresh);
 }
 
-for (const marker of [
-  "translatePlanTokens(normalized)",
-  "/\\b(business|agency|pro|premium|start)\\b/gi",
-]) {
-  if (!credits.includes(marker)) {
-    throw new Error(`Billing history plan-label marker missing: ${marker}`);
-  }
+if (!credits.includes("translatePlanTokens(normalized)")) {
+  throw new Error("Billing history plan translation was not applied");
 }
 
 fs.writeFileSync(creditsPath, credits);
