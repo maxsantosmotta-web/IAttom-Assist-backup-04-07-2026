@@ -38,37 +38,86 @@ writeFileSync(routeUrl, source);
 const adminUrl = new URL("../src/routes/admin.ts", import.meta.url);
 let adminSource = readFileSync(adminUrl, "utf8");
 
-const analyticsQuery = `  const moduleRows = await db
-    .select({ module: historyTable.module, count: count() })
-    .from(historyTable)
-    .groupBy(historyTable.module)
-    .orderBy(desc(count()));`;
-const analyticsQueryWithoutLegacyPrompt = `  const moduleRows = await db
-    .select({ module: historyTable.module, count: count() })
-    .from(historyTable)
+function routeBlock(startMarker, endMarker) {
+  const start = adminSource.indexOf(startMarker);
+  const end = adminSource.indexOf(endMarker, start);
+  if (start === -1 || end === -1) {
+    throw new Error(`Admin route boundary missing: ${startMarker}`);
+  }
+  return { start, end, block: adminSource.slice(start, end) };
+}
+
+function replaceRouteBlock(startMarker, endMarker, transform) {
+  const { start, end, block } = routeBlock(startMarker, endMarker);
+  const next = transform(block);
+  adminSource = adminSource.slice(0, start) + next + adminSource.slice(end);
+}
+
+replaceRouteBlock(
+  'router.get("/admin/activity"',
+  'router.delete("/admin/activity/:id"',
+  (block) => {
+    if (block.includes('ne(historyTable.module, "prompt")')) return block;
+    const withDeletedFilter = '.where(isNull(historyTable.deletedAt))';
+    if (!block.includes(withDeletedFilter)) {
+      throw new Error("Admin activity deleted-at filter anchor missing");
+    }
+    return block.replace(
+      withDeletedFilter,
+      '.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt")))',
+    );
+  },
+);
+
+replaceRouteBlock(
+  'router.get("/admin/analytics"',
+  'router.get("/admin/launch-status"',
+  (block) => {
+    if (block.includes('ne(historyTable.module, "prompt")')) return block;
+
+    const withDeletedFilter = `.from(historyTable)
+    .where(isNull(historyTable.deletedAt))
+    .groupBy(historyTable.module)`;
+    if (block.includes(withDeletedFilter)) {
+      return block.replace(
+        withDeletedFilter,
+        `.from(historyTable)
+    .where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt")))
+    .groupBy(historyTable.module)`,
+      );
+    }
+
+    const withoutDeletedFilter = `.from(historyTable)
+    .groupBy(historyTable.module)`;
+    if (block.includes(withoutDeletedFilter)) {
+      return block.replace(
+        withoutDeletedFilter,
+        `.from(historyTable)
     .where(ne(historyTable.module, "prompt"))
-    .groupBy(historyTable.module)
-    .orderBy(desc(count()));`;
+    .groupBy(historyTable.module)`,
+      );
+    }
 
-if (adminSource.includes(analyticsQuery)) {
-  adminSource = adminSource.replace(analyticsQuery, analyticsQueryWithoutLegacyPrompt);
-}
+    throw new Error("Admin analytics module query anchor missing");
+  },
+);
 
-const genericFeatureName = '    name: r.module.replace(/_/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase()),';
-const canonicalPromptFeatureName = '    name: r.module === "prompts" ? "Criar Prompt" : r.module.replace(/_/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase()),';
-
-if (adminSource.includes(genericFeatureName)) {
-  adminSource = adminSource.replace(genericFeatureName, canonicalPromptFeatureName);
-}
-
-for (const marker of [
-  '.where(ne(historyTable.module, "prompt"))',
-  'r.module === "prompts" ? "Criar Prompt"',
+for (const [startMarker, endMarker, routeName] of [
+  ['router.get("/admin/activity"', 'router.delete("/admin/activity/:id"', "activity"],
+  ['router.get("/admin/analytics"', 'router.get("/admin/launch-status"', "analytics"],
 ]) {
-  if (!adminSource.includes(marker)) {
-    throw new Error(`Admin prompt analytics marker missing: ${marker}`);
+  const { block } = routeBlock(startMarker, endMarker);
+  if (!block.includes('ne(historyTable.module, "prompt")')) {
+    throw new Error(`Legacy prompt filter missing inside admin ${routeName} route`);
   }
 }
 
+if (adminSource.includes('r.module === "prompts" ? "Criar Prompt"')) {
+  adminSource = adminSource.replace(
+    '    name: r.module === "prompts" ? "Criar Prompt" : r.module.replace(/_/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase()),',
+    '    name: r.module.replace(/_/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase()),',
+  );
+}
+
 writeFileSync(adminUrl, adminSource);
-console.log("Prompt activity uses the canonical prompts key; admin analytics excludes only the legacy prompt series.");
+console.log("Prompt activity uses the canonical prompts key; admin analytics and activity exclude only the legacy prompt key.");
