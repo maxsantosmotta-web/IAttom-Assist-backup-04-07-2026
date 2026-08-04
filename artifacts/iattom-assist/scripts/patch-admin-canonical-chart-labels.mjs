@@ -82,8 +82,8 @@ analytics = analytics
 
 if (!analytics.includes("sourceName: f.name")) {
   analytics = analytics.replace(
-    "  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({\n    ...f,\n    name:",
-    "  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({\n    ...f,\n    sourceName: f.name,\n    name:",
+    /(const featureData = \(analytics\?\.featureUsage \?\? \[\]\)\s*\.map\(\(f, i\) => \(\{\s*\n\s*\.\.\.f,\s*\n)/,
+    "$1    sourceName: f.name,\n",
   );
 }
 
