@@ -33,7 +33,7 @@ overview = overview.replace(
 );
 activity = activity.replace(
   'data={actionChart} title="Atividade por Tipo de Ação"',
-  'data={actionChart.filter(({ label, value }) => !(Number(value) === 1 && String(label) === "Buscar Produtos"))} title="Atividade por Tipo de Ação"',
+  'data={actionChart.filter(({ label, value }) => { const normalizedLabel = String(label).trim().toLowerCase(); return !(Number(value) === 1 && (normalizedLabel === "buscar produtos" || normalizedLabel === "buscas de produtos executadas")); })} title="Atividade por Tipo de Ação"',
 );
 
 // Os três botões Atualizar executam a mesma ação de atualizar o navegador.
