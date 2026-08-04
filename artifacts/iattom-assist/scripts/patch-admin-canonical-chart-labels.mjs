@@ -80,12 +80,21 @@ analytics = analytics
   .replace('title="Uso por Recurso" subtitle="Distribuição de ações"', 'title="Execuções por Módulo" subtitle="Quantidade de ações por módulo"')
   .replace('title="Resumo de Uso dos Recursos" subtitle="Participação por recurso"', 'title="Resumo de Execuções por Módulo" subtitle="Participação de cada módulo"');
 
+const legacyPromptFilter = '.filter((f) => f.name !== "prompt")';
+const normalizedPromptFilter = '.filter((f) => String(f.name ?? "").trim().toLowerCase() !== "prompt")';
+if (analytics.includes(legacyPromptFilter)) {
+  analytics = analytics.replace(legacyPromptFilter, normalizedPromptFilter);
+} else if (!analytics.includes(normalizedPromptFilter)) {
+  throw new Error("Canonical admin analytics prompt filter is missing.");
+}
+
 for (const marker of [
   '"Product Discovery": "Buscar Produtos"',
   '"Find Products": "Buscar Produtos"',
   '"Product Validation": "Validar Produto"',
   'Creative: "Criar Imagem e Vídeo"',
   'prompts: "Criar Prompt"',
+  normalizedPromptFilter,
   'Help: "IAttom Help"',
   'className="grid gap-6 lg:grid-cols-2"',
   'title="Execuções por Módulo"',
