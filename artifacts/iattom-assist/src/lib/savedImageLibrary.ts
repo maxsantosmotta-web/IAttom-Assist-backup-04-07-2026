@@ -9,7 +9,6 @@ export type SavedImageLibraryEntry = {
 type GetItems = () => Promise<SavedItemRecord[]>;
 type GetItemAssets = (id: string) => Promise<AssetData[]>;
 
-const CACHE_TTL_MS = 60_000;
 const CONCURRENCY = 3;
 
 let cache: { entries: SavedImageLibraryEntry[]; fetchedAt: number } | null = null;
@@ -23,13 +22,32 @@ export function clearSavedImageLibraryCache(): void {
   cache = null;
 }
 
+function uniqueImageEntries(entries: SavedImageLibraryEntry[]): SavedImageLibraryEntry[] {
+  const seen = new Set<string>();
+  const unique: SavedImageLibraryEntry[] = [];
+
+  for (const entry of entries) {
+    const base64 = entry.asset.base64?.trim();
+    if (!base64) continue;
+
+    // O mesmo arquivo pode estar associado a mais de um registro legado ou cache local.
+    // A imagem deve aparecer apenas uma vez nos seletores de Vídeo com Imagem/Efeito.
+    const key = base64;
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    unique.push(entry);
+  }
+
+  return unique;
+}
+
 export async function loadSavedImageLibrary(
   getItems: GetItems,
   getItemAssets: GetItemAssets,
-  force = false,
+  force = true,
 ): Promise<SavedImageLibraryEntry[]> {
-  const now = Date.now();
-  if (!force && cache && now - cache.fetchedAt < CACHE_TTL_MS) return cache.entries;
+  if (!force && cache) return cache.entries;
   if (pendingRequest) return pendingRequest;
 
   pendingRequest = (async () => {
@@ -60,7 +78,7 @@ export async function loadSavedImageLibrary(
         }
 
         results[index] = projectAssets
-          .filter((asset) => Boolean(asset.base64))
+          .filter((asset) => Boolean(asset.base64?.trim()))
           .map((asset) => ({ project, asset }));
       }
     };
@@ -68,7 +86,7 @@ export async function loadSavedImageLibrary(
     const workerCount = Math.min(CONCURRENCY, Math.max(items.length, 1));
     await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
-    const entries = results.flatMap((group) => group ?? []);
+    const entries = uniqueImageEntries(results.flatMap((group) => group ?? []));
     cache = { entries, fetchedAt: Date.now() };
     return entries;
   })().finally(() => {
