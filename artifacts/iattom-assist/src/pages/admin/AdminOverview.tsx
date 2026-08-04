@@ -234,11 +234,14 @@ export function AdminOverview() {
     return { label: plan.label, value, color: plan.color };
   });
 
-  const featureDonut = (analytics?.featureUsage ?? []).slice(0, 8).map((item, index) => ({
-    label: FEATURE_NAME_MAP[item.name] ?? item.name,
-    value: Number(item.count ?? 0),
-    color: FEATURE_COLORS[index % FEATURE_COLORS.length],
-  }));
+  const featureDonut = (analytics?.featureUsage ?? [])
+    .filter((item) => !["find_products", "validate_products"].includes(String(item.name ?? "").trim().toLowerCase().replaceAll(" ", "_")))
+    .slice(0, 8)
+    .map((item, index) => ({
+      label: FEATURE_NAME_MAP[item.name] ?? item.name,
+      value: Number(item.count ?? 0),
+      color: FEATURE_COLORS[index % FEATURE_COLORS.length],
+    }));
 
   const actionDonut = useMemo(() => {
     const counts = new Map<string, number>();
@@ -261,51 +264,41 @@ export function AdminOverview() {
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="mb-1 text-xs font-medium uppercase tracking-widest text-primary">Painel Administrativo</p>
-            <h2 className="mb-1 text-2xl font-bold text-white">Visão Geral da Plataforma</h2>
-            <p className="text-sm text-muted-foreground">Centro de comando — métricas, crescimento e atividade da plataforma.</p>
+            <h2 className="mb-1 text-2xl font-bold text-white">Visão Geral</h2>
+            <p className="text-sm text-muted-foreground">Acompanhamento geral da plataforma.</p>
           </div>
-          <Button size="sm" variant="outline" onClick={refresh} disabled={isRefreshing} className="gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white sm:mt-1 sm:shrink-0">
+          <Button size="sm" variant="outline" onClick={refresh} disabled={isRefreshing} className="mt-1 shrink-0 gap-1.5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white">
             <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} /> Atualizar
           </Button>
         </div>
       </motion.div>
 
-      <SectionLabel>Usuários</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <PremiumMetric label="Total de Usuários" value={String(growthStats?.totalUsers ?? stats?.totalUsers ?? 0)} sub="usuários cadastrados" icon={Users} color="text-blue-300" glow="rgba(96,165,250,.11)" loading={statsLoading && growthLoading} />
-        <PremiumMetric label="Novos esta Semana" value={String(growthStats?.newUsersThisWeek ?? 0)} sub="nos últimos 7 dias" icon={CalendarDays} color="text-emerald-300" glow="rgba(52,211,153,.11)" loading={growthLoading} />
-        <PremiumMetric label="Novos este Mês" value={String(growthStats?.newUsersThisMonth ?? stats?.newUsersThisMonth ?? 0)} sub="nos últimos 30 dias" icon={UserCheck} color="text-purple-300" glow="rgba(167,139,250,.11)" loading={growthLoading} />
+      <SectionLabel>Indicadores principais</SectionLabel>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <PremiumMetric label="Usuários Totais" value={(stats?.totalUsers ?? 0).toString()} icon={Users} color="text-violet-300" glow="rgba(139,92,246,.10)" loading={statsLoading} />
+        <PremiumMetric label="Usuários Ativos" value={(stats?.activeUsers ?? 0).toString()} icon={UserCheck} color="text-emerald-300" glow="rgba(16,185,129,.10)" loading={statsLoading} />
+        <PremiumMetric label="Assinantes Pagos" value={(growthStats?.activeSubscribers ?? 0).toString()} icon={CreditCard} color="text-amber-300" glow="rgba(245,180,35,.10)" loading={growthLoading} />
+        <PremiumMetric label="Conversão" value={`${growthStats?.conversionRate ?? 0}%`} icon={Percent} color="text-cyan-300" glow="rgba(34,211,238,.10)" loading={growthLoading} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          {growthLoading ? <Skeleton className="h-[330px] rounded-xl bg-white/5" /> : <DomnDonutChart data={planDonut} title="Distribuição de Planos" subtitle="Assinantes por plano" centerLabel="Usuários" />}
-        </div>
-        <div className="flex flex-col gap-4">
-          <CompactMetric label="Conversão" value={`${growthStats?.conversionRate ?? 0}%`} icon={Percent} color="text-amber-300" glow="rgba(245,180,35,.10)" />
-          <CompactMetric label="Ativação" value={`${growthStats?.activationRate ?? 0}%`} icon={UserCheck} color="text-emerald-300" glow="rgba(16,185,129,.10)" />
-          <CompactMetric label="Planos Pagos" value={String(growthStats?.activeSubscribers ?? 0)} icon={CreditCard} color="text-violet-300" glow="rgba(139,92,246,.10)" />
-        </div>
+      <SectionLabel>Receita e uso</SectionLabel>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <CompactMetric label="Receita Recorrente" value={formatMoney(growthStats?.mrr ?? 0)} icon={DollarSign} color="text-amber-300" glow="rgba(245,180,35,.10)" />
+        <CompactMetric label="Receita no Mês" value={formatMoney(financialSummary?.revenueThisMonth ?? 0)} icon={DollarSign} color="text-emerald-300" glow="rgba(16,185,129,.10)" />
+        <CompactMetric label="Créditos Gastos" value={generalCreditsSpent.toLocaleString("pt-BR")} icon={Zap} color="text-violet-300" glow="rgba(139,92,246,.10)" />
+        <CompactMetric label="Novos no Mês" value={(growthStats?.newUsersThisMonth ?? 0).toString()} icon={CalendarDays} color="text-cyan-300" glow="rgba(34,211,238,.10)" />
       </div>
 
-      <SectionLabel>Análises</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <PremiumMetric label="Execuções" value={String(stats?.totalActions ?? 0)} sub="total entre todos os usuários" icon={Zap} color="text-purple-300" glow="rgba(139,92,246,.11)" loading={statsLoading} />
-        <PremiumMetric label="Receita do Mês" value={formatMoney(financialSummary?.revenueThisMonth ?? 0)} sub="assinaturas e pacotes pagos" icon={DollarSign} color="text-emerald-300" glow="rgba(16,185,129,.11)" loading={growthLoading} />
-        <PremiumMetric label="Receita Recorrente" value={formatMoney(financialSummary?.mrr ?? growthStats?.mrr ?? 0)} sub="assinaturas ativas" icon={CreditCard} color="text-amber-300" glow="rgba(245,180,35,.11)" loading={growthLoading} />
-        <PremiumMetric label="Consumo Geral / 30d" value={generalCreditsSpent.toLocaleString("pt-BR")} sub="sem incluir imagens" icon={Activity} color="text-orange-300" glow="rgba(251,146,60,.11)" loading={growthLoading} />
-      </div>
-
-      {analyticsLoading ? <Skeleton className="h-72 rounded-xl bg-white/5" /> : <DomnLineChart data={growthLine} title="Crescimento — Usuários e Projetos" subtitle="Evolução dos últimos meses" />}
-
-      <SectionLabel>Atividade</SectionLabel>
+      <SectionLabel>Distribuição</SectionLabel>
       <div className="grid gap-6 lg:grid-cols-2">
-        {featureDonut.length ? <DomnDonutChart data={featureDonut} title="Uso por Módulo" subtitle="Distribuição de execuções" centerLabel="Ações" /> : <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><p className="text-sm text-muted-foreground">Sem dados de uso.</p></Card>}
-        {actionDonut.length ? <DomnDonutChart data={actionDonut} title="Atividade por Tipo de Ação" subtitle="Últimos eventos registrados" centerLabel="Eventos" /> : <Card className="grid h-[330px] place-items-center border-white/5 bg-[#111111]"><p className="text-sm text-muted-foreground">Sem atividade registrada.</p></Card>}
+        <DomnDonutChart data={featureDonut} title="Execuções por Módulo" subtitle="Distribuição operacional" centerLabel="Módulos" />
+        <DomnDonutChart data={actionDonut} title="Atividades por Tipo" subtitle="Ações registradas" centerLabel="Ações" />
       </div>
+
+      <SectionLabel>Crescimento</SectionLabel>
+      <DomnLineChart data={growthLine} title="Crescimento da Plataforma" subtitle="Usuários e projetos" />
     </div>
   );
 }
