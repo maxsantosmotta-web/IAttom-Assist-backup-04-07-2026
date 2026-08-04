@@ -18,7 +18,7 @@ const translateReplacement = `function translateDescription(desc: string): strin
     return planDisplayNames[key] ?? value.trim().toUpperCase();
   };
   const translatePlanTokens = (value: string): string => value.replace(
-    /\b(business|agency|pro|premium|start)\b/gi,
+    /\\b(business|agency|pro|premium|start)\\b/gi,
     (token) => commercialPlanName(token),
   );
 
