@@ -185,7 +185,7 @@ function syncActivityCanonicalCharts(source) {
       label: canonicalActionLabelByKey[key] ?? translateModule(key),
       value: count,
       color: MODULE_COLORS[key] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
-    }));`;
+    })).filter(({ label, value }) => !(Number(value) === 1 && /busc.*produto/i.test(String(label))));`;
 
   return source.replace(pattern, replacement);
 }
