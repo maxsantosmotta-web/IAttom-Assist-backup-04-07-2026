@@ -3,8 +3,8 @@ import fs from "node:fs";
 const adminPath = new URL("../src/routes/admin.ts", import.meta.url);
 let source = fs.readFileSync(adminPath, "utf8");
 
-// ADM -> Usuários: altera somente o plano exibido.
-// Preserva integralmente créditos, projetos, histórico e demais campos já montados.
+// ADM -> Usuários: preserva todos os campos e mantém planSelected disponível
+// para o frontend distinguir FREE de SEM PLANO.
 if (!source.includes('const effectivePlan = u.planSelected ? u.plan : "free";')) {
   const currentRows = [
     "    return { ...u, credits: u.credits + (u.extraCredits ?? 0), projectCount: pc.count, actionCount: ac.count, banned: clerkBannedMap.get(u.clerkId) ?? false };",
@@ -29,7 +29,7 @@ source = source.replace(
   '.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt")))\n    .orderBy(desc(historyTable.createdAt))',
 );
 
-// ADM -> Análises / Visão Geral: a resposta canônica não inclui a série antiga.
+// ADM -> Análises / Visão Geral: remove a série antiga sem somar seus 4 registros.
 const analyticsModuleQuery = `  const moduleRows = await db
     .select({ module: historyTable.module, count: count() })
     .from(historyTable)
@@ -43,11 +43,19 @@ if (source.includes(analyticsModuleQuery)) {
   source = source.replace(analyticsModuleQuery, analyticsModuleQueryFiltered);
 }
 
+// A API entrega o nome final. Todas as telas recebem exatamente Criar Prompt = 31.
+const genericFeatureName = '    name: r.module.replace(/_/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase()),';
+const canonicalFeatureName = '    name: r.module === "prompts" ? "Criar Prompt" : r.module.replace(/_/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase()),';
+if (source.includes(genericFeatureName)) {
+  source = source.replace(genericFeatureName, canonicalFeatureName);
+}
+
 for (const marker of [
   'const effectivePlan = u.planSelected ? u.plan : "free";',
   'plan: effectivePlan',
   'credits: u.credits + (u.extraCredits ?? 0)',
   'ne(historyTable.module, "prompt")',
+  'r.module === "prompts" ? "Criar Prompt"',
 ]) {
   if (!source.includes(marker)) throw new Error(`Admin canonical plan/prompt marker missing: ${marker}`);
 }
@@ -58,4 +66,4 @@ if (legacyPromptFilterCount < 2) {
 }
 
 fs.writeFileSync(adminPath, source);
-console.log("Admin effective plan applied while preserving balances; legacy prompt remains excluded.");
+console.log("Admin keeps planSelected and returns only Criar Prompt without merging legacy prompt counts.");
