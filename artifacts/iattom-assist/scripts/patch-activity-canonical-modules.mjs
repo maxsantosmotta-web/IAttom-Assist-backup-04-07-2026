@@ -1,7 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const analyticsUrl = new URL("../src/pages/dashboard/Analytics.tsx", import.meta.url);
+const dashboardUrl = new URL("../src/pages/dashboard/DashboardHome.tsx", import.meta.url);
 let source = readFileSync(analyticsUrl, "utf8");
+let dashboard = readFileSync(dashboardUrl, "utf8");
 
 source = source.replace(
   '  validate_products: { label: "Validar", color: "#34D399", icon: CheckCircle },\n  product_validation: { label: "Validar", color: "#34D399", icon: CheckCircle },',
@@ -81,6 +83,24 @@ source = source.replace(
   '<XAxis dataKey="label" interval={0} angle={-32} textAnchor="end" height={64} tick={{ fill: "#71717a", fontSize: 10 }} tickMargin={10} axisLine={false} tickLine={false} />',
 );
 
+source = source.replace(
+  '    { label: "Projetos na Biblioteca", value: data?.projectStats.total ?? 0, icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" },\n',
+  '',
+);
+source = source.replace(
+  'className="grid grid-cols-2 md:grid-cols-4 gap-3"',
+  'className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3"',
+);
+
+dashboard = dashboard.replace(
+  '    { label: "Execuções", value: summary?.totalActions ?? 0, icon: Zap, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },\n',
+  '',
+);
+dashboard = dashboard.replace(
+  'className={`grid grid-cols-2 md:grid-cols-4 gap-3 transition-opacity duration-150 ${summaryFetching && !summaryLoading ? "opacity-50 pointer-events-none" : ""}`}',
+  'className={`mx-auto grid w-full max-w-4xl grid-cols-1 gap-3 transition-opacity duration-150 sm:grid-cols-3 ${summaryFetching && !summaryLoading ? "opacity-50 pointer-events-none" : ""}`}',
+);
+
 const required = [
   'find_products: { label: "Buscar Produtos"',
   'video_script: { label: "Scripts de Vídeo"',
@@ -97,7 +117,19 @@ for (const marker of required) {
   if (!source.includes(marker)) throw new Error(`Canonical activity module marker missing: ${marker}`);
 }
 
+if (source.includes('label: "Projetos na Biblioteca"')) {
+  throw new Error("Redundant library project metric still exists in Activity.");
+}
+if (dashboard.includes('label: "Execuções"')) {
+  throw new Error("Redundant execution metric still exists in Dashboard.");
+}
+if (!source.includes('max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3') ||
+    !dashboard.includes('max-w-4xl grid-cols-1 gap-3 transition-opacity duration-150 sm:grid-cols-3')) {
+  throw new Error("Three-card metric grids were not centered.");
+}
+
 writeFileSync(analyticsUrl, source);
-console.log("Activity chart keeps all module labels visible, including Buscar Produtos and Scripts de Vídeo.");
+writeFileSync(dashboardUrl, dashboard);
+console.log("Dashboard and Activity now show three centered, non-redundant metric cards.");
 
 await import("./patch-public-help-consumption-guide.mjs");
