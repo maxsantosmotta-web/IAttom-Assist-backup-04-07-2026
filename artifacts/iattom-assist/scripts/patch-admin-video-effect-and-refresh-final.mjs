@@ -26,6 +26,16 @@ activity = activity.replace(
   "const actionChart = canonicalRows.filter(({ key }) => key !== \"find_products\").slice(0, 10).map(({ key, count }, index) => ({",
 );
 
+// Guarda final pelo resultado visual: preserva os blocos canônicos e oculta apenas os legados de valor 1.
+overview = overview.replace(
+  'data={featureDonut} title="Execuções por Módulo"',
+  'data={featureDonut.filter(({ label, value }) => !(Number(value) === 1 && ["Buscar Produtos", "Validar Produto"].includes(String(label))))} title="Execuções por Módulo"',
+);
+activity = activity.replace(
+  'data={actionChart} title="Atividade por Tipo de Ação"',
+  'data={actionChart.filter(({ label, value }) => !(Number(value) === 1 && String(label) === "Buscar Produtos"))} title="Atividade por Tipo de Ação"',
+);
+
 // Os três botões Atualizar executam a mesma ação de atualizar o navegador.
 overview = overview.replace('onClick={refresh}', 'onClick={() => window.location.reload()}');
 analytics = analytics.replace(
@@ -62,4 +72,4 @@ if (!activity.includes('video_effect')) {
 fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(analyticsPath, analytics);
 fs.writeFileSync(activityPath, activity);
-console.log("Vídeo com Efeito remains visible; legacy product series are removed from final Overview and Activity charts; admin refresh buttons reload their pages.");
+console.log("Vídeo com Efeito remains visible; only value-one legacy product blocks are hidden from final Overview and Activity chart renders; admin refresh buttons reload their pages.");
