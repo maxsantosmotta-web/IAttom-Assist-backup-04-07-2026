@@ -10,18 +10,7 @@ if (!activity.includes("const finalActionChart =")) {
     throw new Error("Final Activity return marker not found");
   }
 
-  const finalFilter = `    const productSearchRows = actionChart.filter(({ label }) => /busc.*produto/i.test(String(label)));
-    const strongestProductSearchValue = productSearchRows.reduce(
-      (max, item) => Math.max(max, Number(item.value) || 0),
-      0,
-    );
-    let keptProductSearch = false;
-    const finalActionChart = actionChart.filter(({ label, value }) => {
-      if (!/busc.*produto/i.test(String(label))) return true;
-      if (keptProductSearch || Number(value) !== strongestProductSearchValue) return false;
-      keptProductSearch = true;
-      return true;
-    });
+  const finalFilter = `    const finalActionChart = actionChart.filter(({ label }) => !/busc.*produto/i.test(String(label)));
 
 `;
 
@@ -38,4 +27,4 @@ if (activity.includes(originalReturn)) {
 }
 
 fs.writeFileSync(activityPath, activity);
-console.log("Final Activity chart keeps only the strongest product-search action series.");
+console.log("Final Activity chart excludes product-search actions while preserving all other action series.");
