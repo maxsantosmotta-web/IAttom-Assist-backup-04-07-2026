@@ -125,6 +125,54 @@ router.post("/saved-items", requireAuth, async (req: Request, res: Response) => 
   }
 });
 
+router.get("/saved-items/image-library", requireAuth, async (req: Request, res: Response) => {
+  const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
+  try {
+    const rows = await db
+      .select({ ...LIST_COLUMNS, imagesData: savedItemsTable.imagesData })
+      .from(savedItemsTable)
+      .where(and(
+        eq(savedItemsTable.clerkUserId, clerkUserId),
+        isNull(savedItemsTable.deletedAt),
+        eq(savedItemsTable.hasImages, true),
+      ))
+      .orderBy(savedItemsTable.createdAt);
+
+    const seen = new Set<string>();
+    const entries: Array<{
+      project: Omit<(typeof rows)[number], "imagesData">;
+      asset: { conceptIndex: number; base64: string; label: string; format: string };
+    }> = [];
+
+    for (const row of rows.reverse()) {
+      let isVideoEffect = false;
+      try {
+        const parsed = row.data ? JSON.parse(row.data) as { type?: unknown } : null;
+        isVideoEffect = parsed?.type === "image-motion-source";
+      } catch { /* mantém registro de imagem válido */ }
+      if (isVideoEffect) continue;
+
+      let assets: Array<{ conceptIndex: number; base64: string; label: string; format: string }> = [];
+      try {
+        assets = row.imagesData ? JSON.parse(row.imagesData) as typeof assets : [];
+      } catch { /* registro legado sem assets válidos */ }
+
+      const { imagesData: _imagesData, ...project } = row;
+      for (const asset of assets) {
+        const base64 = typeof asset?.base64 === "string" ? asset.base64.trim() : "";
+        if (!base64 || seen.has(base64)) continue;
+        seen.add(base64);
+        entries.push({ project, asset: { ...asset, base64 } });
+      }
+    }
+
+    return res.json({ entries });
+  } catch (err) {
+    req.log.error({ err }, "Failed to load canonical image library");
+    return res.status(500).json({ error: "Erro ao carregar imagens da Biblioteca" });
+  }
+});
+
 const largeJson = express.json({ limit: "25mb" });
 
 router.get("/saved-items/:id/assets", requireAuth, async (req: Request, res: Response) => {
