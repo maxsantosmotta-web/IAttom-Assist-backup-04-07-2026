@@ -115,8 +115,11 @@ page = page.replace(
 );
 
 const planCell = '<td className="px-4 py-3"><Badge variant="outline" className={planColors[user.plan]}>{planLabels[user.plan]}</Badge></td>';
-const planCellWithSelection = '<td className="px-4 py-3">{user.planSelected ? <Badge variant="outline" className={planColors[user.plan]}>{planLabels[user.plan]}</Badge> : <span className="text-muted-foreground">—</span>}</td>';
-if (!page.includes(planCellWithSelection)) {
+const legacyPlanCellWithSelection = '<td className="px-4 py-3">{user.planSelected ? <Badge variant="outline" className={planColors[user.plan]}>{planLabels[user.plan]}</Badge> : <span className="text-muted-foreground">—</span>}</td>';
+const planCellWithSelection = '<td className="px-4 py-3">{user.planSelected ? <Badge variant="outline" className={planColors[user.plan]}>{planLabels[user.plan]}</Badge> : <Badge variant="outline" className="text-zinc-400 bg-zinc-400/10 border-zinc-400/20">SEM PLANO</Badge>}</td>';
+if (page.includes(legacyPlanCellWithSelection)) {
+  page = page.replace(legacyPlanCellWithSelection, planCellWithSelection);
+} else if (!page.includes(planCellWithSelection)) {
   if (!page.includes(planCell)) throw new Error("Admin plan cell anchor not found");
   page = page.replace(planCell, planCellWithSelection);
 }
@@ -181,7 +184,7 @@ for (const marker of [
   "const activeUsers =",
   "activeUsers.map((user) => {",
   "iattom:admin-user-deleted",
-  "user.planSelected ?",
+  "SEM PLANO",
 ]) {
   if (!page.includes(marker) && !enhancer.includes(marker)) throw new Error(`Deleted users frontend marker missing: ${marker}`);
 }
@@ -190,4 +193,4 @@ if (enhancer.includes("Ele perderá plano")) throw new Error("Verbose deletion c
 
 fs.writeFileSync(pagePath, page);
 fs.writeFileSync(enhancerPath, enhancer);
-console.log("Admin users now shows a dash until planSelected becomes true, while preserving inline deletion flow.");
+console.log("Admin users displays SEM PLANO until planSelected becomes true, while preserving inline deletion flow.");
