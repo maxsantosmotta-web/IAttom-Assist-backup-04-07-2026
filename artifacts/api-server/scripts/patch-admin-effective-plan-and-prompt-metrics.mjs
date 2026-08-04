@@ -4,17 +4,16 @@ const adminPath = new URL("../src/routes/admin.ts", import.meta.url);
 let source = fs.readFileSync(adminPath, "utf8");
 
 // ADM -> Usuários:
-// ListAdminUsersResponse.parse remove planSelected do payload porque esse campo
-// ainda não existe no schema gerado. A tela precisa dele para distinguir
-// SEM PLANO de FREE. Mantemos o plano persistido intacto e devolvemos o objeto
-// já montado pela rota, sem alterar saldo, projetos, histórico ou Stripe.
-const parsedUsersResponse =
-  "  res.json(ListAdminUsersResponse.parse({ users: usersWithCounts, total: totalRes.count }));";
-const directUsersResponse =
-  "  res.json({ users: usersWithCounts, total: totalRes.count });";
-
-if (source.includes(parsedUsersResponse)) {
-  source = source.replace(parsedUsersResponse, directUsersResponse);
+// A preservação de planSelected já é feita por patch-admin-active-users-response-guard.mjs.
+// Este script não altera mais a resposta de usuários; apenas valida que o campo continuará
+// disponível para o frontend distinguir SEM PLANO de FREE, sem tocar em saldo, projetos,
+// histórico, Stripe ou no plano persistido.
+const planSelectedMarker =
+  "planSelected: Boolean(visibleActiveUsers[index]?.planSelected)";
+if (!source.includes(planSelectedMarker)) {
+  throw new Error(
+    "Admin users response no longer preserves planSelected after active-user guard",
+  );
 }
 
 // ADM -> Atividade: elimina somente a chave histórica singular "prompt".
@@ -45,11 +44,11 @@ if (source.includes(analyticsModuleQuery)) {
 }
 
 for (const marker of [
-  directUsersResponse.trim(),
+  planSelectedMarker,
   'ne(historyTable.module, "prompt")',
 ]) {
   if (!source.includes(marker)) {
-    throw new Error(`Admin plan/prompt canonical marker missing: ${marker}`);
+    throw new Error(`Admin canonical marker missing: ${marker}`);
   }
 }
 
@@ -63,5 +62,5 @@ if (legacyPromptFilterCount < 2) {
 
 fs.writeFileSync(adminPath, source);
 console.log(
-  "Admin users preserve planSelected; legacy prompt is excluded without changing stored plans or merging counts.",
+  "Admin user response remains intact with planSelected; legacy prompt is excluded without merging counts.",
 );
