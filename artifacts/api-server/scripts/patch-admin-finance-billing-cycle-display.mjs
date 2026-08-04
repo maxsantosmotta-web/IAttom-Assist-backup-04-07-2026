@@ -85,6 +85,47 @@ if (!source.includes("const annualPlanByPriceId = new Map")) {
   source = source.replace(calculationAnchor, calculationReplacement);
 }
 
+const invoiceMovementAnchor = `      const customerId = customerIdOf(invoice.customer);
+      const user = customerId ? userByCustomer.get(customerId) : undefined;
+      if (!user) continue;
+      movements.push({`;
+const invoiceMovementReplacement = `      const customerId = customerIdOf(invoice.customer);
+      const user = customerId ? userByCustomer.get(customerId) : undefined;
+      if (!user) continue;
+      const invoiceDiagnosticParts = invoice.lines.data.map((line) => {
+        const legacyPrice = (line as any).price;
+        const modernPrice = (line as any).pricing?.price_details?.price;
+        const priceId = typeof legacyPrice === "string"
+          ? legacyPrice
+          : legacyPrice && typeof legacyPrice.id === "string"
+            ? legacyPrice.id
+            : typeof modernPrice === "string"
+              ? modernPrice
+              : modernPrice && typeof modernPrice.id === "string"
+                ? modernPrice.id
+                : "sem-price-id";
+        const interval = legacyPrice && typeof legacyPrice === "object"
+          ? legacyPrice.recurring?.interval
+          : (line as any).pricing?.price_details?.recurring?.interval;
+        return \`\${priceId} · \${typeof interval === "string" ? interval : "sem-intervalo"}\`;
+      });
+      const invoiceDiagnostic = invoiceDiagnosticParts.length > 0
+        ? invoiceDiagnosticParts.join(" | ")
+        : "sem-linhas";
+      movements.push({`;
+if (!source.includes("const invoiceDiagnosticParts = invoice.lines.data")) {
+  if (!source.includes(invoiceMovementAnchor)) throw new Error("Finance invoice diagnostic anchor not found");
+  source = source.replace(invoiceMovementAnchor, invoiceMovementReplacement);
+}
+
+const plainSubscriptionLabel = '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan}`,';
+const diagnosticSubscriptionLabel = '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan} · ${invoiceDiagnostic}`,';
+if (source.includes(plainSubscriptionLabel)) {
+  source = source.replace(plainSubscriptionLabel, diagnosticSubscriptionLabel);
+} else if (!source.includes(diagnosticSubscriptionLabel)) {
+  throw new Error("Finance diagnostic movement label anchor not found");
+}
+
 const valueAnchor = `      mrrByPlan: {
         free: mrrByPlan.free / 100,
         pro: mrrByPlan.pro / 100,
@@ -117,9 +158,12 @@ for (const marker of [
   "annualSubscriptions.start += 1",
   "annualSubscriptions.premium += 1",
   "annualSubscriptions.pro += 1",
+  "const invoiceDiagnosticParts = invoice.lines.data",
+  "const invoiceDiagnostic = invoiceDiagnosticParts.length > 0",
+  "${invoiceDiagnostic}`",
   "      annualSubscriptions,",
 ]) {
-  if (!source.includes(marker)) throw new Error(`Finance annual summary marker missing: ${marker}`);
+  if (!source.includes(marker)) throw new Error(`Finance diagnostic marker missing: ${marker}`);
 }
 
 if (source.includes("item.price.unit_amount === 150")) {
@@ -127,4 +171,4 @@ if (source.includes("item.price.unit_amount === 150")) {
 }
 
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance identifies annual plans from active subscriptions and paid invoice Price IDs only, without changing billing operations.");
+console.log("Admin Finance exposes raw Stripe price IDs and intervals in subscription movements for isolated diagnosis only.");
