@@ -10,9 +10,7 @@ if (!activity.includes("const finalActionChart =")) {
     throw new Error("Final Activity return marker not found");
   }
 
-  const finalFilter = `    const finalActionChart = actionChart.filter(({ label }) => !/busc.*produto/i.test(String(label)));
-
-`;
+  const finalFilter = `    const finalActionChart = actionChart.length > 0 ? actionChart.slice(0, -1) : actionChart;\n\n`;
 
   activity = activity.slice(0, returnIndex) + finalFilter + activity.slice(returnIndex);
 }
@@ -26,5 +24,9 @@ if (activity.includes(originalReturn)) {
   throw new Error("Final Activity chart return shape not found");
 }
 
+if (!activity.includes("actionChart: finalActionChart")) {
+  throw new Error("Final Activity chart return was not redirected");
+}
+
 fs.writeFileSync(activityPath, activity);
-console.log("Final Activity chart excludes product-search actions while preserving all other action series.");
+console.log("Final Activity action chart excludes only its last block.");
