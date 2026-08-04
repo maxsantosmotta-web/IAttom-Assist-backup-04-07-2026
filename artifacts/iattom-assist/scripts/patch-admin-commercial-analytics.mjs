@@ -92,7 +92,7 @@ function StatTile`,
     (async () => {
       try {
         const token = await getToken();
-        const res = await fetch(\`${basePath}/api/admin/registered-plan-stats\`, { headers: { Authorization: \`Bearer ${token}\` } });
+        const res = await fetch(\`\${basePath}/api/admin/registered-plan-stats\`, { headers: { Authorization: \`Bearer \${token}\` } });
         if (res.ok) setRegisteredPlans(await res.json() as RegisteredPlanStats);
       } catch {
         setRegisteredPlans(null);
@@ -233,8 +233,8 @@ function normalizeAction`,
     (async () => {
       try {
         const token = await getToken();
-        const response = await fetch(\`${BASE}/api/admin/registered-plan-stats\`, {
-          headers: { Authorization: \`Bearer ${token}\` },
+        const response = await fetch(\`\${BASE}/api/admin/registered-plan-stats\`, {
+          headers: { Authorization: \`Bearer \${token}\` },
           credentials: "include",
         });
         if (response.ok) setRegisteredPlans(await response.json() as RegisteredPlanStats);
