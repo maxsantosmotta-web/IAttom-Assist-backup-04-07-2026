@@ -80,22 +80,15 @@ analytics = analytics
   .replace('title="Uso por Recurso" subtitle="Distribuição de ações"', 'title="Execuções por Módulo" subtitle="Quantidade de ações por módulo"')
   .replace('title="Resumo de Uso dos Recursos" subtitle="Participação por recurso"', 'title="Resumo de Execuções por Módulo" subtitle="Participação de cada módulo"');
 
-const rawPromptFilter = 'String(f.name ?? "").trim().toLowerCase() !== "prompt"';
-if (!analytics.includes(rawPromptFilter)) {
-  analytics = analytics.replace(
-    /(const featureData = \(analytics\?\.featureUsage \?\? \[\]\))\s*\.map\(/,
-    `$1\n    .filter((f) => ${rawPromptFilter})\n    .map(`,
-  );
-}
+const rawFeatureDataHeader = /const featureData\s*=\s*\(analytics\?\.featureUsage\s*\?\?\s*\[\]\)(?:\s*\.filter\([\s\S]*?\))?\s*\.map\(\(f,\s*i\)\s*=>\s*\(\{/;
+const canonicalFeatureDataHeader = `const featureData = (analytics?.featureUsage ?? [])
+    .filter((f) => String(f.name ?? "").trim().toLowerCase() !== "prompt")
+    .map((f, i) => ({`;
+analytics = analytics.replace(rawFeatureDataHeader, canonicalFeatureDataHeader);
 
-const chartPromptFilter = 'String(item.name ?? "").trim().toLowerCase() !== "prompt"';
-const usagePromptFilterMarker = `featureUsageDonut = featureData\n    .filter((item) => ${chartPromptFilter}`;
-const summaryPromptFilterMarker = `featureSummaryDonut = featureData\n    .filter((item) => ${chartPromptFilter}`;
-
-if (!analytics.includes(rawPromptFilter) ||
-    !analytics.includes(usagePromptFilterMarker) ||
-    !analytics.includes(summaryPromptFilterMarker)) {
-  throw new Error("Canonical admin analytics raw prompt filter is missing.");
+const rawPromptFilterPattern = /const featureData\s*=\s*\(analytics\?\.featureUsage\s*\?\?\s*\[\]\)\s*\.filter\(\(f\)\s*=>\s*String\(f\.name\s*\?\?\s*""\)\.trim\(\)\.toLowerCase\(\)\s*!==\s*"prompt"\)\s*\.map\(/;
+if (!rawPromptFilterPattern.test(analytics)) {
+  throw new Error("Canonical admin analytics raw prompt filter was not applied.");
 }
 
 for (const marker of [
@@ -106,9 +99,6 @@ for (const marker of [
   'Prompt: "Criar Prompt"',
   'prompt: "Criar Prompt"',
   'prompt_creation: "Criar Prompt"',
-  rawPromptFilter,
-  usagePromptFilterMarker,
-  summaryPromptFilterMarker,
   'Help: "IAttom Help"',
   'className="grid gap-6 lg:grid-cols-2"',
   'title="Execuções por Módulo"',
