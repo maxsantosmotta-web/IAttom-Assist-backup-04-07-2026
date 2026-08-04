@@ -115,14 +115,13 @@ overview = overview.replace(
   'if (/prompt/i.test(base)) return "Criar Prompt";',
 );
 
-const overviewFeatureDonutHeader = /const featureDonut\s*=\s*\(analytics\?\.featureUsage\s*\?\?\s*\[\]\)(?:\s*\.filter\([\s\S]*?\))?\s*\.slice\(0,\s*8\)\s*\.map\(/;
+const overviewFeatureDonutHeader = /const featureDonut\s*=\s*\(analytics\?\.featureUsage\s*\?\?\s*\[\]\)(?:\s*\.filter\([\s\S]*?\))?(?:\s*\.slice\(0,\s*\d+\))?\s*\.map\(/;
 const canonicalOverviewFeatureDonutHeader = `const featureDonut = (analytics?.featureUsage ?? [])
     .filter((item) => String(item.name ?? "").trim().toLowerCase() !== "prompt")
-    .slice(0, 8)
     .map(`;
 overview = overview.replace(overviewFeatureDonutHeader, canonicalOverviewFeatureDonutHeader);
 
-const overviewPromptFilterPattern = /const featureDonut\s*=\s*\(analytics\?\.featureUsage\s*\?\?\s*\[\]\)\s*\.filter\(\(item\)\s*=>\s*String\(item\.name\s*\?\?\s*""\)\.trim\(\)\.toLowerCase\(\)\s*!==\s*"prompt"\)\s*\.slice\(0,\s*8\)\s*\.map\(/;
+const overviewPromptFilterPattern = /const featureDonut\s*=\s*\(analytics\?\.featureUsage\s*\?\?\s*\[\]\)\s*\.filter\(\(item\)\s*=>\s*String\(item\.name\s*\?\?\s*""\)\.trim\(\)\.toLowerCase\(\)\s*!==\s*"prompt"\)\s*\.map\(/;
 if (!overviewPromptFilterPattern.test(overview)) {
   throw new Error("Canonical admin overview prompt filter was not applied.");
 }
@@ -154,4 +153,4 @@ fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Administrative charts now use canonical prompt labels and filter only the legacy prompt series.");
+console.log("Administrative charts now preserve all overview categories while filtering only the legacy prompt series.");
