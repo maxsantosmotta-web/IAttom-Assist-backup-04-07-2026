@@ -80,24 +80,22 @@ analytics = analytics
   .replace('title="Uso por Recurso" subtitle="Distribuição de ações"', 'title="Execuções por Módulo" subtitle="Quantidade de ações por módulo"')
   .replace('title="Resumo de Uso dos Recursos" subtitle="Participação por recurso"', 'title="Resumo de Execuções por Módulo" subtitle="Participação de cada módulo"');
 
-if (!analytics.includes("sourceName: f.name")) {
+const rawPromptFilter = 'String(f.name ?? "").trim().toLowerCase() !== "prompt"';
+if (!analytics.includes(rawPromptFilter)) {
   analytics = analytics.replace(
-    /(const featureData = \(analytics\?\.featureUsage \?\? \[\]\)\s*\.map\(\(f, i\) => \(\{\s*\n\s*\.\.\.f,\s*\n)/,
-    "$1    sourceName: f.name,\n",
+    /(const featureData = \(analytics\?\.featureUsage \?\? \[\]\))\s*\.map\(/,
+    `$1\n    .filter((f) => ${rawPromptFilter})\n    .map(`,
   );
 }
 
-const oldChartPromptFilter = 'String(item.name ?? "").trim().toLowerCase() !== "prompt"';
-const chartPromptFilter = 'String(item.sourceName ?? "").trim().toLowerCase() !== "prompt"';
-analytics = analytics.replaceAll(oldChartPromptFilter, chartPromptFilter);
-
+const chartPromptFilter = 'String(item.name ?? "").trim().toLowerCase() !== "prompt"';
 const usagePromptFilterMarker = `featureUsageDonut = featureData\n    .filter((item) => ${chartPromptFilter}`;
 const summaryPromptFilterMarker = `featureSummaryDonut = featureData\n    .filter((item) => ${chartPromptFilter}`;
 
-if (!analytics.includes("sourceName: f.name") ||
+if (!analytics.includes(rawPromptFilter) ||
     !analytics.includes(usagePromptFilterMarker) ||
     !analytics.includes(summaryPromptFilterMarker)) {
-  throw new Error("Canonical admin analytics original prompt id preservation is missing.");
+  throw new Error("Canonical admin analytics raw prompt filter is missing.");
 }
 
 for (const marker of [
@@ -108,7 +106,7 @@ for (const marker of [
   'Prompt: "Criar Prompt"',
   'prompt: "Criar Prompt"',
   'prompt_creation: "Criar Prompt"',
-  'sourceName: f.name',
+  rawPromptFilter,
   usagePromptFilterMarker,
   summaryPromptFilterMarker,
   'Help: "IAttom Help"',
@@ -125,4 +123,4 @@ fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Administrative charts now preserve canonical labels while filtering only the legacy prompt id.");
+console.log("Administrative charts now filter only the legacy prompt id before label mapping.");
