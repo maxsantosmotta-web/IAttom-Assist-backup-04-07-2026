@@ -32,3 +32,4 @@ fs.writeFileSync(activityPath, activity);
 console.log("Final Activity action chart excludes only its last block.");
 
 await import("./patch-admin-analytics-remove-referral-code-card.mjs");
+await import("./patch-admin-finance-billing-cycle-ui.mjs");
