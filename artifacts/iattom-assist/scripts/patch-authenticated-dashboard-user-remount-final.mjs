@@ -3,55 +3,118 @@ import fs from "node:fs";
 const appPath = new URL("../src/App.tsx", import.meta.url);
 let source = fs.readFileSync(appPath, "utf8");
 
-if (!source.includes('useAuth')) {
-  const clerkImport = 'import { ClerkProvider, Show, useClerk, AuthenticateWithRedirectCallback } from "@clerk/react";';
-  const clerkImportWithAuth = 'import { ClerkProvider, Show, useClerk, useAuth, AuthenticateWithRedirectCallback } from "@clerk/react";';
-  if (!source.includes(clerkImport)) throw new Error("Final dashboard user remount Clerk import marker not found");
-  source = source.replace(clerkImport, clerkImportWithAuth);
+source = source
+  .replace(
+    'import { useEffect, useRef, useState, lazy, Suspense } from "react";',
+    'import { Fragment, useEffect, useRef, useState, lazy, Suspense, type ReactNode } from "react";',
+  )
+  .replace(
+    'import { useEffect, useRef, useState, lazy, Suspense, type ReactNode } from "react";',
+    'import { Fragment, useEffect, useRef, useState, lazy, Suspense, type ReactNode } from "react";',
+  )
+  .replace(
+    'import { ClerkProvider, Show, useClerk, AuthenticateWithRedirectCallback } from "@clerk/react";',
+    'import { ClerkProvider, Show, useClerk, useUser, AuthenticateWithRedirectCallback } from "@clerk/react";',
+  );
+
+const blockStart = 'const BROWSER_STATE_OWNER_KEY = "iattom_browser_owner_v1";';
+const blockEnd = '\n\nconst BLOCKED_MSG =';
+const start = source.indexOf(blockStart);
+const end = start === -1 ? -1 : source.indexOf(blockEnd, start);
+
+if (start === -1 || end === -1) {
+  throw new Error("Final global browser isolation block was not found after frontend patches");
 }
 
-const dashboardStart = `function ProtectedDashboard() {
-  return <>`;
-const dashboardStartPatched = `function ProtectedDashboard() {
-  const { isLoaded, userId } = useAuth();
-  if (!isLoaded || !userId) return <LoadingScreen />;
-  return <div key={userId}>`;
+const globalBlock = `const BROWSER_STATE_OWNER_KEY = "iattom_browser_owner_v1";
+const USER_SCOPED_INDEXED_DATABASES = ["iattom_assets_db"];
 
-if (!source.includes("const { isLoaded, userId } = useAuth();")) {
-  if (!source.includes(dashboardStart)) throw new Error("Final ProtectedDashboard start marker not found");
-  source = source.replace(dashboardStart, dashboardStartPatched);
+async function clearUserScopedBrowserState(): Promise<void> {
+  try {
+    const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+      .filter((key): key is string => Boolean(key));
+    for (const key of keys) {
+      if (key.startsWith("iattom_") && key !== BROWSER_STATE_OWNER_KEY) localStorage.removeItem(key);
+    }
+  } catch { /* armazenamento indisponível */ }
+
+  try {
+    const keys = Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index))
+      .filter((key): key is string => Boolean(key));
+    for (const key of keys) {
+      if (key.startsWith("iattom_")) sessionStorage.removeItem(key);
+    }
+  } catch { /* armazenamento indisponível */ }
+
+  if (typeof indexedDB !== "undefined") {
+    await Promise.all(USER_SCOPED_INDEXED_DATABASES.map((databaseName) => new Promise<void>((resolve) => {
+      try {
+        const request = indexedDB.deleteDatabase(databaseName);
+        request.onsuccess = () => resolve();
+        request.onerror = () => resolve();
+        request.onblocked = () => resolve();
+      } catch {
+        resolve();
+      }
+    })));
+  }
 }
 
-const dashboardEnd = `  </>;
-}
+function BrowserUserBoundary({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn, user } = useUser();
+  const qc = useQueryClient();
+  const userId = isLoaded && isSignedIn ? (user?.id ?? null) : null;
+  const [readyOwner, setReadyOwner] = useState<string | null | undefined>(undefined);
 
-function ProtectedAdmin()`;
-const dashboardEndPatched = `  </div>;
-}
+  useEffect(() => {
+    if (!isLoaded) return;
+    let cancelled = false;
 
-function ProtectedAdmin()`;
+    void (async () => {
+      let storedOwner: string | null = null;
+      try { storedOwner = localStorage.getItem(BROWSER_STATE_OWNER_KEY); } catch { /* armazenamento indisponível */ }
 
-if (!source.includes("return <div key={userId}>")) {
-  throw new Error("Final dashboard keyed remount start was not installed");
-}
+      if (storedOwner !== userId) {
+        await clearUserScopedBrowserState();
+        try {
+          if (userId) localStorage.setItem(BROWSER_STATE_OWNER_KEY, userId);
+          else localStorage.removeItem(BROWSER_STATE_OWNER_KEY);
+        } catch { /* armazenamento indisponível */ }
+        qc.clear();
+      }
 
-if (source.includes(dashboardEnd)) {
-  source = source.replace(dashboardEnd, dashboardEndPatched);
-} else if (!source.includes(`  </div>;
-}
+      if (!cancelled) setReadyOwner(userId);
+    })();
 
-function ProtectedAdmin()`)) {
-  throw new Error("Final ProtectedDashboard end marker not found");
+    return () => { cancelled = true; };
+  }, [isLoaded, qc, userId]);
+
+  if (!isLoaded || readyOwner !== userId) return <LoadingScreen />;
+  return <Fragment key={userId ?? "signed-out"}>{children}</Fragment>;
+}`;
+
+source = source.slice(0, start) + globalBlock + source.slice(end);
+
+if (!source.includes("<BrowserUserBoundary><ErrorBoundary")) {
+  source = source.replace(
+    '      <ErrorBoundary resetKey={location}><Switch>',
+    '      <BrowserUserBoundary><ErrorBoundary resetKey={location}><Switch>',
+  );
+  source = source.replace(
+    '      </Switch></ErrorBoundary>\n      <Toaster />',
+    '      </Switch></ErrorBoundary></BrowserUserBoundary>\n      <Toaster />',
+  );
 }
 
 for (const marker of [
-  'useAuth, AuthenticateWithRedirectCallback',
-  'const { isLoaded, userId } = useAuth();',
-  'if (!isLoaded || !userId) return <LoadingScreen />;',
-  'return <div key={userId}>',
+  'USER_SCOPED_INDEXED_DATABASES = ["iattom_assets_db"]',
+  'await clearUserScopedBrowserState();',
+  'readyOwner !== userId',
+  'return <Fragment key={userId ?? "signed-out"}>{children}</Fragment>;',
+  '<BrowserUserBoundary><ErrorBoundary',
 ]) {
-  if (!source.includes(marker)) throw new Error(`Final dashboard user remount marker missing: ${marker}`);
+  if (!source.includes(marker)) throw new Error(`Final global user isolation marker missing: ${marker}`);
 }
 
 fs.writeFileSync(appPath, source, "utf8");
-console.log("Authenticated dashboard now mounts only with the real Clerk user and remounts on account change.");
+console.log("Global account switching now clears browser state and IndexedDB before remounting the authenticated tree.");
