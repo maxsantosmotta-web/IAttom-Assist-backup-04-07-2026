@@ -56,3 +56,55 @@ for (const marker of [
 
 writeFileSync(fileUrl, source, "utf8");
 console.log("Vídeo com Imagem now analyzes movement feasibility dynamically for each source image.");
+
+const creativeFileUrl = new URL("../src/lib/ai/creativeIdeas.ts", import.meta.url);
+let creativeSource = readFileSync(creativeFileUrl, "utf8");
+
+const originalFidelityRule = "REGRA ABSOLUTA DE FIDELIDADE AO PRODUTO: O produto informado é a referência central e obrigatória. NÃO substitua por versão genérica ou produto parecido. Preserve o nome exato, aparência, proporções e categoria do produto.";
+const dynamicHierarchyRule = `REGRA ABSOLUTA DE FIDELIDADE E HIERARQUIA VISUAL: Antes de escrever cada imagePrompt, faça uma ANÁLISE DINÂMICA DO FOCO COMERCIAL desta solicitação específica. Identifique assunto principal, produto ou serviço promovido, pessoa, cenário, elementos de apoio e objetivo da peça. Defina internamente uma hierarquia visual clara para cada conceito.
+Quando o objetivo comercial for vender, apresentar, comparar ou destacar um produto físico, o produto deve ser o protagonista inequívoco da composição: maior peso visual, melhor iluminação, nitidez prioritária, posição dominante e leitura imediata. Pessoas podem demonstrar uso, escala, benefício ou contexto, mas não podem ocupar mais atenção, área útil, contraste ou destaque que o produto, salvo quando o próprio pedido declarar explicitamente que a pessoa é o assunto principal.
+Quando o pedido for serviço, marca pessoal, perfil profissional, campanha institucional ou emoção humana, determine dinamicamente se a pessoa, ambiente, símbolo ou benefício deve liderar. Não aplique a regra de produto dominante onde não houver produto físico central.
+Diferencie protagonista, elemento secundário e cenário em cada imagem. Não use automaticamente pessoa em primeiro plano, rosto grande, modelo central ou pose de influenciador apenas por haver alguém na cena. Não reduza o produto a acessório, objeto pequeno, item na mão, fundo desfocado ou detalhe lateral quando ele for o foco comercial.
+Preserve o nome exato, aparência, proporções, categoria, materiais, cores e características informadas. Não substitua por versão genérica ou produto parecido. A decisão deve nascer do pedido atual e não de uma fórmula fixa.`;
+
+if (!creativeSource.includes("ANÁLISE DINÂMICA DO FOCO COMERCIAL")) {
+  if (!creativeSource.includes(originalFidelityRule)) {
+    throw new Error("Creative image fidelity rule not found in final generator source");
+  }
+  creativeSource = creativeSource.replace(originalFidelityRule, dynamicHierarchyRule);
+}
+
+const originalUserImageInstruction = `INSTRUÇÃO: O imagePrompt de cada conceito deve iniciar com "${'${productName}'}". Aplique as diretrizes do especialista, preserve o briefing profissional quando fornecido e adapte a composição ao enquadramento de cada formato.`;
+const dynamicUserImageInstruction = `INSTRUÇÃO: O imagePrompt de cada conceito deve iniciar com "${'${productName}'}". Antes de definir composição, determine dinamicamente o protagonista visual real desta solicitação. Quando houver produto físico com objetivo comercial, descreva-o como foco dominante e use pessoas apenas como apoio funcional, sem roubar área, contraste, nitidez ou protagonismo. Quando o pedido tiver outro foco, respeite a hierarquia apropriada à intenção. Aplique as diretrizes do especialista, preserve o briefing profissional quando fornecido e adapte a composição ao enquadramento de cada formato.`;
+
+if (!creativeSource.includes("determine dinamicamente o protagonista visual real")) {
+  if (!creativeSource.includes(originalUserImageInstruction)) {
+    throw new Error("Creative image user instruction not found in final generator source");
+  }
+  creativeSource = creativeSource.replace(originalUserImageInstruction, dynamicUserImageInstruction);
+}
+
+const originalProductAnchor = '  const productAnchor = `${productName} — exact product as specified, preserve real appearance, proportions and category`;';
+const dynamicProductAnchor = '  const productAnchor = `${productName} — exact commercial subject as specified; preserve real appearance, proportions and category; keep the requested commercial protagonist visually dominant over supporting people and scenery`;';
+
+if (!creativeSource.includes("keep the requested commercial protagonist visually dominant")) {
+  if (!creativeSource.includes(originalProductAnchor)) {
+    throw new Error("Creative image product anchor not found in final generator source");
+  }
+  creativeSource = creativeSource.replace(originalProductAnchor, dynamicProductAnchor);
+}
+
+for (const marker of [
+  "ANÁLISE DINÂMICA DO FOCO COMERCIAL",
+  "o produto deve ser o protagonista inequívoco da composição",
+  "Pessoas podem demonstrar uso, escala, benefício ou contexto",
+  "Não aplique a regra de produto dominante onde não houver produto físico central",
+  "Não use automaticamente pessoa em primeiro plano",
+  "determine dinamicamente o protagonista visual real",
+  "keep the requested commercial protagonist visually dominant",
+]) {
+  if (!creativeSource.includes(marker)) throw new Error(`Dynamic image hierarchy marker missing: ${marker}`);
+}
+
+writeFileSync(creativeFileUrl, creativeSource, "utf8");
+console.log("Gerador de Imagem now determines commercial visual hierarchy dynamically for every request.");
