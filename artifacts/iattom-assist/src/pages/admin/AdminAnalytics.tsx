@@ -174,11 +174,13 @@ export function AdminAnalytics() {
     })();
   }, [growthTick, getToken]);
 
-  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({
-    ...f,
-    name: FEATURE_NAME_MAP[f.name] ?? f.name,
-    fill: FEATURE_COLORS[i % FEATURE_COLORS.length],
-  }));
+  const featureData = (analytics?.featureUsage ?? [])
+    .filter((f) => String(f.name ?? "").trim().toLowerCase() !== "prompt")
+    .map((f, i) => ({
+      ...f,
+      name: FEATURE_NAME_MAP[f.name] ?? f.name,
+      fill: FEATURE_COLORS[i % FEATURE_COLORS.length],
+    }));
 
   const hasPaidSubscribers = (growthStats?.activeSubscribers ?? 0) > 0;
   const planDefinitions = [
