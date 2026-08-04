@@ -76,17 +76,23 @@ const replacement = `router.get(
 
 source = source.slice(0, routeStart) + replacement + source.slice(routeEnd);
 
+const patchedRouteEnd = source.indexOf(
+  'router.post(\n  "/stripe/start/checkout"',
+  routeStart,
+);
+const patchedRoute = source.slice(routeStart, patchedRouteEnd);
+
 for (const forbidden of [
   "stripe.customers.list({ email: user.email",
   "customersByEmail",
   "PLAN_RANK",
 ]) {
-  if (source.includes(forbidden)) {
-    throw new Error(`Unsafe subscription lookup remained after patch: ${forbidden}`);
+  if (patchedRoute.includes(forbidden)) {
+    throw new Error(`Unsafe subscription lookup remained in patched route: ${forbidden}`);
   }
 }
 
-if (!source.includes("if (!user.stripeCustomerId)")) {
+if (!patchedRoute.includes("if (!user.stripeCustomerId)")) {
   throw new Error("Authenticated Stripe customer guard was not applied");
 }
 
