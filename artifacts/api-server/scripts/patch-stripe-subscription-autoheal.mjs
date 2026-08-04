@@ -21,99 +21,53 @@ const replacement = `router.get(
       return res.status(404).json({ error: "Usuário não encontrado" });
     }
 
+    if (!user.stripeCustomerId) {
+      return res.json({
+        hasSubscription: false,
+        status: null,
+        planKey: user.plan ?? "free",
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+      });
+    }
+
     try {
-      const stripe = await getUncachableStripeClient();
-      const customerIds = new Set<string>();
-      if (user.stripeCustomerId) customerIds.add(user.stripeCustomerId);
+      const subscription = await getSubscriptionByCustomerId(user.stripeCustomerId);
 
-      const customersByEmail = await stripe.customers.list({ email: user.email, limit: 100 });
-      for (const customer of customersByEmail.data) {
-        if (!customer.deleted) customerIds.add(customer.id);
-      }
-
-      const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, business: 2, agency: 3 };
-      let activeSubscription: any = null;
-      let activeCustomerId: string | null = null;
-      let activePlanKey: string | null = null;
-
-      for (const customerId of customerIds) {
-        const subscriptions = await stripe.subscriptions.list({
-          customer: customerId,
-          status: "all",
-          limit: 100,
-        });
-
-        for (const subscription of subscriptions.data) {
-          if (subscription.status !== "active" && subscription.status !== "trialing" && subscription.status !== "past_due") continue;
-
-          const firstItem = subscription.items.data[0];
-          let planKey = subscription.metadata?.planKey ||
-            (firstItem ? ALLOWED_PLAN_PRICE_IDS.get(firstItem.price.id) : undefined);
-
-          if (!planKey && firstItem) {
-            const productId = typeof firstItem.price.product === "string"
-              ? firstItem.price.product
-              : firstItem.price.product.id;
-            const product = await stripe.products.retrieve(productId);
-            planKey = product.metadata?.plan;
-          }
-
-          if (planKey !== "pro" && planKey !== "business" && planKey !== "agency") continue;
-
-          const candidateRank = PLAN_RANK[planKey] ?? -1;
-          const activeRank = activePlanKey ? (PLAN_RANK[activePlanKey] ?? -1) : -1;
-          if (!activeSubscription || candidateRank > activeRank || (candidateRank === activeRank && subscription.created > activeSubscription.created)) {
-            activeSubscription = subscription;
-            activeCustomerId = customerId;
-            activePlanKey = planKey;
-          }
-        }
-      }
-
-      if (!activeSubscription || !activeCustomerId || !activePlanKey) {
+      if (!subscription) {
         return res.json({
           hasSubscription: false,
           status: null,
           planKey: user.plan ?? "free",
           currentPeriodEnd: null,
           cancelAtPeriodEnd: false,
-          stripeCustomerId: user.stripeCustomerId ?? null,
-          stripeSubscriptionId: user.stripeSubscriptionId ?? null,
+          stripeCustomerId: user.stripeCustomerId,
+          stripeSubscriptionId: null,
         });
       }
 
-      const metadataChanged =
-        user.plan !== activePlanKey ||
-        user.stripeCustomerId !== activeCustomerId ||
-        user.stripeSubscriptionId !== activeSubscription.id ||
-        user.stripeSubscriptionStatus !== activeSubscription.status;
+      const isActive =
+        subscription.status === "active" ||
+        subscription.status === "trialing" ||
+        subscription.status === "past_due";
+      const currentPeriodEnd = Number(subscription.current_period_end ?? 0);
 
-      if (metadataChanged) {
-        await db.update(users)
-          .set({
-            plan: activePlanKey as "pro" | "business" | "agency",
-            stripeCustomerId: activeCustomerId,
-            stripeSubscriptionId: activeSubscription.id,
-            stripeSubscriptionStatus: activeSubscription.status,
-            planSelected: true,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.clerkId, clerkUserId));
-      }
-
-      const currentPeriodEnd = Number(activeSubscription.current_period_end ?? 0);
       return res.json({
-        hasSubscription: true,
-        status: activeSubscription.status,
-        planKey: activePlanKey,
-        currentPeriodEnd: currentPeriodEnd > 0 ? new Date(currentPeriodEnd * 1000).toISOString() : null,
-        cancelAtPeriodEnd: Boolean(activeSubscription.cancel_at_period_end),
-        stripeCustomerId: activeCustomerId,
-        stripeSubscriptionId: activeSubscription.id,
+        hasSubscription: isActive,
+        status: subscription.status,
+        planKey: user.plan ?? "free",
+        currentPeriodEnd: currentPeriodEnd > 0
+          ? new Date(currentPeriodEnd * 1000).toISOString()
+          : null,
+        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+        stripeCustomerId: user.stripeCustomerId,
+        stripeSubscriptionId: user.stripeSubscriptionId ?? subscription.id,
       });
     } catch (err) {
-      req.log.error({ err, clerkUserId }, "Direct Stripe subscription lookup failed");
-      return res.status(500).json({ error: "Falha ao consultar e sincronizar a assinatura" });
+      req.log.error({ err, clerkUserId }, "Authenticated Stripe subscription lookup failed");
+      return res.status(500).json({ error: "Falha ao consultar a assinatura" });
     }
   },
 );
@@ -121,5 +75,20 @@ const replacement = `router.get(
 `;
 
 source = source.slice(0, routeStart) + replacement + source.slice(routeEnd);
+
+for (const forbidden of [
+  "stripe.customers.list({ email: user.email",
+  "customersByEmail",
+  "PLAN_RANK",
+]) {
+  if (source.includes(forbidden)) {
+    throw new Error(`Unsafe subscription lookup remained after patch: ${forbidden}`);
+  }
+}
+
+if (!source.includes("if (!user.stripeCustomerId)")) {
+  throw new Error("Authenticated Stripe customer guard was not applied");
+}
+
 fs.writeFileSync(stripeRoutePath, source);
-console.log("Stripe subscription lookup selects the highest active plan without overwriting balances");
+console.log("Stripe subscription lookup is isolated to the authenticated user's stored customer ID.");
