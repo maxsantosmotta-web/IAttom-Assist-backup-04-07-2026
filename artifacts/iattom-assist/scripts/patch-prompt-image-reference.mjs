@@ -99,6 +99,20 @@ if (!source.includes("          )}\n\n          <CreditsGate")) {
   source = source.replace(subjectEndMarker, subjectEndBlock);
 }
 
+const legacyVideoOption = '  "Vídeo",\n';
+if (source.includes(legacyVideoOption)) {
+  source = source.replace(legacyVideoOption, "");
+}
+
+const legacyVideoInfo = `  "Vídeo": {
+    description: "Cria prompts para vídeos completos, com cenas, ações, narrativa, ritmo, enquadramento e direção visual.",
+    example: "Exemplo: vídeo curto apresentando uma scooter elétrica em um cenário urbano.",
+  },
+`;
+if (source.includes(legacyVideoInfo)) {
+  source = source.replace(legacyVideoInfo, "");
+}
+
 for (const marker of [
   'from "@/components/prompts/PromptImageReferencePicker"',
   "const [referenceImage, setReferenceImage]",
@@ -107,12 +121,17 @@ for (const marker of [
   "const requiresReferenceImage",
   'guidedTipo !== "Vídeo com Imagem" && (',
   "          )}\n\n          <CreditsGate",
+  '  "Vídeo com Imagem",',
 ]) {
   if (!source.includes(marker)) throw new Error(`Prompt image reference marker missing: ${marker}`);
 }
 
+if (source.includes(legacyVideoOption) || source.includes('  "Vídeo": {')) {
+  throw new Error("Legacy Vídeo prompt category still present");
+}
+
 writeFileSync(fileUrl, source, "utf8");
-console.log("Vídeo com Imagem now hides Assunto and generates from the selected reference image only.");
+console.log("Vídeo com Imagem remains active and the legacy Vídeo prompt category was removed.");
 
 await import("./patch-prompt-charge-after-success.mjs");
 await import("./patch-image-motion-prompt-limit.mjs");
