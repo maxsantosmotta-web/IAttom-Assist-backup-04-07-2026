@@ -20,7 +20,10 @@ replaceExact("../src/pages/admin/AdminUsers.tsx", [
   ['<SelectItem value="business">Empresarial</SelectItem>', '<SelectItem value="business">PREMIUM</SelectItem>'],
   ['<SelectItem value="business">Premium</SelectItem>', '<SelectItem value="business">PREMIUM</SelectItem>'],
   ['<SelectItem value="agency">Agência</SelectItem>', '<SelectItem value="agency">PRO</SelectItem>'],
-  ['<SelectItem value="agency">Pro</SelectItem>', '<SelectItem value="agency">PRO</SelectItem>']
+  ['<SelectItem value="agency">Pro</SelectItem>', '<SelectItem value="agency">PRO</SelectItem>'],
+  ['  plan: Plan;\n  credits: number;', '  plan: Plan;\n  planSelected?: boolean;\n  credits: number;'],
+  ['<td className="px-4 py-3"><Badge variant="outline" className={planColors[user.plan]}>{planLabels[user.plan]}</Badge></td>', '<td className="px-4 py-3"><Badge variant="outline" className={user.planSelected === false ? "text-zinc-400 bg-zinc-400/10 border-zinc-400/20" : planColors[user.plan]}>{user.planSelected === false ? "SEM PLANO" : planLabels[user.plan]}</Badge></td>'],
+  ['<Badge variant="outline" className={planColors[profileUser?.plan ?? "free"]}>{planLabels[profileUser?.plan ?? "free"]}</Badge>', '<Badge variant="outline" className={profileUser?.planSelected === false ? "text-zinc-400 bg-zinc-400/10 border-zinc-400/20" : planColors[profileUser?.plan ?? "free"]}>{profileUser?.planSelected === false ? "SEM PLANO" : planLabels[profileUser?.plan ?? "free"]}</Badge>']
 ]);
 
 replaceExact("../src/pages/admin/AdminOverview.tsx", [
@@ -51,4 +54,4 @@ replaceExact("../src/pages/admin/AdminAnalytics.tsx", [
   ['agency: "Pro"', 'agency: "PRO"']
 ]);
 
-console.log("Admin plan labels standardized: FREE, START, PREMIUM, PRO.");
+console.log("Admin plan labels standardized: FREE, START, PREMIUM, PRO; users without plan selection display SEM PLANO.");
