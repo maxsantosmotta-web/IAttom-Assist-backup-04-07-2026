@@ -5,12 +5,14 @@ const paths = {
   activity: new URL("../src/pages/admin/AdminActivity.tsx", import.meta.url),
   overview: new URL("../src/pages/admin/AdminOverview.tsx", import.meta.url),
   analytics: new URL("../src/pages/admin/AdminAnalytics.tsx", import.meta.url),
+  finance: new URL("../src/pages/admin/AdminFinance.tsx", import.meta.url),
 };
 
 let translations = fs.readFileSync(paths.translations, "utf8");
 let activity = fs.readFileSync(paths.activity, "utf8");
 let overview = fs.readFileSync(paths.overview, "utf8");
 let analytics = fs.readFileSync(paths.analytics, "utf8");
+let finance = fs.readFileSync(paths.finance, "utf8");
 
 const modules = `export const MODULE_LABELS: Record<string, string> = {
   campaign: "Criar Campanha", Campaign: "Criar Campanha",
@@ -150,6 +152,20 @@ if (!overview.includes('Prompts: "Criar Prompt"') ||
   throw new Error("Canonical admin overview prompt labels were not applied.");
 }
 
+finance = finance.replace(
+  ': movements.slice(0, 10);',
+  ': movements;',
+);
+finance = finance.replace(
+  '<div className="divide-y divide-white/[0.05]">',
+  '<div className="max-h-[520px] overflow-y-auto overscroll-contain pr-2 divide-y divide-white/[0.05]">',
+);
+if (finance.includes(': movements.slice(0, 10);') ||
+    !finance.includes(': movements;') ||
+    !finance.includes('max-h-[520px] overflow-y-auto overscroll-contain pr-2 divide-y divide-white/[0.05]')) {
+  throw new Error("Admin finance internal movement scrolling was not applied.");
+}
+
 for (const marker of [
   '"Product Discovery": "Buscar Produtos"',
   '"Find Products": "Buscar Produtos"',
@@ -172,4 +188,5 @@ fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Administrative charts keep canonical prompt labels and omit revenue by plan from Analytics.");
+fs.writeFileSync(paths.finance, finance);
+console.log("Administrative charts remain canonical and Finance movements use internal scrolling.");
