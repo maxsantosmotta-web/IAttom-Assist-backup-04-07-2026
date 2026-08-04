@@ -152,16 +152,15 @@ function StatTile`,
   const featureUsageDonut`,
   );
 
-  if (!source.includes('.filter((f) => String(f.name ?? "").trim().toLowerCase() !== "prompt")')) {
+  const promptFilterMarker = 'String(f.name ?? "").trim().toLowerCase() !== "prompt"';
+  if (!source.includes(promptFilterMarker)) {
     source = source.replace(
-      `  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({`,
-      `  const featureData = (analytics?.featureUsage ?? [])
-    .filter((f) => String(f.name ?? "").trim().toLowerCase() !== "prompt")
-    .map((f, i) => ({`,
+      /(  const featureData = \(analytics\?\.featureUsage \?\? \[\]\))\s*\.map\(/,
+      `$1\n    .filter((f) => ${promptFilterMarker})\n    .map(`,
     );
   }
 
-  if (!source.includes('.filter((f) => String(f.name ?? "").trim().toLowerCase() !== "prompt")')) {
+  if (!source.includes(promptFilterMarker)) {
     throw new Error("Commercial analytics patch did not preserve the prompt filter.");
   }
 
