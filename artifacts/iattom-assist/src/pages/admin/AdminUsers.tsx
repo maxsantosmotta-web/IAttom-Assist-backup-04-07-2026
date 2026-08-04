@@ -32,6 +32,8 @@ const planColors: Record<string, string> = {
   agency: "text-purple-400 bg-purple-400/10 border-purple-400/20",
 };
 
+const noPlanColor = "text-zinc-400 bg-zinc-400/10 border-zinc-400/20";
+
 const roleLabels: Record<string, string> = { user: "Usuário", admin: "Admin" };
 const roleColors: Record<string, string> = {
   user: "text-muted-foreground bg-white/5 border-white/10",
@@ -67,6 +69,7 @@ type AdminUser = {
   name?: string | null;
   role: Role;
   plan: Plan;
+  planSelected: boolean;
   credits: number;
   extraCredits?: number;
   creativeCredits?: number;
@@ -112,6 +115,14 @@ function readableTransaction(tx: UserProfile["recentCredits"][number]): string {
   if (tx.feature === "prompt_creation") return "Criação de prompt";
   if (tx.feature === "campaign") return "Criação de campanha";
   return tx.description ?? tx.feature ?? "—";
+}
+
+function displayedPlan(user: Pick<AdminUser, "plan" | "planSelected">): { label: string; color: string } {
+  if (!user.planSelected) return { label: "SEM PLANO", color: noPlanColor };
+  return {
+    label: planLabels[user.plan] ?? user.plan,
+    color: planColors[user.plan] ?? noPlanColor,
+  };
 }
 
 export function AdminUsers() {
@@ -308,10 +319,11 @@ export function AdminUsers() {
                 (data?.users as AdminUser[] | undefined)?.map((user) => {
                   const initials = (user.name ?? user.email).split(" ").map((part) => part[0]).join("").toUpperCase().slice(0, 2);
                   const totalCredits = user.credits + (user.extraCredits ?? 0);
+                  const planDisplay = displayedPlan(user);
                   return <tr key={user.id} className="border-b border-white/5 hover:bg-white/[0.02]">
                     <td className="px-5 py-3"><div className="flex items-center gap-3"><Avatar className="w-8 h-8"><AvatarFallback className="bg-primary/10 text-primary text-xs">{initials}</AvatarFallback></Avatar><div><p className="text-white">{user.name ?? "—"}</p><p className="text-xs text-muted-foreground">{user.email}</p></div></div></td>
                     <td className="px-4 py-3"><Badge variant="outline" className={roleColors[user.role]}>{roleLabels[user.role]}</Badge></td>
-                    <td className="px-4 py-3"><Badge variant="outline" className={planColors[user.plan]}>{planLabels[user.plan]}</Badge></td>
+                    <td className="px-4 py-3"><Badge variant="outline" className={planDisplay.color}>{planDisplay.label}</Badge></td>
                     <td className="px-4 py-3 text-right font-mono text-white">{totalCredits}</td>
                     <td className="px-4 py-3 text-right text-muted-foreground">{user.projectCount}</td>
                     <td className="px-4 py-3 text-right text-muted-foreground">{user.actionCount}</td>
@@ -357,7 +369,7 @@ export function AdminUsers() {
 
       <Dialog open={!!profileUser} onOpenChange={(open) => { if (!open) { setProfileUser(null); setProfileData(null); } }}>
         <DialogContent className="bg-[#0d0d0d] border-white/10 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{profileUser?.name ?? profileUser?.email}</DialogTitle><div className="flex gap-2"><Badge variant="outline" className={roleColors[profileUser?.role ?? "user"]}>{roleLabels[profileUser?.role ?? "user"]}</Badge><Badge variant="outline" className={planColors[profileUser?.plan ?? "free"]}>{planLabels[profileUser?.plan ?? "free"]}</Badge>{profileData?.stripeSubscriptionStatus && <Badge variant="outline">{statusPT[profileData.stripeSubscriptionStatus] ?? profileData.stripeSubscriptionStatus}</Badge>}</div></DialogHeader>
+          <DialogHeader><DialogTitle>{profileUser?.name ?? profileUser?.email}</DialogTitle>{profileUser && (() => { const profilePlan = displayedPlan(profileUser); return <div className="flex gap-2"><Badge variant="outline" className={roleColors[profileUser.role]}>{roleLabels[profileUser.role]}</Badge><Badge variant="outline" className={profilePlan.color}>{profilePlan.label}</Badge>{profileData?.stripeSubscriptionStatus && <Badge variant="outline">{statusPT[profileData.stripeSubscriptionStatus] ?? profileData.stripeSubscriptionStatus}</Badge>}</div>; })()}</DialogHeader>
           {profileLoading ? <Skeleton className="h-40 w-full bg-white/5" /> : profileData ? <div className="space-y-5">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[{ icon: Zap, label: "Créditos", value: profileData.credits + (profileData.extraCredits ?? 0) }, { icon: Zap, label: "Imagens", value: Math.floor(((profileData.creativeCredits ?? 0) + (profileData.extraCreativeCredits ?? 0)) / 10) }, { icon: FolderOpen, label: "Projetos", value: profileData.projectCount }, { icon: Activity, label: "Ações", value: profileData.actionCount }].map(({ icon: Icon, label, value }) => <div key={label} className="bg-[#111111] rounded-xl p-3 border border-white/5"><Icon className="w-4 h-4 text-primary mb-2" /><p className="font-bold">{value}</p><p className="text-[10px] text-zinc-500">{label}</p></div>)}
