@@ -121,3 +121,48 @@ console.log("Global account switching now clears browser state and IndexedDB bef
 
 await import("./patch-canonical-image-library-endpoint.mjs");
 await import("./patch-official-library-image-selection.mjs");
+
+const activityPath = new URL("../src/pages/admin/AdminActivity.tsx", import.meta.url);
+let activitySource = fs.readFileSync(activityPath, "utf8");
+const activityActionAnchor = `    const actionChart = Object.entries(actionMap)\n      .filter(([, value]) => value > 0)`;
+const activityActionFiltered = `    const actionChart = Object.entries(actionMap)\n      .filter(([label, value]) => value > 0 && !["Buscar Produtos", "Buscas de produtos executadas"].includes(label))`;
+if (activitySource.includes(activityActionAnchor)) {
+  activitySource = activitySource.replace(activityActionAnchor, activityActionFiltered);
+} else if (!activitySource.includes('!["Buscar Produtos", "Buscas de produtos executadas"].includes(label)')) {
+  throw new Error("Admin Activity action chart anchor not found");
+}
+fs.writeFileSync(activityPath, activitySource, "utf8");
+
+const analyticsPath = new URL("../src/pages/admin/AdminAnalytics.tsx", import.meta.url);
+let analyticsSource = fs.readFileSync(analyticsPath, "utf8");
+const analyticsFilterAnchor = `  const featureData = (analytics?.featureUsage ?? [])\n    .filter((f) => String(f.name ?? "").trim().toLowerCase() !== "prompt")`;
+const analyticsFilterReplacement = `  const featureData = (analytics?.featureUsage ?? [])\n    .filter((f) => {\n      const key = String(f.name ?? "").trim().toLowerCase().replaceAll("_", " ");\n      return key !== "prompt" && key !== "find products" && key !== "validate products";\n    })`;
+if (analyticsSource.includes(analyticsFilterAnchor)) {
+  analyticsSource = analyticsSource.replace(analyticsFilterAnchor, analyticsFilterReplacement);
+} else if (!analyticsSource.includes('key !== "find products" && key !== "validate products"')) {
+  throw new Error("Admin Analytics feature filter anchor not found");
+}
+fs.writeFileSync(analyticsPath, analyticsSource, "utf8");
+
+const overviewPath = new URL("../src/pages/admin/AdminOverview.tsx", import.meta.url);
+let overviewSource = fs.readFileSync(overviewPath, "utf8");
+const overviewAnchor = `  const featureDonut = (analytics?.featureUsage ?? []).slice(0, 8).map((item, index) => ({`;
+const overviewReplacement = `  const featureDonut = (analytics?.featureUsage ?? [])\n    .filter((item) => {\n      const key = String(item.name ?? "").trim().toLowerCase().replaceAll("_", " ");\n      return key !== "find products" && key !== "validate products";\n    })\n    .slice(0, 8)\n    .map((item, index) => ({`;
+if (overviewSource.includes(overviewAnchor)) {
+  overviewSource = overviewSource.replace(overviewAnchor, overviewReplacement);
+} else if (!overviewSource.includes('key !== "find products" && key !== "validate products"')) {
+  throw new Error("Admin Overview feature chart anchor not found");
+}
+fs.writeFileSync(overviewPath, overviewSource, "utf8");
+
+for (const [name, content, markers] of [
+  ["AdminActivity", activitySource, ['!["Buscar Produtos", "Buscas de produtos executadas"].includes(label)']],
+  ["AdminAnalytics", analyticsSource, ['key !== "find products" && key !== "validate products"']],
+  ["AdminOverview", overviewSource, ['key !== "find products" && key !== "validate products"']],
+]) {
+  for (const marker of markers) {
+    if (!content.includes(marker)) throw new Error(`${name} legacy product chart marker missing: ${marker}`);
+  }
+}
+
+console.log("Legacy product chart blocks are excluded only from the requested ADM charts.");
