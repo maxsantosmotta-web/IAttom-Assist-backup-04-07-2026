@@ -34,4 +34,41 @@ for (const marker of required) {
 }
 
 writeFileSync(routeUrl, source);
-console.log("Prompt generation activity logging is connected without changing the generation flow.");
+
+const adminUrl = new URL("../src/routes/admin.ts", import.meta.url);
+let adminSource = readFileSync(adminUrl, "utf8");
+
+const analyticsQuery = `  const moduleRows = await db
+    .select({ module: historyTable.module, count: count() })
+    .from(historyTable)
+    .groupBy(historyTable.module)
+    .orderBy(desc(count()));`;
+const analyticsQueryWithoutLegacyPrompt = `  const moduleRows = await db
+    .select({ module: historyTable.module, count: count() })
+    .from(historyTable)
+    .where(ne(historyTable.module, "prompt"))
+    .groupBy(historyTable.module)
+    .orderBy(desc(count()));`;
+
+if (adminSource.includes(analyticsQuery)) {
+  adminSource = adminSource.replace(analyticsQuery, analyticsQueryWithoutLegacyPrompt);
+}
+
+const genericFeatureName = '    name: r.module.replace(/_/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase()),';
+const canonicalPromptFeatureName = '    name: r.module === "prompts" ? "Criar Prompt" : r.module.replace(/_/g, " ").replace(/\\b\\w/g, (c) => c.toUpperCase()),';
+
+if (adminSource.includes(genericFeatureName)) {
+  adminSource = adminSource.replace(genericFeatureName, canonicalPromptFeatureName);
+}
+
+for (const marker of [
+  '.where(ne(historyTable.module, "prompt"))',
+  'r.module === "prompts" ? "Criar Prompt"',
+]) {
+  if (!adminSource.includes(marker)) {
+    throw new Error(`Admin prompt analytics marker missing: ${marker}`);
+  }
+}
+
+writeFileSync(adminUrl, adminSource);
+console.log("Prompt activity uses the canonical prompts key; admin analytics excludes only the legacy prompt series.");
