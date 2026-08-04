@@ -66,6 +66,14 @@ if (!source.includes("        billingCycle,")) {
   source = source.replace(subscriptionMovementAnchor, subscriptionMovementReplacement);
 }
 
+const plainSubscriptionLabel = '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan}`,';
+const cycleSubscriptionLabel = '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan}${billingCycle === "annual" ? " · Anual" : billingCycle === "monthly" ? " · Mensal" : ""}`,';
+if (source.includes(plainSubscriptionLabel)) {
+  source = source.replace(plainSubscriptionLabel, cycleSubscriptionLabel);
+} else if (!source.includes(cycleSubscriptionLabel)) {
+  throw new Error("Finance subscription label anchor not found");
+}
+
 if (!source.includes("        billingCycle: null,")) {
   const packageMovementAnchor = `        currency: session.currency ?? "brl",
         status: "Pago",
@@ -83,6 +91,7 @@ for (const marker of [
   "const invoiceRecurringIntervals = invoice.lines.data",
   "const activeRecurringIntervals = activeSubscription?.items.data",
   'const billingCycle: FinancialMovement["billingCycle"]',
+  'billingCycle === "annual" ? " · Anual"',
   "billingCycle,",
   "billingCycle: null,",
 ]) {
@@ -90,4 +99,4 @@ for (const marker of [
 }
 
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance derives monthly or annual cycle from each invoice price without changing billing operations.");
+console.log("Admin Finance exposes the billing cycle directly in each subscription movement title without changing billing operations.");
