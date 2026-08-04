@@ -91,6 +91,47 @@ if (!rawPromptFilterPattern.test(analytics)) {
   throw new Error("Canonical admin analytics raw prompt filter was not applied.");
 }
 
+const overviewFeatureNameMap = `const FEATURE_NAME_MAP: Record<string, string> = {
+  "Product Discovery": "Buscar Produtos", "Find Products": "Buscar Produtos",
+  product_discovery: "Buscar Produtos", find_products: "Buscar Produtos",
+  "Product Validation": "Validar Produto", "Validate Products": "Validar Produto",
+  product_validation: "Validar Produto", validate_products: "Validar Produto",
+  Campaign: "Criar Campanha", campaign: "Criar Campanha", campaign_creation: "Criar Campanha",
+  Content: "Criar Conteúdo", content: "Criar Conteúdo", content_creation: "Criar Conteúdo",
+  Creative: "Criar Imagem e Vídeo", creative: "Criar Imagem e Vídeo", creative_generator: "Criar Imagem e Vídeo",
+  "Video Script": "Scripts de Vídeo", video_script: "Scripts de Vídeo",
+  prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
+  Help: "IAttom Help", help: "IAttom Help", iattom_help: "IAttom Help",
+  Marketing: "Marketing", marketing: "Marketing",
+};`;
+
+overview = overview.replace(
+  /const FEATURE_NAME_MAP: Record<string, string> = \{[\s\S]*?\n\};/,
+  overviewFeatureNameMap,
+);
+
+overview = overview.replace(
+  /if \(\/prompt\/i\.test\(base\)\) return "[^"]+";/,
+  'if (/prompt/i.test(base)) return "Criar Prompt";',
+);
+
+const overviewFeatureDonutHeader = /const featureDonut\s*=\s*\(analytics\?\.featureUsage\s*\?\?\s*\[\]\)(?:\s*\.filter\([\s\S]*?\))?\s*\.slice\(0,\s*8\)\s*\.map\(/;
+const canonicalOverviewFeatureDonutHeader = `const featureDonut = (analytics?.featureUsage ?? [])
+    .filter((item) => String(item.name ?? "").trim().toLowerCase() !== "prompt")
+    .slice(0, 8)
+    .map(`;
+overview = overview.replace(overviewFeatureDonutHeader, canonicalOverviewFeatureDonutHeader);
+
+const overviewPromptFilterPattern = /const featureDonut\s*=\s*\(analytics\?\.featureUsage\s*\?\?\s*\[\]\)\s*\.filter\(\(item\)\s*=>\s*String\(item\.name\s*\?\?\s*""\)\.trim\(\)\.toLowerCase\(\)\s*!==\s*"prompt"\)\s*\.slice\(0,\s*8\)\s*\.map\(/;
+if (!overviewPromptFilterPattern.test(overview)) {
+  throw new Error("Canonical admin overview prompt filter was not applied.");
+}
+if (!overview.includes('prompts: "Criar Prompt"') ||
+    !overview.includes('prompt_creation: "Criar Prompt"') ||
+    !overview.includes('if (/prompt/i.test(base)) return "Criar Prompt";')) {
+  throw new Error("Canonical admin overview prompt labels were not applied.");
+}
+
 for (const marker of [
   '"Product Discovery": "Buscar Produtos"',
   '"Find Products": "Buscar Produtos"',
@@ -113,4 +154,4 @@ fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Administrative charts now filter only the legacy prompt id before label mapping.");
+console.log("Administrative charts now use canonical prompt labels and filter only the legacy prompt series.");
