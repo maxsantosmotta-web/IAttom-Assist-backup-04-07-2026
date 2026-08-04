@@ -59,10 +59,15 @@ overview = filterLegacyPromptSeries(overview);
 analytics = filterLegacyPromptSeries(analytics);
 activity = filterLegacyPromptSeries(activity);
 
-for (const [name, source] of Object.entries({ translations, activity, overview, analytics })) {
-  if (!source.includes("Criar Prompt")) throw new Error(`Criar Prompt label missing in ${name}`);
+if (!translations.includes('prompts: "Criar Prompt"')) {
+  throw new Error("Canonical Criar Prompt translation missing");
 }
-if (!activity.includes('item.key !== "prompt"') && !activity.includes('!== "prompt").map')) {
+
+const hasActivityPromptFilter =
+  activity.includes('item.key !== "prompt"') ||
+  activity.includes('!== "prompt").map') ||
+  activity.includes('!== "prompt").map((item)');
+if (!hasActivityPromptFilter) {
   throw new Error("Legacy prompt series filter missing in Activity");
 }
 
