@@ -153,19 +153,23 @@ function syncOverviewActionChart(source) {
 overview = syncOverviewActionChart(overview);
 
 function syncActivityCanonicalCharts(source) {
-  const existingActionChart = `    const actionChart = canonicalRows.slice(0, 10).map(({ key, count }, index) => ({
+  const filteredActionChart = `    const mappedActionRows = canonicalRows.slice(0, 10).map(({ key, count }, index) => ({
       label: canonicalActionLabelByKey[key] ?? translateModule(key),
       value: count,
       color: MODULE_COLORS[key] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
-    }));`;
-  const filteredActionChart = `    const actionChart = canonicalRows.slice(0, 10).map(({ key, count }, index) => ({
-      label: canonicalActionLabelByKey[key] ?? translateModule(key),
-      value: count,
-      color: MODULE_COLORS[key] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
-    })).filter(({ label, value }) => !(Number(value) === 1 && /busc.*produto/i.test(String(label))));`;
+    }));
+    const strongestProductSearchValue = mappedActionRows
+      .filter(({ label }) => /busc.*produto/i.test(String(label)))
+      .reduce((max, item) => Math.max(max, Number(item.value) || 0), 0);
+    const actionChart = mappedActionRows.filter(({ label, value }) => {
+      if (!/busc.*produto/i.test(String(label))) return true;
+      return Number(value) === strongestProductSearchValue;
+    });`;
 
   if (source.includes("canonicalActionLabelByKey")) {
-    return source.replace(existingActionChart, filteredActionChart);
+    const existingPattern = /    const actionChart = canonicalRows[\s\S]*?;\n\n    return \{ kpis:/;
+    if (!existingPattern.test(source)) return source;
+    return source.replace(existingPattern, `${filteredActionChart}\n\n    return { kpis:`);
   }
 
   const pattern = /    const canonicalMediaCounts = new Map<string, number>\([\s\S]*?    const actionChart = Object\.entries\(actionMap\)[\s\S]*?\.map\(\(\[label, value\], index\) => \(\{ label, value, color: FALLBACK_COLORS\[index % FALLBACK_COLORS\.length\] \}\)\);/;
