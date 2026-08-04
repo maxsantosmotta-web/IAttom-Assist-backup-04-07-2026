@@ -152,16 +152,29 @@ function StatTile`,
   const featureUsageDonut`,
   );
 
-  const promptFilterMarker = 'String(f.name ?? "").trim().toLowerCase() !== "prompt"';
-  if (!source.includes(promptFilterMarker)) {
+  const legacyPromptFilter = 'String(item.name ?? "").trim().toLowerCase() !== "prompt"';
+
+  if (!source.includes(`featureUsageDonut = featureData\n    .filter((item) => ${legacyPromptFilter}`)) {
     source = source.replace(
-      /(  const featureData = \(analytics\?\.featureUsage \?\? \[\]\))\s*\.map\(/,
-      `$1\n    .filter((f) => ${promptFilterMarker})\n    .map(`,
+      `  const featureUsageDonut = featureData
+    .filter((item) => Number(item.count || 0) > 0)`,
+      `  const featureUsageDonut = featureData
+    .filter((item) => ${legacyPromptFilter} && Number(item.count || 0) > 0)`,
     );
   }
 
-  if (!source.includes(promptFilterMarker)) {
-    throw new Error("Commercial analytics patch did not preserve the prompt filter.");
+  if (!source.includes(`featureSummaryDonut = featureData\n    .filter((item) => ${legacyPromptFilter}`)) {
+    source = source.replace(
+      `  const featureSummaryDonut = featureData
+    .filter((item) => Number(item.percentage || 0) > 0)`,
+      `  const featureSummaryDonut = featureData
+    .filter((item) => ${legacyPromptFilter} && Number(item.percentage || 0) > 0)`,
+    );
+  }
+
+  if (!source.includes(`featureUsageDonut = featureData\n    .filter((item) => ${legacyPromptFilter}`) ||
+      !source.includes(`featureSummaryDonut = featureData\n    .filter((item) => ${legacyPromptFilter}`)) {
+    throw new Error("Commercial analytics patch did not preserve the legacy prompt chart filters.");
   }
 
   source = source.replace(
