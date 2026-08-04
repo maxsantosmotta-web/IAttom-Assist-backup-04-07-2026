@@ -1,0 +1,1 @@
+Force frontend rebuild from restored main state.
