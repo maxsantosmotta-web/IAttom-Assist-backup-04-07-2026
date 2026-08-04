@@ -31,24 +31,52 @@ const calculationReplacement = `    const annualSubscriptions = { total: 0, star
       ["price_1TvgGgAYtu5nLhAZO8FYa6nK", "agency"],
     ]);
     const annualCustomerIds = new Set<string>();
-    for (const subscription of subscriptions) {
-      if (subscription.status !== "active" && subscription.status !== "trialing") continue;
-      const annualItem = subscription.items.data.find((item) =>
-        annualPlanByPriceId.has(item.price.id) ||
-        item.price.recurring?.interval === "year" ||
-        item.price.unit_amount === 150,
-      );
-      if (!annualItem) continue;
-      const customerId = customerIdOf(subscription.customer);
-      if (!customerId || annualCustomerIds.has(customerId)) continue;
+
+    const registerAnnualCustomer = (
+      customerId: string | null,
+      planFromPrice: "pro" | "business" | "agency" | undefined,
+    ): void => {
+      if (!customerId || annualCustomerIds.has(customerId)) return;
       const user = userByCustomer.get(customerId);
-      if (!user || user.plan === "free") continue;
-      const annualPlan = annualPlanByPriceId.get(annualItem.price.id) ?? user.plan;
+      if (!user || user.plan === "free") return;
+      const annualPlan = planFromPrice ?? user.plan;
+      if (annualPlan !== "pro" && annualPlan !== "business" && annualPlan !== "agency") return;
       annualCustomerIds.add(customerId);
       annualSubscriptions.total += 1;
       if (annualPlan === "pro") annualSubscriptions.start += 1;
       if (annualPlan === "business") annualSubscriptions.premium += 1;
       if (annualPlan === "agency") annualSubscriptions.pro += 1;
+    };
+
+    for (const subscription of subscriptions) {
+      if (subscription.status !== "active" && subscription.status !== "trialing") continue;
+      const annualItem = subscription.items.data.find((item) =>
+        annualPlanByPriceId.has(item.price.id) || item.price.recurring?.interval === "year",
+      );
+      if (!annualItem) continue;
+      registerAnnualCustomer(
+        customerIdOf(subscription.customer),
+        annualPlanByPriceId.get(annualItem.price.id),
+      );
+    }
+
+    for (const invoice of paidInvoices) {
+      const annualPriceId = invoice.lines.data
+        .map((line) => {
+          const legacyPrice = (line as any).price;
+          if (typeof legacyPrice === "string") return legacyPrice;
+          if (legacyPrice && typeof legacyPrice.id === "string") return legacyPrice.id;
+          const modernPrice = (line as any).pricing?.price_details?.price;
+          if (typeof modernPrice === "string") return modernPrice;
+          if (modernPrice && typeof modernPrice.id === "string") return modernPrice.id;
+          return null;
+        })
+        .find((priceId): priceId is string => typeof priceId === "string" && annualPlanByPriceId.has(priceId));
+      if (!annualPriceId) continue;
+      registerAnnualCustomer(
+        customerIdOf(invoice.customer),
+        annualPlanByPriceId.get(annualPriceId),
+      );
     }
 
     const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
@@ -81,13 +109,11 @@ for (const marker of [
   "annualSubscriptions: { total: number; start: number; premium: number; pro: number };",
   "const annualSubscriptions = { total: 0, start: 0, premium: 0, pro: 0 };",
   "const annualPlanByPriceId = new Map",
-  "price_1TvgDBAYtu5nLhAZsgenq5SJ",
-  "price_1TvgFWAYtu5nLhAZuT001wT5",
-  "price_1TvgGgAYtu5nLhAZO8FYa6nK",
-  "annualPlanByPriceId.has(item.price.id)",
-  "item.price.recurring?.interval === \"year\"",
-  "item.price.unit_amount === 150",
-  "annualCustomerIds.has(customerId)",
+  "const registerAnnualCustomer = (",
+  "for (const subscription of subscriptions)",
+  "for (const invoice of paidInvoices)",
+  "pricing?.price_details?.price",
+  "annualPlanByPriceId.has(priceId)",
   "annualSubscriptions.start += 1",
   "annualSubscriptions.premium += 1",
   "annualSubscriptions.pro += 1",
@@ -96,5 +122,9 @@ for (const marker of [
   if (!source.includes(marker)) throw new Error(`Finance annual summary marker missing: ${marker}`);
 }
 
+if (source.includes("item.price.unit_amount === 150")) {
+  throw new Error("Finance annual summary must not classify plans by temporary test amount");
+}
+
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance identifies annual test plans by exact Stripe IDs, yearly interval or the isolated R$ 1,50 test amount without changing billing operations.");
+console.log("Admin Finance identifies annual plans from active subscriptions and paid invoice Price IDs only, without changing billing operations.");
