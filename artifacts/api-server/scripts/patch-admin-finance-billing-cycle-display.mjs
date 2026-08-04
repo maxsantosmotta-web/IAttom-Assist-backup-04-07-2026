@@ -25,11 +25,16 @@ if (!source.includes("annualSubscriptions: { total: 0, start: 0, premium: 0, pro
 
 const calculationAnchor = `    const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
 const calculationReplacement = `    const annualSubscriptions = { total: 0, start: 0, premium: 0, pro: 0 };
-    for (const [customerId, subscription] of activeByCustomer) {
+    const annualCustomerIds = new Set<string>();
+    for (const subscription of subscriptions) {
+      if (subscription.status !== "active" && subscription.status !== "trialing") continue;
       const hasAnnualPrice = subscription.items.data.some((item) => item.price.recurring?.interval === "year");
       if (!hasAnnualPrice) continue;
+      const customerId = customerIdOf(subscription.customer);
+      if (!customerId || annualCustomerIds.has(customerId)) continue;
       const user = userByCustomer.get(customerId);
       if (!user || user.plan === "free") continue;
+      annualCustomerIds.add(customerId);
       annualSubscriptions.total += 1;
       if (user.plan === "pro") annualSubscriptions.start += 1;
       if (user.plan === "business") annualSubscriptions.premium += 1;
@@ -37,7 +42,7 @@ const calculationReplacement = `    const annualSubscriptions = { total: 0, star
     }
 
     const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
-if (!source.includes("const annualSubscriptions = { total: 0, start: 0, premium: 0, pro: 0 };")) {
+if (!source.includes("const annualCustomerIds = new Set<string>();")) {
   if (!source.includes(calculationAnchor)) throw new Error("Finance annual summary calculation anchor not found");
   source = source.replace(calculationAnchor, calculationReplacement);
 }
@@ -65,7 +70,10 @@ if (!source.includes("      annualSubscriptions,\n      recentMovements: movemen
 for (const marker of [
   "annualSubscriptions: { total: number; start: number; premium: number; pro: number };",
   "const annualSubscriptions = { total: 0, start: 0, premium: 0, pro: 0 };",
+  "const annualCustomerIds = new Set<string>();",
+  'subscription.status !== "active" && subscription.status !== "trialing"',
   'item.price.recurring?.interval === "year"',
+  "annualCustomerIds.has(customerId)",
   "annualSubscriptions.start += 1",
   "annualSubscriptions.premium += 1",
   "annualSubscriptions.pro += 1",
@@ -75,4 +83,4 @@ for (const marker of [
 }
 
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance now exposes an isolated summary of active annual subscriptions without changing billing operations.");
+console.log("Admin Finance counts annual plans from all active Stripe subscriptions, once per customer, without changing billing operations.");
