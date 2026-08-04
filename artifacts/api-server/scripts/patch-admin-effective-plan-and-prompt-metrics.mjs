@@ -6,7 +6,7 @@ let source = fs.readFileSync(adminPath, "utf8");
 // ADM -> Usuários: o plano comercial exibido deve respeitar a escolha real do cadastro.
 // Não altera saldo, histórico, projetos nem o valor persistido em users.plan.
 if (!source.includes('const effectivePlan = u.planSelected ? u.plan : "free";')) {
-  const usersMapPattern = /(const usersWithCounts = await Promise\.all\(allUsers\.map\(async \(u\) => \{[\s\S]*?const \[\[pc\], \[ac\]\] = await Promise\.all\(\[[\s\S]*?\]\);\n)([\s\S]*?)(\n  \}\)\);)/;
+  const usersMapPattern = /(const usersWithCounts = await Promise\.all\((?:allUsers|visibleActiveUsers)\.map\(async \(u\) => \{[\s\S]*?const \[\[pc\], \[ac\]\] = await Promise\.all\(\[[\s\S]*?\]\);\n)([\s\S]*?)(\n  \}\)\);)/;
   const usersMapMatch = source.match(usersMapPattern);
   if (!usersMapMatch) throw new Error("Admin users mapping block not found");
 
