@@ -39,40 +39,55 @@ activity = addPromptMappings(activity);
 overview = addPromptMappings(overview);
 analytics = addPromptMappings(analytics);
 
-function filterLegacyPromptSeries(source) {
+function filterFinalSeries(source, excludedKeys) {
+  const excludedList = JSON.stringify(excludedKeys);
+
   source = source.replaceAll(
     '.filter((item) => Number(item.count ?? 0) > 0)',
-    '.filter((item) => Number(item.count ?? 0) > 0 && item.name.toLowerCase().replaceAll(" ", "_") !== "prompt")',
+    `.filter((item) => Number(item.count ?? 0) > 0 && !${excludedList}.includes(item.name.toLowerCase().replaceAll(" ", "_")))`,
   );
   source = source.replaceAll(
     '.filter((item) => item.count > 0);',
-    '.filter((item) => item.count > 0 && item.key !== "prompt");',
+    `.filter((item) => item.count > 0 && !${excludedList}.includes(item.key));`,
   );
   source = source.replaceAll(
     'mediaMetrics.map((item): [string, number] => [item.name.toLowerCase().replaceAll(" ", "_"), Number(item.count ?? 0)]),',
-    'mediaMetrics.filter((item) => item.name.toLowerCase().replaceAll(" ", "_") !== "prompt").map((item): [string, number] => [item.name.toLowerCase().replaceAll(" ", "_"), Number(item.count ?? 0)]),',
+    `mediaMetrics.filter((item) => !${excludedList}.includes(item.name.toLowerCase().replaceAll(" ", "_"))).map((item): [string, number] => [item.name.toLowerCase().replaceAll(" ", "_"), Number(item.count ?? 0)]),`,
   );
   return source;
 }
 
-overview = filterLegacyPromptSeries(overview);
-analytics = filterLegacyPromptSeries(analytics);
-activity = filterLegacyPromptSeries(activity);
+activity = filterFinalSeries(activity, ["prompt", "find_products"]);
+overview = filterFinalSeries(overview, ["prompt", "find_products", "validate_products"]);
+analytics = filterFinalSeries(analytics, ["prompt", "find_products", "validate_products"]);
 
 if (!translations.includes('prompts: "Criar Prompt"')) {
   throw new Error("Canonical Criar Prompt translation missing");
 }
 
-const hasActivityPromptFilter =
-  activity.includes('item.key !== "prompt"') ||
-  activity.includes('!== "prompt").map') ||
-  activity.includes('!== "prompt").map((item)');
-if (!hasActivityPromptFilter) {
-  throw new Error("Legacy prompt series filter missing in Activity");
+const hasActivityFinalFilter =
+  activity.includes('["prompt","find_products"]') &&
+  (activity.includes('.includes(item.key)') || activity.includes('.includes(item.name.toLowerCase()'));
+if (!hasActivityFinalFilter) {
+  throw new Error("Legacy prompt/find_products final filter missing in Activity");
+}
+
+const hasAnalyticsFinalFilter =
+  analytics.includes('["prompt","find_products","validate_products"]') &&
+  (analytics.includes('.includes(item.key)') || analytics.includes('.includes(item.name.toLowerCase()'));
+if (!hasAnalyticsFinalFilter) {
+  throw new Error("Legacy prompt/product final filter missing in Analytics");
+}
+
+const hasOverviewFinalFilter =
+  overview.includes('["prompt","find_products","validate_products"]') &&
+  (overview.includes('.includes(item.key)') || overview.includes('.includes(item.name.toLowerCase()'));
+if (!hasOverviewFinalFilter) {
+  throw new Error("Legacy prompt/product final filter missing in Overview");
 }
 
 fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Admin charts now exclude the legacy prompt series and use the single label Criar Prompt.");
+console.log("Admin final charts exclude legacy prompt and product series while preserving canonical modules.");
