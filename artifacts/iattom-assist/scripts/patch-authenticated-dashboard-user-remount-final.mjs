@@ -118,3 +118,5 @@ for (const marker of [
 
 fs.writeFileSync(appPath, source, "utf8");
 console.log("Global account switching now clears browser state and IndexedDB before remounting the authenticated tree.");
+
+await import("./patch-canonical-image-library-endpoint.mjs");
