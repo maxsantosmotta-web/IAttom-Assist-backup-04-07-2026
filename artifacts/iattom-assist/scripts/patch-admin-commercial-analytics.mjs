@@ -92,7 +92,7 @@ function StatTile`,
     (async () => {
       try {
         const token = await getToken();
-        const res = await fetch(\`\${basePath}/api/admin/registered-plan-stats\`, { headers: { Authorization: \`Bearer \${token}\` } });
+        const res = await fetch(\`${basePath}/api/admin/registered-plan-stats\`, { headers: { Authorization: \`Bearer ${token}\` } });
         if (res.ok) setRegisteredPlans(await res.json() as RegisteredPlanStats);
       } catch {
         setRegisteredPlans(null);
@@ -149,18 +149,19 @@ function StatTile`,
     return { label: plan.label, value, color: plan.color };
   });
 
-  const featureData = (analytics?.featureUsage ?? [])
-    .filter((f) => f.name !== "prompt")
-    .map((f, i) => ({
-      ...f,
-      name: FEATURE_NAME_MAP[f.name] ?? f.name,
-      fill: FEATURE_COLORS[i % FEATURE_COLORS.length],
-    }));
-
   const featureUsageDonut`,
   );
 
-  if (!source.includes('.filter((f) => f.name !== "prompt")')) {
+  if (!source.includes('.filter((f) => String(f.name ?? "").trim().toLowerCase() !== "prompt")')) {
+    source = source.replace(
+      `  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({`,
+      `  const featureData = (analytics?.featureUsage ?? [])
+    .filter((f) => String(f.name ?? "").trim().toLowerCase() !== "prompt")
+    .map((f, i) => ({`,
+    );
+  }
+
+  if (!source.includes('.filter((f) => String(f.name ?? "").trim().toLowerCase() !== "prompt")')) {
     throw new Error("Commercial analytics patch did not preserve the prompt filter.");
   }
 
@@ -232,8 +233,8 @@ function normalizeAction`,
     (async () => {
       try {
         const token = await getToken();
-        const response = await fetch(\`\${BASE}/api/admin/registered-plan-stats\`, {
-          headers: { Authorization: \`Bearer \${token}\` },
+        const response = await fetch(\`${BASE}/api/admin/registered-plan-stats\`, {
+          headers: { Authorization: \`Bearer ${token}\` },
           credentials: "include",
         });
         if (response.ok) setRegisteredPlans(await response.json() as RegisteredPlanStats);
