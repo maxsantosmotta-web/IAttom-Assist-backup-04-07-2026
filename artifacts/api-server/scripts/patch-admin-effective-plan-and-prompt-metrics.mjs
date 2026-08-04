@@ -22,14 +22,15 @@ if (!source.includes('const effectivePlan = u.planSelected ? u.plan : "free";'))
   source = source.replace(currentRow, replacement);
 }
 
-// ADM -> Atividade: elimina somente a chave histórica singular "prompt".
-// A chave válida "prompts" continua intacta.
+// ADM -> Atividade: elimina somente as chaves históricas "prompt" e "find_products".
+// Preserva "prompts", "product_discovery", "validate_products" e "product_validation".
 source = source.replace(
   ".where(isNull(historyTable.deletedAt))\n    .orderBy(desc(historyTable.createdAt))",
-  '.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt")))\n    .orderBy(desc(historyTable.createdAt))',
+  '.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt"), ne(historyTable.module, "find_products")))\n    .orderBy(desc(historyTable.createdAt))',
 );
 
-// ADM -> Análises / Visão Geral: a resposta canônica não inclui a série antiga.
+// ADM -> Análises / Visão Geral: a resposta canônica não inclui as séries antigas.
+// Preserva as chaves válidas "prompts", "product_discovery" e "product_validation".
 const analyticsModuleQuery = `  const moduleRows = await db
     .select({ module: historyTable.module, count: count() })
     .from(historyTable)
@@ -37,7 +38,11 @@ const analyticsModuleQuery = `  const moduleRows = await db
 const analyticsModuleQueryFiltered = `  const moduleRows = await db
     .select({ module: historyTable.module, count: count() })
     .from(historyTable)
-    .where(ne(historyTable.module, "prompt"))
+    .where(and(
+      ne(historyTable.module, "prompt"),
+      ne(historyTable.module, "find_products"),
+      ne(historyTable.module, "validate_products"),
+    ))
     .groupBy(historyTable.module)`;
 if (source.includes(analyticsModuleQuery)) {
   source = source.replace(analyticsModuleQuery, analyticsModuleQueryFiltered);
@@ -48,14 +53,25 @@ for (const marker of [
   'plan: effectivePlan',
   'credits: u.credits + (u.extraCredits ?? 0)',
   'ne(historyTable.module, "prompt")',
+  'ne(historyTable.module, "find_products")',
+  'ne(historyTable.module, "validate_products")',
 ]) {
-  if (!source.includes(marker)) throw new Error(`Admin canonical plan/prompt marker missing: ${marker}`);
+  if (!source.includes(marker)) throw new Error(`Admin canonical metric marker missing: ${marker}`);
 }
 
-const legacyPromptFilterCount = source.split('ne(historyTable.module, "prompt")').length - 1;
-if (legacyPromptFilterCount < 2) {
-  throw new Error(`Legacy prompt must be filtered in activity and analytics; found ${legacyPromptFilterCount} filter(s)`);
+const promptFilterCount = source.split('ne(historyTable.module, "prompt")').length - 1;
+const findProductsFilterCount = source.split('ne(historyTable.module, "find_products")').length - 1;
+const validateProductsFilterCount = source.split('ne(historyTable.module, "validate_products")').length - 1;
+
+if (promptFilterCount < 2) {
+  throw new Error(`Legacy prompt must be filtered in activity and analytics; found ${promptFilterCount} filter(s)`);
+}
+if (findProductsFilterCount < 2) {
+  throw new Error(`Legacy find_products must be filtered in activity and analytics; found ${findProductsFilterCount} filter(s)`);
+}
+if (validateProductsFilterCount < 1) {
+  throw new Error(`Legacy validate_products must be filtered in analytics; found ${validateProductsFilterCount} filter(s)`);
 }
 
 fs.writeFileSync(adminPath, source);
-console.log("Admin effective plan applied while preserving balances; legacy prompt remains excluded.");
+console.log("Admin canonical queries exclude legacy prompt and product metric keys while preserving valid series.");
