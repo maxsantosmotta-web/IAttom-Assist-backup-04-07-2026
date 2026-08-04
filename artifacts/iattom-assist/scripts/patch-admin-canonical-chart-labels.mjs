@@ -73,26 +73,6 @@ const featurePtMap = `const FEATURE_PT: Record<string, string> = {
   marketing: "Marketing",
 };`;
 
-const featureDataBefore = `  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({
-    ...f,
-    name: FEATURE_NAME_MAP[f.name] ?? f.name,
-    fill: FEATURE_COLORS[i % FEATURE_COLORS.length],
-  }));`;
-
-const featureDataAfter = `  const featureData = (analytics?.featureUsage ?? [])
-    .filter((f) => f.name !== "prompt")
-    .map((f, i) => ({
-      ...f,
-      name: FEATURE_NAME_MAP[f.name] ?? f.name,
-      fill: FEATURE_COLORS[i % FEATURE_COLORS.length],
-    }));`;
-
-if (analytics.includes(featureDataBefore)) {
-  analytics = analytics.replace(featureDataBefore, featureDataAfter);
-} else if (!analytics.includes(featureDataAfter)) {
-  throw new Error("Admin analytics featureData block not found; refusing to guess an anchor.");
-}
-
 analytics = analytics
   .replace(/const FEATURE_NAME_MAP: Record<string, string> = \{[\s\S]*?\n\};/, featureNameMap)
   .replace(/const FEATURE_PT: Record<string, string> = \{[\s\S]*?\n\};/, featurePtMap)
@@ -100,13 +80,26 @@ analytics = analytics
   .replace('title="Uso por Recurso" subtitle="Distribuição de ações"', 'title="Execuções por Módulo" subtitle="Quantidade de ações por módulo"')
   .replace('title="Resumo de Uso dos Recursos" subtitle="Participação por recurso"', 'title="Resumo de Execuções por Módulo" subtitle="Participação de cada módulo"');
 
+const promptFilter = '.filter((f) => f.name !== "prompt")';
+if (!analytics.includes(promptFilter)) {
+  const featureDataStart = /(const featureData\s*=\s*\(analytics\?\.featureUsage\s*\?\?\s*\[\]\))\s*(\.map\s*\()/;
+  if (!featureDataStart.test(analytics)) {
+    throw new Error("Admin analytics featureData declaration not found after canonical patches.");
+  }
+  analytics = analytics.replace(featureDataStart, `$1\n    ${promptFilter}\n    $2`);
+}
+
+if (!analytics.includes(promptFilter)) {
+  throw new Error("Admin analytics prompt filter was not applied.");
+}
+
 for (const marker of [
   '"Product Discovery": "Buscar Produtos"',
   '"Find Products": "Buscar Produtos"',
   '"Product Validation": "Validar Produto"',
   'Creative: "Criar Imagem e Vídeo"',
   'prompts: "Criar Prompt"',
-  '.filter((f) => f.name !== "prompt")',
+  promptFilter,
   'Help: "IAttom Help"',
   'className="grid gap-6 lg:grid-cols-2"',
   'title="Execuções por Módulo"',
