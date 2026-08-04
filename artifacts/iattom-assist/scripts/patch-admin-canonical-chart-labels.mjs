@@ -56,7 +56,7 @@ const featureNameMap = `const FEATURE_NAME_MAP: Record<string, string> = {
   Content: "Criar Conteúdo", content: "Criar Conteúdo", content_creation: "Criar Conteúdo",
   Creative: "Criar Imagem e Vídeo", creative: "Criar Imagem e Vídeo", creative_generator: "Criar Imagem e Vídeo",
   "Video Script": "Scripts de Vídeo", video_script: "Scripts de Vídeo",
-  prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
+  Prompt: "Criar Prompt", prompt: "Criar Prompt", prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
   Help: "IAttom Help", help: "IAttom Help", iattom_help: "IAttom Help",
   Marketing: "Marketing", marketing: "Marketing",
 };`;
@@ -80,12 +80,24 @@ analytics = analytics
   .replace('title="Uso por Recurso" subtitle="Distribuição de ações"', 'title="Execuções por Módulo" subtitle="Quantidade de ações por módulo"')
   .replace('title="Resumo de Uso dos Recursos" subtitle="Participação por recurso"', 'title="Resumo de Execuções por Módulo" subtitle="Participação de cada módulo"');
 
-const chartPromptFilter = 'String(item.name ?? "").trim().toLowerCase() !== "prompt"';
+if (!analytics.includes("sourceName: f.name")) {
+  analytics = analytics.replace(
+    "  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({\n    ...f,\n    name:",
+    "  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({\n    ...f,\n    sourceName: f.name,\n    name:",
+  );
+}
+
+const oldChartPromptFilter = 'String(item.name ?? "").trim().toLowerCase() !== "prompt"';
+const chartPromptFilter = 'String(item.sourceName ?? "").trim().toLowerCase() !== "prompt"';
+analytics = analytics.replaceAll(oldChartPromptFilter, chartPromptFilter);
+
 const usagePromptFilterMarker = `featureUsageDonut = featureData\n    .filter((item) => ${chartPromptFilter}`;
 const summaryPromptFilterMarker = `featureSummaryDonut = featureData\n    .filter((item) => ${chartPromptFilter}`;
 
-if (!analytics.includes(usagePromptFilterMarker) || !analytics.includes(summaryPromptFilterMarker)) {
-  throw new Error("Canonical admin analytics chart prompt filters are missing.");
+if (!analytics.includes("sourceName: f.name") ||
+    !analytics.includes(usagePromptFilterMarker) ||
+    !analytics.includes(summaryPromptFilterMarker)) {
+  throw new Error("Canonical admin analytics original prompt id preservation is missing.");
 }
 
 for (const marker of [
@@ -93,7 +105,10 @@ for (const marker of [
   '"Find Products": "Buscar Produtos"',
   '"Product Validation": "Validar Produto"',
   'Creative: "Criar Imagem e Vídeo"',
-  'prompts: "Criar Prompt"',
+  'Prompt: "Criar Prompt"',
+  'prompt: "Criar Prompt"',
+  'prompt_creation: "Criar Prompt"',
+  'sourceName: f.name',
   usagePromptFilterMarker,
   summaryPromptFilterMarker,
   'Help: "IAttom Help"',
@@ -110,4 +125,4 @@ fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Administrative charts now use complete platform names and responsive full-width legends.");
+console.log("Administrative charts now preserve canonical labels while filtering only the legacy prompt id.");
