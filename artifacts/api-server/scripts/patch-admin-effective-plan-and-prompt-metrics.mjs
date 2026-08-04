@@ -24,18 +24,28 @@ if (!source.includes('const effectivePlan = u.planSelected ? u.plan : "free";'))
 
 // ADM -> Atividade: elimina somente as chaves históricas "prompt" e "find_products".
 // Preserva "prompts", "product_discovery", "validate_products" e "product_validation".
-source = source.replace(
-  ".where(isNull(historyTable.deletedAt))\n    .orderBy(desc(historyTable.createdAt))",
-  '.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt"), ne(historyTable.module, "find_products")))\n    .orderBy(desc(historyTable.createdAt))',
-);
+const activityOriginal = ".where(isNull(historyTable.deletedAt))\n    .orderBy(desc(historyTable.createdAt))";
+const activityPromptOnly = '.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt")))\n    .orderBy(desc(historyTable.createdAt))';
+const activityCanonical = '.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt"), ne(historyTable.module, "find_products")))\n    .orderBy(desc(historyTable.createdAt))';
+
+if (source.includes(activityOriginal)) {
+  source = source.replace(activityOriginal, activityCanonical);
+} else if (source.includes(activityPromptOnly)) {
+  source = source.replace(activityPromptOnly, activityCanonical);
+}
 
 // ADM -> Análises / Visão Geral: a resposta canônica não inclui as séries antigas.
 // Preserva as chaves válidas "prompts", "product_discovery" e "product_validation".
-const analyticsModuleQuery = `  const moduleRows = await db
+const analyticsOriginal = `  const moduleRows = await db
     .select({ module: historyTable.module, count: count() })
     .from(historyTable)
     .groupBy(historyTable.module)`;
-const analyticsModuleQueryFiltered = `  const moduleRows = await db
+const analyticsPromptOnly = `  const moduleRows = await db
+    .select({ module: historyTable.module, count: count() })
+    .from(historyTable)
+    .where(ne(historyTable.module, "prompt"))
+    .groupBy(historyTable.module)`;
+const analyticsCanonical = `  const moduleRows = await db
     .select({ module: historyTable.module, count: count() })
     .from(historyTable)
     .where(and(
@@ -44,8 +54,11 @@ const analyticsModuleQueryFiltered = `  const moduleRows = await db
       ne(historyTable.module, "validate_products"),
     ))
     .groupBy(historyTable.module)`;
-if (source.includes(analyticsModuleQuery)) {
-  source = source.replace(analyticsModuleQuery, analyticsModuleQueryFiltered);
+
+if (source.includes(analyticsOriginal)) {
+  source = source.replace(analyticsOriginal, analyticsCanonical);
+} else if (source.includes(analyticsPromptOnly)) {
+  source = source.replace(analyticsPromptOnly, analyticsCanonical);
 }
 
 for (const marker of [
