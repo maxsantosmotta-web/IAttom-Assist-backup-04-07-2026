@@ -22,30 +22,42 @@ if (!source.includes('const effectivePlan = u.planSelected ? u.plan : "free";'))
   source = source.replace(currentRow, replacement);
 }
 
-// ADM -> Atividade: elimina somente as chaves históricas "prompt" e "find_products".
-// Preserva "prompts", "product_discovery", "validate_products" e "product_validation".
-const activityOriginal = ".where(isNull(historyTable.deletedAt))\n    .orderBy(desc(historyTable.createdAt))";
-const activityPromptOnly = '.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt")))\n    .orderBy(desc(historyTable.createdAt))';
-const activityCanonical = '.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt"), ne(historyTable.module, "find_products")))\n    .orderBy(desc(historyTable.createdAt))';
+// ADM -> Atividade: elimina somente as chaves históricas antigas de Prompt e Buscar Produtos.
+// Preserva prompts, product_discovery, validate_products, Validate Products e product_validation.
+const activityOriginal = `.where(isNull(historyTable.deletedAt))
+    .orderBy(desc(historyTable.createdAt))`;
+const activityPromptFiltered = `.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt")))
+    .orderBy(desc(historyTable.createdAt))`;
+const activityLegacyUnderscoreFiltered = `.where(and(isNull(historyTable.deletedAt), ne(historyTable.module, "prompt"), ne(historyTable.module, "find_products")))
+    .orderBy(desc(historyTable.createdAt))`;
+const activityCanonicalFiltered = `.where(and(
+      isNull(historyTable.deletedAt),
+      ne(historyTable.module, "prompt"),
+      ne(historyTable.module, "find_products"),
+      ne(historyTable.module, "Find Products"),
+    ))
+    .orderBy(desc(historyTable.createdAt))`;
 
 if (source.includes(activityOriginal)) {
-  source = source.replace(activityOriginal, activityCanonical);
-} else if (source.includes(activityPromptOnly)) {
-  source = source.replace(activityPromptOnly, activityCanonical);
+  source = source.replace(activityOriginal, activityCanonicalFiltered);
+} else if (source.includes(activityPromptFiltered)) {
+  source = source.replace(activityPromptFiltered, activityCanonicalFiltered);
+} else if (source.includes(activityLegacyUnderscoreFiltered)) {
+  source = source.replace(activityLegacyUnderscoreFiltered, activityCanonicalFiltered);
 }
 
-// ADM -> Análises / Visão Geral: a resposta canônica não inclui as séries antigas.
-// Preserva as chaves válidas "prompts", "product_discovery" e "product_validation".
-const analyticsOriginal = `  const moduleRows = await db
+// ADM -> Análises / Visão Geral: elimina somente as chaves históricas antigas.
+// Preserva prompts, product_discovery e product_validation.
+const analyticsModuleQuery = `  const moduleRows = await db
     .select({ module: historyTable.module, count: count() })
     .from(historyTable)
     .groupBy(historyTable.module)`;
-const analyticsPromptOnly = `  const moduleRows = await db
+const analyticsPromptFiltered = `  const moduleRows = await db
     .select({ module: historyTable.module, count: count() })
     .from(historyTable)
     .where(ne(historyTable.module, "prompt"))
     .groupBy(historyTable.module)`;
-const analyticsCanonical = `  const moduleRows = await db
+const analyticsLegacyUnderscoreFiltered = `  const moduleRows = await db
     .select({ module: historyTable.module, count: count() })
     .from(historyTable)
     .where(and(
@@ -54,11 +66,24 @@ const analyticsCanonical = `  const moduleRows = await db
       ne(historyTable.module, "validate_products"),
     ))
     .groupBy(historyTable.module)`;
+const analyticsCanonicalFiltered = `  const moduleRows = await db
+    .select({ module: historyTable.module, count: count() })
+    .from(historyTable)
+    .where(and(
+      ne(historyTable.module, "prompt"),
+      ne(historyTable.module, "find_products"),
+      ne(historyTable.module, "validate_products"),
+      ne(historyTable.module, "Find Products"),
+      ne(historyTable.module, "Validate Products"),
+    ))
+    .groupBy(historyTable.module)`;
 
-if (source.includes(analyticsOriginal)) {
-  source = source.replace(analyticsOriginal, analyticsCanonical);
-} else if (source.includes(analyticsPromptOnly)) {
-  source = source.replace(analyticsPromptOnly, analyticsCanonical);
+if (source.includes(analyticsModuleQuery)) {
+  source = source.replace(analyticsModuleQuery, analyticsCanonicalFiltered);
+} else if (source.includes(analyticsPromptFiltered)) {
+  source = source.replace(analyticsPromptFiltered, analyticsCanonicalFiltered);
+} else if (source.includes(analyticsLegacyUnderscoreFiltered)) {
+  source = source.replace(analyticsLegacyUnderscoreFiltered, analyticsCanonicalFiltered);
 }
 
 for (const marker of [
@@ -66,25 +91,25 @@ for (const marker of [
   'plan: effectivePlan',
   'credits: u.credits + (u.extraCredits ?? 0)',
   'ne(historyTable.module, "prompt")',
-  'ne(historyTable.module, "find_products")',
-  'ne(historyTable.module, "validate_products")',
+  'ne(historyTable.module, "Find Products")',
+  'ne(historyTable.module, "Validate Products")',
 ]) {
   if (!source.includes(marker)) throw new Error(`Admin canonical metric marker missing: ${marker}`);
 }
 
 const promptFilterCount = source.split('ne(historyTable.module, "prompt")').length - 1;
-const findProductsFilterCount = source.split('ne(historyTable.module, "find_products")').length - 1;
-const validateProductsFilterCount = source.split('ne(historyTable.module, "validate_products")').length - 1;
+const findProductsExactFilterCount = source.split('ne(historyTable.module, "Find Products")').length - 1;
+const validateProductsExactFilterCount = source.split('ne(historyTable.module, "Validate Products")').length - 1;
 
 if (promptFilterCount < 2) {
   throw new Error(`Legacy prompt must be filtered in activity and analytics; found ${promptFilterCount} filter(s)`);
 }
-if (findProductsFilterCount < 2) {
-  throw new Error(`Legacy find_products must be filtered in activity and analytics; found ${findProductsFilterCount} filter(s)`);
+if (findProductsExactFilterCount < 2) {
+  throw new Error(`Legacy Find Products must be filtered in activity and analytics; found ${findProductsExactFilterCount} filter(s)`);
 }
-if (validateProductsFilterCount < 1) {
-  throw new Error(`Legacy validate_products must be filtered in analytics; found ${validateProductsFilterCount} filter(s)`);
+if (validateProductsExactFilterCount < 1) {
+  throw new Error(`Legacy Validate Products must be filtered in analytics; found ${validateProductsExactFilterCount} filter(s)`);
 }
 
 fs.writeFileSync(adminPath, source);
-console.log("Admin canonical queries exclude legacy prompt and product metric keys while preserving valid series.");
+console.log("Admin canonical queries now exclude the actual legacy product module keys while preserving valid series.");
