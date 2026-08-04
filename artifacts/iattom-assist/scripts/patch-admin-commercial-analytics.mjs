@@ -149,8 +149,20 @@ function StatTile`,
     return { label: plan.label, value, color: plan.color };
   });
 
+  const featureData = (analytics?.featureUsage ?? [])
+    .filter((f) => f.name !== "prompt")
+    .map((f, i) => ({
+      ...f,
+      name: FEATURE_NAME_MAP[f.name] ?? f.name,
+      fill: FEATURE_COLORS[i % FEATURE_COLORS.length],
+    }));
+
   const featureUsageDonut`,
   );
+
+  if (!source.includes('.filter((f) => f.name !== "prompt")')) {
+    throw new Error("Commercial analytics patch did not preserve the prompt filter.");
+  }
 
   source = source.replace(
     'sub={`de ${growthStats?.totalUsers ?? 0} usuários no total`}',
