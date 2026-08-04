@@ -56,7 +56,7 @@ const featureNameMap = `const FEATURE_NAME_MAP: Record<string, string> = {
   Content: "Criar Conteúdo", content: "Criar Conteúdo", content_creation: "Criar Conteúdo",
   Creative: "Criar Imagem e Vídeo", creative: "Criar Imagem e Vídeo", creative_generator: "Criar Imagem e Vídeo",
   "Video Script": "Scripts de Vídeo", video_script: "Scripts de Vídeo",
-  Prompt: "Criar Prompt", prompt: "Criar Prompt", prompt_creation: "Criar Prompt",
+  Prompt: "Criar Prompt", prompt: "Criar Prompt", prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
   Help: "IAttom Help", help: "IAttom Help", iattom_help: "IAttom Help",
   Marketing: "Marketing", marketing: "Marketing",
 };`;
@@ -68,10 +68,30 @@ const featurePtMap = `const FEATURE_PT: Record<string, string> = {
   video_script: "Scripts de Vídeo",
   product_discovery: "Buscar Produtos", find_products: "Buscar Produtos",
   product_validation: "Validar Produto", validate_products: "Validar Produto",
-  prompt: "Criar Prompt", prompt_creation: "Criar Prompt",
+  prompt: "Criar Prompt", prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
   help: "IAttom Help", iattom_help: "IAttom Help",
   marketing: "Marketing",
 };`;
+
+const featureDataBefore = `  const featureData = (analytics?.featureUsage ?? []).map((f, i) => ({
+    ...f,
+    name: FEATURE_NAME_MAP[f.name] ?? f.name,
+    fill: FEATURE_COLORS[i % FEATURE_COLORS.length],
+  }));`;
+
+const featureDataAfter = `  const featureData = (analytics?.featureUsage ?? [])
+    .filter((f) => f.name !== "prompt")
+    .map((f, i) => ({
+      ...f,
+      name: FEATURE_NAME_MAP[f.name] ?? f.name,
+      fill: FEATURE_COLORS[i % FEATURE_COLORS.length],
+    }));`;
+
+if (analytics.includes(featureDataBefore)) {
+  analytics = analytics.replace(featureDataBefore, featureDataAfter);
+} else if (!analytics.includes(featureDataAfter)) {
+  throw new Error("Admin analytics featureData block not found; refusing to guess an anchor.");
+}
 
 analytics = analytics
   .replace(/const FEATURE_NAME_MAP: Record<string, string> = \{[\s\S]*?\n\};/, featureNameMap)
@@ -85,6 +105,8 @@ for (const marker of [
   '"Find Products": "Buscar Produtos"',
   '"Product Validation": "Validar Produto"',
   'Creative: "Criar Imagem e Vídeo"',
+  'prompts: "Criar Prompt"',
+  '.filter((f) => f.name !== "prompt")',
   'Help: "IAttom Help"',
   'className="grid gap-6 lg:grid-cols-2"',
   'title="Execuções por Módulo"',
