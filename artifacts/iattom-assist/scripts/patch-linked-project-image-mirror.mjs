@@ -75,27 +75,27 @@ if (!generator.includes('toast({ description: "Imagem adicionada ao projeto." })
   throw new Error("Single-record project image save was not installed");
 }
 
-// Projeto permanece na categoria original. Ter imagem vinculada não transforma Prompt,
-// Campanha ou Conteúdo em um segundo card da categoria Imagens.
+// Um projeto com assets de imagem permanece com seu tipo e ID originais,
+// mas também fica visível na aba Imagens. Não há segundo registro nem cópia física.
 projects = projects.replace(
-  '(tab === "creative" && item.hasImages && !videoEffect)',
   '(tab === "creative" && item.type === "creative" && !videoEffect)',
+  '(tab === "creative" && item.hasImages && !videoEffect)',
 );
 projects = projects.replace(
-  '? savedItems.filter((item) => item.hasImages && !isVideoEffectItem(item)).length',
   '? savedItems.filter((item) => item.type === "creative" && !isVideoEffectItem(item)).length',
+  '? savedItems.filter((item) => item.hasImages && !isVideoEffectItem(item)).length',
 );
 
-if (!projects.includes('(tab === "creative" && item.type === "creative" && !videoEffect)')) {
-  throw new Error("Library Images filter was not restored to true image records");
+if (!projects.includes('(tab === "creative" && item.hasImages && !videoEffect)')) {
+  throw new Error("Library Images filter was not aligned with persisted image assets");
 }
-if (!projects.includes('savedItems.filter((item) => item.type === "creative" && !isVideoEffectItem(item)).length')) {
-  throw new Error("Library Images count was not restored to true image records");
+if (!projects.includes('savedItems.filter((item) => item.hasImages && !isVideoEffectItem(item)).length')) {
+  throw new Error("Library Images count was not aligned with persisted image assets");
 }
-if (projects.includes('(tab === "creative" && item.hasImages && !videoEffect)')) {
-  throw new Error("Library still mirrors Prompt/Campaign projects as duplicate image cards");
+if (projects.includes('(tab === "creative" && item.type === "creative" && !videoEffect)')) {
+  throw new Error("Library Images still ignores images linked to non-creative projects");
 }
 
 writeFileSync(generatorUrl, generator, "utf8");
 writeFileSync(projectsUrl, projects, "utf8");
-console.log("Linked images remain inside their original project without creating a second record or a duplicate cross-category card.");
+console.log("Library Images now mirrors projects with persisted image assets without duplicate records or copied files.");
