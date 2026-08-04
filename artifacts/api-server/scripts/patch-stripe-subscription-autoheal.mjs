@@ -34,9 +34,22 @@ const replacement = `router.get(
     }
 
     try {
-      const subscription = await getSubscriptionByCustomerId(user.stripeCustomerId);
+      const stripe = await getUncachableStripeClient();
+      const subscriptions = await stripe.subscriptions.list({
+        customer: user.stripeCustomerId,
+        status: "all",
+        limit: 100,
+      });
 
-      if (!subscription) {
+      const activeSubscription = subscriptions.data
+        .filter((subscription) =>
+          subscription.status === "active" ||
+          subscription.status === "trialing" ||
+          subscription.status === "past_due"
+        )
+        .sort((a, b) => b.created - a.created)[0] ?? null;
+
+      if (!activeSubscription) {
         return res.json({
           hasSubscription: false,
           status: null,
@@ -48,25 +61,78 @@ const replacement = `router.get(
         });
       }
 
-      const isActive =
-        subscription.status === "active" ||
-        subscription.status === "trialing" ||
-        subscription.status === "past_due";
-      const currentPeriodEnd = Number(subscription.current_period_end ?? 0);
+      const subscriptionCustomerId =
+        typeof activeSubscription.customer === "string"
+          ? activeSubscription.customer
+          : activeSubscription.customer.id;
 
+      if (subscriptionCustomerId !== user.stripeCustomerId) {
+        return res.status(403).json({ error: "Assinatura não pertence ao usuário autenticado" });
+      }
+
+      const firstItem = activeSubscription.items.data[0];
+      let resolvedPlan = activeSubscription.metadata?.planKey ||
+        firstItem?.price.metadata?.plan ||
+        null;
+
+      if (!resolvedPlan && firstItem) {
+        const productId = typeof firstItem.price.product === "string"
+          ? firstItem.price.product
+          : firstItem.price.product.id;
+        const product = await stripe.products.retrieve(productId);
+        resolvedPlan = product.metadata?.plan || null;
+      }
+
+      const validResolvedPlan =
+        resolvedPlan === "pro" || resolvedPlan === "business" || resolvedPlan === "agency"
+          ? resolvedPlan
+          : null;
+      const existingPaidPlan =
+        user.plan === "pro" || user.plan === "business" || user.plan === "agency"
+          ? user.plan
+          : null;
+      const effectivePlan = validResolvedPlan ?? existingPaidPlan;
+
+      if (!effectivePlan) {
+        req.log.error(
+          { clerkUserId, stripeCustomerId: user.stripeCustomerId, subscriptionId: activeSubscription.id },
+          "Active Stripe subscription found without a resolvable paid plan",
+        );
+        return res.status(422).json({ error: "Assinatura ativa sem plano reconhecido" });
+      }
+
+      const metadataChanged =
+        user.plan !== effectivePlan ||
+        user.stripeSubscriptionId !== activeSubscription.id ||
+        user.stripeSubscriptionStatus !== activeSubscription.status ||
+        user.planSelected !== true;
+
+      if (metadataChanged) {
+        await db.update(users)
+          .set({
+            plan: effectivePlan,
+            stripeSubscriptionId: activeSubscription.id,
+            stripeSubscriptionStatus: activeSubscription.status,
+            planSelected: true,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.clerkId, clerkUserId));
+      }
+
+      const currentPeriodEnd = Number(activeSubscription.current_period_end ?? 0);
       return res.json({
-        hasSubscription: isActive,
-        status: subscription.status,
-        planKey: user.plan ?? "free",
+        hasSubscription: true,
+        status: activeSubscription.status,
+        planKey: effectivePlan,
         currentPeriodEnd: currentPeriodEnd > 0
           ? new Date(currentPeriodEnd * 1000).toISOString()
           : null,
-        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+        cancelAtPeriodEnd: Boolean(activeSubscription.cancel_at_period_end),
         stripeCustomerId: user.stripeCustomerId,
-        stripeSubscriptionId: user.stripeSubscriptionId ?? subscription.id,
+        stripeSubscriptionId: activeSubscription.id,
       });
     } catch (err) {
-      req.log.error({ err, clerkUserId }, "Authenticated Stripe subscription lookup failed");
+      req.log.error({ err, clerkUserId }, "Authenticated live Stripe subscription lookup failed");
       return res.status(500).json({ error: "Falha ao consultar a assinatura" });
     }
   },
@@ -86,15 +152,35 @@ for (const forbidden of [
   "stripe.customers.list({ email: user.email",
   "customersByEmail",
   "PLAN_RANK",
+  "getSubscriptionByCustomerId(user.stripeCustomerId)",
 ]) {
   if (patchedRoute.includes(forbidden)) {
     throw new Error(`Unsafe subscription lookup remained in patched route: ${forbidden}`);
   }
 }
 
-if (!patchedRoute.includes("if (!user.stripeCustomerId)")) {
-  throw new Error("Authenticated Stripe customer guard was not applied");
+for (const required of [
+  "stripe.subscriptions.list({",
+  "customer: user.stripeCustomerId",
+  "subscriptionCustomerId !== user.stripeCustomerId",
+  "hasSubscription: true",
+  "stripeSubscriptionStatus: activeSubscription.status",
+]) {
+  if (!patchedRoute.includes(required)) {
+    throw new Error(`Authenticated live Stripe subscription marker missing: ${required}`);
+  }
+}
+
+for (const forbiddenBalanceField of [
+  "credits:",
+  "creativeCredits:",
+  "videoBalance:",
+  "helpMessagesUsed:",
+]) {
+  if (patchedRoute.includes(forbiddenBalanceField)) {
+    throw new Error(`Subscription access repair must not change balances: ${forbiddenBalanceField}`);
+  }
 }
 
 fs.writeFileSync(stripeRoutePath, source);
-console.log("Stripe subscription lookup is isolated to the authenticated user's stored customer ID.");
+console.log("Paid subscription access now uses the authenticated user's live Stripe customer without changing balances.");
