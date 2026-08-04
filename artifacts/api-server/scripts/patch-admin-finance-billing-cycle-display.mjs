@@ -15,7 +15,7 @@ if (!source.includes('billingCycle: "monthly" | "annual" | null;')) {
   source = source.replace(typeAnchor, typeReplacement);
 }
 
-if (!source.includes("const recurringIntervals = subscription?.items.data")) {
+if (!source.includes("const invoiceRecurringIntervals = invoice.lines.data")) {
   const invoiceUserAnchor = `      const customerId = customerIdOf(invoice.customer);
       const user = customerId ? userByCustomer.get(customerId) : undefined;
       if (!user) continue;
@@ -23,10 +23,27 @@ if (!source.includes("const recurringIntervals = subscription?.items.data")) {
   const invoiceUserReplacement = `      const customerId = customerIdOf(invoice.customer);
       const user = customerId ? userByCustomer.get(customerId) : undefined;
       if (!user) continue;
-      const subscription = customerId ? activeByCustomer.get(customerId) : undefined;
-      const recurringIntervals = subscription?.items.data
+      const invoiceRecurringIntervals = invoice.lines.data
+        .map((line) => {
+          const legacyInterval = (line as any).price?.recurring?.interval;
+          if (typeof legacyInterval === "string") return legacyInterval;
+          const priceId = (line as any).pricing?.price_details?.price;
+          if (typeof priceId !== "string") return null;
+          for (const candidate of subscriptions) {
+            const matchingItem = candidate.items.data.find((item) => item.price.id === priceId);
+            const interval = matchingItem?.price.recurring?.interval;
+            if (typeof interval === "string") return interval;
+          }
+          return null;
+        })
+        .filter((interval): interval is "day" | "week" | "month" | "year" => typeof interval === "string");
+      const activeSubscription = customerId ? activeByCustomer.get(customerId) : undefined;
+      const activeRecurringIntervals = activeSubscription?.items.data
         .map((item) => item.price.recurring?.interval)
         .filter((interval): interval is "day" | "week" | "month" | "year" => typeof interval === "string") ?? [];
+      const recurringIntervals = invoiceRecurringIntervals.length > 0
+        ? invoiceRecurringIntervals
+        : activeRecurringIntervals;
       const billingCycle: FinancialMovement["billingCycle"] = recurringIntervals.includes("year")
         ? "annual"
         : recurringIntervals.includes("month")
@@ -63,7 +80,8 @@ if (!source.includes("        billingCycle: null,")) {
 
 for (const marker of [
   'billingCycle: "monthly" | "annual" | null;',
-  "const recurringIntervals = subscription?.items.data",
+  "const invoiceRecurringIntervals = invoice.lines.data",
+  "const activeRecurringIntervals = activeSubscription?.items.data",
   'const billingCycle: FinancialMovement["billingCycle"]',
   "billingCycle,",
   "billingCycle: null,",
@@ -72,4 +90,4 @@ for (const marker of [
 }
 
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance summary now exposes monthly or annual cycle without changing billing operations.");
+console.log("Admin Finance derives monthly or annual cycle from each invoice price without changing billing operations.");
