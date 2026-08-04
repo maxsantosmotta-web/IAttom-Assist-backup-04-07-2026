@@ -113,3 +113,5 @@ if (validateProductsExactFilterCount < 1) {
 
 fs.writeFileSync(adminPath, source);
 console.log("Admin canonical queries now exclude the actual legacy product module keys while preserving valid series.");
+
+await import("./patch-admin-finance-billing-cycle-display.mjs");
