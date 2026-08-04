@@ -56,7 +56,7 @@ const featureNameMap = `const FEATURE_NAME_MAP: Record<string, string> = {
   Content: "Criar Conteúdo", content: "Criar Conteúdo", content_creation: "Criar Conteúdo",
   Creative: "Criar Imagem e Vídeo", creative: "Criar Imagem e Vídeo", creative_generator: "Criar Imagem e Vídeo",
   "Video Script": "Scripts de Vídeo", video_script: "Scripts de Vídeo",
-  Prompt: "Criar Prompt", prompt: "Criar Prompt", prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
+  Prompt: "Criar Prompt", prompt: "Criar Prompt", Prompts: "Criar Prompt", prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
   Help: "IAttom Help", help: "IAttom Help", iattom_help: "IAttom Help",
   Marketing: "Marketing", marketing: "Marketing",
 };`;
@@ -68,7 +68,7 @@ const featurePtMap = `const FEATURE_PT: Record<string, string> = {
   video_script: "Scripts de Vídeo",
   product_discovery: "Buscar Produtos", find_products: "Buscar Produtos",
   product_validation: "Validar Produto", validate_products: "Validar Produto",
-  prompt: "Criar Prompt", prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
+  prompt: "Criar Prompt", Prompts: "Criar Prompt", prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
   help: "IAttom Help", iattom_help: "IAttom Help",
   marketing: "Marketing",
 };`;
@@ -100,7 +100,7 @@ const overviewFeatureNameMap = `const FEATURE_NAME_MAP: Record<string, string> =
   Content: "Criar Conteúdo", content: "Criar Conteúdo", content_creation: "Criar Conteúdo",
   Creative: "Criar Imagem e Vídeo", creative: "Criar Imagem e Vídeo", creative_generator: "Criar Imagem e Vídeo",
   "Video Script": "Scripts de Vídeo", video_script: "Scripts de Vídeo",
-  prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
+  Prompts: "Criar Prompt", prompts: "Criar Prompt", prompt_creation: "Criar Prompt",
   Help: "IAttom Help", help: "IAttom Help", iattom_help: "IAttom Help",
   Marketing: "Marketing", marketing: "Marketing",
 };`;
@@ -125,7 +125,8 @@ const overviewPromptFilterPattern = /const featureDonut\s*=\s*\(analytics\?\.fea
 if (!overviewPromptFilterPattern.test(overview)) {
   throw new Error("Canonical admin overview prompt filter was not applied.");
 }
-if (!overview.includes('prompts: "Criar Prompt"') ||
+if (!overview.includes('Prompts: "Criar Prompt"') ||
+    !overview.includes('prompts: "Criar Prompt"') ||
     !overview.includes('prompt_creation: "Criar Prompt"') ||
     !overview.includes('if (/prompt/i.test(base)) return "Criar Prompt";')) {
   throw new Error("Canonical admin overview prompt labels were not applied.");
@@ -138,6 +139,7 @@ for (const marker of [
   'Creative: "Criar Imagem e Vídeo"',
   'Prompt: "Criar Prompt"',
   'prompt: "Criar Prompt"',
+  'Prompts: "Criar Prompt"',
   'prompt_creation: "Criar Prompt"',
   'Help: "IAttom Help"',
   'className="grid gap-6 lg:grid-cols-2"',
@@ -153,4 +155,4 @@ fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Administrative charts now preserve all overview categories while filtering only the legacy prompt series.");
+console.log("Administrative charts now normalize capitalized prompt labels without changing values or filters.");
