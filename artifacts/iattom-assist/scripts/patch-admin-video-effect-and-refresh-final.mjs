@@ -76,3 +76,5 @@ fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(analyticsPath, analytics);
 fs.writeFileSync(activityPath, activity);
 console.log("Final Activity action chart now filters the value-one legacy product-search block at its exact render point.");
+
+await import("./patch-admin-activity-final-action-dedup.mjs");
