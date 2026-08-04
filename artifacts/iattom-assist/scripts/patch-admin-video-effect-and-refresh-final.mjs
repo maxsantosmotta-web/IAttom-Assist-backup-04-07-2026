@@ -20,20 +20,23 @@ overview = overview.replace(
   "const featureDonut = (analytics?.featureUsage ?? []).filter((item) => ![\"prompt\", \"find_products\", \"validate_products\"].includes(item.name.toLowerCase().replaceAll(\" \", \"_\"))).map((item, index) => ({",
 );
 
-// Atividade -> último gráfico: remove somente Buscar Produtos legado.
+// Atividade -> último gráfico: remove somente Buscar Produtos legado pela chave canônica.
 activity = activity.replace(
   "const actionChart = canonicalRows.slice(0, 10).map(({ key, count }, index) => ({",
   "const actionChart = canonicalRows.filter(({ key }) => key !== \"find_products\").slice(0, 10).map(({ key, count }, index) => ({",
 );
 
-// Guarda final pelo resultado visual: preserva os blocos canônicos e oculta apenas os legados de valor 1.
+// Guarda final de Visão Geral já validada.
 overview = overview.replace(
   'data={featureDonut} title="Execuções por Módulo"',
   'data={featureDonut.filter(({ label, value }) => !(Number(value) === 1 && ["Buscar Produtos", "Validar Produto"].includes(String(label))))} title="Execuções por Módulo"',
 );
+
+// Atividade -> ponto exato da renderização final do último gráfico.
+const finalActivityFilter = 'actionChart.filter(({ label, value }) => { const normalizedLabel = String(label).trim().toLowerCase(); return !(Number(value) === 1 && /busc(?:ar|a|as).*produto/.test(normalizedLabel)); })';
 activity = activity.replace(
-  'data={actionChart} title="Atividade por Tipo de Ação"',
-  'data={actionChart.filter(({ label, value }) => { const normalizedLabel = String(label).trim().toLowerCase(); return !(Number(value) === 1 && (normalizedLabel === "buscar produtos" || normalizedLabel === "buscas de produtos executadas")); })} title="Atividade por Tipo de Ação"',
+  'actionChart.length > 0 ? <DomnDonutChart data={actionChart} title="Atividade por Tipo de Ação"',
+  `${finalActivityFilter}.length > 0 ? <DomnDonutChart data={${finalActivityFilter}} title="Atividade por Tipo de Ação"`,
 );
 
 // Os três botões Atualizar executam a mesma ação de atualizar o navegador.
@@ -72,4 +75,4 @@ if (!activity.includes('video_effect')) {
 fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(analyticsPath, analytics);
 fs.writeFileSync(activityPath, activity);
-console.log("Vídeo com Efeito remains visible; only value-one legacy product blocks are hidden from final Overview and Activity chart renders; admin refresh buttons reload their pages.");
+console.log("Final Activity action chart now filters the value-one legacy product-search block at its exact render point.");
