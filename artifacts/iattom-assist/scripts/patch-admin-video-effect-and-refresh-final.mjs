@@ -14,6 +14,18 @@ overview = overview.replace(
   "const featureDonut = (analytics?.featureUsage ?? []).map((item, index) => ({",
 );
 
+// Visão Geral -> Execuções por Módulo: remove somente as séries legadas de produto.
+overview = overview.replace(
+  "const featureDonut = (analytics?.featureUsage ?? []).map((item, index) => ({",
+  "const featureDonut = (analytics?.featureUsage ?? []).filter((item) => ![\"prompt\", \"find_products\", \"validate_products\"].includes(item.name.toLowerCase().replaceAll(\" \", \"_\"))).map((item, index) => ({",
+);
+
+// Atividade -> último gráfico: remove somente Buscar Produtos legado.
+activity = activity.replace(
+  "const actionChart = canonicalRows.slice(0, 10).map(({ key, count }, index) => ({",
+  "const actionChart = canonicalRows.filter(({ key }) => key !== \"find_products\").slice(0, 10).map(({ key, count }, index) => ({",
+);
+
 // Os três botões Atualizar executam a mesma ação de atualizar o navegador.
 overview = overview.replace('onClick={refresh}', 'onClick={() => window.location.reload()}');
 analytics = analytics.replace(
@@ -50,4 +62,4 @@ if (!activity.includes('video_effect')) {
 fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(analyticsPath, analytics);
 fs.writeFileSync(activityPath, activity);
-console.log("Vídeo com Efeito remains visible and admin refresh buttons reload their pages.");
+console.log("Vídeo com Efeito remains visible; legacy product series are removed from final Overview and Activity charts; admin refresh buttons reload their pages.");
