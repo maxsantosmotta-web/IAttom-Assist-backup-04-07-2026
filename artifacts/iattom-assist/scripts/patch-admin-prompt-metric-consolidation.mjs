@@ -13,11 +13,24 @@ let overview = fs.readFileSync(paths.overview, "utf8");
 let analytics = fs.readFileSync(paths.analytics, "utf8");
 
 function addPromptMappings(source) {
-  source = source.replaceAll('prompt: "Prompts"', 'prompt: "Criar Prompt"');
-  source = source.replaceAll('Prompt: "Criar Prompt", prompt: "Criar Prompt", prompt_creation: "Criar Prompt",', 'Prompt: "Criar Prompt", Prompts: "Criar Prompt", prompt: "Criar Prompt", prompts: "Criar Prompt", prompt_creation: "Criar Prompt",');
-  source = source.replaceAll('prompt: "Criar Prompt", prompt_creation: "Criar Prompt",', 'prompt: "Criar Prompt", prompts: "Criar Prompt", prompt_creation: "Criar Prompt",');
-  source = source.replaceAll('prompt_creation: "Criar Prompt", prompt: "Criar Prompt", Prompt: "Criar Prompt",', 'prompt_creation: "Criar Prompt", prompt: "Criar Prompt", prompts: "Criar Prompt", Prompt: "Criar Prompt", Prompts: "Criar Prompt",');
-  source = source.replaceAll('prompt: "Prompts",', 'prompt: "Criar Prompt",\n      prompts: "Criar Prompt",');
+  source = source
+    .replaceAll('prompt: "Prompts"', 'prompt: "Criar Prompt"')
+    .replaceAll('prompts: "Prompts"', 'prompts: "Criar Prompt"')
+    .replaceAll('Prompt: "Prompts"', 'Prompt: "Criar Prompt"')
+    .replaceAll('Prompts: "Prompts"', 'Prompts: "Criar Prompt"');
+
+  if (!source.includes('prompts: "Criar Prompt"')) {
+    source = source.replace(
+      'prompt: "Criar Prompt",',
+      'prompt: "Criar Prompt", prompts: "Criar Prompt",',
+    );
+  }
+  if (!source.includes('Prompts: "Criar Prompt"') && source.includes('Prompt: "Criar Prompt",')) {
+    source = source.replace(
+      'Prompt: "Criar Prompt",',
+      'Prompt: "Criar Prompt", Prompts: "Criar Prompt",',
+    );
+  }
   return source;
 }
 
@@ -26,26 +39,35 @@ activity = addPromptMappings(activity);
 overview = addPromptMappings(overview);
 analytics = addPromptMappings(analytics);
 
-if (!translations.includes('prompts: "Criar Prompt"')) {
-  translations = translations.replace(
-    'prompt: "Criar Prompt",',
-    'prompt: "Criar Prompt", prompts: "Criar Prompt",',
+function filterLegacyPromptSeries(source) {
+  source = source.replaceAll(
+    '.filter((item) => Number(item.count ?? 0) > 0)',
+    '.filter((item) => Number(item.count ?? 0) > 0 && item.name.toLowerCase().replaceAll(" ", "_") !== "prompt")',
   );
+  source = source.replaceAll(
+    '.filter((item) => item.count > 0);',
+    '.filter((item) => item.count > 0 && item.key !== "prompt");',
+  );
+  source = source.replaceAll(
+    'mediaMetrics.map((item): [string, number] => [item.name.toLowerCase().replaceAll(" ", "_"), Number(item.count ?? 0)]),',
+    'mediaMetrics.filter((item) => item.name.toLowerCase().replaceAll(" ", "_") !== "prompt").map((item): [string, number] => [item.name.toLowerCase().replaceAll(" ", "_"), Number(item.count ?? 0)]),',
+  );
+  return source;
 }
 
-if (!activity.includes('prompts: "Criar Prompt"')) {
-  activity = activity.replace(
-    'prompt: "Criar Prompt",',
-    'prompt: "Criar Prompt",\n      prompts: "Criar Prompt",',
-  );
-}
+overview = filterLegacyPromptSeries(overview);
+analytics = filterLegacyPromptSeries(analytics);
+activity = filterLegacyPromptSeries(activity);
 
 for (const [name, source] of Object.entries({ translations, activity, overview, analytics })) {
   if (!source.includes("Criar Prompt")) throw new Error(`Criar Prompt label missing in ${name}`);
+}
+if (!activity.includes('item.key !== "prompt"') && !activity.includes('!== "prompt").map')) {
+  throw new Error("Legacy prompt series filter missing in Activity");
 }
 
 fs.writeFileSync(paths.translations, translations);
 fs.writeFileSync(paths.activity, activity);
 fs.writeFileSync(paths.overview, overview);
 fs.writeFileSync(paths.analytics, analytics);
-console.log("Admin prompt metrics now use the single canonical label Criar Prompt.");
+console.log("Admin charts now exclude the legacy prompt series and use the single label Criar Prompt.");
