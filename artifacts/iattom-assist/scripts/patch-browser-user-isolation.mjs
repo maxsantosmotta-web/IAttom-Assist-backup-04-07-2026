@@ -6,7 +6,11 @@ let source = fs.readFileSync(appPath, "utf8");
 source = source
   .replace(
     'import { useEffect, useRef, useState, lazy, Suspense } from "react";',
+    'import { Fragment, useEffect, useRef, useState, lazy, Suspense, type ReactNode } from "react";',
+  )
+  .replace(
     'import { useEffect, useRef, useState, lazy, Suspense, type ReactNode } from "react";',
+    'import { Fragment, useEffect, useRef, useState, lazy, Suspense, type ReactNode } from "react";',
   )
   .replace(
     'import { ClerkProvider, Show, useClerk, AuthenticateWithRedirectCallback } from "@clerk/react";',
@@ -73,7 +77,7 @@ function BrowserUserBoundary({ children }: { children: ReactNode }) {
   }, [isLoaded, ownerMatches, qc, userId]);
 
   if (!isLoaded || !ownerMatches) return <LoadingScreen />;
-  return <>{children}</>;
+  return <Fragment key={userId ?? "signed-out"}>{children}</Fragment>;
 }`;
 
 if (source.includes(oldBlock)) {
@@ -98,9 +102,12 @@ source = source.replace(
 if (!source.includes("function BrowserUserBoundary") || !source.includes("<BrowserUserBoundary><ErrorBoundary")) {
   throw new Error("Browser user boundary was not installed");
 }
+if (!source.includes('return <Fragment key={userId ?? "signed-out"}>{children}</Fragment>;')) {
+  throw new Error("Authenticated tree is not keyed by Clerk user");
+}
 if (source.includes("<ClerkQueryInvalidator />")) {
   throw new Error("Legacy post-mount user invalidator is still active");
 }
 
 fs.writeFileSync(appPath, source);
-console.log("Dashboard mounting is blocked until browser state belongs to the authenticated account");
+console.log("Dashboard state is cleared and the authenticated tree remounts when the Clerk user changes");
