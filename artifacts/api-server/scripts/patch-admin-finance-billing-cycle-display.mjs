@@ -34,7 +34,9 @@ const calculationReplacement = `    const annualSubscriptions = { total: 0, star
     for (const subscription of subscriptions) {
       if (subscription.status !== "active" && subscription.status !== "trialing") continue;
       const annualItem = subscription.items.data.find((item) =>
-        annualPlanByPriceId.has(item.price.id) || item.price.recurring?.interval === "year",
+        annualPlanByPriceId.has(item.price.id) ||
+        item.price.recurring?.interval === "year" ||
+        item.price.unit_amount === 150,
       );
       if (!annualItem) continue;
       const customerId = customerIdOf(subscription.customer);
@@ -79,11 +81,12 @@ for (const marker of [
   "annualSubscriptions: { total: number; start: number; premium: number; pro: number };",
   "const annualSubscriptions = { total: 0, start: 0, premium: 0, pro: 0 };",
   "const annualPlanByPriceId = new Map",
-  'price_1TvgDBAYtu5nLhAZsgenq5SJ',
-  'price_1TvgFWAYtu5nLhAZuT001wT5',
-  'price_1TvgGgAYtu5nLhAZO8FYa6nK',
-  'annualPlanByPriceId.has(item.price.id)',
-  'item.price.recurring?.interval === "year"',
+  "price_1TvgDBAYtu5nLhAZsgenq5SJ",
+  "price_1TvgFWAYtu5nLhAZuT001wT5",
+  "price_1TvgGgAYtu5nLhAZO8FYa6nK",
+  "annualPlanByPriceId.has(item.price.id)",
+  "item.price.recurring?.interval === \"year\"",
+  "item.price.unit_amount === 150",
   "annualCustomerIds.has(customerId)",
   "annualSubscriptions.start += 1",
   "annualSubscriptions.premium += 1",
@@ -94,4 +97,4 @@ for (const marker of [
 }
 
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance identifies annual plans by exact Stripe annual Price IDs, with interval fallback, without changing billing operations.");
+console.log("Admin Finance identifies annual test plans by exact Stripe IDs, yearly interval or the isolated R$ 1,50 test amount without changing billing operations.");
