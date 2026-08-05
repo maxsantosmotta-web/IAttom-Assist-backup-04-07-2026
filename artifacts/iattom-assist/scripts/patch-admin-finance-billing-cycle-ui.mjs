@@ -146,16 +146,19 @@ if (!overview.includes('value={(growthStats?.activeUsers ?? 0).toString()}')) {
   throw new Error("Overview active users metric was not connected to backend growth data");
 }
 
-const mediaStateAnchor = `  const [mediaMetrics, setMediaMetrics] = useState<MediaMetric[]>([]);`;
-if (!activity.includes("const [realTodayActions, setRealTodayActions]")) {
-  if (!activity.includes(mediaStateAnchor)) throw new Error("Activity metric state anchor not found");
-  activity = activity.replace(
-    mediaStateAnchor,
-    `${mediaStateAnchor}\n  const [realTodayActions, setRealTodayActions] = useState<number | null>(null);`,
-  );
-}
+const hasResolvedActivitySummary = activity.includes("/api/admin/activity-summary?refresh=");
 
-const analyticsFetchBlock = `        const response = await fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
+if (!hasResolvedActivitySummary) {
+  const mediaStateAnchor = `  const [mediaMetrics, setMediaMetrics] = useState<MediaMetric[]>([]);`;
+  if (!activity.includes("const [realTodayActions, setRealTodayActions]")) {
+    if (!activity.includes(mediaStateAnchor)) throw new Error("Activity metric state anchor not found");
+    activity = activity.replace(
+      mediaStateAnchor,
+      `${mediaStateAnchor}\n  const [realTodayActions, setRealTodayActions] = useState<number | null>(null);`,
+    );
+  }
+
+  const analyticsFetchBlock = `        const response = await fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
           headers: token ? { Authorization: \`Bearer \${token}\` } : {},
           credentials: "include",
           cache: "no-store",
@@ -163,7 +166,7 @@ const analyticsFetchBlock = `        const response = await fetch(\`${"${BASE}"}
         if (!response.ok) return;
         const data = await response.json() as { featureUsage?: MediaMetric[] };
         if (!cancelled) setMediaMetrics(data.featureUsage ?? []);`;
-const metricsFetchBlock = `        const headers = token ? { Authorization: \`Bearer \${token}\` } : {};
+  const metricsFetchBlock = `        const headers = token ? { Authorization: \`Bearer \${token}\` } : {};
         const [analyticsResponse, growthResponse] = await Promise.all([
           fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
             headers,
@@ -184,25 +187,36 @@ const metricsFetchBlock = `        const headers = token ? { Authorization: \`Be
           const growth = await growthResponse.json() as { todayActions?: number };
           if (!cancelled) setRealTodayActions(Number(growth.todayActions ?? 0));
         }`;
-if (!activity.includes("growthResponse")) {
-  if (!activity.includes(analyticsFetchBlock)) throw new Error("Activity analytics fetch anchor not found");
-  activity = activity.replace(analyticsFetchBlock, metricsFetchBlock);
-}
+  if (!activity.includes("growthResponse")) {
+    if (!activity.includes(analyticsFetchBlock)) throw new Error("Activity analytics fetch anchor not found");
+    activity = activity.replace(analyticsFetchBlock, metricsFetchBlock);
+  }
 
-activity = activity.replace(
-  `        if (!cancelled) setMediaMetrics([]);`,
-  `        if (!cancelled) {
+  activity = activity.replace(
+    `        if (!cancelled) setMediaMetrics([]);`,
+    `        if (!cancelled) {
           setMediaMetrics([]);
           setRealTodayActions(null);
         }`,
-);
+  );
 
-activity = activity.replace(
-  `{ label: "Hoje", value: isLoading ? null : kpis.today, sub: "ações registradas",`,
-  `{ label: "Hoje", value: isLoading ? null : (realTodayActions ?? kpis.today), sub: "ações registradas",`,
-);
-if (!activity.includes('(realTodayActions ?? kpis.today)')) {
-  throw new Error("Activity Hoje card was not connected without changing chart return shape");
+  activity = activity.replace(
+    `{ label: "Hoje", value: isLoading ? null : kpis.today, sub: "ações registradas",`,
+    `{ label: "Hoje", value: isLoading ? null : (realTodayActions ?? kpis.today), sub: "ações registradas",`,
+  );
+  if (!activity.includes('(realTodayActions ?? kpis.today)')) {
+    throw new Error("Activity Hoje card was not connected without changing chart return shape");
+  }
+} else {
+  for (const marker of [
+    "/api/admin/activity-summary?refresh=",
+    "const [activitySummary, setActivitySummary]",
+    "resolvedToday",
+    "resolvedWeek",
+    "resolvedMonth",
+  ]) {
+    if (!activity.includes(marker)) throw new Error(`Resolved Activity marker missing: ${marker}`);
+  }
 }
 
 for (const marker of [
@@ -225,12 +239,14 @@ for (const marker of [
 ]) {
   if (!overview.includes(marker)) throw new Error(`Overview live metric marker missing: ${marker}`);
 }
-for (const marker of [
-  "const [realTodayActions, setRealTodayActions]",
-  "/api/admin/growth-stats?refresh=",
-  "realTodayActions ?? kpis.today",
-]) {
-  if (!activity.includes(marker)) throw new Error(`Activity live metric marker missing: ${marker}`);
+if (!hasResolvedActivitySummary) {
+  for (const marker of [
+    "const [realTodayActions, setRealTodayActions]",
+    "/api/admin/growth-stats?refresh=",
+    "realTodayActions ?? kpis.today",
+  ]) {
+    if (!activity.includes(marker)) throw new Error(`Activity live metric marker missing: ${marker}`);
+  }
 }
 
 for (const forbidden of [
