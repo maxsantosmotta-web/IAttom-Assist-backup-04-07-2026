@@ -153,3 +153,18 @@ await import("./patch-authenticated-dashboard-user-remount-final.mjs");
 
 // Must be the final frontend source mutation so later patches cannot remove the annual plans block.
 await import("./patch-admin-finance-billing-cycle-ui.mjs");
+
+const finalFinanceUrl = new URL("../src/pages/admin/AdminFinance.tsx", import.meta.url);
+const finalFinanceSource = readFileSync(finalFinanceUrl, "utf8");
+for (const marker of [
+  ">Planos Anuais</h3>",
+  "summary?.annualSubscriptions?.total",
+  "summary?.annualSubscriptions?.start",
+  "summary?.annualSubscriptions?.premium",
+  "summary?.annualSubscriptions?.pro",
+]) {
+  if (!finalFinanceSource.includes(marker)) {
+    throw new Error(`FINAL FINANCE BUILD GUARD: annual plans block missing: ${marker}`);
+  }
+}
+console.log("FINAL FINANCE BUILD GUARD: annual plans block confirmed in final AdminFinance.tsx source.");
