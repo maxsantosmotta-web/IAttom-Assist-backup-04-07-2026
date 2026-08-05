@@ -118,5 +118,3 @@ if (/id: "video_(5|7)"/.test(routes)) throw new Error("Legacy video packages are
 fs.writeFileSync(servicePath, source);
 fs.writeFileSync(routePath, routes);
 console.log("New official package catalog registered; verified test video Price IDs remain separate and untouched.");
-
-await import("./patch-official-plan-price-ids-final.mjs");
