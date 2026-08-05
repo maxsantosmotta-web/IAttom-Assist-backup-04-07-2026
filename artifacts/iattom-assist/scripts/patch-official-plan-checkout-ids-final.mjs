@@ -13,7 +13,7 @@ const replacements = [
   ["price_1TvgFWAYtu5nLhAZuT001wT5", "price_1TunROAYtu5nLhAZqhKUuslz"],
   ["price_1TvgGHAYtu5nLhAZt4gYmBM5", "price_1TunTDAYtu5nLhAZDfzTn8Cm"],
   ["price_1TvgGgAYtu5nLhAZO8FYa6nK", "price_1TunTgAYtu5nLhAZ5nRh52J8"],
-] as const;
+];
 
 for (const [testPriceId, officialPriceId] of replacements) {
   billing = billing.replaceAll(testPriceId, officialPriceId);
