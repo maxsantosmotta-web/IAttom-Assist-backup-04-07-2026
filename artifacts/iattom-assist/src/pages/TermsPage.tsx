@@ -183,14 +183,14 @@ export function TermsPage() {
               <div className="space-y-2">
                 <p className="text-zinc-300 text-sm">
                   <span className="text-zinc-500 mr-2">E-mail:</span>
-                  <a href="mailto:contato@iattomassist.com.br" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
-                    contato@iattomassist.com.br
+                  <a href="mailto:contato.iattomassist@gmail.com" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
+                    contato.iattomassist@gmail.com
                   </a>
                 </p>
                 <p className="text-zinc-300 text-sm">
                   <span className="text-zinc-500 mr-2">Site:</span>
-                  <a href="https://iattomassist.com.br" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
-                    iattomassist.com.br
+                  <a href="https://www.iattomassist.com.br" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
+                    www.iattomassist.com.br
                   </a>
                 </p>
               </div>
