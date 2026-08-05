@@ -32,6 +32,28 @@ const chargeHistoryBlock = `    const successfulCharges = charges.filter((charge
       (charge.amount_captured ?? charge.amount ?? 0) > 0,
     );
 
+    req.log.info({
+      createdGte,
+      subscriptionsTotal: subscriptions.length,
+      invoicesTotal: invoices.length,
+      invoicesPaid: invoices.filter((invoice) => invoice.status === "paid" && (invoice.amount_paid ?? 0) > 0).length,
+      checkoutSessionsTotal: checkoutSessions.length,
+      checkoutSessionsPaid: checkoutSessions.filter((session) =>
+        session.mode === "payment" &&
+        session.status === "complete" &&
+        session.payment_status === "paid" &&
+        (session.amount_total ?? 0) > 0,
+      ).length,
+      chargesTotal: charges.length,
+      chargesPaid: charges.filter((charge) => charge.paid === true).length,
+      chargesCaptured: charges.filter((charge) => charge.captured === true).length,
+      successfulCharges: successfulCharges.length,
+      successfulChargeAmountCents: successfulCharges.reduce(
+        (sum, charge) => sum + (charge.amount_captured ?? charge.amount ?? 0),
+        0,
+      ),
+    }, "Admin finance Stripe source diagnostics");
+
     const movements: FinancialMovement[] = successfulCharges.map((charge) => {
       const customerId = customerIdOf(charge.customer);
       const user = customerId ? userByCustomer.get(customerId) : undefined;
@@ -101,6 +123,7 @@ for (const marker of [
   "charge.paid === true",
   "charge.captured === true",
   "const successfulCharges = charges.filter",
+  '"Admin finance Stripe source diagnostics"',
   "revenueThisMonth: chargeRevenueCents / 100",
   "recentMovements: movements",
 ]) {
@@ -117,4 +140,4 @@ for (const forbidden of [
 }
 
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance historical revenue now uses paid and captured Stripe charges without current-customer dependency.");
+console.log("Admin Finance historical revenue uses paid captured charges and logs source diagnostics.");
