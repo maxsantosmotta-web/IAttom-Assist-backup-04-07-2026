@@ -183,14 +183,14 @@ export function HelpPage() {
               Não encontrou o que precisava? Entre em contato com nossa equipe de suporte. Respondemos em até 48 horas úteis.
             </p>
             <a
-              href="mailto:suporte@iattom.com.br"
+              href="mailto:suporte.iattomassist@gmail.com"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold text-black transition-all duration-200 hover:brightness-110"
               style={{
                 background: "linear-gradient(135deg, #E8C84A 0%, #C9A030 38%, #A07820 68%, #C9A030 100%)",
                 boxShadow: "0 4px 20px -6px rgba(201,160,48,0.5)",
               }}
             >
-              suporte@iattom.com.br
+              suporte.iattomassist@gmail.com
             </a>
           </section>
 
