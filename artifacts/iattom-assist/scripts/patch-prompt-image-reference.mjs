@@ -149,3 +149,4 @@ await import("./patch-authenticated-dashboard-user-remount-final.mjs");
 await import("./patch-admin-finance-billing-cycle-ui.mjs");
 await import("./patch-admin-overview-canonical-user-total.mjs");
 await import("./patch-billing-official-plan-visual-prices.mjs");
+await import("./patch-official-plan-checkout-ids-final.mjs");
