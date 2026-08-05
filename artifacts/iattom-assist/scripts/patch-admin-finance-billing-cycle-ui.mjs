@@ -1,31 +1,183 @@
 import fs from "node:fs";
 
 const financePath = new URL("../src/pages/admin/AdminFinance.tsx", import.meta.url);
-let source = fs.readFileSync(financePath, "utf8");
+const overviewPath = new URL("../src/pages/admin/AdminOverview.tsx", import.meta.url);
+const activityPath = new URL("../src/pages/admin/AdminActivity.tsx", import.meta.url);
 
-source = source
-  .replace(/\n\s*priceId\?: string \| null;\n\s*interval\?: string \| null;/g, "")
-  .replace(/\n\s*annualSubscriptions: \{\n\s*total: number;\n\s*start: number;\n\s*premium: number;\n\s*pro: number;\n\s*\};/g, "")
-  .replace(/\n\s*\{item\.type === "subscription" && \(\n\s*<p className="mt-1 break-all text-\[10px\] text-amber-300\/80">\n\s*priceId: \{item\.priceId \?\? "não informado"\} · interval: \{item\.interval \?\? "não informado"\}\n\s*<\/p>\n\s*\)\}/g, "");
+let finance = fs.readFileSync(financePath, "utf8");
+let overview = fs.readFileSync(overviewPath, "utf8");
+let activity = fs.readFileSync(activityPath, "utf8");
 
-const annualHeading = '<h3 className="mt-1 text-base font-semibold text-white">Planos Anuais</h3>';
-const chartsAnchor = '      <div className="grid gap-6 lg:grid-cols-2">';
-const headingIndex = source.indexOf(annualHeading);
-if (headingIndex !== -1) {
-  const cardStart = source.lastIndexOf('      <Card className="relative overflow-hidden', headingIndex);
-  const cardEnd = source.indexOf(chartsAnchor, headingIndex);
-  if (cardStart === -1 || cardEnd === -1) throw new Error("Annual Finance block cleanup anchors not found");
-  source = source.slice(0, cardStart) + source.slice(cardEnd);
+const summaryTypeAnchor = `  mrrByPlan: {
+    free: number;
+    pro: number;
+    business: number;
+    agency: number;
+  };
+  recentMovements: FinancialMovement[];`;
+const summaryTypeReplacement = `  mrrByPlan: {
+    free: number;
+    pro: number;
+    business: number;
+    agency: number;
+  };
+  annualSubscriptions: {
+    total: number;
+    start: number;
+    premium: number;
+    pro: number;
+  };
+  recentMovements: FinancialMovement[];`;
+if (!finance.includes("annualSubscriptions: {\n    total: number;")) {
+  if (!finance.includes(summaryTypeAnchor)) throw new Error("Finance annual UI type anchor not found");
+  finance = finance.replace(summaryTypeAnchor, summaryTypeReplacement);
+}
+
+const chartsAnchor = `      <div className="grid gap-6 lg:grid-cols-2">`;
+const annualBlock = `      <Card className="relative overflow-hidden border-white/[0.07] bg-[#0d1015] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.025),0_18px_45px_rgba(0,0,0,.22)]">
+        <div className="mb-4">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">Assinaturas</p>
+          <h3 className="mt-1 text-base font-semibold text-white">Planos Anuais</h3>
+          <p className="mt-1 text-xs text-zinc-600">Assinaturas anuais ativas no Stripe.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-xl border border-white/[0.06] bg-black/15 p-4">
+            <p className="text-2xl font-bold text-white">{summary?.annualSubscriptions?.total ?? 0}</p>
+            <p className="mt-1 text-xs text-zinc-500">Total anual</p>
+          </div>
+          <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.035] p-4">
+            <p className="text-2xl font-bold text-emerald-300">{summary?.annualSubscriptions?.start ?? 0}</p>
+            <p className="mt-1 text-xs text-zinc-500">START</p>
+          </div>
+          <div className="rounded-xl border border-violet-400/10 bg-violet-400/[0.035] p-4">
+            <p className="text-2xl font-bold text-violet-300">{summary?.annualSubscriptions?.premium ?? 0}</p>
+            <p className="mt-1 text-xs text-zinc-500">PREMIUM</p>
+          </div>
+          <div className="rounded-xl border border-rose-400/10 bg-rose-400/[0.035] p-4">
+            <p className="text-2xl font-bold text-rose-300">{summary?.annualSubscriptions?.pro ?? 0}</p>
+            <p className="mt-1 text-xs text-zinc-500">PRO</p>
+          </div>
+        </div>
+      </Card>
+
+`;
+if (!finance.includes(">Planos Anuais</h3>")) {
+  if (!finance.includes(chartsAnchor)) throw new Error("Finance annual UI insertion anchor not found");
+  finance = finance.replace(chartsAnchor, annualBlock + chartsAnchor);
+}
+
+const growthInterfaceAnchor = `  activationRate: number;
+  newUsersThisWeek: number;`;
+const growthInterfaceReplacement = `  activationRate: number;
+  activeUsers: number;
+  todayActions: number;
+  newUsersThisWeek: number;`;
+if (!overview.includes("  activeUsers: number;")) {
+  if (!overview.includes(growthInterfaceAnchor)) throw new Error("Overview GrowthStats interface anchor not found");
+  overview = overview.replace(growthInterfaceAnchor, growthInterfaceReplacement);
+}
+
+overview = overview.replace(
+  'value={(stats?.activeUsers ?? 0).toString()}',
+  'value={(growthStats?.activeUsers ?? 0).toString()}',
+);
+if (!overview.includes('value={(growthStats?.activeUsers ?? 0).toString()}')) {
+  throw new Error("Overview active users metric was not connected to backend growth data");
+}
+
+const mediaStateAnchor = `  const [mediaMetrics, setMediaMetrics] = useState<MediaMetric[]>([]);`;
+if (!activity.includes("const [realTodayActions, setRealTodayActions]")) {
+  if (!activity.includes(mediaStateAnchor)) throw new Error("Activity metric state anchor not found");
+  activity = activity.replace(
+    mediaStateAnchor,
+    `${mediaStateAnchor}\n  const [realTodayActions, setRealTodayActions] = useState<number | null>(null);`,
+  );
+}
+
+const analyticsFetchBlock = `        const response = await fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
+          headers: token ? { Authorization: \`Bearer \${token}\` } : {},
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const data = await response.json() as { featureUsage?: MediaMetric[] };
+        if (!cancelled) setMediaMetrics(data.featureUsage ?? []);`;
+const metricsFetchBlock = `        const headers = token ? { Authorization: \`Bearer \${token}\` } : {};
+        const [analyticsResponse, growthResponse] = await Promise.all([
+          fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
+            headers,
+            credentials: "include",
+            cache: "no-store",
+          }),
+          fetch(\`${"${BASE}"}/api/admin/growth-stats?refresh=\${Date.now()}\`, {
+            headers,
+            credentials: "include",
+            cache: "no-store",
+          }),
+        ]);
+        if (analyticsResponse.ok) {
+          const data = await analyticsResponse.json() as { featureUsage?: MediaMetric[] };
+          if (!cancelled) setMediaMetrics(data.featureUsage ?? []);
+        }
+        if (growthResponse.ok) {
+          const growth = await growthResponse.json() as { todayActions?: number };
+          if (!cancelled) setRealTodayActions(Number(growth.todayActions ?? 0));
+        }`;
+if (!activity.includes("growthResponse")) {
+  if (!activity.includes(analyticsFetchBlock)) throw new Error("Activity analytics fetch anchor not found");
+  activity = activity.replace(analyticsFetchBlock, metricsFetchBlock);
+}
+
+activity = activity.replace(
+  `        if (!cancelled) setMediaMetrics([]);`,
+  `        if (!cancelled) {
+          setMediaMetrics([]);
+          setRealTodayActions(null);
+        }`,
+);
+
+activity = activity.replace(
+  `return { kpis: { today, week, month, avgDaily }, dailyChart, moduleChart, actionChart };`,
+  `return { kpis: { today: realTodayActions ?? today, week, month, avgDaily }, dailyChart, moduleChart, actionChart };`,
+);
+activity = activity.replace(
+  `}, [items, mediaMetrics]);`,
+  `}, [items, mediaMetrics, realTodayActions]);`,
+);
+
+for (const marker of [
+  ">Planos Anuais</h3>",
+  "summary?.annualSubscriptions?.total",
+  "summary?.annualSubscriptions?.start",
+  "summary?.annualSubscriptions?.premium",
+  "summary?.annualSubscriptions?.pro",
+]) {
+  if (!finance.includes(marker)) throw new Error(`Finance annual UI marker missing: ${marker}`);
+}
+for (const marker of [
+  "activeUsers: number;",
+  'value={(growthStats?.activeUsers ?? 0).toString()}',
+]) {
+  if (!overview.includes(marker)) throw new Error(`Overview live metric marker missing: ${marker}`);
+}
+for (const marker of [
+  "const [realTodayActions, setRealTodayActions]",
+  "/api/admin/growth-stats?refresh=",
+  "today: realTodayActions ?? today",
+]) {
+  if (!activity.includes(marker)) throw new Error(`Activity live metric marker missing: ${marker}`);
 }
 
 for (const forbidden of [
-  ">Planos Anuais</h3>",
-  "summary?.annualSubscriptions?.total",
+  "priceId?: string | null",
+  "interval?: string | null",
   "priceId: {item.priceId",
   "interval: {item.interval",
 ]) {
-  if (source.includes(forbidden)) throw new Error(`Annual Finance UI cleanup failed: ${forbidden}`);
+  if (finance.includes(forbidden)) throw new Error(`Visible Finance diagnostic detected: ${forbidden}`);
 }
 
-fs.writeFileSync(financePath, source);
-console.log("Failed annual Finance block and visible diagnostics removed; remaining Finance UI preserved.");
+fs.writeFileSync(financePath, finance);
+fs.writeFileSync(overviewPath, overview);
+fs.writeFileSync(activityPath, activity);
+console.log("Annual plans, active users and today's actions are connected to canonical backend metrics.");
