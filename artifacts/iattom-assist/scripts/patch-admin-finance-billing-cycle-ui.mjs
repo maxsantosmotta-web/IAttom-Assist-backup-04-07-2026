@@ -137,13 +137,12 @@ activity = activity.replace(
 );
 
 activity = activity.replace(
-  `return { kpis: { today, week, month, avgDaily }, dailyChart, moduleChart, actionChart };`,
-  `return { kpis: { today: realTodayActions ?? today, week, month, avgDaily }, dailyChart, moduleChart, actionChart };`,
+  `{ label: "Hoje", value: isLoading ? null : kpis.today, sub: "ações registradas",`,
+  `{ label: "Hoje", value: isLoading ? null : (realTodayActions ?? kpis.today), sub: "ações registradas",`,
 );
-activity = activity.replace(
-  `}, [items, mediaMetrics]);`,
-  `}, [items, mediaMetrics, realTodayActions]);`,
-);
+if (!activity.includes('(realTodayActions ?? kpis.today)')) {
+  throw new Error("Activity Hoje card was not connected without changing chart return shape");
+}
 
 for (const marker of [
   ">Planos Anuais</h3>",
@@ -163,7 +162,7 @@ for (const marker of [
 for (const marker of [
   "const [realTodayActions, setRealTodayActions]",
   "/api/admin/growth-stats?refresh=",
-  "today: realTodayActions ?? today",
+  "realTodayActions ?? kpis.today",
 ]) {
   if (!activity.includes(marker)) throw new Error(`Activity live metric marker missing: ${marker}`);
 }
@@ -180,4 +179,4 @@ for (const forbidden of [
 fs.writeFileSync(financePath, finance);
 fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(activityPath, activity);
-console.log("Annual plans, active users and today's actions are connected to canonical backend metrics.");
+console.log("Annual plans, active users and today's actions are connected without changing final activity chart shape.");
