@@ -147,3 +147,4 @@ await import("./patch-image-motion-continuous-loading.mjs");
 await import("./patch-billing-history-plan-labels-and-auto-refresh.mjs");
 await import("./patch-authenticated-dashboard-user-remount-final.mjs");
 await import("./patch-admin-finance-billing-cycle-ui.mjs");
+await import("./patch-admin-overview-canonical-user-total.mjs");
