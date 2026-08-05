@@ -27,17 +27,20 @@ if (!billing.includes("const OFFICIAL_PLAN_PRICE_IDS")) {
   billing = billing.replace(marker, `${priceMap}\n\n${marker}`);
 }
 
-const billingLegacy = '    checkout.mutate({ data: { priceId: priceId ?? "free", planKey } });';
-const billingOfficial = `    const officialPriceId = OFFICIAL_PLAN_PRICE_IDS[planKey]?.[billing];
+const officialCheckoutBlock = `    const officialPriceId = OFFICIAL_PLAN_PRICE_IDS[planKey]?.[billing];
     if (!officialPriceId) {
       toast({ title: "Preço indisponível", description: "O plano selecionado ainda não está disponível para compra.", variant: "destructive" });
       return;
     }
     checkout.mutate({ data: { priceId: officialPriceId, planKey } });`;
-if (billing.includes(billingLegacy)) {
-  billing = billing.replace(billingLegacy, billingOfficial);
-} else if (!billing.includes("OFFICIAL_PLAN_PRICE_IDS[planKey]?.[billing]")) {
-  throw new Error("Billing checkout handler marker not found");
+
+if (!billing.includes("OFFICIAL_PLAN_PRICE_IDS[planKey]?.[billing]")) {
+  const billingCheckoutPattern = /^\s*checkout\.mutate\(\{ data: \{ priceId: [^\n]+, planKey \} \}\);$/m;
+  const matches = billing.match(new RegExp(billingCheckoutPattern.source, "gm")) ?? [];
+  if (matches.length !== 1) {
+    throw new Error(`Billing plan checkout call count invalid: ${matches.length}`);
+  }
+  billing = billing.replace(billingCheckoutPattern, officialCheckoutBlock);
 }
 
 if (!modal.includes("const OFFICIAL_PLAN_PRICE_IDS")) {
@@ -46,21 +49,13 @@ if (!modal.includes("const OFFICIAL_PLAN_PRICE_IDS")) {
   modal = modal.replace(marker, `${marker}\n\n${priceMap}`);
 }
 
-const modalLegacy = `  const handleUpgrade = (priceId: string | null | undefined, planKey: string) => {
-    checkout.mutate({ data: { priceId: priceId ?? "free", planKey } });
-  };`;
-const modalOfficial = `  const handleUpgrade = (_priceId: string | null | undefined, planKey: string) => {
-    const officialPriceId = OFFICIAL_PLAN_PRICE_IDS[planKey]?.[billing];
-    if (!officialPriceId) {
-      toast({ title: "Preço indisponível", description: "O plano selecionado ainda não está disponível para compra.", variant: "destructive" });
-      return;
-    }
-    checkout.mutate({ data: { priceId: officialPriceId, planKey } });
-  };`;
-if (modal.includes(modalLegacy)) {
-  modal = modal.replace(modalLegacy, modalOfficial);
-} else if (!modal.includes("OFFICIAL_PLAN_PRICE_IDS[planKey]?.[billing]")) {
-  throw new Error("Plan modal checkout handler marker not found");
+if (!modal.includes("OFFICIAL_PLAN_PRICE_IDS[planKey]?.[billing]")) {
+  const modalCheckoutPattern = /^\s*checkout\.mutate\(\{ data: \{ priceId: [^\n]+, planKey \} \}\);$/m;
+  const matches = modal.match(new RegExp(modalCheckoutPattern.source, "gm")) ?? [];
+  if (matches.length !== 1) {
+    throw new Error(`Plan modal checkout call count invalid: ${matches.length}`);
+  }
+  modal = modal.replace(modalCheckoutPattern, officialCheckoutBlock);
 }
 
 for (const id of [
@@ -71,9 +66,18 @@ for (const id of [
   "price_1TunTDAYtu5nLhAZDfzTn8Cm",
   "price_1TunTgAYtu5nLhAZ5nRh52J8",
 ]) {
-  if (!billing.includes(id) || !modal.includes(id)) throw new Error(`Official plan Price ID missing: ${id}`);
+  if (!billing.includes(id) || !modal.includes(id)) {
+    throw new Error(`Official plan Price ID missing: ${id}`);
+  }
+}
+
+for (const [name, source] of [["Billing", billing], ["PlanComparisonModal", modal]]) {
+  const officialCalls = source.match(/checkout\.mutate\(\{ data: \{ priceId: officialPriceId, planKey \} \}\);/g) ?? [];
+  if (officialCalls.length !== 1) {
+    throw new Error(`${name} official checkout call count invalid: ${officialCalls.length}`);
+  }
 }
 
 writeFileSync(billingUrl, billing);
 writeFileSync(modalUrl, modal);
-console.log("Official monthly and annual plan Price IDs applied to Billing and PlanComparisonModal.");
+console.log("Official monthly and annual plan Price IDs applied to the real Billing and PlanComparisonModal checkout calls.");
