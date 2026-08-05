@@ -3,30 +3,36 @@ import fs from "node:fs";
 const analyticsPath = new URL("../src/routes/adminAnalyticsCanonical.ts", import.meta.url);
 let source = fs.readFileSync(analyticsPath, "utf8");
 
-const oldBlock = `  for (const row of postCutoffRows) {
+const originalBlock = `  for (const row of postCutoffRows) {
     counts.set(row.module, (counts.get(row.module) ?? 0) + Number(row.count));
   }`;
 
-const canonicalBlock = `  for (const row of postCutoffRows) {
+const incorrectMergeBlock = `  for (const row of postCutoffRows) {
     const canonicalModule = row.module === "find_products" ? "product_discovery" : row.module;
     counts.set(canonicalModule, (counts.get(canonicalModule) ?? 0) + Number(row.count));
   }`;
 
-if (!source.includes("row.module === \"find_products\" ? \"product_discovery\"")) {
-  if (!source.includes(oldBlock)) {
-    throw new Error("Admin overview product-discovery alias anchor not found");
+const filteredBlock = `  for (const row of postCutoffRows) {
+    if (row.module === "find_products") continue;
+    counts.set(row.module, (counts.get(row.module) ?? 0) + Number(row.count));
+  }`;
+
+if (!source.includes('if (row.module === "find_products") continue;')) {
+  if (source.includes(incorrectMergeBlock)) {
+    source = source.replace(incorrectMergeBlock, filteredBlock);
+  } else if (source.includes(originalBlock)) {
+    source = source.replace(originalBlock, filteredBlock);
+  } else {
+    throw new Error("Admin Overview fake find_products series anchor not found");
   }
-  source = source.replace(oldBlock, canonicalBlock);
 }
 
-for (const marker of [
-  'row.module === "find_products" ? "product_discovery"',
-  "counts.set(canonicalModule",
-]) {
-  if (!source.includes(marker)) {
-    throw new Error(`Admin overview product-discovery alias marker missing: ${marker}`);
-  }
+if (!source.includes('if (row.module === "find_products") continue;')) {
+  throw new Error("Admin Overview fake find_products filter was not applied");
+}
+if (source.includes('row.module === "find_products" ? "product_discovery"')) {
+  throw new Error("Incorrect find_products merge still present");
 }
 
 fs.writeFileSync(analyticsPath, source, "utf8");
-console.log("Admin Overview merges find_products into product_discovery without changing activity history.");
+console.log("Admin Overview excludes only the fake find_products series and preserves product_discovery unchanged.");
