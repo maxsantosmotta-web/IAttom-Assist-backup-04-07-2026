@@ -23,46 +23,80 @@ if (!source.includes("annualSubscriptions: { total: 0, start: 0, premium: 0, pro
   source = source.replace(emptyAnchor, emptyReplacement);
 }
 
-const paidUsersAnchor = `    const paidUsers = [...activeByCustomer.keys()]
-      .map((customerId) => userByCustomer.get(customerId))
-      .filter((user): user is CommercialUser & { stripeCustomerId: string } => !!user && user.plan !== "free");`;
-const paidUsersReplacement = `${paidUsersAnchor}
-
+const paidInvoicesAnchor = `    const paidInvoices = invoices.filter((invoice) => invoice.status === "paid" && (invoice.amount_paid ?? 0) > 0);`;
+const paidInvoicesReplacement = `${paidInvoicesAnchor}
     const ANNUAL_PRICE_IDS = new Set([
       "price_1TvgDBAYtu5nLhAZsgenq5SJ",
       "price_1TvgFWAYtu5nLhAZuT001wT5",
       "price_1TvgGgAYtu5nLhAZO8FYa6nK",
     ]);
-    const isAnnualSubscription = (subscription: (typeof subscriptions)[number]): boolean =>
-      subscription.items.data.some((item) =>
-        item.price.recurring?.interval === "year" || ANNUAL_PRICE_IDS.has(item.price.id),
-      );
-    const subscriptionCycleLabel = (subscription: (typeof subscriptions)[number] | undefined): string => {
-      if (!subscription) return "Ciclo não identificado";
-      return isAnnualSubscription(subscription) ? "Anual" : "Mensal";
-    };
+    const invoicePriceIds = (invoice: (typeof invoices)[number]): string[] =>
+      invoice.lines.data
+        .map((line) => {
+          const current = line as unknown as {
+            price?: { id?: string } | null;
+            pricing?: { price_details?: { price?: string | { id?: string } | null } | null } | null;
+          };
+          const modernPrice = current.pricing?.price_details?.price;
+          if (typeof modernPrice === "string") return modernPrice;
+          if (modernPrice && typeof modernPrice.id === "string") return modernPrice.id;
+          return current.price?.id ?? null;
+        })
+        .filter((priceId): priceId is string => typeof priceId === "string" && priceId.length > 0);
+    const isAnnualInvoice = (invoice: (typeof invoices)[number]): boolean =>
+      invoicePriceIds(invoice).some((priceId) => ANNUAL_PRICE_IDS.has(priceId));`;
+if (!source.includes("const invoicePriceIds = (invoice:")) {
+  if (!source.includes(paidInvoicesAnchor)) throw new Error("Finance paid invoices anchor not found");
+  source = source.replace(paidInvoicesAnchor, paidInvoicesReplacement);
+}
 
-    const annualUsers = [...activeByCustomer.entries()]
-      .filter(([, subscription]) => isAnnualSubscription(subscription))
-      .map(([customerId]) => userByCustomer.get(customerId))
-      .filter((user): user is CommercialUser & { stripeCustomerId: string } => !!user && user.plan !== "free");
+const movementsAnchor = `    const movements: FinancialMovement[] = [];
 
+    for (const invoice of paidInvoices) {`;
+const movementsReplacement = `    const movements: FinancialMovement[] = [];
+    const annualUsersByClerkId = new Map<string, CommercialUser>();
+
+    for (const invoice of paidInvoices) {`;
+if (!source.includes("const annualUsersByClerkId = new Map<string, CommercialUser>()")) {
+  if (!source.includes(movementsAnchor)) throw new Error("Finance movements anchor not found");
+  source = source.replace(movementsAnchor, movementsReplacement);
+}
+
+const movementUserAnchor = `      const user = customerId ? userByCustomer.get(customerId) : undefined;
+      if (!user) continue;
+      movements.push({`;
+const movementUserReplacement = `      const user = customerId ? userByCustomer.get(customerId) : undefined;
+      if (!user) continue;
+      const annualInvoice = isAnnualInvoice(invoice);
+      if (annualInvoice && user.plan !== "free") annualUsersByClerkId.set(user.clerkId, user);
+      movements.push({`;
+if (!source.includes("const annualInvoice = isAnnualInvoice(invoice);")) {
+  if (!source.includes(movementUserAnchor)) throw new Error("Finance invoice movement user anchor not found");
+  source = source.replace(movementUserAnchor, movementUserReplacement);
+}
+
+source = source.replace(
+  '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan} · ${subscriptionCycleLabel(customerId ? activeByCustomer.get(customerId) : undefined)}`,',
+  '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan} · ${annualInvoice ? "Anual" : "Mensal"}`,',
+);
+source = source.replace(
+  '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan}`,',
+  '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan} · ${annualInvoice ? "Anual" : "Mensal"}`,',
+);
+
+const mrrAnchor = `    const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
+const mrrReplacement = `    const annualUsers = [...annualUsersByClerkId.values()];
     const annualSubscriptions = {
       total: annualUsers.length,
       start: annualUsers.filter((user) => user.plan === "pro").length,
       premium: annualUsers.filter((user) => user.plan === "business").length,
       pro: annualUsers.filter((user) => user.plan === "agency").length,
-    };`;
-if (!source.includes("const ANNUAL_PRICE_IDS = new Set")) {
-  if (!source.includes(paidUsersAnchor)) throw new Error("Finance paid users anchor not found");
-  source = source.replace(paidUsersAnchor, paidUsersReplacement);
-}
+    };
 
-const movementLabelAnchor = '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan}`,';
-const movementLabelReplacement = '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan} · ${subscriptionCycleLabel(customerId ? activeByCustomer.get(customerId) : undefined)}`,';
-if (!source.includes("subscriptionCycleLabel(customerId ? activeByCustomer.get(customerId) : undefined)")) {
-  if (!source.includes(movementLabelAnchor)) throw new Error("Finance subscription movement label anchor not found");
-  source = source.replace(movementLabelAnchor, movementLabelReplacement);
+    const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
+if (!source.includes("const annualUsers = [...annualUsersByClerkId.values()]")) {
+  if (!source.includes(mrrAnchor)) throw new Error("Finance annual invoice summary anchor not found");
+  source = source.replace(mrrAnchor, mrrReplacement);
 }
 
 const valueAnchor = `      mrrByPlan: {
@@ -87,17 +121,15 @@ if (!source.includes("      annualSubscriptions,\n      recentMovements: movemen
 
 for (const marker of [
   "annualSubscriptions: { total: number; start: number; premium: number; pro: number };",
-  "const ANNUAL_PRICE_IDS = new Set",
-  'item.price.recurring?.interval === "year" || ANNUAL_PRICE_IDS.has(item.price.id)',
-  "const subscriptionCycleLabel",
-  "const annualUsers = [...activeByCustomer.entries()]",
-  'annualUsers.filter((user) => user.plan === "pro")',
-  'annualUsers.filter((user) => user.plan === "business")',
-  'annualUsers.filter((user) => user.plan === "agency")',
-  "subscriptionCycleLabel(customerId ? activeByCustomer.get(customerId) : undefined)",
+  "const invoicePriceIds = (invoice:",
+  "const isAnnualInvoice = (invoice:",
+  "const annualUsersByClerkId = new Map<string, CommercialUser>()",
+  "const annualInvoice = isAnnualInvoice(invoice);",
+  'annualInvoice ? "Anual" : "Mensal"',
+  "const annualUsers = [...annualUsersByClerkId.values()]",
   "      annualSubscriptions,",
 ]) {
-  if (!source.includes(marker)) throw new Error(`Finance annual movement marker missing: ${marker}`);
+  if (!source.includes(marker)) throw new Error(`Finance annual paid-invoice marker missing: ${marker}`);
 }
 
 for (const forbidden of [
@@ -105,9 +137,11 @@ for (const forbidden of [
   "franquia anual do plano",
   "12 meses",
   "item.price.unit_amount === 150",
+  "const annualUsers = [...activeByCustomer.entries()]",
+  "const subscriptionCycleLabel",
 ]) {
   if (source.includes(forbidden)) throw new Error(`Obsolete annual classification remains: ${forbidden}`);
 }
 
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance annual plans now use the same active subscriptions and movements, classified by annual Stripe cycle or official annual Price ID.");
+console.log("Admin Finance annual plans now derive directly from the same paid invoices that generate recent financial movements.");
