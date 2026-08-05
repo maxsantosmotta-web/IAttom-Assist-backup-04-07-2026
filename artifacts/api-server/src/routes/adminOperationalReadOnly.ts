@@ -44,7 +44,7 @@ router.get("/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
     [newUsers],
     [newProjects],
   ] = await Promise.all([
-    db.select({ count: count() }).from(users),
+    db.select({ count: count() }).from(users).where(sql`lower(coalesce(${users.email}, '')) not like '%@deleted.iattom.invalid'`),
     db.select({ count: count() }).from(savedItemsTable).where(isNull(savedItemsTable.deletedAt)),
     db.select({ count: count() }).from(historyTable).where(isNull(historyTable.deletedAt)),
     db.select({ count: count() }).from(users).where(eq(users.role, "admin")),
