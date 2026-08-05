@@ -27,10 +27,39 @@ const summaryTypeReplacement = `  mrrByPlan: {
     premium: number;
     pro: number;
   };
+  annualSalesHistory: {
+    total: number;
+    start: number;
+    premium: number;
+    pro: number;
+  };
   recentMovements: FinancialMovement[];`;
 if (!finance.includes("annualSubscriptions: {\n    total: number;")) {
   if (!finance.includes(summaryTypeAnchor)) throw new Error("Finance annual UI type anchor not found");
   finance = finance.replace(summaryTypeAnchor, summaryTypeReplacement);
+} else if (!finance.includes("annualSalesHistory: {\n    total: number;")) {
+  finance = finance.replace(
+    `  annualSubscriptions: {
+    total: number;
+    start: number;
+    premium: number;
+    pro: number;
+  };
+  recentMovements: FinancialMovement[];`,
+    `  annualSubscriptions: {
+    total: number;
+    start: number;
+    premium: number;
+    pro: number;
+  };
+  annualSalesHistory: {
+    total: number;
+    start: number;
+    premium: number;
+    pro: number;
+  };
+  recentMovements: FinancialMovement[];`,
+  );
 }
 
 const chartsAnchor = `      <div className="grid gap-6 lg:grid-cols-2">`;
@@ -64,6 +93,38 @@ const annualBlock = `      <Card className="relative overflow-hidden border-whit
 if (!finance.includes(">Planos Anuais</h3>")) {
   if (!finance.includes(chartsAnchor)) throw new Error("Finance annual UI insertion anchor not found");
   finance = finance.replace(chartsAnchor, annualBlock + chartsAnchor);
+}
+
+const annualHistoryBlock = `      <Card className="relative overflow-hidden border-white/[0.07] bg-[#0d1015] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.025),0_18px_45px_rgba(0,0,0,.22)]">
+        <div className="mb-4">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">Histórico</p>
+          <h3 className="mt-1 text-base font-semibold text-white">Vendas de Planos Anuais</h3>
+          <p className="mt-1 text-xs text-zinc-600">Pagamentos anuais confirmados, mesmo após cancelamento ou exclusão.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-xl border border-white/[0.06] bg-black/15 p-4">
+            <p className="text-2xl font-bold text-white">{summary?.annualSalesHistory?.total ?? 0}</p>
+            <p className="mt-1 text-xs text-zinc-500">Total vendido</p>
+          </div>
+          <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.035] p-4">
+            <p className="text-2xl font-bold text-emerald-300">{summary?.annualSalesHistory?.start ?? 0}</p>
+            <p className="mt-1 text-xs text-zinc-500">START</p>
+          </div>
+          <div className="rounded-xl border border-violet-400/10 bg-violet-400/[0.035] p-4">
+            <p className="text-2xl font-bold text-violet-300">{summary?.annualSalesHistory?.premium ?? 0}</p>
+            <p className="mt-1 text-xs text-zinc-500">PREMIUM</p>
+          </div>
+          <div className="rounded-xl border border-rose-400/10 bg-rose-400/[0.035] p-4">
+            <p className="text-2xl font-bold text-rose-300">{summary?.annualSalesHistory?.pro ?? 0}</p>
+            <p className="mt-1 text-xs text-zinc-500">PRO</p>
+          </div>
+        </div>
+      </Card>
+
+`;
+if (!finance.includes(">Vendas de Planos Anuais</h3>")) {
+  if (!finance.includes(chartsAnchor)) throw new Error("Finance annual history insertion anchor not found");
+  finance = finance.replace(chartsAnchor, annualHistoryBlock + chartsAnchor);
 }
 
 const growthInterfaceAnchor = `  activationRate: number;
@@ -150,6 +211,11 @@ for (const marker of [
   "summary?.annualSubscriptions?.start",
   "summary?.annualSubscriptions?.premium",
   "summary?.annualSubscriptions?.pro",
+  ">Vendas de Planos Anuais</h3>",
+  "summary?.annualSalesHistory?.total",
+  "summary?.annualSalesHistory?.start",
+  "summary?.annualSalesHistory?.premium",
+  "summary?.annualSalesHistory?.pro",
 ]) {
   if (!finance.includes(marker)) throw new Error(`Finance annual UI marker missing: ${marker}`);
 }
@@ -179,4 +245,4 @@ for (const forbidden of [
 fs.writeFileSync(financePath, finance);
 fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(activityPath, activity);
-console.log("Annual plans, active users and today's actions are connected without changing final activity chart shape.");
+console.log("Active annual plans, permanent annual sales history and existing live metrics are connected.");
