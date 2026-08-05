@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { UserPlus, LogIn } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -73,13 +73,13 @@ export function LandingPage() {
             &copy; {new Date().getFullYear()} IAttom Assist. Todos os direitos reservados.
           </p>
           <div className="flex items-center gap-3 text-[10px] text-white/20">
-            <a href="/about" className="hover:text-white/50 transition-colors">Sobre</a>
+            <Link href="/about"><span className="hover:text-white/50 transition-colors cursor-pointer">Sobre</span></Link>
             <span className="text-white/10">·</span>
-            <a href="/terms" className="hover:text-white/50 transition-colors">Termos</a>
+            <Link href="/terms"><span className="hover:text-white/50 transition-colors cursor-pointer">Termos</span></Link>
             <span className="text-white/10">·</span>
-            <a href="/privacy" className="hover:text-white/50 transition-colors">Privacidade</a>
+            <Link href="/privacy"><span className="hover:text-white/50 transition-colors cursor-pointer">Privacidade</span></Link>
             <span className="text-white/10">·</span>
-            <a href="/help" className="hover:text-white/50 transition-colors">Ajuda</a>
+            <Link href="/help"><span className="hover:text-white/50 transition-colors cursor-pointer">Ajuda</span></Link>
           </div>
         </motion.div>
       </motion.div>
