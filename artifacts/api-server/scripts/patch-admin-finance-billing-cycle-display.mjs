@@ -24,106 +24,34 @@ if (!source.includes("annualSubscriptions: { total: 0, start: 0, premium: 0, pro
 }
 
 const calculationAnchor = `    const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
-const calculationReplacement = `    const annualSubscriptions = { total: 0, start: 0, premium: 0, pro: 0 };
-    const annualPlanByPriceId = new Map<string, "pro" | "business" | "agency">([
-      ["price_1TvgDBAYtu5nLhAZsgenq5SJ", "pro"],
-      ["price_1TvgFWAYtu5nLhAZuT001wT5", "business"],
-      ["price_1TvgGgAYtu5nLhAZO8FYa6nK", "agency"],
-    ]);
-    const annualCustomerIds = new Set<string>();
+const calculationReplacement = `    const annualGrantRows = await db
+      .select({ clerkUserId: creditsTransactions.clerkUserId })
+      .from(creditsTransactions)
+      .where(and(
+        sql\`${creditsTransactions.amount} > 0\`,
+        sql\`lower(coalesce(${creditsTransactions.description}, '')) like '%franquia anual do plano%'\`,
+        sql\`lower(coalesce(${creditsTransactions.description}, '')) like '%12 meses%'\`,
+      ))
+      .limit(5000);
 
-    const registerAnnualCustomer = (
-      customerId: string | null,
-      planFromPrice: "pro" | "business" | "agency" | undefined,
-    ): void => {
-      if (!customerId || annualCustomerIds.has(customerId)) return;
-      const user = userByCustomer.get(customerId);
-      if (!user || user.plan === "free") return;
-      const annualPlan = planFromPrice ?? user.plan;
-      if (annualPlan !== "pro" && annualPlan !== "business" && annualPlan !== "agency") return;
-      annualCustomerIds.add(customerId);
-      annualSubscriptions.total += 1;
-      if (annualPlan === "pro") annualSubscriptions.start += 1;
-      if (annualPlan === "business") annualSubscriptions.premium += 1;
-      if (annualPlan === "agency") annualSubscriptions.pro += 1;
+    const activePaidClerkIds = new Set(paidUsers.map((user) => user.clerkId));
+    const annualClerkIds = new Set(
+      annualGrantRows
+        .map((row) => row.clerkUserId)
+        .filter((clerkUserId) => activePaidClerkIds.has(clerkUserId)),
+    );
+    const annualUsers = allUsers.filter((user) => annualClerkIds.has(user.clerkId));
+    const annualSubscriptions = {
+      total: annualUsers.length,
+      start: annualUsers.filter((user) => user.plan === "pro").length,
+      premium: annualUsers.filter((user) => user.plan === "business").length,
+      pro: annualUsers.filter((user) => user.plan === "agency").length,
     };
 
-    for (const subscription of subscriptions) {
-      if (subscription.status !== "active" && subscription.status !== "trialing") continue;
-      const annualItem = subscription.items.data.find((item) =>
-        annualPlanByPriceId.has(item.price.id) || item.price.recurring?.interval === "year",
-      );
-      if (!annualItem) continue;
-      registerAnnualCustomer(
-        customerIdOf(subscription.customer),
-        annualPlanByPriceId.get(annualItem.price.id),
-      );
-    }
-
-    for (const invoice of paidInvoices) {
-      const annualPriceId = invoice.lines.data
-        .map((line) => {
-          const legacyPrice = (line as any).price;
-          if (typeof legacyPrice === "string") return legacyPrice;
-          if (legacyPrice && typeof legacyPrice.id === "string") return legacyPrice.id;
-          const modernPrice = (line as any).pricing?.price_details?.price;
-          if (typeof modernPrice === "string") return modernPrice;
-          if (modernPrice && typeof modernPrice.id === "string") return modernPrice.id;
-          return null;
-        })
-        .find((priceId): priceId is string => typeof priceId === "string" && annualPlanByPriceId.has(priceId));
-      if (!annualPriceId) continue;
-      registerAnnualCustomer(
-        customerIdOf(invoice.customer),
-        annualPlanByPriceId.get(annualPriceId),
-      );
-    }
-
     const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
-if (!source.includes("const annualPlanByPriceId = new Map")) {
-  if (!source.includes(calculationAnchor)) throw new Error("Finance annual summary calculation anchor not found");
+if (!source.includes("const annualGrantRows = await db")) {
+  if (!source.includes(calculationAnchor)) throw new Error("Finance annual activity calculation anchor not found");
   source = source.replace(calculationAnchor, calculationReplacement);
-}
-
-const invoiceMovementAnchor = `      const customerId = customerIdOf(invoice.customer);
-      const user = customerId ? userByCustomer.get(customerId) : undefined;
-      if (!user) continue;
-      movements.push({`;
-const invoiceMovementReplacement = `      const customerId = customerIdOf(invoice.customer);
-      const user = customerId ? userByCustomer.get(customerId) : undefined;
-      if (!user) continue;
-      const invoiceDiagnosticParts = invoice.lines.data.map((line) => {
-        const legacyPrice = (line as any).price;
-        const modernPrice = (line as any).pricing?.price_details?.price;
-        const priceId = typeof legacyPrice === "string"
-          ? legacyPrice
-          : legacyPrice && typeof legacyPrice.id === "string"
-            ? legacyPrice.id
-            : typeof modernPrice === "string"
-              ? modernPrice
-              : modernPrice && typeof modernPrice.id === "string"
-                ? modernPrice.id
-                : "sem-price-id";
-        const interval = legacyPrice && typeof legacyPrice === "object"
-          ? legacyPrice.recurring?.interval
-          : (line as any).pricing?.price_details?.recurring?.interval;
-        return \`\${priceId} · \${typeof interval === "string" ? interval : "sem-intervalo"}\`;
-      });
-      const invoiceDiagnostic = invoiceDiagnosticParts.length > 0
-        ? invoiceDiagnosticParts.join(" | ")
-        : "sem-linhas";
-      movements.push({`;
-if (!source.includes("const invoiceDiagnosticParts = invoice.lines.data")) {
-  if (!source.includes(invoiceMovementAnchor)) throw new Error("Finance invoice diagnostic anchor not found");
-  source = source.replace(invoiceMovementAnchor, invoiceMovementReplacement);
-}
-
-const plainSubscriptionLabel = '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan}`,';
-const diagnosticSubscriptionLabel = '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan} · ${invoiceDiagnostic}`,';
-if (source.includes(plainSubscriptionLabel)) {
-  source = source.replace(plainSubscriptionLabel, diagnosticSubscriptionLabel);
-} else if (!source.includes(diagnosticSubscriptionLabel)) {
-  throw new Error("Finance diagnostic movement label anchor not found");
 }
 
 const valueAnchor = `      mrrByPlan: {
@@ -148,22 +76,18 @@ if (!source.includes("      annualSubscriptions,\n      recentMovements: movemen
 
 for (const marker of [
   "annualSubscriptions: { total: number; start: number; premium: number; pro: number };",
-  "const annualSubscriptions = { total: 0, start: 0, premium: 0, pro: 0 };",
-  "const annualPlanByPriceId = new Map",
-  "const registerAnnualCustomer = (",
-  "for (const subscription of subscriptions)",
-  "for (const invoice of paidInvoices)",
-  "pricing?.price_details?.price",
-  "annualPlanByPriceId.has(priceId)",
-  "annualSubscriptions.start += 1",
-  "annualSubscriptions.premium += 1",
-  "annualSubscriptions.pro += 1",
-  "const invoiceDiagnosticParts = invoice.lines.data",
-  "const invoiceDiagnostic = invoiceDiagnosticParts.length > 0",
-  "${invoiceDiagnostic}`",
+  "const annualGrantRows = await db",
+  "franquia anual do plano",
+  "12 meses",
+  "const activePaidClerkIds = new Set",
+  "const annualClerkIds = new Set",
+  "const annualUsers = allUsers.filter",
+  "annualUsers.filter((user) => user.plan === \"pro\")",
+  "annualUsers.filter((user) => user.plan === \"business\")",
+  "annualUsers.filter((user) => user.plan === \"agency\")",
   "      annualSubscriptions,",
 ]) {
-  if (!source.includes(marker)) throw new Error(`Finance diagnostic marker missing: ${marker}`);
+  if (!source.includes(marker)) throw new Error(`Finance annual activity marker missing: ${marker}`);
 }
 
 if (source.includes("item.price.unit_amount === 150")) {
@@ -171,4 +95,4 @@ if (source.includes("item.price.unit_amount === 150")) {
 }
 
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance exposes raw Stripe price IDs and intervals in subscription movements for isolated diagnosis only.");
+console.log("Admin Finance annual plans now use confirmed internal annual activity records intersected with currently active subscribers.");
