@@ -5,11 +5,17 @@ const growthPath = new URL("../src/routes/adminGrowth.ts", import.meta.url);
 let admin = fs.readFileSync(adminPath, "utf8");
 let growth = fs.readFileSync(growthPath, "utf8");
 
-const totalUsersOld = "    db.select({ count: count() }).from(users),";
-const totalUsersNew = "    db.select({ count: count() }).from(users).where(isNull(users.deletedAt)),";
-if (!admin.includes(totalUsersNew)) {
-  if (!admin.includes(totalUsersOld)) throw new Error("Admin stats total-users anchor not found");
-  admin = admin.replace(totalUsersOld, totalUsersNew);
+const totalUsersOriginal = "    db.select({ count: count() }).from(users),";
+const totalUsersDeletedAt = "    db.select({ count: count() }).from(users).where(isNull(users.deletedAt)),";
+const totalUsersCurrent = "    db.select({ count: count() }).from(users).where(sql`lower(${users.email}) not like '%@deleted.iattom.invalid'`),";
+if (!admin.includes(totalUsersCurrent)) {
+  if (admin.includes(totalUsersDeletedAt)) {
+    admin = admin.replace(totalUsersDeletedAt, totalUsersCurrent);
+  } else if (admin.includes(totalUsersOriginal)) {
+    admin = admin.replace(totalUsersOriginal, totalUsersCurrent);
+  } else {
+    throw new Error("Admin stats current-user total anchor not found");
+  }
 }
 
 if (!growth.includes("isNull,")) {
@@ -59,7 +65,7 @@ if (!growth.includes('router.get("/admin/activity-summary"')) {
 }
 
 for (const marker of [
-  ".from(users).where(isNull(users.deletedAt))",
+  "@deleted.iattom.invalid",
   'router.get("/admin/activity-summary"',
   "America/Sao_Paulo",
   "last7Days",
