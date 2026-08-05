@@ -3,6 +3,7 @@ import fs from "node:fs";
 const overviewPath = new URL("../src/pages/admin/AdminOverview.tsx", import.meta.url);
 const activityPath = new URL("../src/pages/admin/AdminActivity.tsx", import.meta.url);
 const analyticsPath = new URL("../src/pages/admin/AdminAnalytics.tsx", import.meta.url);
+
 let overview = fs.readFileSync(overviewPath, "utf8");
 let activity = fs.readFileSync(activityPath, "utf8");
 let analytics = fs.readFileSync(analyticsPath, "utf8");
@@ -13,7 +14,7 @@ if (!overview.includes('label="Assinantes Ativos"')) {
 }
 
 const mediaTypeAnchor = `type MediaMetric = { name: string; count: number };`;
-const activitySummaryType = `type MediaMetric = { name: string; count: number };
+const activitySummaryType = `${mediaTypeAnchor}
 type ActivitySummary = {
   today: number;
   last7Days: number;
@@ -30,18 +31,10 @@ if (!activity.includes("const [activitySummary, setActivitySummary]")) {
   if (!activity.includes(mediaStateAnchor)) throw new Error("Activity summary state anchor not found");
   activity = activity.replace(
     mediaStateAnchor,
-    `${mediaStateAnchor}\n  const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);`,
+    `${mediaStateAnchor}
+  const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);`,
   );
 }
-
-const oldFetchBlock = `        const response = await fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
-          headers: token ? { Authorization: \`Bearer \${token}\` } : {},
-          credentials: "include",
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-        const data = await response.json() as { featureUsage?: MediaMetric[] };
-        if (!cancelled) setMediaMetrics(data.featureUsage ?? []);`;
 
 const intermediateFetchBlock = `        const headers = token ? { Authorization: \`Bearer \${token}\` } : {};
         const [analyticsResponse, growthResponse] = await Promise.all([
@@ -65,7 +58,7 @@ const intermediateFetchBlock = `        const headers = token ? { Authorization:
           if (!cancelled) setRealTodayActions(Number(growth.todayActions ?? 0));
         }`;
 
-const newFetchBlock = `        const headers = token ? { Authorization: \`Bearer \${token}\` } : {};
+const finalFetchBlock = `        const headers = token ? { Authorization: \`Bearer \${token}\` } : {};
         const [analyticsResponse, summaryResponse] = await Promise.all([
           fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
             headers,
@@ -86,27 +79,14 @@ const newFetchBlock = `        const headers = token ? { Authorization: \`Bearer
           const summary = await summaryResponse.json() as ActivitySummary;
           if (!cancelled) setActivitySummary(summary);
         }`;
+
 if (!activity.includes("/api/admin/activity-summary?refresh=")) {
-  if (activity.includes(intermediateFetchBlock)) {
-    activity = activity.replace(intermediateFetchBlock, newFetchBlock);
-  } else if (activity.includes(oldFetchBlock)) {
-    activity = activity.replace(oldFetchBlock, newFetchBlock);
-  } else {
-    throw new Error("Activity analytics fetch block not found in original or intermediate shape");
+  if (!activity.includes(intermediateFetchBlock)) {
+    throw new Error("Mapped intermediate Activity fetch block not found");
   }
+  activity = activity.replace(intermediateFetchBlock, finalFetchBlock);
 }
 
-activity = activity.replace(
-  `      } catch {
-        if (!cancelled) setMediaMetrics([]);
-      }`,
-  `      } catch {
-        if (!cancelled) {
-          setMediaMetrics([]);
-          setActivitySummary(null);
-        }
-      }`,
-);
 activity = activity.replace(
   `      } catch {
         if (!cancelled) {
@@ -123,25 +103,29 @@ activity = activity.replace(
 );
 
 const avgAnchor = `    const avgDaily = week > 0 ? (week / 7).toFixed(1) : "0";`;
-const avgReplacement = `    const resolvedToday = activitySummary?.today ?? today;
+if (!activity.includes("const resolvedToday = activitySummary?.today ?? today;")) {
+  if (!activity.includes(avgAnchor)) throw new Error("Activity KPI anchor not found");
+  activity = activity.replace(
+    avgAnchor,
+    `    const resolvedToday = activitySummary?.today ?? today;
     const resolvedWeek = activitySummary?.last7Days ?? week;
     const resolvedMonth = activitySummary?.last30Days ?? month;
-    const avgDaily = resolvedWeek > 0 ? (resolvedWeek / 7).toFixed(1) : "0";`;
-if (!activity.includes("const resolvedToday = activitySummary?.today ?? today;")) {
-  if (!activity.includes(avgAnchor)) throw new Error("Activity KPI calculation anchor not found");
-  activity = activity.replace(avgAnchor, avgReplacement);
+    const avgDaily = resolvedWeek > 0 ? (resolvedWeek / 7).toFixed(1) : "0";`,
+  );
 }
 
-const dailyChartAnchor = `    const dailyChart = days14.map((key) => ({ label: shortDay(key), value: dailyMap[key] }));`;
-const dailyChartReplacement = `    if (activitySummary?.daily14) {
+const dailyAnchor = `    const dailyChart = days14.map((key) => ({ label: shortDay(key), value: dailyMap[key] }));`;
+if (!activity.includes("activitySummary?.daily14")) {
+  if (!activity.includes(dailyAnchor)) throw new Error("Activity daily chart anchor not found");
+  activity = activity.replace(
+    dailyAnchor,
+    `    if (activitySummary?.daily14) {
       for (const row of activitySummary.daily14) {
         if (row.day in dailyMap) dailyMap[row.day] = Number(row.total ?? 0);
       }
     }
-    const dailyChart = days14.map((key) => ({ label: shortDay(key), value: dailyMap[key] }));`;
-if (!activity.includes("activitySummary?.daily14")) {
-  if (!activity.includes(dailyChartAnchor)) throw new Error("Activity daily chart anchor not found");
-  activity = activity.replace(dailyChartAnchor, dailyChartReplacement);
+    const dailyChart = days14.map((key) => ({ label: shortDay(key), value: dailyMap[key] }));`,
+  );
 }
 
 activity = activity.replace(
@@ -157,10 +141,7 @@ activity = activity.replace(
   `{ label: "Hoje", value: isLoading ? null : kpis.today, sub: "ações registradas",`,
 );
 
-const summaryDonutOld = `  const featureSummaryDonut = featureData
-    .filter((item) => Number(item.percentage || 0) > 0)
-    .map((item) => ({ label: item.name, value: Number(item.percentage || 0), color: item.fill }));`;
-const summaryDonutNew = `  const visibleFeatureCounts = featureData
+const percentageBlock = `  const visibleFeatureCounts = featureData
     .filter((item) => Number(item.count || 0) > 0)
     .map((item) => ({ label: item.name, count: Number(item.count || 0), color: item.fill }));
   const visibleFeatureTotal = visibleFeatureCounts.reduce((sum, item) => sum + item.count, 0);
@@ -181,10 +162,17 @@ const summaryDonutNew = `  const visibleFeatureCounts = featureData
     label: item.label,
     value: basePercentages[index] ?? 0,
     color: item.color,
-  }));`;
+  }));
+
+`;
+
 if (!analytics.includes("const visibleFeatureCounts = featureData")) {
-  if (!analytics.includes(summaryDonutOld)) throw new Error("Analytics percentage donut anchor not found");
-  analytics = analytics.replace(summaryDonutOld, summaryDonutNew);
+  const percentageStart = analytics.indexOf("  const featureSummaryDonut = featureData");
+  const percentageEnd = analytics.indexOf("  const creditDayMap = new Map(", percentageStart);
+  if (percentageStart === -1 || percentageEnd === -1 || percentageEnd <= percentageStart) {
+    throw new Error("Mapped Analytics percentage block boundaries not found");
+  }
+  analytics = analytics.slice(0, percentageStart) + percentageBlock + analytics.slice(percentageEnd);
 }
 
 for (const marker of [
@@ -198,11 +186,11 @@ for (const marker of [
   "remainingPercentage",
 ]) {
   if (!overview.includes(marker) && !activity.includes(marker) && !analytics.includes(marker)) {
-    throw new Error(`Frontend final metric marker missing: ${marker}`);
+    throw new Error(`Final admin metric marker missing: ${marker}`);
   }
 }
 
 fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(activityPath, activity);
 fs.writeFileSync(analyticsPath, analytics);
-console.log("Admin totals, activity periods, labels and displayed percentages are consistent.");
+console.log("Final admin metrics were applied against the mapped post-patch source shapes.");
