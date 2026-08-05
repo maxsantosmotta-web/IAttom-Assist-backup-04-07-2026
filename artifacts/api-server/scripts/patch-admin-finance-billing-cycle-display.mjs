@@ -28,9 +28,9 @@ const calculationReplacement = `    const annualGrantRows = await db
       .select({ clerkUserId: creditsTransactions.clerkUserId })
       .from(creditsTransactions)
       .where(and(
-        sql\`${creditsTransactions.amount} > 0\`,
-        sql\`lower(coalesce(${creditsTransactions.description}, '')) like '%franquia anual do plano%'\`,
-        sql\`lower(coalesce(${creditsTransactions.description}, '')) like '%12 meses%'\`,
+        sql\`\${creditsTransactions.amount} > 0\`,
+        sql\`lower(coalesce(\${creditsTransactions.description}, '')) like '%franquia anual do plano%'\`,
+        sql\`lower(coalesce(\${creditsTransactions.description}, '')) like '%12 meses%'\`,
       ))
       .limit(5000);
 
