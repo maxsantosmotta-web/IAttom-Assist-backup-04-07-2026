@@ -232,6 +232,15 @@ export function PrivacyPage() {
                 </div>
               ))}
             </div>
+            <div className="mt-6 bg-[#C9A84C]/5 border border-[#C9A84C]/20 rounded-xl p-5">
+              <p className="text-zinc-400 leading-relaxed text-sm">
+                Para solicitar a exclusão completa da conta e dos dados associados, envie um e-mail a partir do endereço cadastrado na plataforma para{" "}
+                <a href="mailto:suporte.iattomassist@gmail.com" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
+                  suporte.iattomassist@gmail.com
+                </a>{" "}
+                com o assunto “Exclusão de conta”. A solicitação será confirmada antes do processamento.
+              </p>
+            </div>
           </section>
 
           <section>
@@ -262,21 +271,21 @@ export function PrivacyPage() {
               </p>
               <div className="space-y-2">
                 <p className="text-zinc-300 text-sm">
-                  <span className="text-zinc-500 mr-2">E-mail:</span>
-                  <a href="mailto:privacidade@iattomassist.com.br" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
-                    privacidade@iattomassist.com.br
+                  <span className="text-zinc-500 mr-2">Privacidade e exclusão:</span>
+                  <a href="mailto:suporte.iattomassist@gmail.com" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
+                    suporte.iattomassist@gmail.com
                   </a>
                 </p>
                 <p className="text-zinc-300 text-sm">
-                  <span className="text-zinc-500 mr-2">Suporte:</span>
-                  <a href="mailto:contato@iattomassist.com.br" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
-                    contato@iattomassist.com.br
+                  <span className="text-zinc-500 mr-2">Contato:</span>
+                  <a href="mailto:contato.iattomassist@gmail.com" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
+                    contato.iattomassist@gmail.com
                   </a>
                 </p>
                 <p className="text-zinc-300 text-sm">
                   <span className="text-zinc-500 mr-2">Site:</span>
-                  <a href="https://iattomassist.com.br" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
-                    iattomassist.com.br
+                  <a href="https://www.iattomassist.com.br" className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors">
+                    www.iattomassist.com.br
                   </a>
                 </p>
               </div>
