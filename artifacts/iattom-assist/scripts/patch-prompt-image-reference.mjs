@@ -150,3 +150,6 @@ await import("./patch-prompt-transient-recovery.mjs");
 await import("./patch-image-motion-continuous-loading.mjs");
 await import("./patch-billing-history-plan-labels-and-auto-refresh.mjs");
 await import("./patch-authenticated-dashboard-user-remount-final.mjs");
+
+// Must be the final frontend source mutation so later patches cannot remove the annual plans block.
+await import("./patch-admin-finance-billing-cycle-ui.mjs");
