@@ -101,3 +101,5 @@ for (const marker of [
 writeFileSync(creditsUrl, source, "utf8");
 writeFileSync(billingUrl, billing, "utf8");
 console.log("Official plan and package visuals applied without changing checkout identifiers or backend delivery.");
+
+await import("./patch-official-plan-checkout-ids-final.mjs");
