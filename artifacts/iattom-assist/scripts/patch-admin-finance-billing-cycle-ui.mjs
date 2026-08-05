@@ -246,3 +246,5 @@ fs.writeFileSync(financePath, finance);
 fs.writeFileSync(overviewPath, overview);
 fs.writeFileSync(activityPath, activity);
 console.log("Active annual plans, permanent annual sales history and existing live metrics are connected.");
+
+await import("./patch-admin-final-metric-integrity.mjs");
