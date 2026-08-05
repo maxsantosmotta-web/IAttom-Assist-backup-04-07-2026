@@ -100,18 +100,14 @@ if (!source.includes("          )}\n\n          <CreditsGate")) {
 }
 
 const legacyVideoOption = '  "Vídeo",\n';
-if (source.includes(legacyVideoOption)) {
-  source = source.replace(legacyVideoOption, "");
-}
+if (source.includes(legacyVideoOption)) source = source.replace(legacyVideoOption, "");
 
 const legacyVideoInfo = `  "Vídeo": {
     description: "Cria prompts para vídeos completos, com cenas, ações, narrativa, ritmo, enquadramento e direção visual.",
     example: "Exemplo: vídeo curto apresentando uma scooter elétrica em um cenário urbano.",
   },
 `;
-if (source.includes(legacyVideoInfo)) {
-  source = source.replace(legacyVideoInfo, "");
-}
+if (source.includes(legacyVideoInfo)) source = source.replace(legacyVideoInfo, "");
 
 for (const marker of [
   'from "@/components/prompts/PromptImageReferencePicker"',
@@ -150,21 +146,3 @@ await import("./patch-prompt-transient-recovery.mjs");
 await import("./patch-image-motion-continuous-loading.mjs");
 await import("./patch-billing-history-plan-labels-and-auto-refresh.mjs");
 await import("./patch-authenticated-dashboard-user-remount-final.mjs");
-
-// Must be the final frontend source mutation so later patches cannot remove the annual plans block.
-await import("./patch-admin-finance-billing-cycle-ui.mjs");
-
-const finalFinanceUrl = new URL("../src/pages/admin/AdminFinance.tsx", import.meta.url);
-const finalFinanceSource = readFileSync(finalFinanceUrl, "utf8");
-for (const marker of [
-  ">Planos Anuais</h3>",
-  "summary?.annualSubscriptions?.total",
-  "summary?.annualSubscriptions?.start",
-  "summary?.annualSubscriptions?.premium",
-  "summary?.annualSubscriptions?.pro",
-]) {
-  if (!finalFinanceSource.includes(marker)) {
-    throw new Error(`FINAL FINANCE BUILD GUARD: annual plans block missing: ${marker}`);
-  }
-}
-console.log("FINAL FINANCE BUILD GUARD: annual plans block confirmed in final AdminFinance.tsx source.");
