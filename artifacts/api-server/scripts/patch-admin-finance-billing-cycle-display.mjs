@@ -94,7 +94,7 @@ const recentCreditsQueryReplacement = `      db.select({
           day: "2-digit",
         });
         const todayInSaoPaulo = formatter.format(new Date());
-        const start = new Date(\`${todayInSaoPaulo}T00:00:00-03:00\`);
+        const start = new Date(\`\${todayInSaoPaulo}T00:00:00-03:00\`);
         const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
         return db
           .select({ count: count() })
