@@ -28,10 +28,22 @@ const paidUsersAnchor = `    const paidUsers = [...activeByCustomer.keys()]
       .filter((user): user is CommercialUser & { stripeCustomerId: string } => !!user && user.plan !== "free");`;
 const paidUsersReplacement = `${paidUsersAnchor}
 
+    const ANNUAL_PRICE_IDS = new Set([
+      "price_1TvgDBAYtu5nLhAZsgenq5SJ",
+      "price_1TvgFWAYtu5nLhAZuT001wT5",
+      "price_1TvgGgAYtu5nLhAZO8FYa6nK",
+    ]);
+    const isAnnualSubscription = (subscription: (typeof subscriptions)[number]): boolean =>
+      subscription.items.data.some((item) =>
+        item.price.recurring?.interval === "year" || ANNUAL_PRICE_IDS.has(item.price.id),
+      );
+    const subscriptionCycleLabel = (subscription: (typeof subscriptions)[number] | undefined): string => {
+      if (!subscription) return "Ciclo não identificado";
+      return isAnnualSubscription(subscription) ? "Anual" : "Mensal";
+    };
+
     const annualUsers = [...activeByCustomer.entries()]
-      .filter(([, subscription]) =>
-        subscription.items.data.some((item) => item.price.recurring?.interval === "year"),
-      )
+      .filter(([, subscription]) => isAnnualSubscription(subscription))
       .map(([customerId]) => userByCustomer.get(customerId))
       .filter((user): user is CommercialUser & { stripeCustomerId: string } => !!user && user.plan !== "free");
 
@@ -41,9 +53,16 @@ const paidUsersReplacement = `${paidUsersAnchor}
       premium: annualUsers.filter((user) => user.plan === "business").length,
       pro: annualUsers.filter((user) => user.plan === "agency").length,
     };`;
-if (!source.includes("const annualUsers = [...activeByCustomer.entries()]")) {
+if (!source.includes("const ANNUAL_PRICE_IDS = new Set")) {
   if (!source.includes(paidUsersAnchor)) throw new Error("Finance paid users anchor not found");
   source = source.replace(paidUsersAnchor, paidUsersReplacement);
+}
+
+const movementLabelAnchor = '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan}`,';
+const movementLabelReplacement = '        label: `Assinatura ${PLAN_NAMES[user.plan] ?? user.plan} · ${subscriptionCycleLabel(customerId ? activeByCustomer.get(customerId) : undefined)}`,';
+if (!source.includes("subscriptionCycleLabel(customerId ? activeByCustomer.get(customerId) : undefined)")) {
+  if (!source.includes(movementLabelAnchor)) throw new Error("Finance subscription movement label anchor not found");
+  source = source.replace(movementLabelAnchor, movementLabelReplacement);
 }
 
 const valueAnchor = `      mrrByPlan: {
@@ -68,14 +87,17 @@ if (!source.includes("      annualSubscriptions,\n      recentMovements: movemen
 
 for (const marker of [
   "annualSubscriptions: { total: number; start: number; premium: number; pro: number };",
+  "const ANNUAL_PRICE_IDS = new Set",
+  'item.price.recurring?.interval === "year" || ANNUAL_PRICE_IDS.has(item.price.id)',
+  "const subscriptionCycleLabel",
   "const annualUsers = [...activeByCustomer.entries()]",
-  'item.price.recurring?.interval === "year"',
   'annualUsers.filter((user) => user.plan === "pro")',
   'annualUsers.filter((user) => user.plan === "business")',
   'annualUsers.filter((user) => user.plan === "agency")',
+  "subscriptionCycleLabel(customerId ? activeByCustomer.get(customerId) : undefined)",
   "      annualSubscriptions,",
 ]) {
-  if (!source.includes(marker)) throw new Error(`Finance annual active-subscription marker missing: ${marker}`);
+  if (!source.includes(marker)) throw new Error(`Finance annual movement marker missing: ${marker}`);
 }
 
 for (const forbidden of [
@@ -88,4 +110,4 @@ for (const forbidden of [
 }
 
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance annual plans now derive from the same active subscription map used by paid subscribers and financial movements.");
+console.log("Admin Finance annual plans now use the same active subscriptions and movements, classified by annual Stripe cycle or official annual Price ID.");
