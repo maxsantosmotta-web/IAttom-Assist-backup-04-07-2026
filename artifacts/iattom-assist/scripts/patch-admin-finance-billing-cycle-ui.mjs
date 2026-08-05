@@ -3,6 +3,19 @@ import fs from "node:fs";
 const financePath = new URL("../src/pages/admin/AdminFinance.tsx", import.meta.url);
 let source = fs.readFileSync(financePath, "utf8");
 
+const movementTypeAnchor = `  status: string;
+  createdAt: string;
+}`;
+const movementTypeReplacement = `  status: string;
+  createdAt: string;
+  priceId?: string | null;
+  interval?: string | null;
+}`;
+if (!source.includes("priceId?: string | null;")) {
+  if (!source.includes(movementTypeAnchor)) throw new Error("Finance movement UI diagnostic type anchor not found");
+  source = source.replace(movementTypeAnchor, movementTypeReplacement);
+}
+
 const summaryTypeAnchor = `  mrrByPlan: {
     free: number;
     pro: number;
@@ -61,16 +74,32 @@ if (!source.includes("<h3 className=\"mt-1 text-base font-semibold text-white\">
   source = source.replace(chartsAnchor, annualBlock + chartsAnchor);
 }
 
+const movementMetaAnchor = `                    <p className="mt-0.5 truncate text-[10px] text-zinc-600">{item.userName || item.userEmail} · {getPlanName(item.plan)} · {item.status}</p>`;
+const movementMetaReplacement = `${movementMetaAnchor}
+                    {item.type === "subscription" && (
+                      <p className="mt-1 break-all text-[10px] text-amber-300/80">
+                        priceId: {item.priceId ?? "não informado"} · interval: {item.interval ?? "não informado"}
+                      </p>
+                    )}`;
+if (!source.includes('priceId: {item.priceId ?? "não informado"}')) {
+  if (!source.includes(movementMetaAnchor)) throw new Error("Finance movement UI diagnostic anchor not found");
+  source = source.replace(movementMetaAnchor, movementMetaReplacement);
+}
+
 for (const marker of [
+  "priceId?: string | null;",
+  "interval?: string | null;",
   "annualSubscriptions:",
   ">Planos Anuais</h3>",
   "summary?.annualSubscriptions?.total",
   "summary?.annualSubscriptions?.start",
   "summary?.annualSubscriptions?.premium",
   "summary?.annualSubscriptions?.pro",
+  'priceId: {item.priceId ?? "não informado"}',
+  'interval: {item.interval ?? "não informado"}',
 ]) {
-  if (!source.includes(marker)) throw new Error(`Finance annual block marker missing: ${marker}`);
+  if (!source.includes(marker)) throw new Error(`Finance annual/diagnostic UI marker missing: ${marker}`);
 }
 
 fs.writeFileSync(financePath, source);
-console.log("Admin Finance annual plans block restored in final frontend source.");
+console.log("Admin Finance now shows the real Stripe priceId and interval below subscription movements.");
