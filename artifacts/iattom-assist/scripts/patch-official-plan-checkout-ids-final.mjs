@@ -6,78 +6,35 @@ const modalUrl = new URL("../src/components/PlanComparisonModal.tsx", import.met
 let billing = readFileSync(billingUrl, "utf8");
 let modal = readFileSync(modalUrl, "utf8");
 
-const priceMap = `const OFFICIAL_PLAN_PRICE_IDS: Record<string, { monthly: string; annual: string }> = {
-  pro: {
-    monthly: "price_1TunJ2AYtu5nLhAZPd1Ai0hD",
-    annual: "price_1TunNxAYtu5nLhAZw0frXi2Z",
-  },
-  business: {
-    monthly: "price_1TunQhAYtu5nLhAZu5QXWW31",
-    annual: "price_1TunROAYtu5nLhAZqhKUuslz",
-  },
-  agency: {
-    monthly: "price_1TunTDAYtu5nLhAZDfzTn8Cm",
-    annual: "price_1TunTgAYtu5nLhAZ5nRh52J8",
-  },
-};`;
+const replacements = [
+  ["price_1TvgAOAYtu5nLhAZmgqhsTxJ", "price_1TunJ2AYtu5nLhAZPd1Ai0hD"],
+  ["price_1TvgDBAYtu5nLhAZsgenq5SJ", "price_1TunNxAYtu5nLhAZw0frXi2Z"],
+  ["price_1TvgEwAYtu5nLhAZvWozumfH", "price_1TunQhAYtu5nLhAZu5QXWW31"],
+  ["price_1TvgFWAYtu5nLhAZuT001wT5", "price_1TunROAYtu5nLhAZqhKUuslz"],
+  ["price_1TvgGHAYtu5nLhAZt4gYmBM5", "price_1TunTDAYtu5nLhAZDfzTn8Cm"],
+  ["price_1TvgGgAYtu5nLhAZO8FYa6nK", "price_1TunTgAYtu5nLhAZ5nRh52J8"],
+] as const;
 
-if (!billing.includes("const OFFICIAL_PLAN_PRICE_IDS")) {
-  const marker = "/* ─── plan visual tokens";
-  if (!billing.includes(marker)) throw new Error("Billing plan visual marker not found");
-  billing = billing.replace(marker, `${priceMap}\n\n${marker}`);
+for (const [testPriceId, officialPriceId] of replacements) {
+  billing = billing.replaceAll(testPriceId, officialPriceId);
+  modal = modal.replaceAll(testPriceId, officialPriceId);
 }
 
-const officialCheckoutBlock = `    const officialPriceId = OFFICIAL_PLAN_PRICE_IDS[planKey]?.[billing];
-    if (!officialPriceId) {
-      toast({ title: "Preço indisponível", description: "O plano selecionado ainda não está disponível para compra.", variant: "destructive" });
-      return;
-    }
-    checkout.mutate({ data: { priceId: officialPriceId, planKey } });`;
-
-if (!billing.includes("OFFICIAL_PLAN_PRICE_IDS[planKey]?.[billing]")) {
-  const billingCheckoutPattern = /^\s*checkout\.mutate\(\{ data: \{ priceId: [^\n]+, planKey \} \}\);$/m;
-  const matches = billing.match(new RegExp(billingCheckoutPattern.source, "gm")) ?? [];
-  if (matches.length !== 1) {
-    throw new Error(`Billing plan checkout call count invalid: ${matches.length}`);
+for (const [, officialPriceId] of replacements) {
+  if (!billing.includes(officialPriceId)) {
+    throw new Error(`Official Billing Price ID missing: ${officialPriceId}`);
   }
-  billing = billing.replace(billingCheckoutPattern, officialCheckoutBlock);
-}
-
-if (!modal.includes("const OFFICIAL_PLAN_PRICE_IDS")) {
-  const marker = 'const PLAN_ORDER = ["free", "pro", "business", "agency"];';
-  if (!modal.includes(marker)) throw new Error("Plan modal order marker not found");
-  modal = modal.replace(marker, `${marker}\n\n${priceMap}`);
-}
-
-if (!modal.includes("OFFICIAL_PLAN_PRICE_IDS[planKey]?.[billing]")) {
-  const modalCheckoutPattern = /^\s*checkout\.mutate\(\{ data: \{ priceId: [^\n]+, planKey \} \}\);$/m;
-  const matches = modal.match(new RegExp(modalCheckoutPattern.source, "gm")) ?? [];
-  if (matches.length !== 1) {
-    throw new Error(`Plan modal checkout call count invalid: ${matches.length}`);
-  }
-  modal = modal.replace(modalCheckoutPattern, officialCheckoutBlock);
-}
-
-for (const id of [
-  "price_1TunJ2AYtu5nLhAZPd1Ai0hD",
-  "price_1TunNxAYtu5nLhAZw0frXi2Z",
-  "price_1TunQhAYtu5nLhAZu5QXWW31",
-  "price_1TunROAYtu5nLhAZqhKUuslz",
-  "price_1TunTDAYtu5nLhAZDfzTn8Cm",
-  "price_1TunTgAYtu5nLhAZ5nRh52J8",
-]) {
-  if (!billing.includes(id) || !modal.includes(id)) {
-    throw new Error(`Official plan Price ID missing: ${id}`);
+  if (!modal.includes(officialPriceId)) {
+    throw new Error(`Official modal Price ID missing: ${officialPriceId}`);
   }
 }
 
-for (const [name, source] of [["Billing", billing], ["PlanComparisonModal", modal]]) {
-  const officialCalls = source.match(/checkout\.mutate\(\{ data: \{ priceId: officialPriceId, planKey \} \}\);/g) ?? [];
-  if (officialCalls.length !== 1) {
-    throw new Error(`${name} official checkout call count invalid: ${officialCalls.length}`);
+for (const [testPriceId] of replacements) {
+  if (billing.includes(testPriceId) || modal.includes(testPriceId)) {
+    throw new Error(`Test plan Price ID remains active: ${testPriceId}`);
   }
 }
 
-writeFileSync(billingUrl, billing);
-writeFileSync(modalUrl, modal);
-console.log("Official monthly and annual plan Price IDs applied to the real Billing and PlanComparisonModal checkout calls.");
+writeFileSync(billingUrl, billing, "utf8");
+writeFileSync(modalUrl, modal, "utf8");
+console.log("Only temporary plan Price IDs were replaced with the six official Stripe Price IDs.");
