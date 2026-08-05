@@ -30,19 +30,33 @@ source = source.replace(
 );
 
 source = source.replace(
-  /value=\{\((?:currentUsersTotal \?\? )?stats\?\.totalUsers \?\? 0\)\.toString\(\)\}/g,
-  "value={(growthStats?.totalRegistrations ?? stats?.totalUsers ?? 0).toString()}",
+  /value=\{\((?:growthStats\?\.totalRegistrations \?\? )?(?:currentUsersTotal \?\? )?stats\?\.totalUsers \?\? 0\)\.toString\(\)\}/g,
+  "value={(growthStats?.totalRegistrations ?? 0).toString()}",
 );
 
-if (!source.includes("growthStats?.totalRegistrations ?? stats?.totalUsers ?? 0")) {
-  throw new Error("Admin Overview canonical registration total was not applied");
+source = source.replace(
+  /(<PremiumMetric label="Usuários Totais"[^>]*?)loading=\{statsLoading\}/,
+  "$1loading={growthLoading}",
+);
+
+if (!source.includes("growthStats?.totalRegistrations ?? 0")) {
+  throw new Error("Admin Overview canonical registration total without stale fallback was not applied");
 }
 
-for (const forbidden of ["currentUsersTotal", "usersResponse", "/api/admin/users?limit="]) {
+if (!source.includes('label="Usuários Totais"') || !source.includes("loading={growthLoading}")) {
+  throw new Error("Admin Overview user-total loading source was not switched to growth loading");
+}
+
+for (const forbidden of [
+  "currentUsersTotal",
+  "usersResponse",
+  "/api/admin/users?limit=",
+  "growthStats?.totalRegistrations ?? stats?.totalUsers",
+]) {
   if (source.includes(forbidden)) {
     throw new Error(`Obsolete Admin Overview user-total marker still present: ${forbidden}`);
   }
 }
 
 fs.writeFileSync(overviewPath, source);
-console.log("Admin Overview user total now uses growth-stats totalRegistrations.");
+console.log("Admin Overview waits for canonical registration total and never renders the stale 16-user fallback.");
