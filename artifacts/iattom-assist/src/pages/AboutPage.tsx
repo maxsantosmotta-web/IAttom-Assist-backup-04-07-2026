@@ -119,7 +119,7 @@ export function AboutPage() {
               Para dúvidas institucionais, parcerias ou questões relacionadas ao produto, utilize nosso canal de suporte disponível em{" "}
               <Link href="/help">
                 <span className="text-[#C9A84C] hover:text-[#E8C96A] transition-colors cursor-pointer">
-                  IAttom Help
+                  Ajuda
                 </span>
               </Link>.
             </p>
