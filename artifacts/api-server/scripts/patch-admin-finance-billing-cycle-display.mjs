@@ -23,35 +23,27 @@ if (!source.includes("annualSubscriptions: { total: 0, start: 0, premium: 0, pro
   source = source.replace(emptyAnchor, emptyReplacement);
 }
 
-const calculationAnchor = `    const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
-const calculationReplacement = `    const annualGrantRows = await db
-      .select({ clerkUserId: creditsTransactions.clerkUserId })
-      .from(creditsTransactions)
-      .where(and(
-        sql\`\${creditsTransactions.amount} > 0\`,
-        sql\`lower(coalesce(\${creditsTransactions.description}, '')) like '%franquia anual do plano%'\`,
-        sql\`lower(coalesce(\${creditsTransactions.description}, '')) like '%12 meses%'\`,
-      ))
-      .limit(5000);
+const paidUsersAnchor = `    const paidUsers = [...activeByCustomer.keys()]
+      .map((customerId) => userByCustomer.get(customerId))
+      .filter((user): user is CommercialUser & { stripeCustomerId: string } => !!user && user.plan !== "free");`;
+const paidUsersReplacement = `${paidUsersAnchor}
 
-    const activePaidClerkIds = new Set(paidUsers.map((user) => user.clerkId));
-    const annualClerkIds = new Set(
-      annualGrantRows
-        .map((row) => row.clerkUserId)
-        .filter((clerkUserId) => activePaidClerkIds.has(clerkUserId)),
-    );
-    const annualUsers = allUsers.filter((user) => annualClerkIds.has(user.clerkId));
+    const annualUsers = [...activeByCustomer.entries()]
+      .filter(([, subscription]) =>
+        subscription.items.data.some((item) => item.price.recurring?.interval === "year"),
+      )
+      .map(([customerId]) => userByCustomer.get(customerId))
+      .filter((user): user is CommercialUser & { stripeCustomerId: string } => !!user && user.plan !== "free");
+
     const annualSubscriptions = {
       total: annualUsers.length,
       start: annualUsers.filter((user) => user.plan === "pro").length,
       premium: annualUsers.filter((user) => user.plan === "business").length,
       pro: annualUsers.filter((user) => user.plan === "agency").length,
-    };
-
-    const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
-if (!source.includes("const annualGrantRows = await db")) {
-  if (!source.includes(calculationAnchor)) throw new Error("Finance annual activity calculation anchor not found");
-  source = source.replace(calculationAnchor, calculationReplacement);
+    };`;
+if (!source.includes("const annualUsers = [...activeByCustomer.entries()]")) {
+  if (!source.includes(paidUsersAnchor)) throw new Error("Finance paid users anchor not found");
+  source = source.replace(paidUsersAnchor, paidUsersReplacement);
 }
 
 const valueAnchor = `      mrrByPlan: {
@@ -76,23 +68,24 @@ if (!source.includes("      annualSubscriptions,\n      recentMovements: movemen
 
 for (const marker of [
   "annualSubscriptions: { total: number; start: number; premium: number; pro: number };",
+  "const annualUsers = [...activeByCustomer.entries()]",
+  'item.price.recurring?.interval === "year"',
+  'annualUsers.filter((user) => user.plan === "pro")',
+  'annualUsers.filter((user) => user.plan === "business")',
+  'annualUsers.filter((user) => user.plan === "agency")',
+  "      annualSubscriptions,",
+]) {
+  if (!source.includes(marker)) throw new Error(`Finance annual active-subscription marker missing: ${marker}`);
+}
+
+for (const forbidden of [
   "const annualGrantRows = await db",
   "franquia anual do plano",
   "12 meses",
-  "const activePaidClerkIds = new Set",
-  "const annualClerkIds = new Set",
-  "const annualUsers = allUsers.filter",
-  "annualUsers.filter((user) => user.plan === \"pro\")",
-  "annualUsers.filter((user) => user.plan === \"business\")",
-  "annualUsers.filter((user) => user.plan === \"agency\")",
-  "      annualSubscriptions,",
+  "item.price.unit_amount === 150",
 ]) {
-  if (!source.includes(marker)) throw new Error(`Finance annual activity marker missing: ${marker}`);
-}
-
-if (source.includes("item.price.unit_amount === 150")) {
-  throw new Error("Finance annual summary must not classify plans by temporary test amount");
+  if (source.includes(forbidden)) throw new Error(`Obsolete annual classification remains: ${forbidden}`);
 }
 
 fs.writeFileSync(growthPath, source);
-console.log("Admin Finance annual plans now use confirmed internal annual activity records intersected with currently active subscribers.");
+console.log("Admin Finance annual plans now derive from the same active subscription map used by paid subscribers and financial movements.");
