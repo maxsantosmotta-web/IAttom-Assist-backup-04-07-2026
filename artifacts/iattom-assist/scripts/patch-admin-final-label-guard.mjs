@@ -99,3 +99,4 @@ fs.writeFileSync(translationsPath, translations);
 console.log("Final admin labels are explicit and fully translated.");
 
 await import("./patch-admin-prompt-metric-consolidation.mjs");
+await import("./patch-admin-finance-billing-cycle-ui.mjs");
