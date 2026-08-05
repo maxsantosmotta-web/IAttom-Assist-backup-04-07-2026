@@ -50,4 +50,3 @@ fs.writeFileSync(activityPath, activity);
 console.log("Final Activity action chart dedup remains compatible with resolved period metrics.");
 
 await import("./patch-admin-analytics-remove-referral-code-card.mjs");
-await import("./patch-admin-finance-billing-cycle-ui.mjs");
