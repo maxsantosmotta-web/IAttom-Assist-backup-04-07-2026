@@ -42,6 +42,29 @@ const oldFetchBlock = `        const response = await fetch(\`${"${BASE}"}/api/a
         if (!response.ok) return;
         const data = await response.json() as { featureUsage?: MediaMetric[] };
         if (!cancelled) setMediaMetrics(data.featureUsage ?? []);`;
+
+const intermediateFetchBlock = `        const headers = token ? { Authorization: \`Bearer \${token}\` } : {};
+        const [analyticsResponse, growthResponse] = await Promise.all([
+          fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
+            headers,
+            credentials: "include",
+            cache: "no-store",
+          }),
+          fetch(\`${"${BASE}"}/api/admin/growth-stats?refresh=\${Date.now()}\`, {
+            headers,
+            credentials: "include",
+            cache: "no-store",
+          }),
+        ]);
+        if (analyticsResponse.ok) {
+          const data = await analyticsResponse.json() as { featureUsage?: MediaMetric[] };
+          if (!cancelled) setMediaMetrics(data.featureUsage ?? []);
+        }
+        if (growthResponse.ok) {
+          const growth = await growthResponse.json() as { todayActions?: number };
+          if (!cancelled) setRealTodayActions(Number(growth.todayActions ?? 0));
+        }`;
+
 const newFetchBlock = `        const headers = token ? { Authorization: \`Bearer \${token}\` } : {};
         const [analyticsResponse, summaryResponse] = await Promise.all([
           fetch(\`${"${BASE}"}/api/admin/analytics?refresh=\${Date.now()}\`, {
@@ -64,13 +87,32 @@ const newFetchBlock = `        const headers = token ? { Authorization: \`Bearer
           if (!cancelled) setActivitySummary(summary);
         }`;
 if (!activity.includes("/api/admin/activity-summary?refresh=")) {
-  if (!activity.includes(oldFetchBlock)) throw new Error("Activity analytics fetch block not found");
-  activity = activity.replace(oldFetchBlock, newFetchBlock);
+  if (activity.includes(intermediateFetchBlock)) {
+    activity = activity.replace(intermediateFetchBlock, newFetchBlock);
+  } else if (activity.includes(oldFetchBlock)) {
+    activity = activity.replace(oldFetchBlock, newFetchBlock);
+  } else {
+    throw new Error("Activity analytics fetch block not found in original or intermediate shape");
+  }
 }
 
 activity = activity.replace(
   `      } catch {
         if (!cancelled) setMediaMetrics([]);
+      }`,
+  `      } catch {
+        if (!cancelled) {
+          setMediaMetrics([]);
+          setActivitySummary(null);
+        }
+      }`,
+);
+activity = activity.replace(
+  `      } catch {
+        if (!cancelled) {
+          setMediaMetrics([]);
+          setRealTodayActions(null);
+        }
       }`,
   `      } catch {
         if (!cancelled) {
@@ -109,6 +151,10 @@ activity = activity.replace(
 activity = activity.replace(
   `  }, [items, mediaMetrics]);`,
   `  }, [items, mediaMetrics, activitySummary]);`,
+);
+activity = activity.replace(
+  `{ label: "Hoje", value: isLoading ? null : (realTodayActions ?? kpis.today), sub: "ações registradas",`,
+  `{ label: "Hoje", value: isLoading ? null : kpis.today, sub: "ações registradas",`,
 );
 
 const summaryDonutOld = `  const featureSummaryDonut = featureData
