@@ -81,14 +81,38 @@ if (!source.includes("session.customer_details?.email")) {
   source = source.replace(packageMovementOld, packageMovementNew);
 }
 
+const promiseOld = `    const [subscriptions, invoices, checkoutSessions] = await Promise.all([
+      stripe.subscriptions.list({ status: "all", limit: 100 }).autoPagingToArray({ limit: 1000 }),
+      stripe.invoices.list({ created: { gte: createdGte }, limit: 100 }).autoPagingToArray({ limit: 1000 }),
+      stripe.checkout.sessions.list({ created: { gte: createdGte }, limit: 100 }).autoPagingToArray({ limit: 1000 }),
+    ]);`;
+const promiseNew = `    const [subscriptions, invoices, checkoutSessions, historicalInvoices] = await Promise.all([
+      stripe.subscriptions.list({ status: "all", limit: 100 }).autoPagingToArray({ limit: 1000 }),
+      stripe.invoices.list({ created: { gte: createdGte }, limit: 100 }).autoPagingToArray({ limit: 1000 }),
+      stripe.checkout.sessions.list({ created: { gte: createdGte }, limit: 100 }).autoPagingToArray({ limit: 1000 }),
+      stripe.invoices.list({ limit: 100 }).autoPagingToArray({ limit: 1000 }),
+    ]);`;
+if (!source.includes("checkoutSessions, historicalInvoices")) {
+  if (!source.includes(promiseOld)) throw new Error("Readonly finance Stripe promise anchor not found");
+  source = source.replace(promiseOld, promiseNew);
+}
+
 const emptyAnchor = `    mrrByPlan: { free: 0, pro: 0, business: 0, agency: 0 },
     recentMovements: [] as FinancialMovement[],`;
 const emptyReplacement = `    mrrByPlan: { free: 0, pro: 0, business: 0, agency: 0 },
     annualSubscriptions: { total: 0, start: 0, premium: 0, pro: 0 },
+    annualSalesHistory: { total: 0, start: 0, premium: 0, pro: 0 },
     recentMovements: [] as FinancialMovement[],`;
-if (!source.includes("annualSubscriptions: { total: 0, start: 0, premium: 0, pro: 0 },")) {
-  if (!source.includes(emptyAnchor)) throw new Error("Readonly finance annual empty anchor not found");
-  source = source.replace(emptyAnchor, emptyReplacement);
+if (!source.includes("annualSalesHistory: { total: 0, start: 0, premium: 0, pro: 0 },")) {
+  if (source.includes("annualSubscriptions: { total: 0, start: 0, premium: 0, pro: 0 },\n    recentMovements")) {
+    source = source.replace(
+      "annualSubscriptions: { total: 0, start: 0, premium: 0, pro: 0 },\n    recentMovements",
+      "annualSubscriptions: { total: 0, start: 0, premium: 0, pro: 0 },\n    annualSalesHistory: { total: 0, start: 0, premium: 0, pro: 0 },\n    recentMovements",
+    );
+  } else {
+    if (!source.includes(emptyAnchor)) throw new Error("Readonly finance annual empty anchor not found");
+    source = source.replace(emptyAnchor, emptyReplacement);
+  }
 }
 
 const annualAnchor = `    const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
@@ -104,10 +128,51 @@ const annualReplacement = `    const annualSubscriptions = { total: 0, start: 0,
       if (user.plan === "agency") annualSubscriptions.pro += 1;
     }
 
+    const annualSalesHistory = { total: 0, start: 0, premium: 0, pro: 0 };
+    for (const invoice of historicalInvoices) {
+      if (invoice.status !== "paid" || (invoice.amount_paid ?? 0) <= 0) continue;
+      const isAnnualSale = (invoice.lines?.data ?? []).some(
+        (line: any) => line.price?.recurring?.interval === "year",
+      );
+      if (!isAnnualSale) continue;
+
+      const customerId = customerIdOf(invoice.customer);
+      const user = customerId ? userByCustomer.get(customerId) : undefined;
+      const historicalPlan = invoicePlanName(invoice, user?.plan ?? "free");
+
+      annualSalesHistory.total += 1;
+      if (historicalPlan === "START") annualSalesHistory.start += 1;
+      if (historicalPlan === "PREMIUM") annualSalesHistory.premium += 1;
+      if (historicalPlan === "PRO") annualSalesHistory.pro += 1;
+    }
+
     const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
 if (!source.includes("const annualSubscriptions = { total: 0, start: 0, premium: 0, pro: 0 };")) {
   if (!source.includes(annualAnchor)) throw new Error("Readonly finance annual calculation anchor not found");
   source = source.replace(annualAnchor, annualReplacement);
+} else if (!source.includes("const annualSalesHistory = { total: 0, start: 0, premium: 0, pro: 0 };")) {
+  const activeAnnualEnd = `    const mrrCents = Object.values(mrrByPlan).reduce((sum, value) => sum + value, 0);`;
+  const historyOnly = `    const annualSalesHistory = { total: 0, start: 0, premium: 0, pro: 0 };
+    for (const invoice of historicalInvoices) {
+      if (invoice.status !== "paid" || (invoice.amount_paid ?? 0) <= 0) continue;
+      const isAnnualSale = (invoice.lines?.data ?? []).some(
+        (line: any) => line.price?.recurring?.interval === "year",
+      );
+      if (!isAnnualSale) continue;
+
+      const customerId = customerIdOf(invoice.customer);
+      const user = customerId ? userByCustomer.get(customerId) : undefined;
+      const historicalPlan = invoicePlanName(invoice, user?.plan ?? "free");
+
+      annualSalesHistory.total += 1;
+      if (historicalPlan === "START") annualSalesHistory.start += 1;
+      if (historicalPlan === "PREMIUM") annualSalesHistory.premium += 1;
+      if (historicalPlan === "PRO") annualSalesHistory.pro += 1;
+    }
+
+`;
+  if (!source.includes(activeAnnualEnd)) throw new Error("Readonly finance annual history insertion anchor not found");
+  source = source.replace(activeAnnualEnd, historyOnly + activeAnnualEnd);
 }
 
 const responseAnchor = `      mrrByPlan: {
@@ -124,18 +189,32 @@ const responseReplacement = `      mrrByPlan: {
         agency: mrrByPlan.agency / 100,
       },
       annualSubscriptions,
+      annualSalesHistory,
       recentMovements: movements`;
-if (!source.includes("      annualSubscriptions,\n      recentMovements: movements")) {
-  if (!source.includes(responseAnchor)) throw new Error("Readonly finance annual response anchor not found");
-  source = source.replace(responseAnchor, responseReplacement);
+if (!source.includes("      annualSalesHistory,\n      recentMovements: movements")) {
+  if (source.includes("      annualSubscriptions,\n      recentMovements: movements")) {
+    source = source.replace(
+      "      annualSubscriptions,\n      recentMovements: movements",
+      "      annualSubscriptions,\n      annualSalesHistory,\n      recentMovements: movements",
+    );
+  } else {
+    if (!source.includes(responseAnchor)) throw new Error("Readonly finance annual response anchor not found");
+    source = source.replace(responseAnchor, responseReplacement);
+  }
 }
 
 for (const marker of [
   "invoice.customer_email ?? \"Cliente Stripe\"",
   "session.customer_details?.email",
+  "checkoutSessions, historicalInvoices",
+  "stripe.invoices.list({ limit: 100 }).autoPagingToArray({ limit: 1000 })",
   "annualSubscriptions: { total: 0, start: 0, premium: 0, pro: 0 },",
+  "annualSalesHistory: { total: 0, start: 0, premium: 0, pro: 0 },",
   "const annualSubscriptions = { total: 0, start: 0, premium: 0, pro: 0 };",
+  "const annualSalesHistory = { total: 0, start: 0, premium: 0, pro: 0 };",
+  'line.price?.recurring?.interval === "year"',
   "      annualSubscriptions,",
+  "      annualSalesHistory,",
 ]) {
   if (!source.includes(marker)) throw new Error(`Readonly finance final marker missing: ${marker}`);
 }
@@ -148,4 +227,4 @@ for (const forbidden of [
 }
 
 fs.writeFileSync(routePath, source);
-console.log("Active readonly Finance route now preserves paid history and reports active annual subscriptions.");
+console.log("Active readonly Finance preserves paid history, active annual plans and permanent annual sales history.");
