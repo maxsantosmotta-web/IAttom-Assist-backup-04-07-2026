@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.iattomassist.app",
+    "sha256_cert_fingerprints": ["55:D1:3C:D8:6A:14:2F:ED:0B:AB:20:9C:A8:52:66:84:E3:8E:54:AC:BF:33:5F:C3:D5:D8:E2:33:85:6B:20:C9"]
+  }
+}]
