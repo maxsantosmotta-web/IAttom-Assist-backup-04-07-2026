@@ -92,6 +92,27 @@ function encoded(value: string): string {
   return encodeURIComponent(value);
 }
 
+function hasFutureExpiry(lineItem: GoogleSubscriptionLineItem | undefined, now = new Date()): boolean {
+  if (!lineItem?.expiryTime) return false;
+  const expiry = new Date(lineItem.expiryTime);
+  return !Number.isNaN(expiry.getTime()) && expiry.getTime() > now.getTime();
+}
+
+export function isGoogleSubscriptionEntitled(
+  purchase: GoogleSubscriptionPurchaseV2,
+  lineItem?: GoogleSubscriptionLineItem,
+  now = new Date(),
+): boolean {
+  // Regra comercial IAttom: zero carência. Apenas ativa ou cancelada ainda dentro do período já pago.
+  const state = purchase.subscriptionState;
+  if (state !== "SUBSCRIPTION_STATE_ACTIVE" && state !== "SUBSCRIPTION_STATE_CANCELED") {
+    return false;
+  }
+
+  if (lineItem) return hasFutureExpiry(lineItem, now);
+  return (purchase.lineItems ?? []).some((item) => hasFutureExpiry(item, now));
+}
+
 export async function probeGooglePlayCatalog(): Promise<{
   packageName: string;
   subscriptionProductIds: string[];
@@ -123,7 +144,6 @@ export async function verifyOneTimePurchase(
   const url = `${API_BASE}/applications/${encoded(PACKAGE_NAME)}/purchases/products/${encoded(productId)}/tokens/${encoded(purchaseToken)}`;
   const purchase = await requestGoogle<GoogleOneTimePurchase>(url, "GET");
 
-  // ProductPurchase.purchaseState: 0 = purchased, 1 = canceled, 2 = pending.
   if (purchase.purchaseState !== 0) {
     throw new Error(`google_purchase_not_completed:${purchase.purchaseState ?? "unknown"}`);
   }
@@ -151,20 +171,20 @@ export async function acknowledgeOneTimePurchase(
   await requestGoogle<unknown>(url, "POST");
 }
 
-export async function verifySubscriptionPurchase(
+export async function getSubscriptionPurchase(
   purchaseToken: string,
 ): Promise<GoogleSubscriptionPurchaseV2> {
   const url = `${API_BASE}/applications/${encoded(PACKAGE_NAME)}/purchases/subscriptionsv2/tokens/${encoded(purchaseToken)}`;
-  const purchase = await requestGoogle<GoogleSubscriptionPurchaseV2>(url, "GET");
+  return requestGoogle<GoogleSubscriptionPurchaseV2>(url, "GET");
+}
 
-  const allowedStates = new Set([
-    "SUBSCRIPTION_STATE_ACTIVE",
-    "SUBSCRIPTION_STATE_IN_GRACE_PERIOD",
-  ]);
-  if (!purchase.subscriptionState || !allowedStates.has(purchase.subscriptionState)) {
+export async function verifySubscriptionPurchase(
+  purchaseToken: string,
+): Promise<GoogleSubscriptionPurchaseV2> {
+  const purchase = await getSubscriptionPurchase(purchaseToken);
+  if (!isGoogleSubscriptionEntitled(purchase)) {
     throw new Error(`google_subscription_not_entitled:${purchase.subscriptionState ?? "unknown"}`);
   }
-
   return purchase;
 }
 
@@ -172,7 +192,6 @@ export async function acknowledgeSubscriptionPurchase(
   productId: string,
   purchaseToken: string,
 ): Promise<void> {
-  // O endpoint de acknowledge permanece em purchases.subscriptions.
   const url = `${API_BASE}/applications/${encoded(PACKAGE_NAME)}/purchases/subscriptions/${encoded(productId)}/tokens/${encoded(purchaseToken)}:acknowledge`;
   await requestGoogle<unknown>(url, "POST");
 }
