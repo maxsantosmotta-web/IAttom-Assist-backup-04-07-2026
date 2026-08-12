@@ -26,22 +26,12 @@ function replaceBlock(startMarker, endMarker, replacement) {
   billing = billing.slice(0, start) + replacement + "\n\n" + billing.slice(end);
 }
 
-const stateMarker = '  const [videoBalance, setVideoBalance] = useState<number | null>(null);';
-if (!billing.includes('const [playPending, setPlayPending]')) {
-  if (!billing.includes(stateMarker)) throw new Error("Billing state marker not found");
-  billing = billing.replace(
-    stateMarker,
-    `${stateMarker}\n  const [playPending, setPlayPending] = useState<string | null>(null);`,
-  );
-}
-
+const activePlanMarker = "  const hasActivePaidPlan =";
 if (!billing.includes('const [googleSubscription, setGoogleSubscription]')) {
-  const pendingMarker = '  const [playPending, setPlayPending] = useState<string | null>(null);';
-  if (!billing.includes(pendingMarker)) throw new Error("Google Play pending state marker not found");
-  billing = billing.replace(
-    pendingMarker,
-    `${pendingMarker}\n  const [googleSubscription, setGoogleSubscription] = useState<{ hasSubscription?: boolean; status?: string; expiryTime?: string | null } | null>(null);\n\n  const refreshGoogleSubscription = async () => {\n    try {\n      const token = await getToken();\n      const response = await fetch("/api/google-play/subscription/status", {\n        credentials: "include",\n        headers: token ? { Authorization: \`Bearer \${token}\` } : undefined,\n      });\n      if (!response.ok) return;\n      setGoogleSubscription(await response.json() as { hasSubscription?: boolean; status?: string; expiryTime?: string | null });\n    } catch {\n      // Stripe/browser behavior remains unchanged when Google Play status is unavailable.\n    }\n  };\n\n  useEffect(() => { void refreshGoogleSubscription(); }, []);`,
-  );
+  const activeIndex = billing.indexOf(activePlanMarker);
+  if (activeIndex < 0) throw new Error("Billing active paid plan marker not found");
+  const googleStateBlock = `  const [googleSubscription, setGoogleSubscription] = useState<{ hasSubscription?: boolean; status?: string; expiryTime?: string | null } | null>(null);\n\n  const refreshGoogleSubscription = async () => {\n    try {\n      const token = await getToken();\n      const response = await fetch("/api/google-play/subscription/status", {\n        credentials: "include",\n        headers: token ? { Authorization: \`Bearer \${token}\` } : undefined,\n      });\n      if (!response.ok) return;\n      setGoogleSubscription(await response.json() as { hasSubscription?: boolean; status?: string; expiryTime?: string | null });\n    } catch {\n      // Stripe/browser behavior remains unchanged when Google Play status is unavailable.\n    }\n  };\n\n  useEffect(() => { void refreshGoogleSubscription(); }, []);\n\n`;
+  billing = billing.slice(0, activeIndex) + googleStateBlock + billing.slice(activeIndex);
 }
 
 const activePaidPlanPattern = /  const hasActivePaidPlan = ([^;]+);/;
@@ -57,6 +47,15 @@ if (subStatusPattern.test(billing) && !billing.includes("SUBSCRIPTION_STATE_CANC
   billing = billing.replace(
     subStatusPattern,
     `  const subStatus = googleSubscription?.hasSubscription\n    ? (googleSubscription.status === "SUBSCRIPTION_STATE_CANCELED" ? "canceled" : "active")\n    : subscription?.status;`,
+  );
+}
+
+const stateMarker = '  const [videoBalance, setVideoBalance] = useState<number | null>(null);';
+if (!billing.includes('const [playPending, setPlayPending]')) {
+  if (!billing.includes(stateMarker)) throw new Error("Billing state marker not found");
+  billing = billing.replace(
+    stateMarker,
+    `${stateMarker}\n  const [playPending, setPlayPending] = useState<string | null>(null);`,
   );
 }
 
