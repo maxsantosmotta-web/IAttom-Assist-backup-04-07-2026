@@ -6,7 +6,8 @@
   },
   "include": [
     "src/lib/googlePlayBillingService.ts",
-    "src/routes/googlePlayBilling.ts"
+    "src/routes/googlePlayBilling.ts",
+    "src/routes/googlePlaySubscriptionEntitlements.ts"
   ],
   "references": [
     { "path": "../../lib/db" }
