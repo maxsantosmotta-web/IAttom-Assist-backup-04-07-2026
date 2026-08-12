@@ -10,6 +10,7 @@ import {
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
 import { logger } from "../lib/logger.js";
 import {
+  probeGooglePlayCatalog,
   verifyOneTimePurchase,
   consumeOneTimePurchase,
   verifySubscriptionPurchase,
@@ -56,6 +57,26 @@ async function markConsumed(eventKey: string): Promise<void> {
     .set({ consumedAt: new Date(), updatedAt: new Date() })
     .where(eq(googlePlayPurchases.eventKey, eventKey));
 }
+
+// Diagnóstico somente leitura: autentica com a conta de serviço e lê o catálogo do app.
+// Não concede saldo, não altera assinatura e não consome compra.
+router.get("/google-play/connection-check", requireAuth, async (_req, res): Promise<void> => {
+  try {
+    const catalog = await probeGooglePlayCatalog();
+    res.json({
+      ok: true,
+      packageName: catalog.packageName,
+      subscriptions: catalog.subscriptionProductIds,
+      oneTimeProducts: catalog.oneTimeProductIds,
+    });
+  } catch (error) {
+    logger.error({ error }, "Google Play connection check failed");
+    res.status(502).json({
+      ok: false,
+      error: "Não foi possível autenticar ou ler o catálogo do Google Play",
+    });
+  }
+});
 
 router.post("/google-play/one-time/confirm", requireAuth, async (req, res): Promise<void> => {
   const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
