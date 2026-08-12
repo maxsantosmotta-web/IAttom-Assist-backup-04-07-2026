@@ -6,6 +6,7 @@ on:
     paths:
       - 'artifacts/api-server/src/lib/googlePlayBillingService.ts'
       - 'artifacts/api-server/src/routes/googlePlayBilling.ts'
+      - 'artifacts/api-server/src/routes/googlePlaySubscriptionEntitlements.ts'
       - 'artifacts/api-server/src/routes/index.ts'
       - 'artifacts/api-server/tsconfig.play-billing.json'
       - 'lib/db/src/schema/googlePlayPurchases.ts'
@@ -34,6 +35,20 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Validate Google Play ledger migration is additive only
+        shell: bash
+        run: |
+          set -euo pipefail
+          migration='lib/db/drizzle/0001_google_play_purchases.sql'
+          grep -Fq 'CREATE TABLE IF NOT EXISTS "google_play_purchases"' "$migration"
+          grep -Fq '"event_key" text NOT NULL UNIQUE' "$migration"
+          grep -Fq 'CREATE INDEX IF NOT EXISTS "google_play_purchases_token_idx"' "$migration"
+          grep -Fq 'CREATE INDEX IF NOT EXISTS "google_play_purchases_user_idx"' "$migration"
+          if grep -Eiq '\b(DROP|TRUNCATE|ALTER[[:space:]]+TABLE|DELETE[[:space:]]+FROM|UPDATE[[:space:]])\b' "$migration"; then
+            echo 'Migration contains a destructive or mutating statement.' >&2
+            exit 1
+          fi
 
       - name: Existing workspace typecheck — diagnostic only
         continue-on-error: true
