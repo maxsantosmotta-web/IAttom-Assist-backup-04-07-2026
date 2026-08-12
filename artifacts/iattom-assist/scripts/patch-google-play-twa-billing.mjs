@@ -35,6 +35,31 @@ if (!billing.includes('const [playPending, setPlayPending]')) {
   );
 }
 
+if (!billing.includes('const [googleSubscription, setGoogleSubscription]')) {
+  const pendingMarker = '  const [playPending, setPlayPending] = useState<string | null>(null);';
+  if (!billing.includes(pendingMarker)) throw new Error("Google Play pending state marker not found");
+  billing = billing.replace(
+    pendingMarker,
+    `${pendingMarker}\n  const [googleSubscription, setGoogleSubscription] = useState<{ hasSubscription?: boolean; status?: string; expiryTime?: string | null } | null>(null);\n\n  const refreshGoogleSubscription = async () => {\n    try {\n      const token = await getToken();\n      const response = await fetch("/api/google-play/subscription/status", {\n        credentials: "include",\n        headers: token ? { Authorization: \`Bearer \${token}\` } : undefined,\n      });\n      if (!response.ok) return;\n      setGoogleSubscription(await response.json() as { hasSubscription?: boolean; status?: string; expiryTime?: string | null });\n    } catch {\n      // Stripe/browser behavior remains unchanged when Google Play status is unavailable.\n    }\n  };\n\n  useEffect(() => { void refreshGoogleSubscription(); }, []);`,
+  );
+}
+
+const activePaidPlanPattern = /  const hasActivePaidPlan = ([^;]+);/;
+if (activePaidPlanPattern.test(billing) && !billing.includes("const hasStripePaidPlan =")) {
+  billing = billing.replace(
+    activePaidPlanPattern,
+    `  const hasStripePaidPlan = $1;\n  const hasActivePaidPlan = hasStripePaidPlan || googleSubscription?.hasSubscription === true;`,
+  );
+}
+
+const subStatusPattern = /  const subStatus\s*=\s*subscription\?\.status;/;
+if (subStatusPattern.test(billing) && !billing.includes("SUBSCRIPTION_STATE_CANCELED")) {
+  billing = billing.replace(
+    subStatusPattern,
+    `  const subStatus = googleSubscription?.hasSubscription\n    ? (googleSubscription.status === "SUBSCRIPTION_STATE_CANCELED" ? "canceled" : "active")\n    : subscription?.status;`,
+  );
+}
+
 replaceBlock(
   "  const handleBuyImagePack = async (packId: string) => {",
   "  const handleBuyVideoPack = async (packId: string) => {",
@@ -151,6 +176,12 @@ replaceBlock(
   "  const handleUpgrade = async (priceId: string | null | undefined, planKey: string) => {",
   "  /* ─── price display helpers",
   `  const handleUpgrade = async (priceId: string | null | undefined, planKey: string) => {
+    if (googleSubscription?.hasSubscription === true) {
+      window.open("https://play.google.com/store/account/subscriptions", "_blank", "noopener,noreferrer");
+      toast({ title: "Assinatura pelo Google Play", description: "Gerencie a troca ou o cancelamento diretamente no Google Play." });
+      return;
+    }
+
     if (planKey === "free") {
       setFreePending(true);
       try {
@@ -180,7 +211,7 @@ replaceBlock(
       setPlayPending(planKey);
       try {
         await purchaseGooglePlaySubscription(config.productId, config.basePlanId);
-        await Promise.all([refetchMe(), refetchCredits()]);
+        await Promise.all([refetchMe(), refetchCredits(), refreshGoogleSubscription()]);
         toast({ title: "Assinatura confirmada", description: "Seu plano do Google Play foi ativado." });
       } catch {
         toast({ title: "Não foi possível concluir a assinatura", description: "Tente novamente em alguns instantes.", variant: "destructive" });
@@ -204,14 +235,21 @@ billing = billing.replaceAll(
   '(planKey === "free" ? freePending : (checkout.isPending || playPending === planKey)) && (',
 );
 
+billing = billing.replaceAll(
+  'onClick={() => portal.mutate()}',
+  'onClick={() => googleSubscription?.hasSubscription === true ? window.open("https://play.google.com/store/account/subscriptions", "_blank", "noopener,noreferrer") : portal.mutate()}',
+);
+
 for (const marker of [
   'GOOGLE_PLAY_SUBSCRIPTIONS',
   'purchaseGooglePlaySubscription',
   'purchaseGooglePlayOneTime',
   'playPending',
+  'googleSubscription',
+  '/api/google-play/subscription/status',
 ]) {
   if (!billing.includes(marker)) throw new Error(`Google Play Billing marker missing after patch: ${marker}`);
 }
 
 writeFileSync(billingUrl, billing);
-console.log("Google Play TWA billing patch applied while preserving Stripe browser checkout.");
+console.log("Google Play TWA billing patch applied with live subscription status while preserving Stripe browser checkout.");
