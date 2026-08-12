@@ -40,3 +40,4 @@ export * from "./savedItems";
 export * from "./helpMessages";
 export * from "./videoTransactions";
 export * from "./emailVerifications";
+export * from "./googlePlayPurchases";

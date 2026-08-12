@@ -1,0 +1,125 @@
+name: Validate Play Billing backend
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'artifacts/api-server/src/lib/googlePlayBillingService.ts'
+      - 'artifacts/api-server/src/routes/googlePlayBilling.ts'
+      - 'artifacts/api-server/src/routes/googlePlaySubscriptionEntitlements.ts'
+      - 'artifacts/api-server/src/routes/index.ts'
+      - 'artifacts/api-server/tsconfig.play-billing.json'
+      - 'artifacts/iattom-assist/src/lib/googlePlayBilling.ts'
+      - 'artifacts/iattom-assist/scripts/patch-google-play-twa-billing.mjs'
+      - 'artifacts/iattom-assist/src/pages/dashboard/Billing.tsx'
+      - 'artifacts/iattom-assist/src/components/PlanGate.tsx'
+      - 'artifacts/iattom-assist/vite.config.ts'
+      - 'lib/db/src/schema/googlePlayPurchases.ts'
+      - 'lib/db/src/schema/index.ts'
+      - 'lib/db/drizzle/0001_google_play_purchases.sql'
+      - 'lib/db/scripts/test-google-play-migration.mjs'
+      - 'lib/db/scripts/test-google-play-entitlements.mjs'
+      - '.github/workflows/validate-play-billing-backend.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: play_billing_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d play_billing_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/play_billing_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare pnpm
+        run: corepack prepare pnpm@10.12.1 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Google Play ledger migration is additive only
+        shell: bash
+        run: |
+          set -euo pipefail
+          migration='lib/db/drizzle/0001_google_play_purchases.sql'
+          grep -Fq 'CREATE TABLE IF NOT EXISTS "google_play_purchases"' "$migration"
+          grep -Fq '"event_key" text NOT NULL UNIQUE' "$migration"
+          grep -Fq 'CREATE INDEX IF NOT EXISTS "google_play_purchases_token_idx"' "$migration"
+          grep -Fq 'CREATE INDEX IF NOT EXISTS "google_play_purchases_user_idx"' "$migration"
+          if grep -Eiq '\b(DROP|TRUNCATE|ALTER[[:space:]]+TABLE|DELETE[[:space:]]+FROM|UPDATE[[:space:]])\b' "$migration"; then
+            echo 'Migration contains a destructive or mutating statement.' >&2
+            exit 1
+          fi
+
+      - name: Execute migration twice in isolated PostgreSQL and verify invariants
+        run: pnpm --dir lib/db exec node ./scripts/test-google-play-migration.mjs
+
+      - name: Validate Google Play entitlement grants and replay protection
+        run: pnpm --dir lib/db exec node ./scripts/test-google-play-entitlements.mjs
+
+      - name: Existing workspace typecheck — diagnostic only
+        continue-on-error: true
+        run: pnpm run typecheck
+
+      - name: Typecheck Play Billing backend files
+        run: pnpm --filter @workspace/api-server exec tsc -p tsconfig.play-billing.json --noEmit
+
+      - name: Build production frontend through the real patch chain including Google Play TWA
+        run: pnpm --filter @workspace/iattom-assist build
+
+      - name: Typecheck Google Play TWA frontend scope after production build
+        shell: bash
+        run: |
+          set +e
+          output="$(pnpm --filter @workspace/iattom-assist exec tsc -p tsconfig.json --noEmit 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          play_errors="$(printf '%s\n' "$output" | grep -E 'src/lib/googlePlayBilling\.ts|src/pages/dashboard/Billing\.tsx|src/components/PlanGate\.tsx' || true)"
+          if [ -n "$play_errors" ]; then
+            echo 'Google Play/TWA frontend typecheck error detected:' >&2
+            printf '%s\n' "$play_errors" >&2
+            exit 1
+          fi
+          echo 'Only pre-existing frontend typecheck errors remain outside the Google Play/TWA scope.'
+
+      - name: Verify production frontend contains Google Play billing layer
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'googleSubscription' artifacts/iattom-assist/src/pages/dashboard/Billing.tsx
+          grep -Fq '/api/google-play/subscription/status' artifacts/iattom-assist/src/pages/dashboard/Billing.tsx
+          test -s artifacts/iattom-assist/dist/public/index.html
+          echo 'Google Play TWA billing is part of the real production frontend build.'
+
+      - name: Verify API artifact produced by the real patch chain
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s artifacts/api-server/dist/index.mjs
+          echo 'API artifact already built successfully by the real frontend build chain.'

@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false
+  },
+  "include": [
+    "src/lib/googlePlayBillingService.ts",
+    "src/routes/googlePlayBilling.ts",
+    "src/routes/googlePlaySubscriptionEntitlements.ts"
+  ],
+  "references": [
+    { "path": "../../lib/db" }
+  ]
+}
