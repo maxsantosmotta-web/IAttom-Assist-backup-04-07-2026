@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin, type ProxyOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { execFileSync } from "node:child_process";
 import path from "path";
 
 const rawPort = process.env.PORT ?? "8080";
@@ -38,6 +39,18 @@ const replitDevelopmentPlugins = isReplitDevelopment
     ])
   : [];
 
+const googlePlayTwaBillingBuild: Plugin = {
+  name: "google-play-twa-billing-build",
+  apply: "build",
+  buildStart() {
+    execFileSync(
+      process.execPath,
+      [path.resolve(import.meta.dirname, "scripts/patch-google-play-twa-billing.mjs")],
+      { stdio: "inherit" },
+    );
+  },
+};
+
 const iattomRuntimeSafety: Plugin = {
   name: "iattom-runtime-safety",
   enforce: "pre",
@@ -67,6 +80,7 @@ const iattomRuntimeSafety: Plugin = {
 export default defineConfig({
   base: basePath,
   plugins: [
+    googlePlayTwaBillingBuild,
     iattomRuntimeSafety,
     react(),
     tailwindcss({ optimize: false }),
