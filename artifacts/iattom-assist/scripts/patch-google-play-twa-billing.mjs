@@ -156,9 +156,9 @@ replaceBlock(
       try {
         const token = await getToken();
         const base = import.meta.env.BASE_URL ?? "/";
-        await fetch(\`${base}api/user/select-plan\`, {
+        await fetch(\`\${base}api/user/select-plan\`, {
           method: "POST",
-          headers: { Authorization: \`Bearer ${token}\` },
+          headers: { Authorization: \`Bearer \${token}\` },
         });
         await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         setLocation("/dashboard");
