@@ -12,6 +12,7 @@ on:
       - 'lib/db/src/schema/googlePlayPurchases.ts'
       - 'lib/db/src/schema/index.ts'
       - 'lib/db/drizzle/0001_google_play_purchases.sql'
+      - 'lib/db/scripts/test-google-play-migration.mjs'
       - '.github/workflows/validate-play-billing-backend.yml'
 
 permissions:
@@ -20,6 +21,22 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: play_billing_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d play_billing_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/play_billing_test
     steps:
       - uses: actions/checkout@v4
 
@@ -49,6 +66,9 @@ jobs:
             echo 'Migration contains a destructive or mutating statement.' >&2
             exit 1
           fi
+
+      - name: Execute migration twice in isolated PostgreSQL and verify invariants
+        run: pnpm --dir lib/db exec node ./scripts/test-google-play-migration.mjs
 
       - name: Existing workspace typecheck — diagnostic only
         continue-on-error: true
