@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db, users, creditsTransactions, googlePlayPurchases } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
 import { logger } from "../lib/logger.js";
 import {
   acknowledgeSubscriptionPurchase,
+  getSubscriptionPurchase,
+  isGoogleSubscriptionEntitled,
   verifySubscriptionPurchase,
 } from "../lib/googlePlayBillingService.js";
 
@@ -69,6 +71,77 @@ function toDate(value: string | undefined): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+router.get("/google-play/subscription/status", requireAuth, async (req, res): Promise<void> => {
+  const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
+
+  try {
+    const [latest] = await db
+      .select({
+        purchaseToken: googlePlayPurchases.purchaseToken,
+        productId: googlePlayPurchases.productId,
+        basePlanId: googlePlayPurchases.basePlanId,
+        internalPlan: googlePlayPurchases.internalPlan,
+        expiryTime: googlePlayPurchases.expiryTime,
+      })
+      .from(googlePlayPurchases)
+      .where(
+        and(
+          eq(googlePlayPurchases.clerkUserId, clerkUserId),
+          eq(googlePlayPurchases.productType, "subscription"),
+        ),
+      )
+      .orderBy(desc(googlePlayPurchases.expiryTime), desc(googlePlayPurchases.updatedAt))
+      .limit(1);
+
+    if (!latest) {
+      res.json({
+        ok: true,
+        provider: "google_play",
+        hasSubscription: false,
+        status: "none",
+        expiryTime: null,
+        productId: null,
+        basePlanId: null,
+        internalPlan: null,
+      });
+      return;
+    }
+
+    const purchase = await getSubscriptionPurchase(latest.purchaseToken);
+    const lineItem = purchase.lineItems?.find(
+      (item) =>
+        item.productId === latest.productId &&
+        (!latest.basePlanId || item.offerDetails?.basePlanId === latest.basePlanId),
+    );
+    const entitled = isGoogleSubscriptionEntitled(purchase, lineItem);
+    const expiryTime = lineItem?.expiryTime ?? latest.expiryTime?.toISOString() ?? null;
+    const state = purchase.subscriptionState ?? "SUBSCRIPTION_STATE_UNSPECIFIED";
+
+    await db
+      .update(googlePlayPurchases)
+      .set({
+        googleState: state,
+        expiryTime: toDate(lineItem?.expiryTime) ?? latest.expiryTime,
+        updatedAt: new Date(),
+      })
+      .where(eq(googlePlayPurchases.purchaseToken, latest.purchaseToken));
+
+    res.json({
+      ok: true,
+      provider: "google_play",
+      hasSubscription: entitled,
+      status: state,
+      expiryTime,
+      productId: latest.productId,
+      basePlanId: latest.basePlanId,
+      internalPlan: latest.internalPlan,
+    });
+  } catch (error) {
+    logger.error({ error, clerkUserId }, "Google Play subscription status failed");
+    res.status(502).json({ ok: false, error: "Não foi possível consultar a assinatura no Google Play" });
+  }
+});
+
 router.post("/google-play/subscription/confirm", requireAuth, async (req, res): Promise<void> => {
   const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
   const productId = bodyString(req.body?.productId);
@@ -100,8 +173,8 @@ router.post("/google-play/subscription/confirm", requireAuth, async (req, res): 
       (item) => item.productId === productId && item.offerDetails?.basePlanId === basePlanId,
     );
 
-    if (!lineItem) {
-      res.status(409).json({ ok: false, error: "Produto ou plano básico não corresponde à compra" });
+    if (!lineItem || !isGoogleSubscriptionEntitled(purchase, lineItem)) {
+      res.status(409).json({ ok: false, error: "Produto, plano básico ou período da assinatura não está ativo" });
       return;
     }
 
