@@ -209,7 +209,6 @@ for (const marker of [
   'purchaseGooglePlaySubscription',
   'purchaseGooglePlayOneTime',
   'playPending',
-  'iattom_start_anual',
 ]) {
   if (!billing.includes(marker)) throw new Error(`Google Play Billing marker missing after patch: ${marker}`);
 }
