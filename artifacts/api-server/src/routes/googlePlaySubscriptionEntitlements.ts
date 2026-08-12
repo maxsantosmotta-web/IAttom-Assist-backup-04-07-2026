@@ -11,32 +11,51 @@ import {
 const router: IRouter = Router();
 
 type InternalPlan = "pro" | "business" | "agency";
+type BillingPeriod = "monthly" | "annual";
 
 type SubscriptionEntitlement = {
   internalPlan: InternalPlan;
   monthlyCredits: number;
-  monthlyBasePlanId: string;
-  annualBasePlanId: string;
+  basePlanId: string;
+  billingPeriod: BillingPeriod;
 };
 
 const SUBSCRIPTIONS: Record<string, SubscriptionEntitlement> = {
   iattom_start: {
     internalPlan: "pro",
     monthlyCredits: 200,
-    monthlyBasePlanId: "start-mensal",
-    annualBasePlanId: "start-anual",
+    basePlanId: "start-mensal",
+    billingPeriod: "monthly",
+  },
+  iattom_start_anual: {
+    internalPlan: "pro",
+    monthlyCredits: 200,
+    basePlanId: "start-anual",
+    billingPeriod: "annual",
   },
   iattom_premium: {
     internalPlan: "business",
     monthlyCredits: 500,
-    monthlyBasePlanId: "premium-mensal",
-    annualBasePlanId: "premium-anual",
+    basePlanId: "premium-mensal",
+    billingPeriod: "monthly",
+  },
+  iattom_premium_anual: {
+    internalPlan: "business",
+    monthlyCredits: 500,
+    basePlanId: "premium-anual",
+    billingPeriod: "annual",
   },
   iattom_pro: {
     internalPlan: "agency",
     monthlyCredits: 1000,
-    monthlyBasePlanId: "pro-mensal",
-    annualBasePlanId: "pro-anual",
+    basePlanId: "pro-mensal",
+    billingPeriod: "monthly",
+  },
+  iattom_pro_anual: {
+    internalPlan: "agency",
+    monthlyCredits: 1000,
+    basePlanId: "pro-anual",
+    billingPeriod: "annual",
   },
 };
 
@@ -53,11 +72,11 @@ function toDate(value: string | undefined): Date | null {
 router.post("/google-play/subscription/confirm", requireAuth, async (req, res): Promise<void> => {
   const clerkUserId = (req as AuthenticatedRequest).clerkUserId;
   const productId = bodyString(req.body?.productId);
-  const basePlanId = bodyString(req.body?.basePlanId);
+  const requestedBasePlanId = bodyString(req.body?.basePlanId);
   const purchaseToken = bodyString(req.body?.purchaseToken);
 
-  if (!productId || !basePlanId || !purchaseToken) {
-    res.status(400).json({ ok: false, error: "productId, basePlanId e purchaseToken são obrigatórios" });
+  if (!productId || !purchaseToken) {
+    res.status(400).json({ ok: false, error: "productId e purchaseToken são obrigatórios" });
     return;
   }
 
@@ -67,12 +86,13 @@ router.post("/google-play/subscription/confirm", requireAuth, async (req, res): 
     return;
   }
 
-  const isMonthly = basePlanId === entitlement.monthlyBasePlanId;
-  const isAnnual = basePlanId === entitlement.annualBasePlanId;
-  if (!isMonthly && !isAnnual) {
+  const basePlanId = entitlement.basePlanId;
+  if (requestedBasePlanId && requestedBasePlanId !== basePlanId) {
     res.status(400).json({ ok: false, error: "Plano básico Google Play não corresponde ao produto" });
     return;
   }
+
+  const isAnnual = entitlement.billingPeriod === "annual";
 
   try {
     const purchase = await verifySubscriptionPurchase(purchaseToken);
@@ -97,8 +117,6 @@ router.post("/google-play/subscription/confirm", requireAuth, async (req, res): 
     const expiryTime = toDate(lineItem.expiryTime);
 
     const result = await db.transaction(async (tx) => {
-      // Serializa qualquer processamento do mesmo token. Isso evita que uma renovação
-      // futura do mesmo purchaseToken seja vinculada a outro usuário em uma corrida.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${purchaseToken}))`);
 
       const [tokenOwner] = await tx
@@ -229,6 +247,7 @@ router.post("/google-play/subscription/confirm", requireAuth, async (req, res): 
       ...result,
       productId,
       basePlanId,
+      billingPeriod: entitlement.billingPeriod,
       internalPlan: entitlement.internalPlan,
       grantedCredits: result.granted ? grantAmount : 0,
       multiplier,
