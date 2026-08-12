@@ -97,6 +97,20 @@ router.post("/google-play/subscription/confirm", requireAuth, async (req, res): 
     const expiryTime = toDate(lineItem.expiryTime);
 
     const result = await db.transaction(async (tx) => {
+      // Serializa qualquer processamento do mesmo token. Isso evita que uma renovação
+      // futura do mesmo purchaseToken seja vinculada a outro usuário em uma corrida.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${purchaseToken}))`);
+
+      const [tokenOwner] = await tx
+        .select({ clerkUserId: googlePlayPurchases.clerkUserId })
+        .from(googlePlayPurchases)
+        .where(eq(googlePlayPurchases.purchaseToken, purchaseToken))
+        .limit(1);
+
+      if (tokenOwner && tokenOwner.clerkUserId !== clerkUserId) {
+        throw new Error("google_subscription_owned_by_another_user");
+      }
+
       const [existing] = await tx
         .select({
           id: googlePlayPurchases.id,
