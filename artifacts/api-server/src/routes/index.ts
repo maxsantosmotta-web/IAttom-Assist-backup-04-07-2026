@@ -40,6 +40,7 @@ import videoEffectBillingRouter from "./videoEffectBilling.js";
 import imageMotionAdminAnalyticsRouter from "./imageMotionAdminAnalytics.js";
 import imageMotionRouter from "./imageMotion.js";
 import imageMotionTrashRouter from "./imageMotionTrash.js";
+import googlePlayBillingRouter from "./googlePlayBilling.js";
 
 const router: IRouter = Router();
 
@@ -87,5 +88,7 @@ router.use(videoEffectBillingRouter);
 router.use(imageMotionAdminAnalyticsRouter);
 router.use(imageMotionRouter);
 router.use(imageMotionTrashRouter);
+// Google Play Billing fica isolado do Stripe e entra no fim da cadeia.
+router.use(googlePlayBillingRouter);
 
 export default router;
