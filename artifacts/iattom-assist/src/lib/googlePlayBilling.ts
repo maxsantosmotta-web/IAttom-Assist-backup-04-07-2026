@@ -85,7 +85,14 @@ async function requestPurchaseToken(productId: string): Promise<{
     },
   ];
 
-  const request = new PaymentRequest(methodData);
+  const paymentDetails: PaymentDetailsInit = {
+    total: {
+      label: "Total",
+      amount: { currency: "BRL", value: "0" },
+    },
+  };
+
+  const request = new PaymentRequest(methodData, paymentDetails);
   const response = await request.show();
   const details = response.details as { purchaseToken?: unknown } | null;
   const purchaseToken = typeof details?.purchaseToken === "string" ? details.purchaseToken : "";
