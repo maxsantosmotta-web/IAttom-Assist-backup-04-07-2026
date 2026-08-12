@@ -13,6 +13,7 @@ on:
       - 'lib/db/src/schema/index.ts'
       - 'lib/db/drizzle/0001_google_play_purchases.sql'
       - 'lib/db/scripts/test-google-play-migration.mjs'
+      - 'lib/db/scripts/test-google-play-entitlements.mjs'
       - '.github/workflows/validate-play-billing-backend.yml'
 
 permissions:
@@ -69,6 +70,9 @@ jobs:
 
       - name: Execute migration twice in isolated PostgreSQL and verify invariants
         run: pnpm --dir lib/db exec node ./scripts/test-google-play-migration.mjs
+
+      - name: Validate Google Play entitlement grants and replay protection
+        run: pnpm --dir lib/db exec node ./scripts/test-google-play-entitlements.mjs
 
       - name: Existing workspace typecheck — diagnostic only
         continue-on-error: true
