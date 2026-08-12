@@ -24,7 +24,6 @@ type OneTimeEntitlement = {
   grantAmount: number;
 };
 
-// IDs oficiais já cadastrados no Google Play Console.
 const ONE_TIME_PRODUCTS: Record<string, OneTimeEntitlement> = {
   creditos_100: { type: "credits", quantity: 100, grantAmount: 100 },
   creditos_200: { type: "credits", quantity: 200, grantAmount: 200 },
@@ -37,7 +36,14 @@ const ONE_TIME_PRODUCTS: Record<string, OneTimeEntitlement> = {
   videos_30: { type: "videos", quantity: 30, grantAmount: 30 },
 };
 
-const SUBSCRIPTION_PRODUCTS = new Set(["iattom_start", "iattom_premium", "iattom_pro"]);
+const SUBSCRIPTION_PRODUCTS = new Set([
+  "iattom_start",
+  "iattom_start_anual",
+  "iattom_premium",
+  "iattom_premium_anual",
+  "iattom_pro",
+  "iattom_pro_anual",
+]);
 const SUBSCRIPTION_BASE_PLANS = new Set([
   "start-mensal",
   "start-anual",
@@ -58,8 +64,6 @@ async function markConsumed(eventKey: string): Promise<void> {
     .where(eq(googlePlayPurchases.eventKey, eventKey));
 }
 
-// Diagnóstico somente leitura: autentica com a conta de serviço e lê o catálogo do app.
-// Não concede saldo, não altera assinatura e não consome compra.
 router.get("/google-play/connection-check", requireAuth, async (_req, res): Promise<void> => {
   try {
     const catalog = await probeGooglePlayCatalog();
@@ -215,8 +219,6 @@ router.post("/google-play/one-time/confirm", requireAuth, async (req, res): Prom
     });
 
     if (result.granted) {
-      // Os produtos avulsos do IAttom são consumíveis. A concessão no banco vem antes do consume.
-      // Se o consume falhar, a ledger impede nova concessão e uma repetição pode finalizar o consume.
       try {
         await consumeOneTimePurchase(productId, purchaseToken);
         await markConsumed(eventKey);
@@ -244,7 +246,6 @@ router.post("/google-play/one-time/confirm", requireAuth, async (req, res): Prom
   }
 });
 
-// Nesta primeira etapa, assinatura é somente validada. Nenhuma franquia é concedida aqui ainda.
 router.post("/google-play/subscription/verify", requireAuth, async (req, res): Promise<void> => {
   const productId = bodyString(req.body?.productId);
   const basePlanId = bodyString(req.body?.basePlanId);
