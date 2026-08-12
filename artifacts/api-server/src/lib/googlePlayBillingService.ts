@@ -3,8 +3,36 @@ import { GoogleAuth } from "google-auth-library";
 const PACKAGE_NAME = "com.iattomassist.app";
 const ANDROID_PUBLISHER_SCOPE = "https://www.googleapis.com/auth/androidpublisher";
 const API_BASE = "https://androidpublisher.googleapis.com/androidpublisher/v3";
+const SERVICE_ACCOUNT_ENV = "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON";
 
-const auth = new GoogleAuth({ scopes: [ANDROID_PUBLISHER_SCOPE] });
+function getGoogleAuth(): GoogleAuth {
+  const rawCredentials = process.env[SERVICE_ACCOUNT_ENV];
+
+  if (!rawCredentials) {
+    throw new Error(`${SERVICE_ACCOUNT_ENV}_not_configured`);
+  }
+
+  let credentials: Record<string, unknown>;
+  try {
+    credentials = JSON.parse(rawCredentials) as Record<string, unknown>;
+  } catch {
+    throw new Error(`${SERVICE_ACCOUNT_ENV}_invalid_json`);
+  }
+
+  const clientEmail = credentials.client_email;
+  const privateKey = credentials.private_key;
+  if (typeof clientEmail !== "string" || typeof privateKey !== "string") {
+    throw new Error(`${SERVICE_ACCOUNT_ENV}_missing_required_fields`);
+  }
+
+  return new GoogleAuth({
+    credentials: {
+      client_email: clientEmail,
+      private_key: privateKey,
+    },
+    scopes: [ANDROID_PUBLISHER_SCOPE],
+  });
+}
 
 export interface GoogleOneTimePurchase {
   purchaseState?: number;
@@ -38,6 +66,7 @@ export interface GoogleSubscriptionPurchaseV2 {
 }
 
 async function requestGoogle<T>(url: string, method: "GET" | "POST"): Promise<T> {
+  const auth = getGoogleAuth();
   const client = await auth.getClient();
   const response = await client.request<T>({ url, method });
   return response.data;
@@ -108,4 +137,4 @@ export async function acknowledgeSubscriptionPurchase(
   await requestGoogle<unknown>(url, "POST");
 }
 
-export { PACKAGE_NAME as GOOGLE_PLAY_PACKAGE_NAME };
+export { PACKAGE_NAME as GOOGLE_PLAY_PACKAGE_NAME, SERVICE_ACCOUNT_ENV as GOOGLE_PLAY_SERVICE_ACCOUNT_ENV };
