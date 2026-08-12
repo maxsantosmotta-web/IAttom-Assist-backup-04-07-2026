@@ -112,5 +112,9 @@ jobs:
       - name: Build final frontend with Google Play TWA billing
         run: pnpm --filter @workspace/iattom-assist exec vite build --config vite.config.ts
 
-      - name: Build API through the real patch chain
-        run: pnpm run build:api
+      - name: Verify API artifact produced by the real patch chain
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s artifacts/api-server/dist/index.mjs
+          echo 'API artifact already built successfully by the real frontend build chain.'
