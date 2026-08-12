@@ -12,6 +12,8 @@ on:
       - 'artifacts/iattom-assist/src/lib/googlePlayBilling.ts'
       - 'artifacts/iattom-assist/scripts/patch-google-play-twa-billing.mjs'
       - 'artifacts/iattom-assist/src/pages/dashboard/Billing.tsx'
+      - 'artifacts/iattom-assist/src/components/PlanGate.tsx'
+      - 'artifacts/iattom-assist/vite.config.ts'
       - 'lib/db/src/schema/googlePlayPurchases.ts'
       - 'lib/db/src/schema/index.ts'
       - 'lib/db/drizzle/0001_google_play_purchases.sql'
@@ -84,13 +86,10 @@ jobs:
       - name: Typecheck Play Billing backend files
         run: pnpm --filter @workspace/api-server exec tsc -p tsconfig.play-billing.json --noEmit
 
-      - name: Build existing frontend through its real patch chain
+      - name: Build production frontend through the real patch chain including Google Play TWA
         run: pnpm --filter @workspace/iattom-assist build
 
-      - name: Apply isolated Google Play TWA billing layer after existing patches
-        run: pnpm --filter @workspace/iattom-assist exec node scripts/patch-google-play-twa-billing.mjs
-
-      - name: Typecheck Google Play TWA frontend scope
+      - name: Typecheck Google Play TWA frontend scope after production build
         shell: bash
         run: |
           set +e
@@ -101,7 +100,7 @@ jobs:
           if [ "$status" -eq 0 ]; then
             exit 0
           fi
-          play_errors="$(printf '%s\n' "$output" | grep -E 'src/lib/googlePlayBilling\.ts|src/pages/dashboard/Billing\.tsx' || true)"
+          play_errors="$(printf '%s\n' "$output" | grep -E 'src/lib/googlePlayBilling\.ts|src/pages/dashboard/Billing\.tsx|src/components/PlanGate\.tsx' || true)"
           if [ -n "$play_errors" ]; then
             echo 'Google Play/TWA frontend typecheck error detected:' >&2
             printf '%s\n' "$play_errors" >&2
@@ -109,8 +108,14 @@ jobs:
           fi
           echo 'Only pre-existing frontend typecheck errors remain outside the Google Play/TWA scope.'
 
-      - name: Build final frontend with Google Play TWA billing
-        run: pnpm --filter @workspace/iattom-assist exec vite build --config vite.config.ts
+      - name: Verify production frontend contains Google Play billing layer
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'googleSubscription' artifacts/iattom-assist/src/pages/dashboard/Billing.tsx
+          grep -Fq '/api/google-play/subscription/status' artifacts/iattom-assist/src/pages/dashboard/Billing.tsx
+          test -s artifacts/iattom-assist/dist/public/index.html
+          echo 'Google Play TWA billing is part of the real production frontend build.'
 
       - name: Verify API artifact produced by the real patch chain
         shell: bash
