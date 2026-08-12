@@ -8,6 +8,7 @@ import {
   googlePlayPurchases,
 } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth.js";
+import { logger } from "../lib/logger.js";
 import {
   verifyOneTimePurchase,
   consumeOneTimePurchase,
@@ -199,7 +200,7 @@ router.post("/google-play/one-time/confirm", requireAuth, async (req, res): Prom
         await consumeOneTimePurchase(productId, purchaseToken);
         await markConsumed(eventKey);
       } catch (consumeError) {
-        req.log.error(
+        logger.error(
           { consumeError, clerkUserId, productId, eventKey },
           "Google Play entitlement granted but consume is pending",
         );
@@ -208,7 +209,7 @@ router.post("/google-play/one-time/confirm", requireAuth, async (req, res): Prom
 
     res.json({ ok: true, ...result });
   } catch (error) {
-    req.log.error({ error, clerkUserId, productId }, "Google Play one-time confirmation failed");
+    logger.error({ error, clerkUserId, productId }, "Google Play one-time confirmation failed");
     const message = error instanceof Error ? error.message : "google_play_confirmation_failed";
     if (message === "user_not_found") {
       res.status(404).json({ ok: false, error: "Usuário não encontrado" });
@@ -258,7 +259,7 @@ router.post("/google-play/subscription/verify", requireAuth, async (req, res): P
       expiryTime: lineItem.expiryTime ?? null,
     });
   } catch (error) {
-    req.log.error({ error, productId, basePlanId }, "Google Play subscription verification failed");
+    logger.error({ error, productId, basePlanId }, "Google Play subscription verification failed");
     res.status(502).json({ ok: false, error: "Não foi possível validar a assinatura no Google Play" });
   }
 });
