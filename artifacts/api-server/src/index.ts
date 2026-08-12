@@ -3,6 +3,7 @@ import app from "./app.js";
 import { logger } from "./lib/logger.js";
 import { getStripeSync } from "./lib/stripeClient.js";
 import { rehydrateMLTokens } from "./lib/mlTokenStartup.js";
+import { ensureGooglePlayLedger } from "./lib/googlePlayLedgerStartup.js";
 
 function normalizePublicOrigin(value: string): string {
   const normalized = value.trim().replace(/\/$/, "");
@@ -104,6 +105,8 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 await initStripe();
+await ensureGooglePlayLedger();
+logger.info("Google Play ledger schema ready");
 
 // Wrap with timeout — refreshMLToken has no AbortController; if ML API hangs at startup
 // the fetch pends indefinitely, blocking app.listen() and causing the port health check to fail.

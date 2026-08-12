@@ -4,7 +4,9 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'artifacts/api-server/src/index.ts'
       - 'artifacts/api-server/src/lib/googlePlayBillingService.ts'
+      - 'artifacts/api-server/src/lib/googlePlayLedgerStartup.ts'
       - 'artifacts/api-server/src/routes/googlePlayBilling.ts'
       - 'artifacts/api-server/src/routes/googlePlaySubscriptionEntitlements.ts'
       - 'artifacts/api-server/src/routes/index.ts'
@@ -122,4 +124,5 @@ jobs:
         run: |
           set -euo pipefail
           test -s artifacts/api-server/dist/index.mjs
-          echo 'API artifact already built successfully by the real frontend build chain.'
+          grep -Fq 'Google Play ledger schema ready' artifacts/api-server/dist/index.mjs
+          echo 'API artifact includes the Google Play ledger startup bootstrap.'
