@@ -65,6 +65,22 @@ export interface GoogleSubscriptionPurchaseV2 {
   lineItems?: GoogleSubscriptionLineItem[];
 }
 
+interface GoogleCatalogSubscription {
+  productId?: string;
+}
+
+interface GoogleCatalogSubscriptionList {
+  subscriptions?: GoogleCatalogSubscription[];
+}
+
+interface GoogleCatalogOneTimeProduct {
+  productId?: string;
+}
+
+interface GoogleCatalogOneTimeProductList {
+  oneTimeProducts?: GoogleCatalogOneTimeProduct[];
+}
+
 async function requestGoogle<T>(url: string, method: "GET" | "POST"): Promise<T> {
   const auth = getGoogleAuth();
   const client = await auth.getClient();
@@ -74,6 +90,30 @@ async function requestGoogle<T>(url: string, method: "GET" | "POST"): Promise<T>
 
 function encoded(value: string): string {
   return encodeURIComponent(value);
+}
+
+export async function probeGooglePlayCatalog(): Promise<{
+  packageName: string;
+  subscriptionProductIds: string[];
+  oneTimeProductIds: string[];
+}> {
+  const subscriptionsUrl = `${API_BASE}/applications/${encoded(PACKAGE_NAME)}/subscriptions?pageSize=50`;
+  const oneTimeProductsUrl = `${API_BASE}/applications/${encoded(PACKAGE_NAME)}/oneTimeProducts?pageSize=50`;
+
+  const [subscriptionsResponse, oneTimeProductsResponse] = await Promise.all([
+    requestGoogle<GoogleCatalogSubscriptionList>(subscriptionsUrl, "GET"),
+    requestGoogle<GoogleCatalogOneTimeProductList>(oneTimeProductsUrl, "GET"),
+  ]);
+
+  return {
+    packageName: PACKAGE_NAME,
+    subscriptionProductIds: (subscriptionsResponse.subscriptions ?? [])
+      .map((item) => item.productId)
+      .filter((productId): productId is string => typeof productId === "string"),
+    oneTimeProductIds: (oneTimeProductsResponse.oneTimeProducts ?? [])
+      .map((item) => item.productId)
+      .filter((productId): productId is string => typeof productId === "string"),
+  };
 }
 
 export async function verifyOneTimePurchase(
