@@ -9,6 +9,9 @@ on:
       - 'artifacts/api-server/src/routes/googlePlaySubscriptionEntitlements.ts'
       - 'artifacts/api-server/src/routes/index.ts'
       - 'artifacts/api-server/tsconfig.play-billing.json'
+      - 'artifacts/iattom-assist/src/lib/googlePlayBilling.ts'
+      - 'artifacts/iattom-assist/scripts/patch-google-play-twa-billing.mjs'
+      - 'artifacts/iattom-assist/src/pages/dashboard/Billing.tsx'
       - 'lib/db/src/schema/googlePlayPurchases.ts'
       - 'lib/db/src/schema/index.ts'
       - 'lib/db/drizzle/0001_google_play_purchases.sql'
@@ -78,8 +81,20 @@ jobs:
         continue-on-error: true
         run: pnpm run typecheck
 
-      - name: Typecheck Play Billing files
+      - name: Typecheck Play Billing backend files
         run: pnpm --filter @workspace/api-server exec tsc -p tsconfig.play-billing.json --noEmit
+
+      - name: Build existing frontend through its real patch chain
+        run: pnpm --filter @workspace/iattom-assist build
+
+      - name: Apply isolated Google Play TWA billing layer after existing patches
+        run: pnpm --filter @workspace/iattom-assist exec node scripts/patch-google-play-twa-billing.mjs
+
+      - name: Typecheck final frontend with Google Play TWA billing
+        run: pnpm --filter @workspace/iattom-assist exec tsc -p tsconfig.json --noEmit
+
+      - name: Build final frontend with Google Play TWA billing
+        run: pnpm --filter @workspace/iattom-assist exec vite build --config vite.config.ts
 
       - name: Build API through the real patch chain
         run: pnpm run build:api
