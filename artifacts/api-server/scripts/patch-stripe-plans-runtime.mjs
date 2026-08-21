@@ -11,16 +11,16 @@ if (start === -1 || end === -1) {
 
 const replacement = `const PLAN_PRICE_IDS = {
   pro: {
-    monthly: "price_1TvgAOAYtu5nLhAZmgqhsTxJ",
-    annual: "price_1TvgDBAYtu5nLhAZsgenq5SJ",
+    monthly: "price_1TunJ2AYtu5nLhAZPd1Ai0hD",
+    annual: "price_1TunNxAYtu5nLhAZw0frXi2Z",
   },
   business: {
-    monthly: "price_1TvgEwAYtu5nLhAZvWozumfH",
-    annual: "price_1TvgFWAYtu5nLhAZuT001wT5",
+    monthly: "price_1TunQhAYtu5nLhAZu5QXWW31",
+    annual: "price_1TunROAYtu5nLhAZqhKUuslz",
   },
   agency: {
-    monthly: "price_1TvgGHAYtu5nLhAZt4gYmBM5",
-    annual: "price_1TvgGgAYtu5nLhAZO8FYa6nK",
+    monthly: "price_1TunTDAYtu5nLhAZDfzTn8Cm",
+    annual: "price_1TunTgAYtu5nLhAZ5nRh52J8",
   },
 } as const;
 
@@ -38,7 +38,7 @@ router.get("/stripe/diagnostics", async (_req: Request, res: Response) => {
     stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
     webhookSecretConfigured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
     appPublicUrlConfigured: Boolean(process.env.APP_PUBLIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN),
-    source: "temporary_test_price_ids",
+    source: "official_plan_price_ids",
     plans: { start: true, premium: true, pro: true },
     error: null,
   });
@@ -53,17 +53,17 @@ router.get("/stripe/plans", async (_req: Request, res: Response) => {
     },
     {
       planKey: "pro", name: "START", description: "Plano de entrada do IAttom Assist",
-      credits: 20, amount: 50, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.pro.monthly,
+      credits: 20, amount: 6900, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.pro.monthly,
       features: ["20 créditos gerais + 40 de imagem", "Acesso aos módulos essenciais", "Projetos ilimitados", "Histórico completo", "Suporte padrão"],
     },
     {
       planKey: "business", name: "PREMIUM", description: "Mais recursos, créditos e capacidade operacional",
-      credits: 20, amount: 50, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.business.monthly,
+      credits: 20, amount: 15900, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.business.monthly,
       features: ["20 créditos gerais + 40 de imagem", "Acesso a todos os módulos", "Análises avançadas", "Automações premium", "Suporte prioritário"],
     },
     {
       planKey: "agency", name: "PRO", description: "Maior volume, recursos avançados e operação completa",
-      credits: 20, amount: 50, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.agency.monthly,
+      credits: 20, amount: 29900, currency: "brl", interval: "month", priceId: PLAN_PRICE_IDS.agency.monthly,
       features: ["20 créditos gerais + 40 de imagem", "Acesso total da plataforma", "Recursos avançados", "Prioridade máxima", "Suporte dedicado"],
     },
   ];
@@ -306,4 +306,4 @@ if (authRoutes.includes(oldProtection)) {
 }
 fs.writeFileSync(authRoutesPath, authRoutes);
 
-console.log("Stripe plans, direct reconciliation, paid-plan protection, and 20+40 test credits applied");
+console.log("Stripe plans, direct reconciliation, paid-plan protection, and current plan allowances applied");
