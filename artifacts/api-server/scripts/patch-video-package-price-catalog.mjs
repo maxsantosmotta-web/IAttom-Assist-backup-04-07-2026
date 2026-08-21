@@ -12,24 +12,21 @@ const videoPackages = `const VIDEO_PACKAGES = [
     videos: 10,
     unitAmountBrl: 5990,
     name: "Pacote 10 Vídeos com Efeito",
-    officialPriceId: "price_1U0EDAAYtu5nLhAZpWhOVTvB",
-    testPriceId: "price_1TyO8kAYtu5nLhAZFL8AJ8F9",
+    priceId: "price_1U0EDAAYtu5nLhAZpWhOVTvB",
   },
   {
     id: "video_20",
     videos: 20,
     unitAmountBrl: 8990,
     name: "Pacote 20 Vídeos com Efeito",
-    officialPriceId: "price_1U0EEMAYtu5nLhAZj1VLUXRM",
-    testPriceId: "price_1TyOBZAYtu5nLhAZ2JqbZb09",
+    priceId: "price_1U0EEMAYtu5nLhAZj1VLUXRM",
   },
   {
     id: "video_30",
     videos: 30,
     unitAmountBrl: 11990,
     name: "Pacote 30 Vídeos com Efeito",
-    officialPriceId: "price_1U0EFGAYtu5nLhAZgTswLJlM",
-    testPriceId: "price_1TyOCZAYtu5nLhAZkTdXPnee",
+    priceId: "price_1U0EFGAYtu5nLhAZgTswLJlM",
   },
 ] as const;`;
 
@@ -37,7 +34,7 @@ const packagePattern = /const VIDEO_PACKAGES = \[[\s\S]*?\] as const;/;
 if (!packagePattern.test(route)) throw new Error("Video package catalog not found");
 route = route.replace(packagePattern, videoPackages);
 
-const checkoutPattern = /      const url = await createVideoPackCheckoutSession\(\n        clerkUserId,\n        pkg\.id,\n        pkg\.videos,\n        pkg\.(?:unitAmountBrl|officialPriceId|testPriceId),\n        pkg\.name,\n      \);/;
+const checkoutPattern = /      const url = await createVideoPackCheckoutSession\(\n        clerkUserId,\n        pkg\.id,\n        pkg\.videos,\n        pkg\.(?:unitAmountBrl|officialPriceId|testPriceId|priceId),\n        pkg\.name,\n      \);/;
 if (!checkoutPattern.test(route)) throw new Error("Video checkout call marker not found");
 route = route.replace(
   checkoutPattern,
@@ -45,7 +42,7 @@ route = route.replace(
         clerkUserId,
         pkg.id,
         pkg.videos,
-        pkg.testPriceId,
+        pkg.priceId,
         pkg.name,
       );`,
 );
@@ -76,25 +73,24 @@ if (!/line_items:\s*\[\{\s*price:\s*priceId,\s*quantity:\s*1\s*\}\]/.test(videoF
   throw new Error("Video checkout line item is not using the registered Price ID");
 }
 if (/unitAmountBrl|price_data:/.test(videoFunction)) {
-  throw new Error("Video checkout still contains dynamic or official amount data");
+  throw new Error("Video checkout still contains dynamic amount data");
 }
 
 service = service.replace(videoFunctionPattern, videoFunction);
 
 for (const marker of [
-  'officialPriceId: "price_1U0EDAAYtu5nLhAZpWhOVTvB"',
-  'officialPriceId: "price_1U0EEMAYtu5nLhAZj1VLUXRM"',
-  'officialPriceId: "price_1U0EFGAYtu5nLhAZgTswLJlM"',
-  'testPriceId: "price_1TyO8kAYtu5nLhAZFL8AJ8F9"',
-  'testPriceId: "price_1TyOBZAYtu5nLhAZ2JqbZb09"',
-  'testPriceId: "price_1TyOCZAYtu5nLhAZkTdXPnee"',
-  "pkg.testPriceId",
+  'priceId: "price_1U0EDAAYtu5nLhAZpWhOVTvB"',
+  'priceId: "price_1U0EEMAYtu5nLhAZj1VLUXRM"',
+  'priceId: "price_1U0EFGAYtu5nLhAZgTswLJlM"',
+  "pkg.priceId",
 ]) {
   if (!route.includes(marker)) throw new Error(`Video catalog validation failed: ${marker}`);
 }
-if (route.includes("pkg.officialPriceId,")) throw new Error("Official video prices are still active during test mode");
+if (/price_1TyO8kAYtu5nLhAZFL8AJ8F9|price_1TyOBZAYtu5nLhAZ2JqbZb09|price_1TyOCZAYtu5nLhAZkTdXPnee/.test(route)) {
+  throw new Error("Temporary video Price IDs remain active");
+}
 if (/id: "video_(5|7)"/.test(route)) throw new Error("Legacy video packages remain in API catalog");
 
 writeFileSync(stripeRouteUrl, route);
 writeFileSync(stripeServiceUrl, service);
-console.log("Video checkout keeps verified test Price IDs active while new official Price IDs remain registered.");
+console.log("Video checkout uses only official Stripe Price IDs.");
