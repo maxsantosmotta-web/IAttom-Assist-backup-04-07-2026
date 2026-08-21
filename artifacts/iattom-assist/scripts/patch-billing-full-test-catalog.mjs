@@ -15,31 +15,31 @@ if (refreshStart >= 0 && refreshEnd > refreshStart) {
 }
 
 const creditPackages = `const CREDIT_PACKAGES = [
-  { id: "credits_300",  credits: 300,  label: "300",   price: "R$ 0,50", tag: "Acessível", perUnit: "" },
-  { id: "credits_700",  credits: 700,  label: "700",   price: "R$ 0,55", tag: "Vantagem", perUnit: "" },
-  { id: "credits_1500", credits: 1500, label: "1.500", price: "R$ 0,60", tag: "Melhor Valor", perUnit: "" },
+  { id: "credits_300",  credits: 100,  label: "100", price: "R$ 19,90", tag: "Acessível", perUnit: "" },
+  { id: "credits_700",  credits: 200,  label: "200", price: "R$ 39,90", tag: "Vantagem", perUnit: "" },
+  { id: "credits_1500", credits: 500, label: "500", price: "R$ 69,90", tag: "Melhor Valor", perUnit: "" },
 ] as const;`;
 billing = billing.replace(/const CREDIT_PACKAGES = \[[\s\S]*?\] as const;/, creditPackages);
 
 billing = billing
-  .replace(/(id: "creative_20"[^\n]*price: ")[^"]+("[^\n]*)/g, `$1R$ 0,50$2`)
-  .replace(/(id: "creative_35"[^\n]*price: ")[^"]+("[^\n]*)/g, `$1R$ 0,55$2`)
-  .replace(/(id: "creative_50"[^\n]*price: ")[^"]+("[^\n]*)/g, `$1R$ 0,60$2`)
+  .replace(/(id: "creative_20"[^\n]*price: ")[^"]+("[^\n]*)/g, `$1R$ 39,90$2`)
+  .replace(/(id: "creative_35"[^\n]*price: ")[^"]+("[^\n]*)/g, `$1R$ 69,90$2`)
+  .replace(/(id: "creative_50"[^\n]*price: ")[^"]+("[^\n]*)/g, `$1R$ 99,90$2`)
   .replaceAll(`tag: "CRIATIVO 20"`, `tag: "20 IMAGENS"`)
   .replaceAll(`tag: "CRIATIVO 35"`, `tag: "35 IMAGENS"`)
   .replaceAll(`tag: "CRIATIVO 50"`, `tag: "50 IMAGENS"`)
   .replaceAll("Pacotes de Vídeo</p>", "Pacotes de Vídeo com Efeito</p>");
 
 credits = credits
-  .replace(/monthlyDisplay: "R\$69\/mês"/, `monthlyDisplay: "R$ 0,50/mês"`)
-  .replace(/yearlyDisplay: "R\$697\/ano"/, `yearlyDisplay: "R$ 0,50/ano"`)
-  .replace(/yearlyMonthlyDisplay: "R\$58,08\/mês"/, `yearlyMonthlyDisplay: "R$ 0,50/mês"`)
-  .replace(/monthlyDisplay: "R\$159\/mês"/, `monthlyDisplay: "R$ 0,50/mês"`)
-  .replace(/yearlyDisplay: "R\$1\.565\/ano"/, `yearlyDisplay: "R$ 0,50/ano"`)
-  .replace(/yearlyMonthlyDisplay: "R\$130,42\/mês"/, `yearlyMonthlyDisplay: "R$ 0,50/mês"`)
-  .replace(/monthlyDisplay: "R\$299\/mês"/, `monthlyDisplay: "R$ 0,50/mês"`)
-  .replace(/yearlyDisplay: "R\$2\.870\/ano"/, `yearlyDisplay: "R$ 0,50/ano"`)
-  .replace(/yearlyMonthlyDisplay: "R\$239,20\/mês"/, `yearlyMonthlyDisplay: "R$ 0,50/mês"`);
+  .replace(/monthlyDisplay: "[^"]*"/, `monthlyDisplay: "R$69/mês"`)
+  .replace(/yearlyDisplay: "[^"]*"/, `yearlyDisplay: "R$697/ano"`)
+  .replace(/yearlyMonthlyDisplay: "[^"]*"/, `yearlyMonthlyDisplay: "R$58,08/mês"`)
+  .replace(/monthlyDisplay: "[^"]*"/, `monthlyDisplay: "R$159/mês"`)
+  .replace(/yearlyDisplay: "[^"]*"/, `yearlyDisplay: "R$1.565/ano"`)
+  .replace(/yearlyMonthlyDisplay: "[^"]*"/, `yearlyMonthlyDisplay: "R$130,42/mês"`)
+  .replace(/monthlyDisplay: "[^"]*"/, `monthlyDisplay: "R$299/mês"`)
+  .replace(/yearlyDisplay: "[^"]*"/, `yearlyDisplay: "R$2.870/ano"`)
+  .replace(/yearlyMonthlyDisplay: "[^"]*"/, `yearlyMonthlyDisplay: "R$239,20/mês"`);
 
 const videoMapStart = billing.indexOf("{VIDEO_PACKAGES.map((pkg) => {");
 const videoSectionEnd = billing.indexOf("{/* ── Referral CTA", videoMapStart);
@@ -68,4 +68,4 @@ if (videoMapStart >= 0 && videoSectionEnd > videoMapStart) {
 
 writeFileSync(billingUrl, billing);
 writeFileSync(creditsUrl, credits);
-console.log("Billing test catalog patch applied; complete refresh handler replaced and Vite validates final output.");
+console.log("Billing catalog patch applied with official plan and package prices.");
