@@ -40,17 +40,17 @@ route = route
   .replace(
     /const CREDIT_PACKAGES = \[[\s\S]*?\] as const;/,
     `const CREDIT_PACKAGES = [
-  { id: "credits_300", credits: 100, unitAmountBrl: 50, name: "Pacote 100 Créditos", displayPrice: "R$ 0,50" },
-  { id: "credits_700", credits: 200, unitAmountBrl: 55, name: "Pacote 200 Créditos", displayPrice: "R$ 0,55" },
-  { id: "credits_1500", credits: 500, unitAmountBrl: 60, name: "Pacote 500 Créditos", displayPrice: "R$ 0,60" },
+  { id: "credits_300", credits: 100, unitAmountBrl: 1990, name: "Pacote 100 Créditos", displayPrice: "R$ 19,90" },
+  { id: "credits_700", credits: 200, unitAmountBrl: 3990, name: "Pacote 200 Créditos", displayPrice: "R$ 39,90" },
+  { id: "credits_1500", credits: 500, unitAmountBrl: 6990, name: "Pacote 500 Créditos", displayPrice: "R$ 69,90" },
 ] as const;`,
   )
   .replace(
     /const CREATIVE_PACKAGES = \[[\s\S]*?\] as const;/,
     `const CREATIVE_PACKAGES = [
-  { id: "creative_20", creativeCredits: 100, unitAmountBrl: 50, name: "Pacote 10 Imagens Premium", displayPrice: "R$ 0,50" },
-  { id: "creative_35", creativeCredits: 200, unitAmountBrl: 55, name: "Pacote 20 Imagens Premium", displayPrice: "R$ 0,55" },
-  { id: "creative_50", creativeCredits: 300, unitAmountBrl: 60, name: "Pacote 30 Imagens Premium", displayPrice: "R$ 0,60" },
+  { id: "creative_20", creativeCredits: 100, unitAmountBrl: 3990, name: "Pacote 10 Imagens Premium", displayPrice: "R$ 39,90" },
+  { id: "creative_35", creativeCredits: 200, unitAmountBrl: 6990, name: "Pacote 20 Imagens Premium", displayPrice: "R$ 69,90" },
+  { id: "creative_50", creativeCredits: 300, unitAmountBrl: 9990, name: "Pacote 30 Imagens Premium", displayPrice: "R$ 99,90" },
 ] as const;`,
   )
   .replace(/planKey: "pro", name: "START",([\s\S]*?)credits: (?:20|200),/,
@@ -77,12 +77,12 @@ if (reconcileStart >= 0 && reconcileEnd > reconcileStart) {
 }
 
 for (const marker of [
-  'credits: 100, unitAmountBrl: 50, name: "Pacote 100 Créditos"',
-  'credits: 200, unitAmountBrl: 55, name: "Pacote 200 Créditos"',
-  'credits: 500, unitAmountBrl: 60, name: "Pacote 500 Créditos"',
-  'creativeCredits: 100, unitAmountBrl: 50, name: "Pacote 10 Imagens Premium"',
-  'creativeCredits: 200, unitAmountBrl: 55, name: "Pacote 20 Imagens Premium"',
-  'creativeCredits: 300, unitAmountBrl: 60, name: "Pacote 30 Imagens Premium"',
+  'credits: 100, unitAmountBrl: 1990, name: "Pacote 100 Créditos"',
+  'credits: 200, unitAmountBrl: 3990, name: "Pacote 200 Créditos"',
+  'credits: 500, unitAmountBrl: 6990, name: "Pacote 500 Créditos"',
+  'creativeCredits: 100, unitAmountBrl: 3990, name: "Pacote 10 Imagens Premium"',
+  'creativeCredits: 200, unitAmountBrl: 6990, name: "Pacote 20 Imagens Premium"',
+  'creativeCredits: 300, unitAmountBrl: 9990, name: "Pacote 30 Imagens Premium"',
   'planKey: "pro", name: "START"',
   'planKey: "business", name: "PREMIUM"',
   'planKey: "agency", name: "PRO"',
@@ -91,4 +91,4 @@ for (const marker of [
 }
 
 write(stripeRoutePath, route);
-console.log("Commercial catalog consolidated: plan allowances, package quantities and test checkout separation are ready.");
+console.log("Commercial catalog consolidated with official package prices and plan allowances.");
