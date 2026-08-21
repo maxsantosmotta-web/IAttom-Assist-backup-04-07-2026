@@ -20,27 +20,16 @@ const CREATIVE_PACKAGE_PRICE_IDS: Record<string, string> = {
   creative_50: "price_1U0ERSAYtu5nLhAZKvYw4HjL",
 };
 
-const OFFICIAL_VIDEO_PACKAGE_PRICE_IDS: Record<string, string> = {
+const VIDEO_PACKAGE_PRICE_IDS: Record<string, string> = {
   video_10: "price_1U0EDAAYtu5nLhAZpWhOVTvB",
   video_20: "price_1U0EEMAYtu5nLhAZj1VLUXRM",
   video_30: "price_1U0EFGAYtu5nLhAZgTswLJlM",
-};
-
-const TEST_VIDEO_PACKAGE_PRICE_IDS: Record<string, string> = {
-  video_10: "price_1TyO8kAYtu5nLhAZFL8AJ8F9",
-  video_20: "price_1TyOBZAYtu5nLhAZ2JqbZb09",
-  video_30: "price_1TyOCZAYtu5nLhAZkTdXPnee",
-};
-
-const VIDEO_PACKAGE_CATALOG_MODE: "official" | "test" = "official";
-const VIDEO_PACKAGE_PRICE_IDS = VIDEO_PACKAGE_CATALOG_MODE === "test"
-  ? TEST_VIDEO_PACKAGE_PRICE_IDS
-  : OFFICIAL_VIDEO_PACKAGE_PRICE_IDS;`;
+};`;
 
 const existingConstants = /\nconst CREDIT_PACKAGE_PRICE_IDS:[\s\S]*?const VIDEO_PACKAGE_PRICE_IDS[^;]*;\n?/;
 if (existingConstants.test(source)) {
   source = source.replace(existingConstants, packageConstants + "\n");
-} else if (!source.includes("OFFICIAL_VIDEO_PACKAGE_PRICE_IDS")) {
+} else if (!source.includes("const VIDEO_PACKAGE_PRICE_IDS")) {
   if (!source.includes(constantsMarker)) throw new Error("stripeService constants marker not found");
   source = source.replace(constantsMarker, constantsMarker + packageConstants);
 }
@@ -106,10 +95,6 @@ for (const marker of [
   'video_10: "price_1U0EDAAYtu5nLhAZpWhOVTvB"',
   'video_20: "price_1U0EEMAYtu5nLhAZj1VLUXRM"',
   'video_30: "price_1U0EFGAYtu5nLhAZgTswLJlM"',
-  'video_10: "price_1TyO8kAYtu5nLhAZFL8AJ8F9"',
-  'video_20: "price_1TyOBZAYtu5nLhAZ2JqbZb09"',
-  'video_30: "price_1TyOCZAYtu5nLhAZkTdXPnee"',
-  'VIDEO_PACKAGE_CATALOG_MODE: "official" | "test" = "official"',
 ]) {
   if (!source.includes(marker)) throw new Error(`Catalog marker missing: ${marker}`);
 }
@@ -117,6 +102,4 @@ if (/id: "video_(5|7)"/.test(routes)) throw new Error("Legacy video packages are
 
 fs.writeFileSync(servicePath, source);
 fs.writeFileSync(routePath, routes);
-console.log("New official package catalog registered; verified test video Price IDs remain separate and untouched.");
-
-await import("./patch-official-plan-price-ids-final.mjs");
+console.log("Official Stripe package catalog applied for credits, images and videos.");
