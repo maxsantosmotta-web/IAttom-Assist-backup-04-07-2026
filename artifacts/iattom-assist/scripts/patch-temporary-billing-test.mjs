@@ -81,8 +81,24 @@ for (const marker of [
 }
 if (/id: "video_(5|7)"/.test(billing)) throw new Error("Legacy video cards are still visible");
 
+const currentPlanActionsOld = `            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowComparison(true)}`;
+const currentPlanActionsNew = `            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowComparison(true)}`;
+if (billing.includes(currentPlanActionsOld)) {
+  billing = billing.replace(currentPlanActionsOld, currentPlanActionsNew);
+} else if (!billing.includes('className="flex min-w-0 max-w-full flex-wrap items-center gap-2"')) {
+  throw new Error("Current plan action group marker not found");
+}
+
 writeFileSync(billingUrl, billing);
 
 await import("./patch-plan-media-package-labels.mjs");
 
-console.log("Official video package prices displayed.");
+console.log("Official video package prices displayed; current-plan actions remain inside the card on narrow widths.");
