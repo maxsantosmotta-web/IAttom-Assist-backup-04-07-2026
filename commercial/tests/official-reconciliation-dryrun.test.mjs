@@ -51,6 +51,21 @@ test('Clerk precisa autenticar e verificar e-mail na camada servidor',async()=>{
    assert.equal((await f.run()).code,'CLERK_IDENTITY_NOT_VERIFIED');
  }
 });
+test('e-mail diferente no Clerk nao cancela pagamento e so deixa acesso pendente',async()=>{
+ const f=setup();f.clerk.email='diferente@example.com';
+ const r=await f.run();
+ assert.equal(r.code,'REGISTERED_EMAIL_NOT_VERIFIED');
+ assert.equal(r.paymentRecorded,true);assert.equal(r.paymentUnchanged,true);
+ assert.equal(r.accessStatus,'PENDING_EMAIL_REVIEW');assert.equal(r.correctionAvailable,true);
+ assert.equal(r.accountActivated,false);assert.equal(r.creditsGranted,0);
+});
+test('e-mail diferente no Stripe Customer nao cancela pagamento: revisa acesso',async()=>{
+ const f=setup();f.customer.email='pagador@example.com';
+ const r=await f.run();
+ assert.equal(r.code,'STRIPE_CUSTOMER_EMAIL_MISMATCH');
+ assert.equal(r.paymentRecorded,true);assert.equal(r.paymentUnchanged,true);
+ assert.equal(r.accessStatus,'PENDING_EMAIL_REVIEW');assert.equal(r.accountActivated,false);
+});
 test('o e-mail verificado no Clerk identifica o assinante pelo preregistro salvo',async()=>{
  const ok=setup();ok.clerk.email=' COMPRADOR@EXAMPLE.COM ';ok.user.email='Comprador@EXAMPLE.COM';
  assert.equal((await ok.run()).eligible,true);

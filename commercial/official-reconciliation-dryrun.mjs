@@ -4,7 +4,8 @@ import {HandoffState} from './pending-handoff.mjs';
  * Especificação executável e exclusivamente de leitura. Os adapters, incluindo
  * autenticação e APIs externas, são FICTÍCIOS nos testes. Sem rotas ou mutações.
  */
-const blocked=(code)=>({mode:'DRY_RUN',eligible:false,code,accountActivated:false,creditsGranted:0,requiresOfficialAuthorization:true});
+const blocked=(code)=>({mode:'DRY_RUN',eligible:false,code,accountActivated:false,creditsGranted:0,requiresOfficialAuthorization:true,paymentUnchanged:true});
+const reviewPaidAccess=(code)=>({...blocked(code),paymentRecorded:true,accessStatus:'PENDING_EMAIL_REVIEW',correctionAvailable:true});
 const id=(x,p)=>typeof x==='string'&&x.startsWith(p)&&x.length>p.length;
 const email=x=>typeof x==='string'?x.trim().toLowerCase():'';
 const ref=x=>typeof x==='string'?x:x?.id;
@@ -31,14 +32,14 @@ export async function prepareOfficialReconciliationDryRun({pending,testPriceIds,
  const registration=await adapters.getStoredPreRegistration(pending.registrationId);
  if(!registration||registration.id!==pending.registrationId||!email(registration.email)||
     email(registration.email)!==email(clerk.email))
-   return blocked('REGISTERED_EMAIL_NOT_VERIFIED');
+   return reviewPaidAccess('REGISTERED_EMAIL_NOT_VERIFIED');
  // O Stripe Customer de teste e obtido pelo servidor e vinculado ao preregistro.
  // O nome do portador do cartao ou o billing_details nao identificam a conta.
  const customer=await adapters.retrieveCustomer(pending.customerId);
  if(!customer||customer.id!==pending.customerId||customer.livemode!==false||
     email(customer.email)!==email(registration.email)||
     customer.metadata?.pre_registration_id!==pending.registrationId)
-   return blocked('STRIPE_CUSTOMER_EMAIL_MISMATCH');
+   return reviewPaidAccess('STRIPE_CUSTOMER_EMAIL_MISMATCH');
  const checkout=await adapters.retrieveCheckout(pending.sessionId);
  if(!checkout||checkout.id!==pending.sessionId||checkout.livemode!==false||
    checkout.mode!=='subscription'||checkout.status!=='complete'||checkout.payment_status!=='paid'||
@@ -94,5 +95,5 @@ export async function prepareOfficialReconciliationDryRun({pending,testPriceIds,
    identityRule:'VERIFIED_CLERK_EMAIL_MATCHES_STORED_REGISTRATION',
    proposedChecks:['unique_claim_transaction','recheck_customer_owner','recheck_active_subscriptions',
       'confirm_paid_invoice','idempotent_billing_period_credits'],
-   accountActivated:false,creditsGranted:0,requiresOfficialAuthorization:true};
+   accountActivated:false,creditsGranted:0,requiresOfficialAuthorization:true,paymentUnchanged:true};
 }

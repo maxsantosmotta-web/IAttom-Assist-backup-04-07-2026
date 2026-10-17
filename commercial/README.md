@@ -116,3 +116,8 @@ Antes de implementar no backend oficial: usar o e-mail verificado no Clerk como 
 ## Identidade do assinante: regra comercial validada
 
 O usuário da plataforma é identificado exclusivamente pelo **e-mail de cadastro verificado no Clerk**. O cartão pode pertencer a terceiro autorizado; nome, CPF e e-mail do titular do cartão não precisam coincidir com os dados do usuário. A verificação Clerk autentica o e-mail da pessoa que acessa a plataforma; o servidor confere o e-mail do pré-cadastro persistido com o Stripe Customer de teste e a sessão de assinatura. Um e-mail meramente digitado não ativa plano. A simulação continua sem qualquer acesso ao banco do IAttom e sem alteração do financeiro oficial.
+
+
+## Separação de pagamento e acesso
+
+O Stripe aprova ou recusa pagamentos: o checkout comercial não consulta o Clerk antes da cobrança. Cartão de terceiro é permitido. Divergência de e-mail depois de pagamento registrado deixa apenas a vinculação de acesso no status PENDING_EMAIL_REVIEW; o pagamento permanece intocado. O simulador indica paymentRecorded=true e paymentUnchanged=true para a divergência, sem estornar, cancelar ou negar compras. A correção futura precisa de verificação segura, sem liberar acesso à conta errada. O trabalho não altera nem utiliza o ambiente oficial.
