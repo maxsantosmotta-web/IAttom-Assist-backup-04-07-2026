@@ -45,6 +45,41 @@ footer{border-top:1px solid #342e23;padding:28px 0 38px;color:#96969a;font-size:
 #demonstracao .screenframe{width:min(350px,100%);height:auto;aspect-ratio:941/1672;margin:0;border:5px solid #323235;border-radius:30px;overflow:hidden;box-shadow:0 25px 70px #000c,0 0 0 1px #d4a94749}
 #demonstracao .feature-image{width:100%;height:100%;display:block;object-fit:contain;object-position:top center}
 @media(max-width:680px){.hero .phone{height:440px}#demonstracao .proof-feature{min-height:0;margin:15px 0 54px}#demonstracao .screenframe{width:min(330px,98%)}}
+
+/* Faturamento: visual consistente com os cards internos START/PREMIUM/PRO */
+#planos {background:#08090a;}
+#planos .sectionintro{max-width:720px}
+.billing-plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:19px;margin-top:48px;align-items:stretch}
+.billing-plan{--plan-color:#dcb956;--plan-bg:rgba(219,185,86,.10);--plan-button:#d4b04f;position:relative;display:flex;flex-direction:column;background:#111214;border:1px solid #292a2c;border-radius:19px;padding:26px 23px 22px;min-width:0}
+.billing-plan.start{--plan-color:#06bf87;--plan-bg:rgba(1,164,117,.13);--plan-button:#00a577}
+.billing-plan.premium{--plan-color:#a978fc;--plan-bg:rgba(129,37,246,.12);--plan-button:#8129f9}
+.billing-plan.pro{--plan-color:#e3c665;--plan-bg:rgba(211,166,50,.12);--plan-button:linear-gradient(90deg,#d2aa45,#ebcb78)}
+.billing-plan.featured{border-color:#63328d;box-shadow:0 0 0 1px #562d7424}
+.billing-best{position:absolute;top:-15px;left:50%;transform:translateX(-50%);display:inline-flex;justify-content:center;align-items:center;white-space:nowrap;background:#8023f7;color:white;font-size:12px;font-weight:800;line-height:1.2;padding:9px 17px;border-radius:0 0 10px 10px;box-shadow:0 7px 20px #7425f655}
+.billing-plan-heading{display:flex;align-items:center;gap:12px;margin:10px 0 17px}
+.billing-plan-icon{flex:none;width:43px;height:43px;display:grid;place-items:center;border-radius:12px;background:var(--plan-bg);border:1px solid color-mix(in srgb,var(--plan-color) 35%,transparent);color:var(--plan-color);font-size:25px;font-weight:800}
+.billing-plan-heading h3{color:var(--plan-color);font-size:20px;font-weight:800;margin:0;line-height:1.2}
+.billing-plan-description{font-size:13px;color:#9999a2;line-height:1.6;min-height:66px;margin:0 0 12px}
+.billing-plan-price strong{display:block;font-size:clamp(28px,2.7vw,37px);letter-spacing:-.045em;line-height:1.15;color:white}
+.billing-plan-price strong span{letter-spacing:-.035em}
+.billing-plan-price small{display:block;color:#797a80;font-size:12px;margin-top:7px}
+.billing-credits{display:flex;align-items:center;gap:10px;background:#1c1d1e;border:1px solid #323436;color:#d2d3d4;border-radius:10px;padding:13px 12px;margin:25px 0 20px;font-size:14px}
+.billing-credits span{font-size:19px;color:#e4bf35}
+.billing-features{list-style:none;padding:0;margin:0 0 29px;display:grid;gap:9px}
+.billing-features li{display:flex;align-items:start;gap:10px;line-height:1.5;font-size:13px;min-width:0;color:#b9b8c0}
+.billing-features li span:last-child{overflow-wrap:anywhere}
+.billing-feature-icon{flex:none;width:17px;color:var(--plan-color);font-weight:700;font-size:16px;line-height:1.35}
+.billing-features .not-included{color:#55555d}
+.billing-features .not-included .billing-feature-icon{color:#5b5b66}
+.billing-cta{display:block;margin-top:auto;width:100%;min-height:48px;padding:11px 14px;border:1px solid #dfb73e;border-radius:9px;background:var(--plan-button);color:#0d0d0d;font-size:15px;font-weight:850;letter-spacing:.005em}
+.billing-plan.premium .billing-cta{color:white}
+.billing-cta:hover{filter:brightness(1.07)}
+.billing-cta.selected{outline:3px solid var(--plan-color);outline-offset:2px}
+.billing-cta:focus-visible{outline:3px solid var(--plan-color);outline-offset:3px}
+.billing-fine-print{font-size:12px;line-height:1.65;color:#9999a2;margin-top:22px}
+#planos .checkout-status{margin-top:16px}
+@media(max-width:1000px){.billing-plans{grid-template-columns:1fr;max-width:590px;margin:42px auto 0;gap:20px}.billing-plan{padding:29px 28px 24px}.billing-plan-description{min-height:0;margin-bottom:15px}.billing-plan-price strong{font-size:36px}.billing-features li{font-size:14px}}
+@media(max-width:680px){.billing-plans{margin-top:36px}.billing-plan{padding:24px 19px 20px}.billing-plan-heading{margin:12px 0 17px}.billing-plan-price strong{font-size:36px}.billing-best{font-size:11px}.billing-features li{font-size:14px}.billing-credits{font-size:14px}}
 </style>
 </head>
 <body>
@@ -64,7 +99,33 @@ footer{border-top:1px solid #342e23;padding:28px 0 38px;color:#96969a;font-size:
 <article class="proof-feature reverse" id="modulo-biblioteca"><div class="proof-copy"><div class="stepno">08 / BIBLIOTECA</div><h3>Mantenha seus projetos organizados e prontos para reutilizar.</h3><p>Encontre campanhas, imagens, prompts, conteúdos e outros materiais salvos.</p></div><div class="display"><figure class="screenframe"><img class="feature-image" src="/assets/landing/biblioteca.png" alt="Tela Biblioteca, recriada em alta definição" width="941" height="1672" loading="lazy" decoding="async"></figure></div></article></div></section>
 <section id="metodo"><div class="wrap"><div class="sectionintro"><div class="eyebrow">Seu fluxo de trabalho</div><h2>Da ideia até a preparação do anúncio.</h2><p>Não precisa começar de uma tela em branco a cada etapa. O IAttom oferece ferramentas para conduzir seu processo comercial.</p></div><div class="steps"><div class="step"><b>01</b><h3>Encontre</h3><p>Busque produtos e oportunidades por nicho e canal.</p></div><div class="step"><b>02</b><h3>Valide</h3><p>Avalie informações e organize sua decisão antes de investir.</p></div><div class="step"><b>03</b><h3>Crie</h3><p>Produza campanhas, imagens, conteúdos e scripts de vídeo.</p></div><div class="step"><b>04</b><h3>Prepare</h3><p>Salve materiais e siga para a publicação assistida.</p></div></div></div></section>
 <section id="plataformas"><div class="wrap"><div class="eyebrow">Canais comerciais</div><h2>Uma estratégia adaptada ao canal.</h2><p class="muted">Crie materiais voltados para o ambiente onde você pretende divulgar seus produtos.</p><div class="channel-list"><span>Mercado Livre</span><span>Shopee</span><span>Hotmart</span><span>Kiwify</span><span>Instagram</span><span>Facebook</span><span>TikTok</span></div><p class="channel-note">A publicação é assistida: o IAttom prepara o material e orienta a continuidade no ambiente da plataforma. Isso não significa publicação automática ou integração de contas em todos os canais.</p></div></section>
-<section id="planos"><div class="wrap"><div class="sectionintro"><div class="eyebrow">Escolha o próximo passo</div><h2>O plano certo para a sua operação.</h2><p>Depois de registrar seu e-mail, escolha o plano que mais combina com sua necessidade. Sua compra e sua conta definitiva utilizarão o mesmo endereço.</p></div><div class="plans"><article class="plan"><span class="tag">Para dar o primeiro passo</span><h3>START</h3><div class="price">R$ 69,00 <small>/mês</small></div><p>Para começar a estruturar sua criação de materiais comerciais com ferramentas digitais.</p><button type="button" class="btn select-plan" data-plan="START">Selecionar Start →</button></article><article class="plan featured"><span class="tag">Destaque</span><h3>PREMIUM</h3><div class="price">R$ 159,00 <small>/mês</small></div><p>Para quem deseja ampliar sua rotina de criação e organizar mais atividades em um só lugar.</p><button type="button" class="btn select-plan" data-plan="PREMIUM">Selecionar Premium →</button></article><article class="plan"><span class="tag">Operação mais intensa</span><h3>PRO</h3><div class="price">R$ 299,00 <small>/mês</small></div><p>Para quem precisa de uma estrutura de trabalho mais ampla e recorrente.</p><button type="button" class="btn select-plan" data-plan="PRO">Selecionar Pro →</button></article></div><div class="checkout-status" role="status" id="plan-status">Para escolher um plano, registre seu e-mail no pré-cadastro acima.</div></div></section>
+<section id="planos"><div class="wrap"><div class="sectionintro"><div class="eyebrow">PLANOS E ASSINATURAS</div><h2>Escolha o plano ideal para você.</h2><p>Os mesmos planos e recursos apresentados no faturamento do IAttom Assist. Registre seu e-mail antes de escolher sua assinatura.</p></div><div class="billing-plans"><article class="billing-plan start" aria-label="Plano START">
+
+<div class="billing-plan-heading"><span class="billing-plan-icon" aria-hidden="true">↗</span><h3>START</h3></div>
+<p class="billing-plan-description">Ideal para quem deseja começar a criar campanhas, imagens e utilizar os principais recursos do IAttom Assist.</p>
+<div class="billing-plan-price"><strong>R$69<span>/mês</span></strong><small>cobrado mensalmente</small></div>
+<div class="billing-credits"><span aria-hidden="true">⚡</span><strong>200 créditos / mês</strong></div>
+<ul class="billing-features"><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Criar Prompt</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Criar Campanha</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Gerar Imagem (Opcional - consultar pacote)</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Gerar Vídeo com Efeito (Opcional - consultar pacote)</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>IAttom Help</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Navegação pela Plataforma</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Publicação Assistida</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Análise</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Monitoramento</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Biblioteca</span></li><li class="not-included"><span class="billing-feature-icon" aria-hidden="true">⊘</span><span>Buscar Produtos</span></li><li class="not-included"><span class="billing-feature-icon" aria-hidden="true">⊘</span><span>Validar Produto</span></li><li class="not-included"><span class="billing-feature-icon" aria-hidden="true">⊘</span><span>Criar Conteúdo</span></li><li class="not-included"><span class="billing-feature-icon" aria-hidden="true">⊘</span><span>Scripts de Vídeo</span></li></ul>
+<button type="button" class="billing-cta select-plan" data-plan="START">Assinar START</button>
+</article>
+<article class="billing-plan premium featured" aria-label="Plano PREMIUM">
+<div class="billing-best">★ MAIS ESCOLHIDO</div>
+<div class="billing-plan-heading"><span class="billing-plan-icon" aria-hidden="true">✧</span><h3>PREMIUM</h3></div>
+<p class="billing-plan-description">Mais controle, mais produção, mais oportunidades de venda.</p>
+<div class="billing-plan-price"><strong>R$159<span>/mês</span></strong><small>cobrado mensalmente</small></div>
+<div class="billing-credits"><span aria-hidden="true">⚡</span><strong>500 créditos / mês</strong></div>
+<ul class="billing-features"><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Criar Prompt</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Criar Campanha</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Gerar Imagem (Opcional - consultar pacote)</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Validar Produto</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Scripts de Vídeo</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>IAttom Help</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Gerar Vídeo com Efeito (Opcional - consultar pacote)</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Navegação pela Plataforma</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Publicação Assistida</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Análise</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Monitoramento</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Biblioteca</span></li><li class="not-included"><span class="billing-feature-icon" aria-hidden="true">⊘</span><span>Buscar Produtos</span></li><li class="not-included"><span class="billing-feature-icon" aria-hidden="true">⊘</span><span>Criar Conteúdo</span></li></ul>
+<button type="button" class="billing-cta select-plan" data-plan="PREMIUM">Assinar PREMIUM</button>
+</article>
+<article class="billing-plan pro" aria-label="Plano PRO">
+
+<div class="billing-plan-heading"><span class="billing-plan-icon" aria-hidden="true">▥</span><h3>PRO</h3></div>
+<p class="billing-plan-description">Todos os recursos do IAttom Assist para criar, validar, publicar e escalar com máxima capacidade.</p>
+<div class="billing-plan-price"><strong>R$299<span>/mês</span></strong><small>cobrado mensalmente</small></div>
+<div class="billing-credits"><span aria-hidden="true">⚡</span><strong>1.000 créditos / mês</strong></div>
+<ul class="billing-features"><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Buscar Produtos</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Validar Produto</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Criar Prompt</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Criar Conteúdo</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Criar Campanha</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Gerar Imagem (Opcional - consultar pacote)</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Scripts de Vídeo</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Gerar Vídeo com Efeito (Opcional - consultar pacote)</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>IAttom Help</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Navegação pela Plataforma</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Publicação Assistida</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Análise</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Monitoramento</span></li><li class="is-included"><span class="billing-feature-icon" aria-hidden="true">✓</span><span>Biblioteca</span></li></ul>
+<button type="button" class="billing-cta select-plan" data-plan="PRO">Assinar PRO</button>
+</article></div><p class="billing-fine-print">Recursos indicados como opcionais podem exigir contratação de pacote específico. A publicação é assistida, conforme as funcionalidades disponíveis na plataforma.</p><div class="checkout-status" role="status" aria-live="polite" id="plan-status">Para escolher seu plano, registre seu e-mail no pré-cadastro acima.</div></div></section>
 
 
 </main>
@@ -103,7 +164,7 @@ form.addEventListener('submit',async event=>{
 });
 plans.forEach(button=>button.addEventListener('click',()=>{
  if(!prereg){formStatus.textContent='Informe e salve seu e-mail antes de escolher um plano.';document.getElementById('cadastro').scrollIntoView({behavior:'smooth'});form.querySelector('[name=email]').focus({preventScroll:true});return;}
- plans.forEach(b=>{b.classList.toggle('selected',b===button);b.textContent=b===button?'Selecionado ✓':'Selecionar '+b.dataset.plan[0]+b.dataset.plan.slice(1).toLowerCase()+' →';});
+ plans.forEach(b=>{b.classList.toggle('selected',b===button);b.textContent=b===button?'Assinar '+b.dataset.plan+' ✓':'Assinar '+b.dataset.plan;});
  const plan=button.dataset.plan;
  planStatus.textContent='Plano '+plan+' selecionado para '+prereg.email+'. Nesta prévia, o checkout Stripe não está habilitado; nenhuma cobrança será realizada.';
 }));
