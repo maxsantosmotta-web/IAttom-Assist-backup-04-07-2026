@@ -6,6 +6,7 @@ import {verifyStripeTestSignature,evaluateStripeTestEvent} from './stripe-test-e
 import {getCommercialPreviewPlan} from './official-compatibility.mjs';
 import {planPendingHandoffs} from './pending-handoff.mjs';
 import {prepareOfficialCheckout,createAuthorizedOfficialSession} from './official-checkout-contract.mjs';
+import {fetchOfficialPublicCatalog} from './official-live-catalog.mjs';
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.PRE_SIGNUP_DATA_DIR || '/data';
@@ -116,9 +117,22 @@ async function officialCheckout(req,res){
    officialCheckoutReleased:OFFICIAL_CHECKOUT_RELEASED
   });
   if(!prepared.ok)return send(res,400,{error:'Plano ou pré-cadastro inválido',code:prepared.code});
-  // Com as travas OFF, nenhuma consulta Stripe oficial sequer é tentada.
+  // Consulta REAL (somente GET) à API pública da versão oficial. Em qualquer
+  // indisponibilidade/divergência, o botão falha fechado sem iniciar pagamento.
+  const liveCatalog=await fetchOfficialPublicCatalog();
+  if(!liveCatalog.verified)return send(res,503,{
+   error:'Não foi possível confirmar o plano com a plataforma oficial. Tente novamente.',
+   code:liveCatalog.code,checkoutEnabled:false,realPayments:false
+  });
+  const live=liveCatalog.plans.find(x=>x.name===plan);
+  if(!live||live.priceId!==prepared.priceId||
+     live.amountCents!==prepared.amountCents||live.internalPlanKey!==prepared.internalPlanKey)
+   return send(res,409,{error:'Plano comercial não coincide com o catálogo oficial.',
+    code:'OFFICIAL_PLAN_DISAGREEMENT',checkoutEnabled:false,realPayments:false});
+  // Os pagamentos continuam DESLIGADOS até conciliação real Clerk/Stripe/créditos.
   if(!OFFICIAL_CHECKOUT_RELEASED)return send(res,200,{...prepared,prepared:true,
-   message:'Preço oficial vinculado ao botão; aguardando ponte Clerk e créditos para habilitar pagamento.'});
+   officialCatalogVerified:true,generalCredits:live.generalCredits,
+   message:'Plano e créditos confirmados pela API do IAttom Assist oficial. Pagamento não habilitado.'});
   const session=await createAuthorizedOfficialSession({
    plan,registrationId,registeredEmail:storedEmail,
    officialCheckoutReleased:OFFICIAL_CHECKOUT_RELEASED,
@@ -342,6 +356,12 @@ const server = http.createServer(async (req, res) => {
   if (path === '/api/stripe/test-status') {
     if (req.method !== 'GET') return send(res, 405, { error: 'Método não permitido' }, { Allow: 'GET' });
     return send(res, 200, { mode: 'test', ready: stripeTestConfigured(), realPayments: false });
+  }
+  if (path === '/api/official/catalog-status') {
+    if(req.method!=='GET')return send(res,405,{error:'Método não permitido'},{Allow:'GET'});
+    const live=await fetchOfficialPublicCatalog();
+    if(!live.verified)return send(res,503,live);
+    return send(res,200,live);
   }
   if (path === '/api/stripe/official-checkout') return officialCheckout(req, res);
   if (path === '/api/stripe/test-checkout') return stripeTestCheckout(req, res);
