@@ -56,3 +56,23 @@ O serviço Node (sem dependências externas) inicia por `npm start`; serve a pá
 ## Oito capturas recriadas — alta definição
 
 As oito imagens geradas pelo usuário na conversa (Módulos, Buscar, Validar, Campanha, Conteúdo, Imagem, Vídeo com Efeito, Biblioteca) estão em área de mídia independente, protegendo produção. No primeiro GET a cada imagem, o servidor do Railway prévia baixa o PNG de fonte permitida, valida assinatura/tamanho, salva no volume isolado `/data/landing-images` e entrega ao navegador com URL local `/assets/landing/<nome>.png`. Substitui o antigo sprite desfocado, que não é mais usado pelo HTML. As artes são recriações nítidas de telas do IAttom, não capturas de sistema em execução.
+
+
+## Stripe isolado — preparação de integração em modo de teste (17/10/2026)
+
+O projeto comercial possui endpoints **novos**, sem reutilizar ou editar as rotas Stripe do aplicativo:
+- `GET /api/stripe/test-status`: informa apenas se o teste está preparado, nunca expõe segredo.
+- `POST /api/stripe/test-checkout`: recebe SOMENTE `{registrationId, plan}` e recupera o e-mail autoritativo do pré-cadastro persistente; jamais aceita o e-mail enviado pelo navegador como fonte do checkout.
+
+**Estado padrão: DESABILITADO.** Nenhuma variável de Stripe está configurada atualmente no Railway de preview; selecionar um plano continua sem pagamento. Para habilitar SOMENTE neste serviço e ambiente isolado, configurar:
+- `STRIPE_TEST_CHECKOUT_ENABLED=true`
+- `STRIPE_TEST_SECRET_KEY=sk_test_...` (credencial criada no modo de teste)
+- `STRIPE_TEST_PRICE_START=price_...` (mensal BRL 69,00)
+- `STRIPE_TEST_PRICE_PREMIUM=price_...` (mensal BRL 159,00)
+- `STRIPE_TEST_PRICE_PRO=price_...` (mensal BRL 299,00)
+
+Proteções: exige mesma origem de requisição, identificador de pré-cadastro armazenado, consulta preços à API Stripe e valida `livemode=false`, preço ativo, BRL, valor exato e ciclo mensal; usa somente segredo `sk_test_`; cria Customer **de teste** com e-mail registrado (que fica travado no Stripe Checkout quando preenchido), idempotência na criação do Customer, Checkout Session com `mode=subscription` e `cs_test_`; registra referências para futura reconciliação e permite redirecionamentos apenas para `checkout.stripe.com` e retorno para a landing isolada.
+
+Com as variáveis ausentes, o botão mantém o comportamento anterior. Somente se o teste estiver habilitado, o botão muda para **"Testar checkout"** e abre Stripe TESTE. Nenhum código desta branch atualiza assinaturas do SaaS; **não há webhook nem liberação de acesso**, e o retorno do Stripe nunca é tratado como prova de pagamento. Vinculação definitiva exigirá validação de pagamento por webhook, e-mail verificado via Clerk e revisão antes de permitir produção.
+
+**Não reutilizar secret/price IDs de produção. Não configurar nada no Railway principal.**

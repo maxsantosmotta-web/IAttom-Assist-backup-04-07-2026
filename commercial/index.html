@@ -162,11 +162,39 @@ form.addEventListener('submit',async event=>{
  }catch(err){formStatus.textContent=err.message||'Não foi possível registrar o e-mail. Tente novamente.';}
  finally{button.disabled=false;}
 });
-plans.forEach(button=>button.addEventListener('click',()=>{
+let stripeTestReady=false;
+fetch('/api/stripe/test-status').then(r=>r.ok?r.json():null).then(data=>{
+ if(data?.mode==='test'&&data.ready===true){
+   stripeTestReady=true;
+   plans.forEach(button=>button.textContent='Testar checkout '+button.dataset.plan);
+ }
+}).catch(()=>{});
+const checkoutReturn=new URLSearchParams(window.location.search).get('checkout_test');
+if(checkoutReturn==='retorno') planStatus.textContent='Retorno do Stripe de testes. Uma assinatura só será ativada após confirmação segura do pagamento; esta prévia não libera acesso.';
+if(checkoutReturn==='cancelado') planStatus.textContent='Checkout de testes cancelado. Nenhuma assinatura foi ativada.';
+plans.forEach(button=>button.addEventListener('click',async()=>{
  if(!prereg){formStatus.textContent='Informe e salve seu e-mail antes de escolher um plano.';document.getElementById('cadastro').scrollIntoView({behavior:'smooth'});form.querySelector('[name=email]').focus({preventScroll:true});return;}
- plans.forEach(b=>{b.classList.toggle('selected',b===button);b.textContent=b===button?'Assinar '+b.dataset.plan+' ✓':'Assinar '+b.dataset.plan;});
+ plans.forEach(b=>{b.classList.toggle('selected',b===button);b.textContent=(stripeTestReady?'Testar checkout ':'Assinar ')+b.dataset.plan+(b===button?' ✓':'');});
  const plan=button.dataset.plan;
- planStatus.textContent='Plano '+plan+' selecionado para '+prereg.email+'. Nesta prévia, o checkout Stripe não está habilitado; nenhuma cobrança será realizada.';
+ if(!stripeTestReady){
+   planStatus.textContent='Plano '+plan+' selecionado para '+prereg.email+'. Nesta prévia, o checkout Stripe não está habilitado; nenhuma cobrança será realizada.';
+   return;
+ }
+ planStatus.textContent='Preparando checkout Stripe em modo de teste...';
+ plans.forEach(b=>b.disabled=true);
+ try{
+   const response=await fetch('/api/stripe/test-checkout',{
+     method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({registrationId:prereg.registrationId,plan})
+   });
+   const result=await response.json();
+   if(!response.ok||result.mode!=='test'||!result.url||!result.url.startsWith('https://checkout.stripe.com/')) {
+     throw new Error(result.error||'Não foi possível abrir o checkout de testes.');
+   }
+   window.location.assign(result.url);
+ }catch(error){
+   planStatus.textContent=error.message||'Checkout de testes temporariamente indisponível.';
+   plans.forEach(b=>b.disabled=false);
+ }
 }));
 </script>
 </body></html>
