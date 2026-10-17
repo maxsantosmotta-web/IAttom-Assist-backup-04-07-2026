@@ -52,3 +52,7 @@ Não modificar `main`, o domínio oficial `iattomassist.com.br`, serviços e ban
 ## Desenvolvimento
 
 O serviço Node (sem dependências externas) inicia por `npm start`; serve a página `index.html`, o sprite `/assets/screens.webp` e o endpoint `/api/pre-register`. O arquivo de pré-cadastro é `/data/pre-registrations.jsonl`. Em ambiente local, configurar `PRE_SIGNUP_DATA_DIR` para um caminho temporário; não criar arquivos reais de clientes no repositório.
+
+## Oito capturas recriadas — alta definição
+
+As oito imagens geradas pelo usuário na conversa (Módulos, Buscar, Validar, Campanha, Conteúdo, Imagem, Vídeo com Efeito, Biblioteca) estão em área de mídia independente, protegendo produção. No primeiro GET a cada imagem, o servidor do Railway prévia baixa o PNG de fonte permitida, valida assinatura/tamanho, salva no volume isolado `/data/landing-images` e entrega ao navegador com URL local `/assets/landing/<nome>.png`. Substitui o antigo sprite desfocado, que não é mais usado pelo HTML. As artes são recriações nítidas de telas do IAttom, não capturas de sistema em execução.
