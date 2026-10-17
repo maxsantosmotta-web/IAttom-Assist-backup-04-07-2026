@@ -1,0 +1,13 @@
+# Ponte financeira canônica — simulador seguro (17/10/2026)
+
+Implementação exclusivamente em commercial/** na branch isolada. Nao foi alterado backend financeiro oficial, tabela de créditos, conta de usuario, Stripe, Clerk ou main.
+
+O simulador recebe um preflight autenticado em teste; registra uma compra ficticia num SQLite local com UNIQUE; obtém uma lease; chama exclusivamente simulacoes de associacao Customer e rotina canonica; relê o historico e conta ficticios; so registra DONE se o resultado canonico, a transacao idempotente geral e o plano refletido forem coerentes. Estados de corrida e falha tornam-se LEASE_BUSY, RETRYABLE ou ALREADY_DONE; nao concedem creditos reais.
+
+Os tres Price IDs reais informados pelo proprietario permanecem fixos: START price_1TunJ2AYtu5nLhAZPd1Ai0hD; PREMIUM price_1TunQhAYtu5nLhAZu5QXWW31; PRO price_1TunTDAYtu5nLhAZDfzTn8Cm.
+
+Creditos 7,13,19 nos testes sao inteiramente ficticios e não representam a franquia oficial. Nenhuma definicao de politica real foi aprovada por este arquivo. `approvedCommercialPolicy:false` e `simulationOnly:true` sao obrigatorios para os mocks. A rotina oficial pode conceder creditos gerais, mas nao esta ajustada para creditos criativos: devolve creativeGranted=0. Quando beneficios criativos forem previstos, a ponte deve bloquear status de liberacao integral ate haver mecanismo transacional aprovado para esses creditos.
+
+Em producao, um evento Stripe pode reentrar apos webhook e existir um crash entre fazer o grant e persistir DONE; a idempotencia precisa estar no banco PostgreSQL da concessao CANONICA (indice unico da chave do grant, transacao e serializacao adequada), nao apenas no SQLite local nem em flags memoria. Nao copiar o mock como codigo oficial. E-mail do pagador nao determina conta de destino: Clerk verificado deve coincidir com e-mail do pre-cadastro persistido.
+
+PENDENCIAS PARA A ATIVACAO: incorporar no backend uma rota de claim autenticada sem usar /stripe/reconcile-session legado diretamente; montar adaptadores Stripe/Clerk confiaveis; corrigir reassociacao /auth/sync; revisar status deletado legado; revisitar plano de creditos gerais e criativos e Google Play; conferir migracao Postgres em ambiente clone e proteger concessao com unicidade; integrar webhook e recuperação com garantias de reprocessamento; revisar dominios e retornos. Checkout live ainda fechado, nenhum pagamento real foi feito.
