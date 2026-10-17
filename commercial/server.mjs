@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {verifyStripeTestSignature,evaluateStripeTestEvent} from './stripe-test-event.mjs';
 import {getCommercialPreviewPlan} from './official-compatibility.mjs';
+import {planPendingHandoffs} from './pending-handoff.mjs';
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.PRE_SIGNUP_DATA_DIR || '/data';
@@ -160,9 +161,11 @@ async function stripeTestCheckout(req, res) {
 /* Confirmações virtuais em /data, jamais no banco/Clerk do IAttom em produção. */
 const TEST_SESSIONS_FILE=join(DATA_DIR,'stripe-test-sessions.jsonl');
 const TEST_EVENTS_FILE=join(DATA_DIR,'stripe-test-events.jsonl');
+const TEST_HANDOFFS_FILE=join(DATA_DIR,'stripe-test-handoffs.jsonl');
 const testSessions=new Map();
 const processedTestEvents=new Set();
 const testPaymentStatus=new Map();
+const pendingTestHandoffs=new Map();
 for(const line of existsSync(TEST_SESSIONS_FILE)?readFileSync(TEST_SESSIONS_FILE,'utf8').split('\n'):[]){
  if(!line.trim())continue;
  try{
@@ -177,6 +180,24 @@ for(const line of existsSync(TEST_EVENTS_FILE)?readFileSync(TEST_EVENTS_FILE,'ut
    const row=JSON.parse(line);
    if(row.eventId&&row.sessionId){processedTestEvents.add(row.eventId);testPaymentStatus.set(row.sessionId,row.status)}
  }catch{}
+}
+for(const line of existsSync(TEST_HANDOFFS_FILE)?readFileSync(TEST_HANDOFFS_FILE,'utf8').split('\n'):[]){
+ if(!line.trim())continue;
+ try{const row=JSON.parse(line);if(row.sessionId?.startsWith('cs_test_')&&row.accountActivated===false)
+   pendingTestHandoffs.set(row.sessionId,row)}catch{}
+}
+// Recuperação após falha entre evento durável e fila de pendências.
+for(const line of existsSync(TEST_EVENTS_FILE)?readFileSync(TEST_EVENTS_FILE,'utf8').split('\n'):[]){
+ if(!line.trim())continue;
+ try{
+   const eventRow=JSON.parse(line);
+   if(eventRow.status!=='PAID_TEST'||pendingTestHandoffs.has(eventRow.sessionId))continue;
+   const rows=planPendingHandoffs(eventRow,testSessions.get(eventRow.sessionId),pendingTestHandoffs);
+   for(const row of rows){
+     appendFileSync(TEST_HANDOFFS_FILE,JSON.stringify(row)+'\n',{flag:'a',encoding:'utf8',mode:0o600});
+     pendingTestHandoffs.set(row.sessionId,row);
+   }
+ }catch(error){console.error('Recuperação de pendência isolada:',error.message)}
 }
 function stripeTestWebhookEnabled(){
  return stripeTestConfigured()&&process.env.STRIPE_TEST_WEBHOOK_ENABLED==='true'&&
@@ -207,6 +228,13 @@ async function stripeTestWebhook(req,res){
       accountActivated:false
    })+'\n',{flag:'a',encoding:'utf8',mode:0o600});
    processedTestEvents.add(decision.eventId);testPaymentStatus.set(decision.sessionId,decision.status);
+   if(decision.status==='PAID_TEST'){
+     const rows=planPendingHandoffs(decision,testSessions.get(decision.sessionId),pendingTestHandoffs);
+     for(const row of rows){
+       appendFileSync(TEST_HANDOFFS_FILE,JSON.stringify(row)+'\n',{flag:'a',encoding:'utf8',mode:0o600});
+       pendingTestHandoffs.set(row.sessionId,row);
+     }
+   }
    return send(res,200,{received:true,mode:'test',accountActivated:false});
  }catch(error){
    console.error('Webhook Stripe de testes rejeitado:',error.message);
