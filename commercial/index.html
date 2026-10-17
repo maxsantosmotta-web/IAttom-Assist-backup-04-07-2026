@@ -194,10 +194,13 @@ plans.forEach(button=>button.addEventListener('click',async()=>{
        throw new Error('Checkout de testes inválido.');
      window.location.assign(result.url);return;
    }
-   if(result.mode!=='official'||result.plan!==plan||result.checkoutEnabled!==false)
-     throw new Error('A conexão comercial ainda não está disponível.');
+   if(result.mode!=='official'||result.plan!==plan||result.checkoutEnabled!==false||
+      result.officialCatalogVerified!==true||!Number.isSafeInteger(result.generalCredits))
+     throw new Error('Plano não confirmado pela plataforma oficial.');
    const value=(result.amountCents/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
-   planStatus.textContent='Plano '+plan+' (R$ '+value+'/mês) associado ao Price ID oficial do Stripe. O pagamento real será habilitado após a integração segura com Clerk e créditos. Nenhuma cobrança foi realizada.';
+   const credits=result.generalCredits.toLocaleString('pt-BR');
+   planStatus.textContent='Confirmado diretamente no IAttom Assist oficial: '+plan+
+     ' — R$ '+value+'/mês e '+credits+' créditos gerais. Checkout ainda desativado até a liberação segura da assinatura e dos créditos. Nenhuma cobrança foi realizada.';
  }catch(error){
    planStatus.textContent=error.message||'Checkout temporariamente indisponível.';
  }finally{
