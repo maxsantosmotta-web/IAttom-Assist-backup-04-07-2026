@@ -101,6 +101,7 @@ export async function inspectCommercialSubscriptionReadOnly({
    eligible:true,commercialPlan:plan,internalPlan:verified.internalPlan,
    priceId:verified.priceId,sessionId:verified.sessionId,
    verifiedClerkId:authenticatedClerkId,
+   registrationId:verified.registrationId,
    customerId:verified.customerId,subscriptionId:verified.subscriptionId,
    verifiedInvoiceId:verified.invoiceId
   });
