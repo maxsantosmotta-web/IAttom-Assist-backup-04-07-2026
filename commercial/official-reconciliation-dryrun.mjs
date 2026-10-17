@@ -33,13 +33,11 @@ export async function prepareOfficialReconciliationDryRun({pending,testPriceIds,
  if(!registration||registration.id!==pending.registrationId||!email(registration.email)||
     email(registration.email)!==email(clerk.email))
    return reviewPaidAccess('REGISTERED_EMAIL_NOT_VERIFIED');
- // O Stripe Customer de teste e obtido pelo servidor e vinculado ao preregistro.
- // O nome do portador do cartao ou o billing_details nao identificam a conta.
+ // E-mail do Customer e do pagador pode divergir do pre-cadastro.
+ // Identificadores Stripe e integridade da assinatura sao verificados.
  const customer=await adapters.retrieveCustomer(pending.customerId);
- if(!customer||customer.id!==pending.customerId||customer.livemode!==false||
-    email(customer.email)!==email(registration.email)||
-    customer.metadata?.pre_registration_id!==pending.registrationId)
-   return reviewPaidAccess('STRIPE_CUSTOMER_EMAIL_MISMATCH');
+ if(!customer||customer.id!==pending.customerId||customer.livemode!==false)
+   return blocked('STRIPE_CUSTOMER_INVALID');
  const checkout=await adapters.retrieveCheckout(pending.sessionId);
  if(!checkout||checkout.id!==pending.sessionId||checkout.livemode!==false||
    checkout.mode!=='subscription'||checkout.status!=='complete'||checkout.payment_status!=='paid'||

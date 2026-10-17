@@ -36,14 +36,12 @@ export function evaluateStripeTestEvent(event,{sessions,registrations,seenEvents
   const email=saved?registrations.get(saved.registrationId):null;
   if(!saved||!email||checkout.livemode!==false||
      checkout.mode!=='subscription'||checkout.client_reference_id!==saved.registrationId||
-     checkout.customer!==saved.customerId||checkout.currency!=='brl'||
+     typeof checkout.customer!=='string'||!checkout.customer.startsWith('cus_')||
+     (saved.customerId&&checkout.customer!==saved.customerId)||checkout.currency!=='brl'||
      checkout.amount_total!==monthlyBRL[saved.plan]||saved.amount!==monthlyBRL[saved.plan]||
      checkout.metadata?.plan!==saved.plan||
      checkout.metadata?.pre_registration_id!==saved.registrationId||
      email!==saved.email)throw Error('Checkout sem vínculo válido ao pré-cadastro');
-  const checkoutEmail=checkout.customer_details?.email||checkout.customer_email;
-  if(checkoutEmail&&checkoutEmail.toLowerCase().trim()!==email)
-    throw Error('E-mail do checkout diverge do pré-cadastro');
   if(!['paid','unpaid','no_payment_required'].includes(checkout.payment_status))
     throw Error('Estado de pagamento inválido');
   if(eventType==='success'&&checkout.payment_status!=='paid')
@@ -54,7 +52,7 @@ export function evaluateStripeTestEvent(event,{sessions,registrations,seenEvents
   if(eventType==='expired')status='EXPIRED_TEST';
   if(statusBySession.get(saved.sessionId)==='PAID_TEST')status='PAID_TEST';
   return {eventId:event.id,sessionId:saved.sessionId,registrationId:saved.registrationId,
-    plan:saved.plan,status,duplicate:false,accountActivated:false};
+    plan:saved.plan,customerId:checkout.customer,status,duplicate:false,accountActivated:false};
 }
 
 export function mayAssociateVerifiedClerk({paymentStatus,registrationEmail,clerkEmail,clerkEmailVerified}){

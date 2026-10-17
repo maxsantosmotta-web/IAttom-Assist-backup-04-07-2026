@@ -29,6 +29,13 @@ test('segundo pagamento do mesmo comprador marca os dois para revisão',()=>{
  assert(updates.every(x=>x.pendingStatus===HandoffState.REVIEW&&x.accountActivated===false));
  assert.equal(simulateVerifiedClerkHandoff(updates[0],{registrationEmail:email}).eligible,false);
 });
+test('Customer da pendência é o recebido por webhook, não o e-mail pre-cadastrado',()=>{
+ const guest={...session(),customerId:null};
+ const rows=planPendingHandoffs({...paid(),customerId:'cus_payment'},guest,new Map());
+ assert.equal(rows.length,1);assert.equal(rows[0].customerId,'cus_payment');
+ assert.equal(rows[0].accountActivated,false);
+ assert.throws(()=>planPendingHandoffs({...paid(),customerId:'cus_other'},session(),new Map()));
+});
 test('simulação Clerk exige email verificado, assinatura ativa, pagamento e ausência de conflito',()=>{
  const pending=planPendingHandoffs(paid(),session(),new Map())[0];
  const evidence={registrationEmail:email,verifiedClerkEmail:email,clerkEmailVerified:true,

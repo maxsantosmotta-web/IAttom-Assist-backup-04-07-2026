@@ -2,21 +2,23 @@ import {getCommercialPreviewPlan,assessGuestCheckoutHandoff} from './official-co
 export const HandoffState=Object.freeze({WAITING:'WAITING_VERIFIED_CLERK',REVIEW:'REVIEW_DUPLICATE_PURCHASE'});
 export function planPendingHandoffs(decision,session,existing,now=new Date().toISOString()){
  if(decision?.status!=='PAID_TEST')return [];
+ const customerId=decision.customerId??session?.customerId;
  if(!(existing instanceof Map)||!session||typeof session.sessionId!=='string'||
-   !session.sessionId.startsWith('cs_test_')||!session.customerId?.startsWith('cus_')||
+   !session.sessionId.startsWith('cs_test_')||!customerId?.startsWith('cus_')||
+   (session.customerId&&session.customerId!==customerId)||
    !session.registrationId||!session.email||decision.sessionId!==session.sessionId||
    decision.registrationId!==session.registrationId||decision.plan!==session.plan)
    throw Error('Sessão incompatível com pagamento');
  const plan=getCommercialPreviewPlan(session.plan);
  if(!plan||plan.amountBRL!==session.amount)throw Error('Valor do plano incompatível');
  if(existing.has(session.sessionId))return [];
- const collisions=[...existing.values()].filter(r=>r.registrationId===session.registrationId||r.customerId===session.customerId);
+ const collisions=[...existing.values()].filter(r=>r.registrationId===session.registrationId||r.customerId===customerId);
  const duplicate=collisions.length>0;
  const changed=collisions.filter(r=>r.pendingStatus!==HandoffState.REVIEW)
    .map(r=>({...r,pendingStatus:HandoffState.REVIEW,reviewReason:'MULTIPLE_PURCHASES',
      updatedAt:now,accountActivated:false}));
  changed.push({sessionId:session.sessionId,registrationId:session.registrationId,
-   customerId:session.customerId,plan:session.plan,legacyPlanKey:plan.legacyPlanKey,
+   customerId,plan:session.plan,legacyPlanKey:plan.legacyPlanKey,
    amountBRL:plan.amountBRL,paymentStatus:'PAID_TEST',
    pendingStatus:duplicate?HandoffState.REVIEW:HandoffState.WAITING,
    reviewReason:duplicate?'MULTIPLE_PURCHASES':null,

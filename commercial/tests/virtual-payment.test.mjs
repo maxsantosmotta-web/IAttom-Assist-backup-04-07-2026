@@ -51,10 +51,21 @@ test('webhook: rejeita evento real ou adulteração de cliente, email, preço e 
  const ctx=context();
  assert.throws(()=>evaluateStripeTestEvent({...stripeEvent(),livemode:true},ctx));
  for(const change of [{id:'cs_test_diferente'},{customer:'cus_estranho'},
-  {customer_details:{email:'outro@example.com'}},{amount_total:29900},
+  {amount_total:29900},
   {metadata:{plan:'PRO',pre_registration_id:id}}]){
   assert.throws(()=>evaluateStripeTestEvent(stripeEvent('checkout.session.completed',change),ctx));
  }
+});
+test('checkout com outro e-mail cria Customer Stripe após pagamento',()=>{
+ const guest={...saved,customerId:null};
+ const context={sessions:new Map([[guest.sessionId,guest]]),registrations:new Map([[id,email]]),
+  seenEvents:new Set(),statusBySession:new Map()};
+ const event=stripeEvent('checkout.session.completed',{customer:'cus_new_checkout',
+   customer_details:{email:'pagador@example.com'}});
+ const result=evaluateStripeTestEvent(event,context);
+ assert.equal(result.status,'PAID_TEST');assert.equal(result.customerId,'cus_new_checkout');
+ assert.equal(result.accountActivated,false);
+ assert.throws(()=>evaluateStripeTestEvent(stripeEvent('checkout.session.completed',{customer:'invalid'}),context));
 });
 test('Clerk virtual: exige mesmo email verificado e pagamento',()=>{
  const v={paymentStatus:'PAID_TEST',registrationEmail:email,clerkEmail:email,clerkEmailVerified:true};

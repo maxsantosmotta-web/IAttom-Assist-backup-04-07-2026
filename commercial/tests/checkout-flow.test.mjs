@@ -57,14 +57,14 @@ test('jornada ponta a ponta virtual: pré-cadastro → plano → Stripe fictíci
   const tracked=readFileSync(join(data,'stripe-test-sessions.jsonl'),'utf8')
    .trim().split('\n').map(JSON.parse);
   assert.equal(tracked.length,3);
-  assert(tracked.every(row=>row.registrationId===reg.registrationId&&row.email===email));
+  assert(tracked.every(row=>row.registrationId===reg.registrationId&&row.email===email&&row.customerId===null));
   assert.deepEqual(tracked.map(row=>row.amount),[6900,15900,29900]);
   const premium=tracked[1];
   const event={id:'evt_virtual_e2e',type:'checkout.session.completed',livemode:false,
     data:{object:{id:premium.sessionId,livemode:false,mode:'subscription',
-      client_reference_id:premium.registrationId,customer:premium.customerId,
+      client_reference_id:premium.registrationId,customer:'cus_guest_after_payment',
       amount_total:premium.amount,currency:'brl',payment_status:'paid',
-      customer_details:{email},metadata:{plan:'PREMIUM',
+      customer_details:{email:'pagador@example.com'},metadata:{plan:'PREMIUM',
         pre_registration_id:premium.registrationId}}}};
   const raw=JSON.stringify(event),timestamp=Math.floor(Date.now()/1000);
   const header='t='+timestamp+',v1='+
@@ -75,6 +75,10 @@ test('jornada ponta a ponta virtual: pré-cadastro → plano → Stripe fictíci
   assert.equal((await webhook.json()).accountActivated,false);
   const persisted=JSON.parse(readFileSync(join(data,'stripe-test-events.jsonl'),'utf8').trim());
   assert.equal(persisted.status,'PAID_TEST');
+  assert.equal(persisted.customerId,'cus_guest_after_payment');
+  const handoff=JSON.parse(readFileSync(join(data,'stripe-test-handoffs.jsonl'),'utf8').trim());
+  assert.equal(handoff.customerId,'cus_guest_after_payment');
+  assert.equal(handoff.pendingStatus,'WAITING_VERIFIED_CLERK');
   assert.equal(persisted.accountActivated,false);
   // Bloqueia tentativa de inventar id de pré-cadastro.
   const rogue=await fetch(base+'/api/stripe/test-checkout',{method:'POST',

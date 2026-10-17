@@ -117,19 +117,9 @@ async function stripeTestCheckout(req, res) {
         price.recurring?.interval_count !== 1) {
       return send(res, 409, { error: 'O preço de testes não corresponde ao plano mensal configurado.' });
     }
-    // Um Customer de testes com email válido bloqueia a edição do email na página Stripe.
-    const customer = await stripeTestRequest('/customers', {
-      email,
-      description: 'IAttom Assist - landing isolada - testes',
-      'metadata[pre_registration_id]': id,
-      'metadata[source]': 'commercial-preview'
-    }, 'iattom-test-customer-' + id);
-    if (customer.livemode !== false || !/^cus_/.test(customer.id) || customer.email?.toLowerCase() !== email) {
-      throw new Error('Invalid test customer identity');
-    }
+    // Stripe coleta o e-mail de pagamento separadamente e cria o Customer.
     const session = await stripeTestRequest('/checkout/sessions', {
       mode: 'subscription',
-      customer: customer.id,
       client_reference_id: id,
       'line_items[0][price]': priceId,
       'line_items[0][quantity]': '1',
@@ -145,7 +135,7 @@ async function stripeTestCheckout(req, res) {
         !session.url?.startsWith('https://checkout.stripe.com/')) {
       throw new Error('Invalid test checkout session');
     }
-    const sessionRecord={sessionId:session.id,registrationId:id,email,customerId:customer.id,
+    const sessionRecord={sessionId:session.id,registrationId:id,email,customerId:null,
       amount:selected.amount,plan,createdAt:new Date().toISOString()};
     // Grava o vínculo antes de fornecer a URL, para reconciliação idempotente por webhook.
     appendFileSync(TEST_SESSIONS_FILE,JSON.stringify(sessionRecord)+'\n',{flag:'a',encoding:'utf8',mode:0o600});
@@ -178,7 +168,14 @@ for(const line of existsSync(TEST_EVENTS_FILE)?readFileSync(TEST_EVENTS_FILE,'ut
  if(!line.trim())continue;
  try{
    const row=JSON.parse(line);
-   if(row.eventId&&row.sessionId){processedTestEvents.add(row.eventId);testPaymentStatus.set(row.sessionId,row.status)}
+   if(row.eventId&&row.sessionId){
+     processedTestEvents.add(row.eventId);testPaymentStatus.set(row.sessionId,row.status);
+     const saved=testSessions.get(row.sessionId);
+     if(saved&&row.customerId?.startsWith('cus_')){
+       if(saved.customerId&&saved.customerId!==row.customerId)console.error('Customer diferente em evento persistido');
+       else saved.customerId=row.customerId;
+     }
+   }
  }catch{}
 }
 for(const line of existsSync(TEST_HANDOFFS_FILE)?readFileSync(TEST_HANDOFFS_FILE,'utf8').split('\n'):[]){
@@ -224,10 +221,12 @@ async function stripeTestWebhook(req,res){
    if(decision.duplicate)return send(res,200,{received:true,duplicate:true,mode:'test'});
    appendFileSync(TEST_EVENTS_FILE,JSON.stringify({
       eventId:decision.eventId,sessionId:decision.sessionId,registrationId:decision.registrationId,
-      plan:decision.plan,status:decision.status,receivedAt:new Date().toISOString(),
+      plan:decision.plan,status:decision.status,customerId:decision.customerId,receivedAt:new Date().toISOString(),
       accountActivated:false
    })+'\n',{flag:'a',encoding:'utf8',mode:0o600});
    processedTestEvents.add(decision.eventId);testPaymentStatus.set(decision.sessionId,decision.status);
+   const savedSession=testSessions.get(decision.sessionId);
+   if(savedSession&&!savedSession.customerId)savedSession.customerId=decision.customerId;
    if(decision.status==='PAID_TEST'){
      const rows=planPendingHandoffs(decision,testSessions.get(decision.sessionId),pendingTestHandoffs);
      for(const row of rows){

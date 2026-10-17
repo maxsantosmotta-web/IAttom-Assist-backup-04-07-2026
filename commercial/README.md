@@ -2,11 +2,11 @@
 
 ## Trilho operacional aprovado
 
-Anúncio → Saiba Mais → landing comercial → **pré-cadastro obrigatório de e-mail, com salvamento real** → escolha do plano → checkout Stripe de visitante (mesmo e-mail) → pagamento confirmado por webhook → criação de conta Clerk com o **mesmo e-mail verificado** → associação segura da assinatura → dashboard.
+Anúncio → Saiba Mais → landing comercial → **pré-cadastro obrigatório de e-mail, com salvamento real** → escolha do plano → checkout Stripe de visitante (e-mail de pagamento livre) → pagamento confirmado por webhook → criação de conta Clerk com o **mesmo e-mail verificado** → associação segura da assinatura → dashboard.
 
 O pré-cadastro não é lista de espera, acesso antecipado, conta definitiva ou autorização para liberar plano. Ele serve para registrar o endereço que será usado na compra e no cadastro definitivo.
 
-**Aviso obrigatório:** o e-mail do pré-cadastro deve ser o mesmo e-mail do pagamento e do cadastro definitivo.
+**Regra:** o e-mail verificado no Clerk deve corresponder ao pré-cadastro, mas o e-mail do pagador e titular do cartão podem ser diferentes.
 
 ## Planos comerciais
 
@@ -71,7 +71,7 @@ O projeto comercial possui endpoints **novos**, sem reutilizar ou editar as rota
 - `STRIPE_TEST_PRICE_PREMIUM=price_...` (mensal BRL 159,00)
 - `STRIPE_TEST_PRICE_PRO=price_...` (mensal BRL 299,00)
 
-Proteções: exige mesma origem de requisição, identificador de pré-cadastro armazenado, consulta preços à API Stripe e valida `livemode=false`, preço ativo, BRL, valor exato e ciclo mensal; usa somente segredo `sk_test_`; cria Customer **de teste** com e-mail registrado (que fica travado no Stripe Checkout quando preenchido), idempotência na criação do Customer, Checkout Session com `mode=subscription` e `cs_test_`; registra referências para futura reconciliação e permite redirecionamentos apenas para `checkout.stripe.com` e retorno para a landing isolada.
+Proteções: exige mesma origem de requisição, identificador de pré-cadastro armazenado, consulta preços à API Stripe e valida `livemode=false`, preço ativo, BRL, valor exato e ciclo mensal; usa somente segredo `sk_test_`; não trava o e-mail de pagamento nem cria antecipadamente o Customer Stripe; o Checkout cria automaticamente o Customer e seu ID é registrado após webhook assinado, Checkout Session com `mode=subscription` e `cs_test_`; registra referências para futura reconciliação e permite redirecionamentos apenas para `checkout.stripe.com` e retorno para a landing isolada.
 
 Com as variáveis ausentes, o botão mantém o comportamento anterior. Somente se o teste estiver habilitado, o botão muda para **"Testar checkout"** e abre Stripe TESTE. Nenhum código desta branch atualiza assinaturas do SaaS; **não há webhook nem liberação de acesso**, e o retorno do Stripe nunca é tratado como prova de pagamento. Vinculação definitiva exigirá validação de pagamento por webhook, e-mail verificado via Clerk e revisão antes de permitir produção.
 
@@ -107,17 +107,22 @@ O módulo pending-handoff.mjs contém simulações de email Clerk verificado, as
 
 O arquivo official-reconciliation-dryrun.mjs especifica, com funções somente-leitura simuladas, a futura validação de um pagamento feito ANTES de criar conta. Nenhuma credencial, biblioteca oficial, rota ou banco é acessado. Somente um backend confiável deverá fornecer os adapters reais, após autorização específica.
 
-Regras cobertas: pré-cadastro pago sem duplicidade, identidade Clerk autenticada e e-mail verificado, correspondência com o e-mail salvo no pré-cadastro e o Customer Stripe consultado no servidor (sem exigir cartão em nome do usuário), Checkout Stripe de TESTE completo e pago vinculado ao registro, assinatura TESTE ativa do mesmo cliente, plano interno e price id exatos, preço mensal em reais, fatura do mesmo contrato paga, uma única assinatura ativa, ausência de titular ou inscrição anteriores conflitantes, proteção contra novas concessões em retries.
+Regras cobertas: pré-cadastro pago sem duplicidade, identidade Clerk autenticada e e-mail verificado, correspondência do e-mail verificado no Clerk com o pré-cadastro e IDs Stripe da compra (sem comparar e-mail do pagador), Checkout Stripe de TESTE completo e pago vinculado ao registro, assinatura TESTE ativa do mesmo cliente, plano interno e price id exatos, preço mensal em reais, fatura do mesmo contrato paga, uma única assinatura ativa, ausência de titular ou inscrição anteriores conflitantes, proteção contra novas concessões em retries.
 
 Todo retorno, inclusive READY_FOR_AUTHORIZED_REVIEW, define accountActivated=false, creditsGranted=0 e requiresOfficialAuthorization=true. NÃO existe executor nem endpoint público para esse simulador.
 
-Antes de implementar no backend oficial: usar o e-mail verificado no Clerk como identificador do assinante, conferindo-o com o pré-cadastro persistido, Customer Stripe e sessão, sem consultar ou comparar o titular do cartão; consultas Stripe/Clerk no servidor; verificar preços reais autorizados; índice único de claim e transação atômica com lock, reconfirmação de subscrição e customer; vínculo autorizado ao usuário Clerk; atualização idempotente da metadata clerkUserId da subscription; chamada da rotina existente handleCanonicalSubscriptionChange para liberar plano/créditos SEM dupla atribuição; recuperação de falhas, cancelamentos e reembolsos. Tudo isso é projeto futuro dependente de aprovação expressa.
+Antes de implementar no backend oficial: usar o e-mail verificado no Clerk como identificador do assinante, conferindo-o com o pré-cadastro persistido, validando Customer Stripe e sessão por ID, sem comparar o e-mail do pagador ou titular do cartão; consultas Stripe/Clerk no servidor; verificar preços reais autorizados; índice único de claim e transação atômica com lock, reconfirmação de subscrição e customer; vínculo autorizado ao usuário Clerk; atualização idempotente da metadata clerkUserId da subscription; chamada da rotina existente handleCanonicalSubscriptionChange para liberar plano/créditos SEM dupla atribuição; recuperação de falhas, cancelamentos e reembolsos. Tudo isso é projeto futuro dependente de aprovação expressa.
 
 ## Identidade do assinante: regra comercial validada
 
-O usuário da plataforma é identificado exclusivamente pelo **e-mail de cadastro verificado no Clerk**. O cartão pode pertencer a terceiro autorizado; nome, CPF e e-mail do titular do cartão não precisam coincidir com os dados do usuário. A verificação Clerk autentica o e-mail da pessoa que acessa a plataforma; o servidor confere o e-mail do pré-cadastro persistido com o Stripe Customer de teste e a sessão de assinatura. Um e-mail meramente digitado não ativa plano. A simulação continua sem qualquer acesso ao banco do IAttom e sem alteração do financeiro oficial.
+O usuário da plataforma é identificado exclusivamente pelo **e-mail de cadastro verificado no Clerk**. O cartão pode pertencer a terceiro autorizado; nome, CPF e e-mail do titular do cartão não precisam coincidir com os dados do usuário. A verificação Clerk autentica o e-mail da pessoa que acessa a plataforma; o servidor confere o e-mail Clerk com o pré-cadastro persistido e confere os IDs Stripe da sessão, Customer e assinatura. Um e-mail meramente digitado não ativa plano. A simulação continua sem qualquer acesso ao banco do IAttom e sem alteração do financeiro oficial.
 
 
 ## Separação de pagamento e acesso
 
 O Stripe aprova ou recusa pagamentos: o checkout comercial não consulta o Clerk antes da cobrança. Cartão de terceiro é permitido. Divergência de e-mail depois de pagamento registrado deixa apenas a vinculação de acesso no status PENDING_EMAIL_REVIEW; o pagamento permanece intocado. O simulador indica paymentRecorded=true e paymentUnchanged=true para a divergência, sem estornar, cancelar ou negar compras. A correção futura precisa de verificação segura, sem liberar acesso à conta errada. O trabalho não altera nem utiliza o ambiente oficial.
+
+
+## Identidades distintas de compra
+
+A: pré-cadastro (conta que receberá o plano), B: e-mail do pagador no Stripe, C: e-mail verificado no Clerk. Stripe captura B independentemente de A; ao criar Checkout não definir customer nem customer_email. O webhook assinado traz o ID do Customer e o associa à sessão e ao pré-cadastro A sem conferir B. Apenas Clerk C = A poderá receber o plano após reconciliação autenticada. C divergente: pagamento continua registrado e acesso fica pendente. Não são efetuadas cobranças ou integrações reais nesta prévia.
