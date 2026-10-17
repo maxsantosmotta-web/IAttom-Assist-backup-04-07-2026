@@ -76,3 +76,13 @@ Proteções: exige mesma origem de requisição, identificador de pré-cadastro 
 Com as variáveis ausentes, o botão mantém o comportamento anterior. Somente se o teste estiver habilitado, o botão muda para **"Testar checkout"** e abre Stripe TESTE. Nenhum código desta branch atualiza assinaturas do SaaS; **não há webhook nem liberação de acesso**, e o retorno do Stripe nunca é tratado como prova de pagamento. Vinculação definitiva exigirá validação de pagamento por webhook, e-mail verificado via Clerk e revisão antes de permitir produção.
 
 **Não reutilizar secret/price IDs de produção. Não configurar nada no Railway principal.**
+
+
+## Eventos de pagamento simulados, sem compra real
+
+- Adicionado `stripe-test-event.mjs` com verificação HMAC do cabeçalho `Stripe-Signature` (janela de cinco minutos) e avaliação vinculada a sessão, valor BRL, plano e e-mail pré-cadastrado.
+- Checkout no modo teste persiste referências de sessão em `/data/stripe-test-sessions.jsonl`; webhook guarda decisões idempotentes em `/data/stripe-test-events.jsonl`.
+- `POST /api/stripe/test-webhook` permanece **desativado** sem `STRIPE_TEST_WEBHOOK_ENABLED=true` e `STRIPE_TEST_WEBHOOK_SECRET=whsec_...`, além da configuração Stripe de teste existente.
+- `npm test` executa casos automatizados com dados inventados, assinatura HMAC local, pagamentos aprovados, pendentes, falhados e expirados, evento duplicado, adulteração de dados, uma solicitação HTTP real local e checagem lógica de identidade Clerk verificada.
+- Esses eventos NÃO ativam assinatura, NÃO escrevem em bancos do SaaS e NÃO acionam Clerk. Não constituem integração Stripe/Clerk ponta a ponta real.
+- Para receber webhooks reais de teste, configurar as variáveis **apenas na landing isolada** e cadastrar o endpoint de webhook no Stripe em modo TESTE, sem tocar no checkout autenticado do IAttom Assist.

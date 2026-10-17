@@ -2,6 +2,7 @@ import http from 'node:http';
 import { readFileSync, appendFileSync, existsSync, mkdirSync, openSync, closeSync, chmodSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import {verifyStripeTestSignature,evaluateStripeTestEvent} from './stripe-test-event.mjs';
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.PRE_SIGNUP_DATA_DIR || '/data';
@@ -139,11 +140,76 @@ async function stripeTestCheckout(req, res) {
         !session.url?.startsWith('https://checkout.stripe.com/')) {
       throw new Error('Invalid test checkout session');
     }
+    const sessionRecord={sessionId:session.id,registrationId:id,email,customerId:customer.id,
+      amount:selected.amount,plan,createdAt:new Date().toISOString()};
+    // Grava o vínculo antes de fornecer a URL, para reconciliação idempotente por webhook.
+    appendFileSync(TEST_SESSIONS_FILE,JSON.stringify(sessionRecord)+'\n',{flag:'a',encoding:'utf8',mode:0o600});
+    testSessions.set(session.id,sessionRecord);
     return send(res, 200, { ok: true, mode: 'test', plan, url: session.url });
   } catch (error) {
     console.error('Stripe checkout isolado: erro na preparação do teste:', error.message);
     return send(res, 502, { error: 'Não foi possível criar o checkout de teste. Nenhuma assinatura foi ativada.' });
   }
+}
+
+
+/* Confirmações virtuais em /data, jamais no banco/Clerk do IAttom em produção. */
+const TEST_SESSIONS_FILE=join(DATA_DIR,'stripe-test-sessions.jsonl');
+const TEST_EVENTS_FILE=join(DATA_DIR,'stripe-test-events.jsonl');
+const testSessions=new Map();
+const processedTestEvents=new Set();
+const testPaymentStatus=new Map();
+for(const line of existsSync(TEST_SESSIONS_FILE)?readFileSync(TEST_SESSIONS_FILE,'utf8').split('\n'):[]){
+ if(!line.trim())continue;
+ try{
+   const saved=JSON.parse(line);
+   if(saved.sessionId?.startsWith('cs_test_')&&saved.registrationId&&saved.email)
+     testSessions.set(saved.sessionId,saved);
+ }catch{}
+}
+for(const line of existsSync(TEST_EVENTS_FILE)?readFileSync(TEST_EVENTS_FILE,'utf8').split('\n'):[]){
+ if(!line.trim())continue;
+ try{
+   const row=JSON.parse(line);
+   if(row.eventId&&row.sessionId){processedTestEvents.add(row.eventId);testPaymentStatus.set(row.sessionId,row.status)}
+ }catch{}
+}
+function stripeTestWebhookEnabled(){
+ return stripeTestConfigured()&&process.env.STRIPE_TEST_WEBHOOK_ENABLED==='true'&&
+    typeof process.env.STRIPE_TEST_WEBHOOK_SECRET==='string'&&
+    process.env.STRIPE_TEST_WEBHOOK_SECRET.startsWith('whsec_');
+}
+async function stripeTestWebhook(req,res){
+ if(req.method!=='POST')return send(res,405,{error:'Método não permitido'},{Allow:'POST'});
+ if(!stripeTestWebhookEnabled())return send(res,503,{error:'Webhook de testes não habilitado'});
+ let raw=Buffer.alloc(0);
+ try{
+   for await(const chunk of req){
+     raw=Buffer.concat([raw,chunk]);
+     if(raw.length>262144)return send(res,413,{error:'Evento muito grande'});
+   }
+   if(!verifyStripeTestSignature(raw,req.headers['stripe-signature'],process.env.STRIPE_TEST_WEBHOOK_SECRET))
+     return send(res,400,{error:'Assinatura inválida'});
+   const event=JSON.parse(raw.toString('utf8'));
+   const decision=evaluateStripeTestEvent(event,{
+      sessions:testSessions,registrations:emailsByRegistrationId,
+      seenEvents:processedTestEvents,statusBySession:testPaymentStatus
+   });
+   if(decision.ignored)return send(res,200,{received:true,ignored:true,mode:'test'});
+   if(decision.duplicate)return send(res,200,{received:true,duplicate:true,mode:'test'});
+   appendFileSync(TEST_EVENTS_FILE,JSON.stringify({
+      eventId:decision.eventId,sessionId:decision.sessionId,registrationId:decision.registrationId,
+      plan:decision.plan,status:decision.status,receivedAt:new Date().toISOString(),
+      accountActivated:false
+   })+'\n',{flag:'a',encoding:'utf8',mode:0o600});
+   processedTestEvents.add(decision.eventId);testPaymentStatus.set(decision.sessionId,decision.status);
+   return send(res,200,{received:true,mode:'test',accountActivated:false});
+ }catch(error){
+   console.error('Webhook Stripe de testes rejeitado:',error.message);
+   if(error instanceof SyntaxError||/Evento inválido|vínculo válido|diverge|Estado de pagamento|Sucesso sem/.test(error.message))
+     return send(res,400,{error:'Evento de teste inválido'});
+   return send(res,503,{error:'Evento não confirmado'});
+ }
 }
 
 const files = {
@@ -161,6 +227,7 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, { mode: 'test', ready: stripeTestConfigured(), realPayments: false });
   }
   if (path === '/api/stripe/test-checkout') return stripeTestCheckout(req, res);
+  if (path === '/api/stripe/test-webhook') return stripeTestWebhook(req, res);
   if (path === '/api/pre-register') {
     if (req.method !== 'POST') return send(res, 405, { error: 'Método não permitido' }, { Allow: 'POST' });
     const origin = req.headers.origin;
