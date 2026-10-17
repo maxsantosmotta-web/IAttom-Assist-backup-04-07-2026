@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import {verifyStripeTestSignature,evaluateStripeTestEvent} from './stripe-test-event.mjs';
 import {getCommercialPreviewPlan} from './official-compatibility.mjs';
 import {planPendingHandoffs} from './pending-handoff.mjs';
+import {prepareOfficialCheckout,createAuthorizedOfficialSession} from './official-checkout-contract.mjs';
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.PRE_SIGNUP_DATA_DIR || '/data';
@@ -53,6 +54,91 @@ async function getLandingImage(path) {
  try{return await mediaPending.get(path)}finally{mediaPending.delete(path)}
 }
 
+
+/* Checkout Stripe oficial: preparado, MAS IMPOSSÍVEL COBRAR nesta prévia isolada.
+   Essas constantes não vêm do Railway e permanecem falsas até aprovação específica.
+   A implementação segura Clerk/webhook/créditos é pré-condição adicional. */
+const OFFICIAL_CHECKOUT_RELEASED = false;
+const OFFICIAL_CLERK_CREDITS_BRIDGE_READY = false;
+const OFFICIAL_PAYMENT_AUTHORIZED = false;
+async function officialStripeRequest(path,fields=null,idempotencyKey=null){
+ if(!OFFICIAL_CHECKOUT_RELEASED||!OFFICIAL_CLERK_CREDITS_BRIDGE_READY||!OFFICIAL_PAYMENT_AUTHORIZED)
+  throw Error('Pagamento oficial não habilitado');
+ const secret=process.env.STRIPE_LIVE_SECRET_KEY||'';
+ if(!/^sk_live_[A-Za-z0-9]+$/.test(secret))throw Error('Stripe live não configurado');
+ const headers={Authorization:'Bearer '+secret};
+ if(fields)headers['Content-Type']='application/x-www-form-urlencoded';
+ if(idempotencyKey)headers['Idempotency-Key']=idempotencyKey;
+ const r=await fetch('https://api.stripe.com/v1'+path,{
+  method:fields?'POST':'GET',headers,
+  body:fields?new URLSearchParams(fields):undefined,
+  signal:AbortSignal.timeout(12000)
+ });
+ const data=await r.json().catch(()=>null);
+ if(!r.ok||!data)throw Error('Stripe oficial indisponível');
+ return data;
+}
+const officialStripeAdapter=Object.freeze({
+ retrievePrice:id=>officialStripeRequest('/prices/'+encodeURIComponent(id)),
+ createCheckoutSession:(fields,idempotencyKey)=>{
+  const body={
+   mode:fields.mode,client_reference_id:fields.client_reference_id,
+   'line_items[0][price]':fields.line_items[0].price,
+   'line_items[0][quantity]':String(fields.line_items[0].quantity),
+   success_url:fields.success_url,cancel_url:fields.cancel_url
+  };
+  for(const [key,value] of Object.entries(fields.metadata||{}))body['metadata['+key+']']=value;
+  for(const [key,value] of Object.entries(fields.subscription_data?.metadata||{}))
+   body['subscription_data[metadata]['+key+']']=value;
+  return officialStripeRequest('/checkout/sessions',body,idempotencyKey);
+ }
+});
+async function officialCheckout(req,res){
+ if(req.method!=='POST')return send(res,405,{error:'Método não permitido'},{Allow:'POST'});
+ try {
+  if(!req.headers.origin||new URL(req.headers.origin).host!==req.headers.host)
+   return send(res,403,{error:'Origem não permitida'});
+ }catch{return send(res,403,{error:'Origem inválida'})}
+ if(throttle('official-plan:'+(req.socket.remoteAddress||'unknown')))
+  return send(res,429,{error:'Muitas tentativas'});
+ let raw='';
+ try{
+  for await(const chunk of req){
+   raw+=chunk.toString('utf8');
+   if(raw.length>2048)return send(res,413,{error:'Solicitação muito grande'});
+  }
+  const input=JSON.parse(raw),plan=input?.plan,registrationId=input?.registrationId;
+  // Nem priceId, nem email, nem valor enviados pelo browser são aceitos como verdade.
+  const storedEmail=emailsByRegistrationId.get(registrationId);
+  if(!storedEmail)return send(res,403,{error:'Pré-cadastro não encontrado'});
+  const prepared=prepareOfficialCheckout({
+   plan,registrationId,registeredEmail:storedEmail,
+   officialCheckoutReleased:OFFICIAL_CHECKOUT_RELEASED
+  });
+  if(!prepared.ok)return send(res,400,{error:'Plano ou pré-cadastro inválido',code:prepared.code});
+  // Com as travas OFF, nenhuma consulta Stripe oficial sequer é tentada.
+  if(!OFFICIAL_CHECKOUT_RELEASED)return send(res,200,{...prepared,prepared:true,
+   message:'Preço oficial vinculado ao botão; aguardando ponte Clerk e créditos para habilitar pagamento.'});
+  const session=await createAuthorizedOfficialSession({
+   plan,registrationId,registeredEmail:storedEmail,
+   officialCheckoutReleased:OFFICIAL_CHECKOUT_RELEASED,
+   bridgeReconciliationReady:OFFICIAL_CLERK_CREDITS_BRIDGE_READY,
+   authorizedProductionRelease:OFFICIAL_PAYMENT_AUTHORIZED,
+   // Até existir uma prova criptográfica de titularidade entre servidores, sempre falso.
+   serverRegistrationProofVerified:false,
+   callbackOrigin:'https://landing-comercial-preview-preview.up.railway.app',
+   officialStripe:officialStripeAdapter,attemptId:randomUUID()
+  });
+  if(!session.ok)return send(res,503,{
+   error:'Checkout não liberado até a reconciliação segura com Clerk e créditos',
+   code:session.code
+  });
+  return send(res,200,session);
+ }catch(e){
+  console.error('Checkout oficial: intenção recusada',e.message);
+  return send(res,400,{error:'Não foi possível preparar o checkout'});
+ }
+}
 
 /* Checkout experimental isolado: nunca compartilha credenciais, preços nem banco com produção. */
 const TEST_LANDING_ORIGIN = 'https://landing-comercial-preview-preview.up.railway.app';
@@ -257,6 +343,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method !== 'GET') return send(res, 405, { error: 'Método não permitido' }, { Allow: 'GET' });
     return send(res, 200, { mode: 'test', ready: stripeTestConfigured(), realPayments: false });
   }
+  if (path === '/api/stripe/official-checkout') return officialCheckout(req, res);
   if (path === '/api/stripe/test-checkout') return stripeTestCheckout(req, res);
   if (path === '/api/stripe/test-webhook') return stripeTestWebhook(req, res);
   if (path === '/api/pre-register') {

@@ -126,3 +126,22 @@ O Stripe aprova ou recusa pagamentos: o checkout comercial não consulta o Clerk
 ## Identidades distintas de compra
 
 A: pré-cadastro (conta que receberá o plano), B: e-mail do pagador no Stripe, C: e-mail verificado no Clerk. Stripe captura B independentemente de A; ao criar Checkout não definir customer nem customer_email. O webhook assinado traz o ID do Customer e o associa à sessão e ao pré-cadastro A sem conferir B. Apenas Clerk C = A poderá receber o plano após reconciliação autenticada. C divergente: pagamento continua registrado e acesso fica pendente. Não são efetuadas cobranças ou integrações reais nesta prévia.
+
+
+## Botões vinculados aos Price IDs oficiais — 17/10/2026
+
+START R$69/mês -> price_1TunJ2AYtu5nLhAZPd1Ai0hD (chave interna pro).
+
+PREMIUM R$159/mês -> price_1TunQhAYtu5nLhAZu5QXWW31 (chave interna business).
+
+PRO R$299/mês -> price_1TunTDAYtu5nLhAZDfzTn8Cm (chave interna agency).
+
+As chaves internas são provisórias até validar direitos e créditos oficiais; valores e Price IDs foram fornecidos pelo proprietário.
+
+Agora cada botão envia plano e registrationId ao POST /api/stripe/official-checkout, que identifica o preço no servidor e responde com a correspondência correta, sem solicitar o pagamento. Browser não informa preço, priceId, e-mail do titular do cartão, nem franquia de créditos.
+
+Implementação de criação futura de sessão Stripe está no servidor por adaptador sem dependência de SDK, e no contrato official-checkout-contract.mjs; consulta o Price oficial e exige valor exato, BRL, assinatura mensal, livemode e Price ID correto, então solicita session create usando só o Price ID existente. Nenhum produto nem preço é criado.
+
+Barreiras de código no servidor: OFFICIAL_CHECKOUT_RELEASED=false, OFFICIAL_CLERK_CREDITS_BRIDGE_READY=false, OFFICIAL_PAYMENT_AUTHORIZED=false, além da prova não implementada serverRegistrationProofVerified=false. Nenhuma variável Railway pode ativar faturamento no preview. Clerk, webhook oficial, créditos, domínio e reconciliação seguem pendentes. Não mudar as barreiras sem autorização e implantação prévia comprovada da ponte.
+
+Os testes existentes de Stripe em modo TESTE continuam segregados, não fazem cobrança real, e o IAttom oficial permanece intocado.

@@ -176,23 +176,31 @@ plans.forEach(button=>button.addEventListener('click',async()=>{
  if(!prereg){formStatus.textContent='Informe e salve seu e-mail antes de escolher um plano.';document.getElementById('cadastro').scrollIntoView({behavior:'smooth'});form.querySelector('[name=email]').focus({preventScroll:true});return;}
  plans.forEach(b=>{b.classList.toggle('selected',b===button);b.textContent=(stripeTestReady?'Testar checkout ':'Assinar ')+b.dataset.plan+(b===button?' ✓':'');});
  const plan=button.dataset.plan;
- if(!stripeTestReady){
-   planStatus.textContent='Plano '+plan+' selecionado para '+prereg.email+'. Nesta prévia, o checkout Stripe não está habilitado; nenhuma cobrança será realizada.';
-   return;
- }
- planStatus.textContent='Preparando checkout Stripe em modo de teste...';
+ planStatus.textContent=stripeTestReady?
+   'Preparando checkout Stripe em modo de teste...':
+   'Conferindo o preço oficial do plano selecionado...';
  plans.forEach(b=>b.disabled=true);
  try{
-   const response=await fetch('/api/stripe/test-checkout',{
-     method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({registrationId:prereg.registrationId,plan})
+   // Enviamos apenas plano e pré-cadastro. O servidor define o Price ID correto.
+   const endpoint=stripeTestReady?'/api/stripe/test-checkout':'/api/stripe/official-checkout';
+   const response=await fetch(endpoint,{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({registrationId:prereg.registrationId,plan})
    });
    const result=await response.json();
-   if(!response.ok||result.mode!=='test'||!result.url||!result.url.startsWith('https://checkout.stripe.com/')) {
-     throw new Error(result.error||'Não foi possível abrir o checkout de testes.');
+   if(!response.ok||!result.ok)throw new Error(result.error||'Não foi possível preparar o checkout.');
+   if(stripeTestReady){
+     if(result.mode!=='test'||!result.url?.startsWith('https://checkout.stripe.com/'))
+       throw new Error('Checkout de testes inválido.');
+     window.location.assign(result.url);return;
    }
-   window.location.assign(result.url);
+   if(result.mode!=='official'||result.plan!==plan||result.checkoutEnabled!==false)
+     throw new Error('A conexão comercial ainda não está disponível.');
+   const value=(result.amountCents/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
+   planStatus.textContent='Plano '+plan+' (R$ '+value+'/mês) associado ao Price ID oficial do Stripe. O pagamento real será habilitado após a integração segura com Clerk e créditos. Nenhuma cobrança foi realizada.';
  }catch(error){
-   planStatus.textContent=error.message||'Checkout de testes temporariamente indisponível.';
+   planStatus.textContent=error.message||'Checkout temporariamente indisponível.';
+ }finally{
    plans.forEach(b=>b.disabled=false);
  }
 }));
