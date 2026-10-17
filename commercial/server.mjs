@@ -62,6 +62,16 @@ const server = http.createServer(async (req, res) => {
     } catch { return send(res, 400, { error: 'Não foi possível processar o e-mail.' }); }
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Método não permitido' });
+  if (path === '/assets/screens.webp') {
+    try {
+      const encoded = [1,2,3,4,5].map(i=>readFileSync(join(import.meta.dirname,'assets','screens.b64.'+i),'utf8')).join('');
+      const bytes = Buffer.from(encoded,'base64');
+      if (bytes.length !== 10204 || bytes.subarray(0,4).toString('ascii') !== 'RIFF' || bytes.subarray(8,12).toString('ascii') !== 'WEBP') throw new Error('Invalid screenshot sprite');
+      res.writeHead(200, { 'Content-Type':'image/webp','Cache-Control':'public, max-age=300','X-Content-Type-Options':'nosniff' });
+      if (req.method==='HEAD') return res.end();
+      return res.end(bytes);
+    } catch { return send(res,500,{error:'Imagem indisponível'}); }
+  }
   const f = files[path];
   if (!f) return send(res, 404, { error: 'Não encontrado' });
   try {
