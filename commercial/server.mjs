@@ -31,6 +31,7 @@ const files = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/index.html': ['index.html', 'text/html; charset=utf-8'],
   '/assets/screens.svg': ['assets/screens.svg', 'image/svg+xml'],
+  '/assets/brand.jpg': ['assets/brand.jpg', 'image/jpeg'],
   '/favicon.svg': ['assets/favicon.svg', 'image/svg+xml']
 };
 const server = http.createServer(async (req, res) => {
