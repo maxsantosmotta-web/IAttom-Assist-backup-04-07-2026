@@ -86,3 +86,13 @@ Com as variáveis ausentes, o botão mantém o comportamento anterior. Somente s
 - `npm test` executa casos automatizados com dados inventados, assinatura HMAC local, pagamentos aprovados, pendentes, falhados e expirados, evento duplicado, adulteração de dados, uma solicitação HTTP real local e checagem lógica de identidade Clerk verificada.
 - Esses eventos NÃO ativam assinatura, NÃO escrevem em bancos do SaaS e NÃO acionam Clerk. Não constituem integração Stripe/Clerk ponta a ponta real.
 - Para receber webhooks reais de teste, configurar as variáveis **apenas na landing isolada** e cadastrar o endpoint de webhook no Stripe em modo TESTE, sem tocar no checkout autenticado do IAttom Assist.
+
+## Auditoria de compatibilidade financeira — segurança da landing
+
+A análise em modo somente leitura do código main mostrou que o endpoint existente /api/stripe/checkout exige autenticação Clerk (requireAuth). A função ensureStripeCustomer requer previamente um usuário no banco do IAttom. A reconciliação oficial reconhece uma assinatura pelo cliente Stripe associado ao Clerk ou pela metadata clerkUserId. A compra da landing ANTES de criar conta não pode usar diretamente esse endpoint, nem ativar acesso por coincidência de e-mails.
+
+O ambiente stripe-upgrade-test apresenta nomes START / PREMIUM / PRO associados a chaves internas do legado pro / business / agency, porém os preços observados nesse ambiente são experimentais de centavos. O arquivo official-compatibility.mjs documenta esta associação PROVISÓRIA somente para simulações, mantendo na landing R$69, R$159 e R$299. A associação definitiva deve ser conferida antes de habilitar pagamentos reais.
+
+O checkout isolado de testes inclui subscription_data.metadata.planKey PROVISÓRIA para verificar compatibilidade com o código financeiro existente. O stub da API Stripe rejeita chaves internas incompatíveis. A simulação assessGuestCheckoutHandoff bloqueia e-mails Clerk não verificados, pagamentos não confirmados, associação divergente e assinatura duplicada. Mesmo quando elegível, accountActivated é sempre false e a situação é PENDING_OFFICIAL_RECONCILIATION.
+
+PENDENTE: construção, revisão e autorização explícita de ponte autenticada no backend oficial para associar a compra como visitante à conta Clerk após pagamento validado, garantindo cliente Stripe correto e prevenção de assinaturas duplicadas. Nenhuma mudança foi realizada no código main, no Clerk real, nas credenciais de produção ou no banco do IAttom.

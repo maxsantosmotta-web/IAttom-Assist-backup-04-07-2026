@@ -3,6 +3,7 @@ import { readFileSync, appendFileSync, existsSync, mkdirSync, openSync, closeSyn
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {verifyStripeTestSignature,evaluateStripeTestEvent} from './stripe-test-event.mjs';
+import {getCommercialPreviewPlan} from './official-compatibility.mjs';
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.PRE_SIGNUP_DATA_DIR || '/data';
@@ -104,6 +105,8 @@ async function stripeTestCheckout(req, res) {
       return send(res, 503, { error: 'Checkout de teste ainda não configurado. Nenhuma cobrança foi realizada.' });
     }
     const selected = TEST_PRICES[plan];
+    const contract = getCommercialPreviewPlan(plan);
+    if (!contract || contract.amountBRL !== selected.amount) return send(res,409,{error:'Plano comercial incompatível'});
     const priceId = process.env[selected.env];
     // Confere plano/valor/moeda/ciclo e impede IDs ou chaves de modo real.
     const price = await stripeTestRequest('/prices/' + encodeURIComponent(priceId));
@@ -134,7 +137,8 @@ async function stripeTestCheckout(req, res) {
       'metadata[pre_registration_id]': id,
       'metadata[plan]': plan,
       'subscription_data[metadata][pre_registration_id]': id,
-      'subscription_data[metadata][plan]': plan
+      'subscription_data[metadata][plan]': plan,
+      'subscription_data[metadata][planKey]': contract.legacyPlanKey
     });
     if (session.livemode !== false || !session.id?.startsWith('cs_test_') ||
         !session.url?.startsWith('https://checkout.stripe.com/')) {
