@@ -8,7 +8,7 @@ const blocked=(code)=>({mode:'DRY_RUN',eligible:false,code,accountActivated:fals
 const id=(x,p)=>typeof x==='string'&&x.startsWith(p)&&x.length>p.length;
 const email=x=>typeof x==='string'?x.trim().toLowerCase():'';
 const ref=x=>typeof x==='string'?x:x?.id;
-export async function prepareOfficialReconciliationDryRun({pending,registeredEmail,testPriceIds,adapters}={}){
+export async function prepareOfficialReconciliationDryRun({pending,testPriceIds,adapters}={}){
  if(!pending||pending.pendingStatus!==HandoffState.WAITING||
     pending.paymentStatus!=='PAID_TEST'||pending.accountActivated!==false||
     !id(pending.sessionId,'cs_test_')||!id(pending.customerId,'cus_')||
@@ -18,19 +18,27 @@ export async function prepareOfficialReconciliationDryRun({pending,registeredEma
    return blocked('INVALID_COMMERCIAL_PLAN');
  const expectedPrice=testPriceIds?.[pending.plan];
  if(!id(expectedPrice,'price_'))return blocked('EXPECTED_PRICE_NOT_SET');
- const required=['getClerkIdentity','verifyRegistrationClaim','retrieveCheckout','retrieveSubscription',
+ const required=['getClerkIdentity','getStoredPreRegistration','retrieveCustomer','retrieveCheckout','retrieveSubscription',
    'retrieveInvoice','listActiveSubscriptions','getBillingUser','findCustomerOwner','findRecordedClaim'];
  if(!required.every(x=>typeof adapters?.[x]==='function'))return blocked('TRUSTED_ADAPTERS_MISSING');
- // Somente o futuro backend autenticado poderá fornecer provas ao reconciliador.
+ // Email autenticado e verificado no Clerk identifica o titular da conta.
  const clerk=await adapters.getClerkIdentity();
  if(!clerk||clerk.trustedServerVerification!==true||clerk.authenticated!==true||
-    clerk.emailVerified!==true||!id(clerk.clerkUserId,'user_')||!email(registeredEmail)||
-    email(clerk.email)!==email(registeredEmail))
+    clerk.emailVerified!==true||!id(clerk.clerkUserId,'user_')||!email(clerk.email))
    return blocked('CLERK_IDENTITY_NOT_VERIFIED');
- if((await adapters.verifyRegistrationClaim({
-   registrationId:pending.registrationId,clerkUserId:clerk.clerkUserId,
-   email:email(registeredEmail),sessionId:pending.sessionId
- }))!==true)return blocked('PURCHASE_CLAIM_NOT_PROVEN');
+ // O email de compra e consultado no preregistro persistido no servidor;
+ // nunca confiamos em email declarado pelo navegador para vincular pagamentos.
+ const registration=await adapters.getStoredPreRegistration(pending.registrationId);
+ if(!registration||registration.id!==pending.registrationId||!email(registration.email)||
+    email(registration.email)!==email(clerk.email))
+   return blocked('REGISTERED_EMAIL_NOT_VERIFIED');
+ // O Stripe Customer de teste e obtido pelo servidor e vinculado ao preregistro.
+ // O nome do portador do cartao ou o billing_details nao identificam a conta.
+ const customer=await adapters.retrieveCustomer(pending.customerId);
+ if(!customer||customer.id!==pending.customerId||customer.livemode!==false||
+    email(customer.email)!==email(registration.email)||
+    customer.metadata?.pre_registration_id!==pending.registrationId)
+   return blocked('STRIPE_CUSTOMER_EMAIL_MISMATCH');
  const checkout=await adapters.retrieveCheckout(pending.sessionId);
  if(!checkout||checkout.id!==pending.sessionId||checkout.livemode!==false||
    checkout.mode!=='subscription'||checkout.status!=='complete'||checkout.payment_status!=='paid'||
@@ -65,7 +73,7 @@ export async function prepareOfficialReconciliationDryRun({pending,registeredEma
    !active.some(x=>x.id===sid&&x.status==='active'))
    return blocked('DUPLICATE_OR_MISSING_STRIPE_SUBSCRIPTION');
  const user=await adapters.getBillingUser(clerk.clerkUserId);
- if(!user||user.clerkUserId!==clerk.clerkUserId||email(user.email)!==email(registeredEmail))
+ if(!user||user.clerkUserId!==clerk.clerkUserId||email(user.email)!==email(registration.email))
    return blocked('BILLING_USER_MISMATCH');
  if(user.stripeCustomerId&&user.stripeCustomerId!==pending.customerId)
    return blocked('USER_HAS_OTHER_STRIPE_CUSTOMER');
@@ -83,6 +91,7 @@ export async function prepareOfficialReconciliationDryRun({pending,registeredEma
    customerId:pending.customerId,subscriptionId:sid,
    checkoutSessionId:pending.sessionId,invoiceId:invoiceID,
    expectedAmountBRL:plan.amountBRL,
+   identityRule:'VERIFIED_CLERK_EMAIL_MATCHES_STORED_REGISTRATION',
    proposedChecks:['unique_claim_transaction','recheck_customer_owner','recheck_active_subscriptions',
       'confirm_paid_invoice','idempotent_billing_period_credits'],
    accountActivated:false,creditsGranted:0,requiresOfficialAuthorization:true};

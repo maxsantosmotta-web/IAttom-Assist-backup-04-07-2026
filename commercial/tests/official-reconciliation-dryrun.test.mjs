@@ -8,6 +8,9 @@ function setup(){
    paymentStatus:'PAID_TEST',pendingStatus:'WAITING_VERIFIED_CLERK',accountActivated:false};
  const clerk={trustedServerVerification:true,authenticated:true,emailVerified:true,
    clerkUserId:'user_virtual',email:mail};
+ const registration={id:registrationId,email:mail};
+ const customer={id:'cus_virtual',livemode:false,email:mail,
+   metadata:{pre_registration_id:registrationId}};
  const checkout={id:pending.sessionId,livemode:false,mode:'subscription',status:'complete',
    payment_status:'paid',client_reference_id:registrationId,customer:'cus_virtual',
    subscription:'sub_virtual',currency:'brl',amount_total:15900,
@@ -19,9 +22,10 @@ function setup(){
  const invoice={id:'in_virtual',livemode:false,paid:true,status:'paid',
    customer:'cus_virtual',subscription:'sub_virtual',currency:'brl',amount_paid:15900};
  const user={clerkUserId:'user_virtual',email:mail,stripeCustomerId:null,stripeSubscriptionId:null};
- const state={claimVerified:true,owner:null,recordedClaim:null,active:[{id:'sub_virtual',status:'active'}]};
+ const state={owner:null,recordedClaim:null,active:[{id:'sub_virtual',status:'active'}]};
  const adapters={getClerkIdentity:async()=>clerk,
-   verifyRegistrationClaim:async()=>state.claimVerified,
+   getStoredPreRegistration:async()=>registration,
+   retrieveCustomer:async()=>customer,
    retrieveCheckout:async()=>checkout,
    retrieveSubscription:async()=>subscription,
    retrieveInvoice:async()=>invoice,
@@ -29,9 +33,9 @@ function setup(){
    getBillingUser:async()=>user,
    findCustomerOwner:async()=>state.owner,
    findRecordedClaim:async()=>state.recordedClaim};
- const run=()=>prepareOfficialReconciliationDryRun({pending,registeredEmail:mail,
+ const run=()=>prepareOfficialReconciliationDryRun({pending,
    testPriceIds:{PREMIUM:'price_FAKEpremium1'},adapters});
- return {pending,clerk,checkout,subscription,invoice,user,state,adapters,run};
+ return {pending,clerk,registration,customer,checkout,subscription,invoice,user,state,adapters,run};
 }
 test('prévia aprovada não ativa conta e não credita',async()=>{
  const r=await setup().run();
@@ -42,14 +46,35 @@ test('prévia aprovada não ativa conta e não credita',async()=>{
 });
 test('Clerk precisa autenticar e verificar e-mail na camada servidor',async()=>{
  for(const changed of [{authenticated:false},{trustedServerVerification:false},
-   {emailVerified:false},{email:'outro@example.com'},{clerkUserId:''}]){
+   {emailVerified:false},{clerkUserId:''}]){
    const f=setup();Object.assign(f.clerk,changed);
    assert.equal((await f.run()).code,'CLERK_IDENTITY_NOT_VERIFIED');
  }
 });
-test('exige prova forte da compra além de e-mail coincidente',async()=>{
- const f=setup();f.state.claimVerified=false;
- assert.equal((await f.run()).code,'PURCHASE_CLAIM_NOT_PROVEN');
+test('o e-mail verificado no Clerk identifica o assinante pelo preregistro salvo',async()=>{
+ const ok=setup();ok.clerk.email=' COMPRADOR@EXAMPLE.COM ';ok.user.email='Comprador@EXAMPLE.COM';
+ assert.equal((await ok.run()).eligible,true);
+ const wrongClerk=setup();wrongClerk.clerk.email='outro@example.com';
+ assert.equal((await wrongClerk.run()).code,'REGISTERED_EMAIL_NOT_VERIFIED');
+ for(const bad of [{email:'outro@example.com'},{id:'registro-falso'},{email:''}]){
+   const f=setup();Object.assign(f.registration,bad);
+   assert.equal((await f.run()).code,'REGISTERED_EMAIL_NOT_VERIFIED');
+ }
+});
+test('pagador e titular do cartao podem ser terceiros; somente email contratado e verificado importa',async()=>{
+ const f=setup();
+ f.checkout.payment_method_details={card:{cardholder_name:'Outra Pessoa',last4:'4242'}};
+ f.checkout.customer_details={name:'Outra Pessoa',email:'comprador@example.com'};
+ f.invoice.billing_details={name:'Outra Pessoa',email:'pagante@example.com'};
+ assert.equal((await f.run()).eligible,true);
+ for(const change of [
+    x=>x.customer.email='outro@example.com',
+    x=>x.customer.livemode=true,
+    x=>x.customer.metadata.pre_registration_id='outro-registro'
+ ]){
+   const bad=setup();change(bad);
+   assert.equal((await bad.run()).code,'STRIPE_CUSTOMER_EMAIL_MISMATCH');
+ }
 });
 test('checkout inválido é bloqueado',async()=>{
  for(const changed of [{livemode:true},{status:'open'},{payment_status:'unpaid'},
