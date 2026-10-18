@@ -1,0 +1,86 @@
+name: Validacao isolada - ponte comercial
+on:
+  push:
+    branches:
+      - release/landing-stripe-clerk-creditos-guardado-20261018
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: guest-commercial-release-candidate
+  cancel-in-progress: true
+jobs:
+  build-and-virtual-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NODE_ENV: test
+    steps:
+      - name: Checkout guarded release candidate
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+          run_install: false
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Install monorepo dependencies offline from production
+        run: pnpm install --frozen-lockfile
+      - name: Build internal TypeScript workspace references first
+        continue-on-error: true
+        run: pnpm exec tsc --build
+      - name: Typecheck backend and record known baseline errors
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pnpm --filter @workspace/api-server typecheck 2>&1 | tee /tmp/iattom-backend-ts.log
+      - name: Assert isolated guest backend has no TypeScript diagnostics
+        run: |
+          if grep -E 'src/(lib/guestCommercial|lib/guestPaidUnlinkedPolicy|routes/guestCommercial)' /tmp/iattom-backend-ts.log | grep -q 'error TS'; then
+            echo 'New guest backend has type errors'
+            grep -E 'src/(lib/guestCommercial|lib/guestPaidUnlinkedPolicy|routes/guestCommercial)' /tmp/iattom-backend-ts.log | grep 'error TS'
+            exit 1
+          fi
+          echo 'Guest backend additions: no TS diagnostics'
+      - name: Typecheck frontend and record known baseline errors
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          pnpm --filter @workspace/iattom-assist typecheck 2>&1 | tee /tmp/iattom-frontend-ts.log
+      - name: Assert isolated purchase activation UI has no TypeScript diagnostics
+        run: |
+          if grep -E 'src/(components/GuestPurchaseActivation|App.tsx)' /tmp/iattom-frontend-ts.log | grep -q 'error TS'; then
+            echo 'Guest purchase activation UI has type errors'
+            grep -E 'src/(components/GuestPurchaseActivation|App.tsx)' /tmp/iattom-frontend-ts.log | grep 'error TS'
+            exit 1
+          fi
+          echo 'Guest UI additions: no TS diagnostics'
+      - name: Install isolated virtual PostgreSQL harness only
+        run: npm install --prefix artifacts/api-server/guest-bridge-tests --ignore-scripts --no-audit --no-fund
+      - name: Run PostgreSQL virtual tests
+        run: npm run test:postgres --prefix artifacts/api-server/guest-bridge-tests
+      - name: Validate bundled commercial landing tests
+        run: npm test --prefix commercial
+      - name: Run copied actual canonical financial function end-to-end
+        run: npm run test:canonical --prefix artifacts/api-server/guest-bridge-tests
+      - name: Test full authenticated HTTP guest claim with simulated Stripe and Clerk
+        run: npm run test:http --prefix artifacts/api-server/guest-bridge-tests
+      - name: Build production-equivalent frontend and backend ONCE in a disposable runner
+        run: |
+          pnpm --filter @workspace/iattom-assist build
+          test -s artifacts/iattom-assist/dist/public/index.html
+          test -s artifacts/api-server/dist/index.mjs
+          grep -Rql 'iattom_guest_paid_checkout' artifacts/iattom-assist/dist/public/assets
+          echo 'COMPLETE FRONTEND AND BACKEND BUNDLES BUILT; GUEST RETURN PRESENT'
+      - name: Check guard flags and no production release
+        run: |
+          grep -q 'COMMERCIAL_GUEST_WRITE_RELEASED: boolean = false' artifacts/api-server/src/lib/guestCommercialClaim.ts
+          grep -q 'COMMERCIAL_GUEST_CAPTURE_RELEASED: boolean = false' artifacts/api-server/src/lib/guestCommercialPaidCapture.ts
+          test "$GITHUB_REF_NAME" = 'release/landing-stripe-clerk-creditos-guardado-20261018'
+          echo 'PRODUCTION GUARDS CONFIRMED'

@@ -22,6 +22,7 @@ import { AboutPage } from "@/pages/AboutPage";
 import { HelpPage } from "@/pages/HelpPage";
 import { BetaGate } from "@/components/BetaGate";
 import { PlanGate } from "@/components/PlanGate";
+import { GuestPurchaseRecovery, GuestPurchaseActivation } from "@/components/GuestPurchaseActivation";
 import { DashboardHome } from "@/pages/dashboard/DashboardHome";
 import { Credits } from "@/pages/dashboard/Credits";
 import { Billing } from "@/pages/dashboard/Billing";
@@ -243,11 +244,13 @@ function ClerkProviderWithRoutes() {
     <QueryClientProvider client={queryClient}><TooltipProvider>
       <ClerkQueryInvalidator />
       <BannedUserGuard />
+      <GuestPurchaseRecovery />
       <ErrorBoundary resetKey={location}><Switch>
         <Route path="/" component={HomeRedirect} />
         <Route path="/sign-in/*?" component={SignInCallbackPage} />
         <Route path="/sign-up/*?" component={SignUpCallbackPage} />
         <Route path="/onboarding/*?" component={ProtectedOnboarding} />
+        <Route path="/commercial/activate" component={GuestPurchaseActivation} />
         <Route path="/dashboard/*?" component={ProtectedDashboard} />
         <Route path="/admin/*?" component={ProtectedAdmin} />
         <Route path="/terms" component={TermsPage} />
