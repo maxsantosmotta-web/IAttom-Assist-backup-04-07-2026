@@ -9,6 +9,7 @@ import {prepareOfficialCheckout,createAuthorizedOfficialSession} from './officia
 import {fetchOfficialPublicCatalog} from './official-live-catalog.mjs';
 import {openCheckoutIntentStore} from './checkout-intent-store.mjs';
 import {verifyProductionClerkJwt,checkPublicClerkJwks} from './clerk-isolated-verifier.mjs';
+import {getClerkVerifiedPrimaryEmail,compareVerifiedEmail} from './clerk-primary-email-readonly.mjs';
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.PRE_SIGNUP_DATA_DIR || '/data';
@@ -423,6 +424,45 @@ const server = http.createServer(async (req, res) => {
     sessionSignatureVerified:true,revocationNotChecked:true,
     emailVerified:false,paymentConfirmed:false,subscriptionLinked:false,
     accountActivated:false,creditsGranted:0});
+  }
+  // Protected match: read-only. Disabled until separate credential is explicitly authorised.
+  if(path==='/api/bridge/verify-registration-email'){
+   if(req.method!=='POST')return send(res,405,{error:'Método não permitido'},{Allow:'POST'});
+   if(process.env.CLERK_BRIDGE_READ_ENABLED!=='true')
+    return send(res,503,{ok:false,code:'CLERK_READ_DISABLED',
+      paymentConfirmed:false,accountActivated:false,creditsGranted:0});
+   try{
+    if(!req.headers.origin||new URL(req.headers.origin).host!==req.headers.host)
+     return send(res,403,{error:'Origem não permitida'});
+   }catch{return send(res,403,{error:'Origem inválida'})}
+   if(throttle('email-clerk:'+(req.socket.remoteAddress||'unknown')))
+    return send(res,429,{error:'Muitas tentativas'});
+   const authorization=req.headers.authorization;
+   if(typeof authorization!=='string'||!authorization.startsWith('Bearer '))
+    return send(res,401,{ok:false,code:'CLERK_JWT_MISSING'});
+   const auth=await verifyProductionClerkJwt(authorization.slice(7));
+   if(!auth.ok)return send(res,401,{ok:false,code:'CLERK_JWT_INVALID'});
+   let raw='';
+   try{
+    for await(const part of req){
+     raw+=part.toString('utf8');
+     if(raw.length>512)return send(res,413,{error:'Solicitação muito grande'});
+    }
+    const fields=JSON.parse(raw);
+    const selection=checkoutIntents.resolveInternal({intentId:fields?.id,intentToken:fields?.token});
+    if(!selection.ok)return send(res,404,{ok:false,code:'SELECTION_NOT_FOUND'});
+    const registrationEmail=emailsByRegistrationId.get(selection.registrationId);
+    if(!registrationEmail)return send(res,404,{ok:false,code:'REGISTRATION_NOT_FOUND'});
+    const verified=await getClerkVerifiedPrimaryEmail({
+      userId:auth.clerkUserId,secret:process.env.CLERK_BRIDGE_READ_SECRET_KEY,
+      enabled:process.env.CLERK_BRIDGE_READ_ENABLED==='true'});
+    if(!verified.ok)return send(res,503,{ok:false,code:verified.code,
+      paymentConfirmed:false,accountActivated:false,creditsGranted:0});
+    const matched=compareVerifiedEmail(verified.verifiedEmail,registrationEmail);
+    return send(res,matched.ok?200:409,{ok:matched.ok,code:matched.code,
+      identityMatch:matched.ok,subscriptionLinked:false,
+      paymentConfirmed:false,accountActivated:false,creditsGranted:0});
+   }catch{return send(res,400,{ok:false,code:'REGISTRATION_MATCH_FAILED'})}
   }
   if (path === '/api/stripe/official-checkout') return officialCheckout(req, res);
   if (path === '/api/stripe/test-checkout') return stripeTestCheckout(req, res);

@@ -58,5 +58,13 @@ export function openCheckoutIntentStore({file,clock=()=>Date.now()}={}){
   if(clock()>=r.expiresAt)return fail('INTENT_EXPIRED');
   return {ok:true,code:'SELECTION_RESTORED_NOT_PAID',...view(r),checkoutEnabled:false};
  }
- return Object.freeze({create,status});
+ function resolveInternal({intentId,intentToken}={}){
+  const verified=status({intentId,intentToken});
+  if(!verified.ok)return {ok:false,code:verified.code};
+  const rec=records.get(intentId);
+  if(!rec)return {ok:false,code:'INTENT_NOT_FOUND'};
+  return {ok:true,registrationId:rec.registrationId,plan:rec.plan,
+   paymentConfirmed:false,accountActivated:false,creditsGranted:0};
+ }
+ return Object.freeze({create,status,resolveInternal});
 }
