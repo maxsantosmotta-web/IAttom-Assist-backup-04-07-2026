@@ -106,12 +106,10 @@ export async function claimCommercialGuestCheckout(input:{
  const lease=await leaseForCanonical(db,{
   sessionId:checkoutSessionId,clerkId:authenticatedClerkId,now:new Date()
  });
- if(!lease.ok){
-  if(lease.code==="ALREADY_COMPLETED")
-   return {ok:true as const,code:"ALREADY_RECONCILED",
-    accountActivated:true,creditsGranted:0,subscriptionId,plan:proof.plan};
-  return denied("PURCHASE_NOT_READY_FOR_RECONCILIATION");
- }
+ if(lease.ok&&lease.code==="ALREADY_COMPLETED")
+  return {ok:true as const,code:"ALREADY_RECONCILED",
+   accountActivated:true,creditsGranted:0,subscriptionId,plan:proof.plan};
+ if(!lease.ok)return denied("PURCHASE_NOT_READY_FOR_RECONCILIATION");
  const leaseToken=("leaseToken" in lease && typeof lease.leaseToken==="string")
    ? lease.leaseToken : "";
  if(!leaseToken)return denied("INVALID_RECONCILIATION_LEASE");

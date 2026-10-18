@@ -184,7 +184,8 @@ test("real authenticated guest HTTP route (temporary Stripe and Clerk adapters o
     assert.equal(state.credits[0].balance_type,"general");
     assert.equal(state.journal[0].status,"COMPLETED");
     const again=await x.claim();
-    assert.equal(again.status,200);assert.equal(again.body.code,"ALREADY_RECONCILED");
+    assert.equal(again.status,200,JSON.stringify(again));
+    assert.equal(again.body.code,"ALREADY_RECONCILED");
     assert.equal(again.body.creditsGranted,0);
     assert.equal((await x.counts()).credits.length,1);
    });
