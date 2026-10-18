@@ -112,7 +112,9 @@ export async function claimCommercialGuestCheckout(input:{
     accountActivated:true,creditsGranted:0,subscriptionId,plan:proof.plan};
   return denied("PURCHASE_NOT_READY_FOR_RECONCILIATION");
  }
- const leaseToken=String(lease.leaseToken);
+ const leaseToken=("leaseToken" in lease && typeof lease.leaseToken==="string")
+   ? lease.leaseToken : "";
+ if(!leaseToken)return denied("INVALID_RECONCILIATION_LEASE");
  // Advisory locks + row lock prevent conflicting ownership transfers.
  // This does not replace an idempotent credit ledger in PostgreSQL.
  const ownership=await db.transaction(async(tx)=>{
