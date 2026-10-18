@@ -3,6 +3,7 @@
  * executada se TODAS as autorizações forem fornecidas por código de servidor.
  * Este módulo não tem acesso a chave Stripe, banco, Clerk nem rede.
  */
+import {prepareSignedGuestCheckoutMetadata} from './guest-checkout-metadata.mjs';
 export const OFFICIAL_MONTHLY_PLANS=Object.freeze({
  START:Object.freeze({priceId:'price_1TunJ2AYtu5nLhAZPd1Ai0hD',amountCents:6900,planKey:'pro'}),
  PREMIUM:Object.freeze({priceId:'price_1TunQhAYtu5nLhAZu5QXWW31',amountCents:15900,planKey:'business'}),
@@ -37,7 +38,7 @@ export async function createAuthorizedOfficialSession({
  plan,registrationId,registeredEmail,
  officialCheckoutReleased=false,bridgeReconciliationReady=false,
  authorizedProductionRelease=false,serverRegistrationProofVerified=false,
- callbackOrigin,officialStripe,attemptId
+ callbackOrigin,officialStripe,attemptId,sharedSigningKey,proofIssuedAt
 }={}){
  const prepared=prepareOfficialCheckout({plan,registrationId,registeredEmail,officialCheckoutReleased});
  if(!prepared.ok)return prepared;
@@ -56,6 +57,20 @@ export async function createAuthorizedOfficialSession({
    p.type!=='recurring'||p.recurring?.interval!=='month'||p.recurring?.interval_count!==1||
    !ref(p.product)?.startsWith('prod_'))
    return fail('STRIPE_PRICE_DOES_NOT_MATCH',{plan,priceId:prepared.priceId});
+ // Sem um vínculo assinado verificável pelo backend, não pode haver Checkout real.
+ // Timestamp é produzido pelo servidor no INSTANTE da sessão (nunca pelo browser).
+ let signed;
+ try{
+  signed=prepareSignedGuestCheckoutMetadata({
+   registrationId,registrationEmail:registeredEmail,plan,
+   issuedAt:proofIssuedAt,sharedSigningKey
+  });
+  if(signed.priceId!==prepared.priceId||
+     signed.client_reference_id!==registrationId.toLowerCase())
+   return fail('SIGNED_REGISTRATION_PROOF_MISMATCH');
+ }catch{
+  return fail('SIGNED_REGISTRATION_PROOF_REQUIRED');
+ }
  // O email do pagador (Stripe Customer) NÃO é forçado ao email do pré-cadastro.
  // Não criar customer antes do checkout: Stripe captura email de pagamento livremente.
  // Reclamar acesso exige, em outro módulo, webhook autenticado e Clerk email verificado.
@@ -64,11 +79,8 @@ export async function createAuthorizedOfficialSession({
   line_items:[{price:prepared.priceId,quantity:1}],
   success_url:callbackOrigin+'/?checkout=retorno&session_id={CHECKOUT_SESSION_ID}#planos',
   cancel_url:callbackOrigin+'/?checkout=cancelado#planos',
-  metadata:{pre_registration_id:registrationId,plan,commercial_source:'landing'},
-  subscription_data:{metadata:{
-   pre_registration_id:registrationId,plan,planKey:prepared.internalPlanKey,
-   commercial_source:'landing'
-  }}
+  metadata:signed.metadata,
+  subscription_data:signed.subscription_data
  },'commercial:'+registrationId+':'+plan+':'+attemptId);
  if(!session||session.livemode!==true||!session.id?.startsWith('cs_live_')||
    typeof session.url!=='string'||!/^https:\/\/checkout\.stripe\.com\//.test(session.url))
