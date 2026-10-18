@@ -146,6 +146,20 @@ function showSaved() {
  planStatus.textContent='E-mail registrado: '+prereg.email+'. Você já pode selecionar um plano para continuar.';
 }
 showSaved();
+// Restaura somente a escolha guardada neste navegador. Não é comprovante de compra.
+try{
+ const ref=JSON.parse(sessionStorage.getItem('iattom_checkout_selection')||'null');
+ if(ref?.id&&ref?.token){
+  fetch('/api/checkout/selection-status',{method:'POST',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify(ref)}).then(r=>r.ok?r.json():null).then(x=>{
+    if(x?.ok&&x.status==='AWAITING_CHECKOUT'&&prereg){
+     planStatus.textContent='Seleção anterior: '+x.plan+
+      ' — ainda sem pagamento. Confira seu plano para continuar quando o checkout for liberado.';
+    }
+  }).catch(()=>{});
+ }
+}catch{}
 form.addEventListener('submit',async event=>{
  event.preventDefault();
  if(!form.reportValidity()) return;
@@ -199,8 +213,13 @@ plans.forEach(button=>button.addEventListener('click',async()=>{
      throw new Error('Plano não confirmado pela plataforma oficial.');
    const value=(result.amountCents/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
    const credits=result.generalCredits.toLocaleString('pt-BR');
-   planStatus.textContent='Confirmado diretamente no IAttom Assist oficial: '+plan+
-     ' — R$ '+value+'/mês e '+credits+' créditos gerais. Checkout ainda desativado até a liberação segura da assinatura e dos créditos. Nenhuma cobrança foi realizada.';
+   if(!result.selection?.id||!result.selection?.token||result.selection.status!=='AWAITING_CHECKOUT')
+     throw new Error('Não foi possível registrar a seleção de plano.');
+   sessionStorage.setItem('iattom_checkout_selection',JSON.stringify({
+     id:result.selection.id,token:result.selection.token
+   }));
+   planStatus.textContent='Plano '+plan+' — R$ '+value+'/mês e '+credits+
+     ' créditos gerais, confirmado no IAttom Assist oficial. Seleção salva para retomar neste navegador. O checkout ainda está desativado: nenhuma compra ou cobrança foi realizada.';
  }catch(error){
    planStatus.textContent=error.message||'Checkout temporariamente indisponível.';
  }finally{

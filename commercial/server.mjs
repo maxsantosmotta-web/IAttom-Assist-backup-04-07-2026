@@ -7,10 +7,12 @@ import {getCommercialPreviewPlan} from './official-compatibility.mjs';
 import {planPendingHandoffs} from './pending-handoff.mjs';
 import {prepareOfficialCheckout,createAuthorizedOfficialSession} from './official-checkout-contract.mjs';
 import {fetchOfficialPublicCatalog} from './official-live-catalog.mjs';
+import {openCheckoutIntentStore} from './checkout-intent-store.mjs';
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.PRE_SIGNUP_DATA_DIR || '/data';
 const FILE = join(DATA_DIR, 'pre-registrations.jsonl');
+const checkoutIntents=openCheckoutIntentStore({file:join(DATA_DIR,'checkout-selections.jsonl')});
 const records = new Map();
 const emailsByRegistrationId = new Map();
 const visitors = new Map();
@@ -129,10 +131,19 @@ async function officialCheckout(req,res){
      live.amountCents!==prepared.amountCents||live.internalPlanKey!==prepared.internalPlanKey)
    return send(res,409,{error:'Plano comercial não coincide com o catálogo oficial.',
     code:'OFFICIAL_PLAN_DISAGREEMENT',checkoutEnabled:false,realPayments:false});
-  // Os pagamentos continuam DESLIGADOS até conciliação real Clerk/Stripe/créditos.
-  if(!OFFICIAL_CHECKOUT_RELEASED)return send(res,200,{...prepared,prepared:true,
-   officialCatalogVerified:true,generalCredits:live.generalCredits,
-   message:'Plano e créditos confirmados pela API do IAttom Assist oficial. Pagamento não habilitado.'});
+  // Criamos um registro REAL exclusivamente no armazenamento do preview.
+  // Isto NÃO constitui pagamento e não concede acesso.
+  if(!OFFICIAL_CHECKOUT_RELEASED){
+   const selection=checkoutIntents.create({registrationId,plan,
+    priceId:live.priceId,amountCents:live.amountCents,
+    generalCredits:live.generalCredits});
+   if(!selection.ok)return send(res,503,{error:'Não foi possível salvar a seleção comercial.'});
+   return send(res,200,{...prepared,prepared:true,
+    officialCatalogVerified:true,generalCredits:live.generalCredits,
+    selection:{id:selection.intentId,token:selection.intentToken,expiresAt:selection.expiresAt,
+     status:selection.status},
+    message:'Seleção gravada com segurança no servidor da landing. Não houve pagamento.'});
+  }
   const session=await createAuthorizedOfficialSession({
    plan,registrationId,registeredEmail:storedEmail,
    officialCheckoutReleased:OFFICIAL_CHECKOUT_RELEASED,
@@ -362,6 +373,29 @@ const server = http.createServer(async (req, res) => {
     const live=await fetchOfficialPublicCatalog();
     if(!live.verified)return send(res,503,live);
     return send(res,200,live);
+  }
+  if(path==='/api/checkout/selection-status'){
+   if(req.method!=='POST')return send(res,405,{error:'Método não permitido'},{Allow:'POST'});
+   try{
+    if(!req.headers.origin||new URL(req.headers.origin).host!==req.headers.host)
+     return send(res,403,{error:'Origem não permitida'});
+   }catch{return send(res,403,{error:'Origem inválida'})}
+   if(throttle('selection-status:'+(req.socket.remoteAddress||'unknown')))
+    return send(res,429,{error:'Muitas tentativas'});
+   let raw='';
+   try{
+    for await(const chunk of req){
+     raw+=chunk.toString('utf8');
+     if(raw.length>512)return send(res,413,{error:'Solicitação muito grande'});
+    }
+    const payload=JSON.parse(raw);
+    const v=checkoutIntents.status({
+     intentId:payload?.id,intentToken:payload?.token
+    });
+    if(!v.ok)return send(res,v.code==='INTENT_EXPIRED'?410:404,{
+     error:'Seleção indisponível ou expirada',code:v.code});
+    return send(res,200,v);
+   }catch{return send(res,400,{error:'Seleção inválida'})}
   }
   if (path === '/api/stripe/official-checkout') return officialCheckout(req, res);
   if (path === '/api/stripe/test-checkout') return stripeTestCheckout(req, res);
