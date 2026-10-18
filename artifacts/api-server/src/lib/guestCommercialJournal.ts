@@ -7,11 +7,10 @@ import {randomUUID} from "node:crypto";
 import {sql} from "drizzle-orm";
 import {validateGuestRegistrationProof} from "./guestCommercialProof.js";
 import type {VerifiedPaidGuest} from "./guestPaidUnlinkedPolicy.js";
+import type {db as OfficialDatabase} from "@workspace/db";
 
-export type JournalDatabase = {
- execute(query:unknown):Promise<{rows:Record<string,unknown>[]}>;
- transaction<T>(run:(tx:JournalDatabase)=>Promise<T>):Promise<T>;
-};
+// Use the exact Drizzle signatures from IAttom's own PostgreSQL client.
+export type JournalDatabase = Pick<typeof OfficialDatabase,"execute"|"transaction">;
 type PaidProof=VerifiedPaidGuest;
 const no=(code:string)=>({ok:false as const,code});
 const yes=(code:string,extra:Record<string,unknown>={})=>({ok:true as const,code,...extra});
