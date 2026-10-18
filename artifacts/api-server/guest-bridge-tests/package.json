@@ -5,7 +5,8 @@
   "scripts": {
     "test:postgres": "node --test isolatedPostgresClaims.test.mjs",
     "test:canonical": "tsx --test virtualCanonicalEndToEnd.test.mjs",
-    "test:http": "tsx --test virtualHttpClaim.test.mjs"
+    "test:http": "tsx --test virtualHttpClaim.test.mjs",
+    "test:migration": "node --test liveMigration.test.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",

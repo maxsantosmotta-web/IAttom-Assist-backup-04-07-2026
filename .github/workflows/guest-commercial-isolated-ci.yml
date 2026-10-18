@@ -63,6 +63,8 @@ jobs:
           echo 'Guest UI additions: no TS diagnostics'
       - name: Install isolated virtual PostgreSQL harness only
         run: npm install --prefix artifacts/api-server/guest-bridge-tests --ignore-scripts --no-audit --no-fund
+      - name: Validate actual additive guest migration in disposable PostgreSQL
+        run: npm run test:migration --prefix artifacts/api-server/guest-bridge-tests
       - name: Run PostgreSQL virtual tests
         run: npm run test:postgres --prefix artifacts/api-server/guest-bridge-tests
       - name: Validate bundled commercial landing tests
