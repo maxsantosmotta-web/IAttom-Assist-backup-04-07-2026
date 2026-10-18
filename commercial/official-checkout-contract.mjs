@@ -77,7 +77,7 @@ export async function createAuthorizedOfficialSession({
  const session=await officialStripe.createCheckoutSession({
   mode:'subscription',client_reference_id:registrationId,
   line_items:[{price:prepared.priceId,quantity:1}],
-  success_url:callbackOrigin+'/?checkout=retorno&session_id={CHECKOUT_SESSION_ID}#planos',
+  success_url:'https://www.iattomassist.com.br/commercial/activate?session_id={CHECKOUT_SESSION_ID}',
   cancel_url:callbackOrigin+'/?checkout=cancelado#planos',
   metadata:signed.metadata,
   subscription_data:signed.subscription_data
