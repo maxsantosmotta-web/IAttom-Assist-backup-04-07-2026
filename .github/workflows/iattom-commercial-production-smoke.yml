@@ -1,0 +1,63 @@
+name: Smoke read-only IAttom comercial em producao
+on:
+  push:
+    branches:
+      - verify/commercial-production-smoke-20261018
+permissions:
+  contents: read
+jobs:
+  public-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Consultar rotas oficiais sem compra nem alteracao
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.error, sys
+          urls = [
+              ('Site IAttom', 'https://www.iattomassist.com.br/', 'html'),
+              ('API healthz', 'https://www.iattomassist.com.br/api/healthz', 'health'),
+              ('Novo catalogo comercial', 'https://www.iattomassist.com.br/api/stripe/commercial/plans', 'plans'),
+              ('Retorno comercial Clerk', 'https://www.iattomassist.com.br/commercial/activate', 'html'),
+              ('Landing healthz', 'https://vendas.iattomassist.com.br/healthz', 'landing'),
+              ('Conferencia de catalogo na landing', 'https://vendas.iattomassist.com.br/api/official/catalog-status', 'verify'),
+          ]
+          errors=[]
+          for label,url,kind in urls:
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'IAttom-health-readonly/1.0','Cache-Control':'no-cache'})
+                  with urllib.request.urlopen(req,timeout=22) as response:
+                      status=response.status
+                      body=response.read(40000)
+              except urllib.error.HTTPError as exc:
+                  status=exc.code
+                  body=exc.read(40000)
+              except Exception as exc:
+                  errors.append(f'{label}: network error {type(exc).__name__}')
+                  print(errors[-1]);continue
+              code=None
+              try:
+                  obj=json.loads(body)
+                  if isinstance(obj,dict):code=obj.get('code')
+              except Exception:
+                  obj=None
+              print(f'{label}: HTTP {status}' + (f' / code={code}' if code else ''))
+              if status!=200: errors.append(f'{label}: HTTP {status}')
+              if kind=='html' and b'<html' not in body.lower(): errors.append(f'{label}: expected HTML')
+              if kind in ('health','landing') and (not isinstance(obj,dict) or obj.get('status',obj.get('ok')) not in ('ok',True)): errors.append(f'{label}: no health confirmation')
+              if kind=='plans':
+                  if not isinstance(obj,list) or len(obj)!=3:
+                      errors.append(f'{label}: expected three commercial plans')
+                  else:
+                      plans={p.get('name'):p for p in obj}
+                      for name,amount,credits in [('START',6900,200),('PREMIUM',15900,500),('PRO',29900,1000)]:
+                          p=plans.get(name,{})
+                          if p.get('amount')!=amount or p.get('credits')!=credits or p.get('currency')!='brl':
+                              errors.append(f'{label}: unexpected plan {name}')
+              if kind=='verify' and (not isinstance(obj,dict) or obj.get('verified') is not True):
+                  errors.append(f'{label}: catalog not verified')
+          if errors:
+              print('RESULT=NOT_READY\n'+'\n'.join(errors))
+              sys.exit(1)
+          print('RESULT=PUBLIC_READONLY_SMOKE_OK')
+          PY
