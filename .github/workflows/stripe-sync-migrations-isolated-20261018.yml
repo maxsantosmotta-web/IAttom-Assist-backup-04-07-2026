@@ -1,0 +1,71 @@
+name: Verify Stripe SQL assets without production changes
+on:
+  push:
+    branches:
+      - fix/stripe-sync-migration-assets-20261018
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-assets-and-disposable-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: temporary-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:temporary-ci-only@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build production API and verify copied Stripe SQL assets
+        run: |
+          pnpm --filter @workspace/api-server build
+          test -s artifacts/api-server/dist/index.mjs
+          test -f artifacts/api-server/dist/migrations/0000_initial_migration.sql
+          test -f artifacts/api-server/dist/migrations/0052_webhook_url_uniqueness.sql
+          found=$(find artifacts/api-server/dist/migrations -maxdepth 1 -name '*.sql' | wc -l)
+          test "$found" -ge 53
+          echo "VALIDATED_STRIPE_MIGRATION_ASSETS=$found"
+      - name: Apply vendor migrations twice ONLY to disposable PostgreSQL
+        run: |
+          node --input-type=module <<'NODE'
+          import { runMigrations } from 'stripe-replit-sync';
+          await runMigrations({databaseUrl: process.env.DATABASE_URL});
+          await runMigrations({databaseUrl: process.env.DATABASE_URL});
+          console.log('ISOLATED_STRIPE_MIGRATIONS_IDEMPOTENT');
+          NODE
+      - name: Verify tables and journal only in disposable PostgreSQL
+        run: |
+          tables=$(docker exec ${{ job.services.postgres.id }} psql -U postgres -d postgres -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema='stripe'")
+          account=$(docker exec ${{ job.services.postgres.id }} psql -U postgres -d postgres -Atc "SELECT to_regclass('stripe.accounts') IS NOT NULL")
+          migrations=$(docker exec ${{ job.services.postgres.id }} psql -U postgres -d postgres -Atc "SELECT count(*) FROM stripe._migrations")
+          echo "DISPOSABLE_DB_TABLE_COUNT=$tables"
+          echo "DISPOSABLE_DB_ACCOUNT_EXISTS=$account"
+          echo "DISPOSABLE_DB_MIGRATIONS=$migrations"
+          test "$account" = t
+          test "$tables" -ge 25
+          test "$migrations" -ge 50
+          echo 'ONLY_DISPOSABLE_DB_MODIFIED'
