@@ -20,6 +20,8 @@ import {
   getPlansWithPrices,
 } from "../lib/stripeStorage.js";
 import { reconcileCheckoutSession } from "../lib/webhookHandlers.js";
+import { GUEST_MONTHLY } from "../lib/guestCommercialProof.js";
+import { getUncachableStripeClient } from "../lib/stripeClient.js";
 
 const router: IRouter = Router();
 
@@ -194,6 +196,45 @@ const PLAN_PRICES: Record<string, number> = {
   business: 19900,
   agency: 49900,
 };
+
+/** Dedicated, read-only commercial catalog.
+ * Existing /stripe/plans is unchanged for current subscribers.
+ * Never publish a plan until the LIVE Stripe price matches the approved
+ * monthly BRL contract. This route cannot create checkouts or grant credits.
+ */
+router.get("/stripe/commercial/plans", async (req: Request, res: Response) => {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const stripe = await getUncachableStripeClient();
+    const entries = Object.entries(GUEST_MONTHLY) as Array<
+      [keyof typeof GUEST_MONTHLY, (typeof GUEST_MONTHLY)[keyof typeof GUEST_MONTHLY]]
+    >;
+    const plans = await Promise.all(entries.map(async ([name, spec]) => {
+      const price = await stripe.prices.retrieve(spec.priceId);
+      const productId = typeof price.product === "string" ? price.product : price.product?.id;
+      if (price.id !== spec.priceId || price.livemode !== true ||
+          price.active !== true || price.type !== "recurring" ||
+          price.currency !== "brl" || price.unit_amount !== spec.cents ||
+          price.recurring?.interval !== "month" ||
+          price.recurring?.interval_count !== 1 || !productId?.startsWith("prod_")) {
+        return null;
+      }
+      return {
+        planKey: spec.planKey, name, priceId: spec.priceId,
+        amount: spec.cents, currency: "brl", interval: "month",
+        credits: spec.credits,
+      };
+    }));
+    if (plans.some(p => p === null)) {
+      req.log.warn("Commercial Stripe catalog does not match the approved contract");
+      return res.status(503).json({ code: "COMMERCIAL_CATALOG_NOT_VERIFIED" });
+    }
+    return res.json(plans);
+  } catch (err) {
+    req.log.warn({ err }, "Commercial Stripe price verification unavailable");
+    return res.status(503).json({ code: "COMMERCIAL_CATALOG_UNAVAILABLE" });
+  }
+});
 
 router.get("/stripe/plans", async (_req: Request, res: Response) => {
   const stripeRows = await getPlansWithPrices();
