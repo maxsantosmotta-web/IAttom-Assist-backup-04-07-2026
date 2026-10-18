@@ -6,7 +6,9 @@ test('frontend shows plans and general credits returned by verified production A
  const html=readFileSync(join(import.meta.dirname,'../index.html'),'utf8');
  assert.match(html,/result\.officialCatalogVerified!==true/);
  assert.match(html,/result\.generalCredits\.toLocaleString\('pt-BR'\)/);
- assert.match(html,/Confirmado diretamente no IAttom Assist oficial:/);
+ assert.match(html,/confirmado no IAttom Assist oficial/);
+ assert.match(html,/result\.selection\.status!=='AWAITING_CHECKOUT'/);
+ assert.match(html,/sessionStorage\.setItem\('iattom_checkout_selection'/);
  assert.match(html,/Nenhuma cobrança foi realizada/);
  assert.match(html,/\/api\/stripe\/official-checkout/);
 });
