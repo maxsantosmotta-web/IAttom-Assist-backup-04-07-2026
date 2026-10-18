@@ -72,6 +72,12 @@ jobs:
           pnpm --filter @workspace/api-server build
           test -s artifacts/api-server/dist/index.mjs
           echo 'OFFICIAL BACKEND BUNDLE BUILT IN ISOLATED RUNNER'
+      - name: Build actual customer-facing IAttom frontend without deployment
+        run: |
+          pnpm --filter @workspace/iattom-assist build
+          test -s artifacts/iattom-assist/dist/public/index.html
+          grep -Rql 'iattom_guest_paid_checkout' artifacts/iattom-assist/dist/public/assets
+          echo 'GUEST CLERK RETURN PRESERVED IN REAL FRONTEND BUNDLE'
       - name: Check guard flags and no production release
         run: |
           grep -q 'COMMERCIAL_GUEST_WRITE_RELEASED: boolean = false' artifacts/api-server/src/lib/guestCommercialClaim.ts
