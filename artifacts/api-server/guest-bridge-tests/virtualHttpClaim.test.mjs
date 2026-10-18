@@ -6,6 +6,7 @@ import {pathToFileURL} from "node:url";
 import express from "express";
 import {PGlite} from "@electric-sql/pglite";
 import {drizzle} from "drizzle-orm/pglite";
+import {sql} from "drizzle-orm";
 import {GUEST_MONTHLY} from "../src/lib/guestCommercialProof.ts";
 import {createAuthorizedOfficialSession} from "../../../.isolated-landing/commercial/official-checkout-contract.mjs";
 
@@ -143,9 +144,9 @@ async function scenario(plan,fn){
    return {status:result.status,body:await result.json()};
   }
   async function counts(){
-   const users=await db.execute({sql:"SELECT clerk_id,plan,credits FROM users ORDER BY clerk_id",params:[]});
-   const journal=await db.execute({sql:"SELECT status,clerk_user_id FROM commercial_guest_claims",params:[]});
-   const credits=await db.execute({sql:"SELECT clerk_user_id,amount,balance_type FROM credits_transactions",params:[]});
+   const users=await db.execute(sql.raw("SELECT clerk_id,plan,credits FROM users ORDER BY clerk_id"));
+   const journal=await db.execute(sql.raw("SELECT status,clerk_user_id FROM commercial_guest_claims"));
+   const credits=await db.execute(sql.raw("SELECT clerk_user_id,amount,balance_type FROM credits_transactions"));
    return {users:users.rows,journal:journal.rows,credits:credits.rows};
   }
   await fn({

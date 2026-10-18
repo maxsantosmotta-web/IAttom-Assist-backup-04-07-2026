@@ -74,7 +74,7 @@ jobs:
       - name: Run copied actual canonical financial function end-to-end
         run: npm run test:canonical --prefix artifacts/api-server/guest-bridge-tests
       - name: Test full authenticated HTTP guest claim with simulated Stripe and Clerk
-        run: pnpm --filter @workspace/api-server exec tsx --test guest-bridge-tests/virtualHttpClaim.test.mjs
+        run: npm run test:http --prefix artifacts/api-server/guest-bridge-tests
       - name: Build production-equivalent frontend and backend ONCE in a disposable runner
         run: |
           pnpm --filter @workspace/iattom-assist build

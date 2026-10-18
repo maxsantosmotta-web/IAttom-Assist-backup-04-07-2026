@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test:postgres": "node --test isolatedPostgresClaims.test.mjs",
-    "test:canonical": "tsx --test virtualCanonicalEndToEnd.test.mjs"
+    "test:canonical": "tsx --test virtualCanonicalEndToEnd.test.mjs",
+    "test:http": "tsx --test virtualHttpClaim.test.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",
