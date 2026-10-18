@@ -49,6 +49,13 @@ export function GuestPurchaseRecovery() {
     try {
       const token = await getToken();
       if (!token) throw new Error("CLERK_SESSION_REQUIRED");
+      // Use the existing IAttom account provisioning endpoint before claiming.
+      // New Clerk sign-ups otherwise race the first user row insertion.
+      const synced = await fetch("/api/auth/me", {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!synced.ok) throw new Error("OFFICIAL_ACCOUNT_SYNC_PENDING");
       const reply = await fetch("/api/stripe/guest/claim", {
         method: "POST",
         credentials: "include",
