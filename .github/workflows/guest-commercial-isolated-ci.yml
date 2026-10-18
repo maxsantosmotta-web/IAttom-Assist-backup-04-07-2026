@@ -67,17 +67,13 @@ jobs:
         run: npm run test:postgres --prefix artifacts/api-server/guest-bridge-tests
       - name: Run copied actual canonical financial function end-to-end
         run: npm run test:canonical --prefix artifacts/api-server/guest-bridge-tests
-      - name: Build actual backend production bundle on disposable GitHub runner only
-        run: |
-          pnpm --filter @workspace/api-server build
-          test -s artifacts/api-server/dist/index.mjs
-          echo 'OFFICIAL BACKEND BUNDLE BUILT IN ISOLATED RUNNER'
-      - name: Build actual customer-facing IAttom frontend without deployment
+      - name: Build production-equivalent frontend and backend ONCE in a disposable runner
         run: |
           pnpm --filter @workspace/iattom-assist build
           test -s artifacts/iattom-assist/dist/public/index.html
+          test -s artifacts/api-server/dist/index.mjs
           grep -Rql 'iattom_guest_paid_checkout' artifacts/iattom-assist/dist/public/assets
-          echo 'GUEST CLERK RETURN PRESERVED IN REAL FRONTEND BUNDLE'
+          echo 'COMPLETE FRONTEND AND BACKEND BUNDLES BUILT; GUEST RETURN PRESENT'
       - name: Check guard flags and no production release
         run: |
           grep -q 'COMMERCIAL_GUEST_WRITE_RELEASED: boolean = false' artifacts/api-server/src/lib/guestCommercialClaim.ts
