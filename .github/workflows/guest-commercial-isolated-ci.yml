@@ -1,0 +1,50 @@
+name: Validacao isolada - ponte comercial
+on:
+  push:
+    branches:
+      - feature/backend-guest-checkout-bridge-isolated
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: guest-commercial-isolated-ci
+  cancel-in-progress: true
+jobs:
+  build-and-virtual-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NODE_ENV: test
+    steps:
+      - name: Checkout isolated branch only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+          run_install: false
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Install monorepo dependencies offline from production
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck existing official backend + isolated guest additions
+        run: pnpm --filter @workspace/api-server typecheck
+      - name: Typecheck front end including guest activation route
+        run: pnpm --filter @workspace/iattom-assist typecheck
+      - name: Install isolated virtual PostgreSQL harness only
+        run: npm install --prefix artifacts/api-server/guest-bridge-tests --ignore-scripts --no-audit --no-fund
+      - name: Run PostgreSQL virtual tests
+        run: npm run test:postgres --prefix artifacts/api-server/guest-bridge-tests
+      - name: Run copied actual canonical financial function end-to-end
+        run: npm run test:canonical --prefix artifacts/api-server/guest-bridge-tests
+      - name: Check guard flags and no production release
+        run: |
+          grep -q 'COMMERCIAL_GUEST_WRITE_RELEASED: boolean = false' artifacts/api-server/src/lib/guestCommercialClaim.ts
+          grep -q 'COMMERCIAL_GUEST_CAPTURE_RELEASED: boolean = false' artifacts/api-server/src/lib/guestCommercialPaidCapture.ts
+          test "$(git branch --show-current)" = 'feature/backend-guest-checkout-bridge-isolated'
+          echo 'PRODUCTION GUARDS CONFIRMED'
