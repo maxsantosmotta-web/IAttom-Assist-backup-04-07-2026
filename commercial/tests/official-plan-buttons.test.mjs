@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
+import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs';
+import {OFFICIAL_MONTHLY_PLANS} from '../official-checkout-contract.mjs';
+import {LIVE_OFFICIAL_CATALOG_URL} from '../official-live-catalog.mjs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import net from 'node:net';
@@ -21,7 +23,22 @@ test('POST dos três botões usa os Price IDs oficiais e impede cobrança real',
  const environment={...process.env,PRE_SIGNUP_DATA_DIR:dir,PORT:String(port),
   STRIPE_LIVE_SECRET_KEY:'sk_live_FAKE_NAO_USAR',
   OFFICIAL_CHECKOUT_RELEASED:'true',OFFICIAL_PAYMENT_AUTHORIZED:'true'};
- const child=spawn(process.execPath,[resolve(import.meta.dirname,'../server.mjs')],{
+ // Only the virtual subprocess receives an in-memory catalog response.
+ // This test never reads live Stripe or triggers a payment.
+ const fakeCatalog=Object.entries(OFFICIAL_MONTHLY_PLANS).map(([name,p],i)=>({
+  planKey:p.planKey,name,priceId:p.priceId,amount:p.amountCents,
+  currency:'brl',interval:'month',credits:[200,500,1000][i]
+ }));
+ const preloader=join(dir,'fake-official-catalog.mjs');
+ writeFileSync(preloader,[
+  'const originalFetch=globalThis.fetch;',
+  'globalThis.fetch=(url,opts)=>{',
+  'if(String(url)==='+JSON.stringify(LIVE_OFFICIAL_CATALOG_URL)+')',
+  ' return Promise.resolve(new Response('+JSON.stringify(JSON.stringify(fakeCatalog))+',{status:200,headers:{"content-type":"application/json"}}));',
+  'return originalFetch(url,opts);',
+  '};'
+ ].join('\\n').replaceAll('\\n','\n'));
+ const child=spawn(process.execPath,['--import',preloader,resolve(import.meta.dirname,'../server.mjs')],{
   env:environment,stdio:['ignore','pipe','pipe']});
  let stderr='';child.stderr.on('data',x=>stderr+=String(x));
  try{
