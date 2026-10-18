@@ -154,6 +154,10 @@ async function officialCheckout(req,res){
    // Até existir uma prova criptográfica de titularidade entre servidores, sempre falso.
    serverRegistrationProofVerified:false,
    callbackOrigin:'https://landing-comercial-preview-preview.up.railway.app',
+   // Chave separada e compartilhada apenas entre os backends autorizados.
+   // Não configurar no preview até existir a ponte homologada.
+   sharedSigningKey:process.env.COMMERCIAL_REGISTRATION_HMAC_KEY,
+   proofIssuedAt:Math.floor(Date.now()/1000),
    officialStripe:officialStripeAdapter,attemptId:randomUUID()
   });
   if(!session.ok)return send(res,503,{
