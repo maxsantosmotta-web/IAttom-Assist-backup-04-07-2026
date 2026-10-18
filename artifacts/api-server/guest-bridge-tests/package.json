@@ -1,0 +1,11 @@
+{
+  "name": "iattom-guest-bridge-isolated-postgres-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:postgres": "node --test isolatedPostgresClaims.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14"
+  }
+}
