@@ -17,7 +17,10 @@ type InvoiceRef=Stripe.Invoice & {
 type Period=Stripe.SubscriptionItem&{current_period_start?:number;current_period_end?:number};
 const id=(x:string|{id:string}|null|undefined):string=>
  typeof x==="string"?x:x?.id??"";
+export const COMMERCIAL_GUEST_CAPTURE_RELEASED: boolean = false;
 export async function captureServerVerifiedGuestPurchase(sessionId:string){
+ if(!COMMERCIAL_GUEST_CAPTURE_RELEASED)
+  return {ok:false as const,code:"COMMERCIAL_GUEST_NOT_RELEASED"};
  if(!/^cs_live_[A-Za-z0-9_]{6,255}$/.test(sessionId))
   return {ok:false as const,code:"INVALID_CHECKOUT_SESSION"};
  const stripe=await getUncachableStripeClient();
