@@ -1,0 +1,15 @@
+# Ponte de assinatura comercial: simulação antes do oficial
+
+Data 17/10/2026. Exclusivamente na feature/landing-vendas-stripe-pre-cadastro.
+
+Fluxo desejado: cliente informa e-mail A no pré-cadastro da landing, seleciona Price ID oficial existente do plano, o Stripe processa pagamento independentemente do e-mail B do pagador, uma evidência assinada do Stripe confirma pagamento e uma conta Clerk autenticada com e-mail verificado C=A reivindica a assinatura. Somente então o IAttom Assist deverá mostrar o plano já comprado e conceder os créditos corretos usando um único mecanismo financeiro existente.
+
+SIMULADOR ATUAL: commercial/virtual-account-bridge.mjs avalia objetos Stripe/Clerk sintéticos e produz uma projeção de plano START/PREMIUM/PRO. Nenhuma consulta real, cobrança, gravação SQL, API Clerk, concessão de créditos ou alteração do SaaS oficial. O ledger é local em memória, não durável e NÃO prova segurança transacional em vários servidores.
+
+A rotina exige: e-mail do pré-cadastro do servidor, Clerk verificado em fonte confiável, Checkout Stripe oficial completo/pago e vinculado ao registrationId, Customer correto, assinatura ativa e única, Price ID exato e valor 6900/15900/29900 em BRL com renovação mensal, invoice paga no mesmo contrato, usuário de faturamento sem Customer concorrente, ausência de outro titular da assinatura e tratamento de outros provedores Google Play. O e-mail do pagador não é comparado ao destinatário. Divergência C!=A gera PENDING_EMAIL_REVIEW e não reembolsa, cancela ou cobra novamente.
+
+Ledger de simulação registra uma projeção por sessão, assinatura, Customer, registro e Clerk. Mesmo com 20 chamadas concorrentes a mesma compra, só um grant VIRTUAL ocorre; a política fictícia de teste usa 7, 13, 19 e não corresponde aos créditos oficiais. Toda resposta continua accountActivated=false, creditsGranted=0, productionWrites=0. O ledger verdadeiro terá unicidade SQL/transação e reprocessamento persistente para sobreviver a crash, restart e múltiplas réplicas.
+
+ANTES DE QUALQUER IMPLEMENTAÇÃO NA PRODUÇÃO: obter aprovação específica; revisar getOrSyncUser para impedir reassociação por e-mail do navegador; montar prova de compra autenticada entre servidores, não pelo sessionId isolado; verificar a integração do Clerk e e-mail primário validado; auditar e implantar banco com unique claims por checkout e subscription, trava por Clerk e atomicidade com saldo; implementar recuperação de falha e idempotência de webhook; conciliar assinaturas Google Play; confirmar política de créditos (código canonical de grants diverge de rotas de apresentação); corrigir com cuidado cancelamentos legados; testar rollback controlado antes de ativar feature flags. Nenhum destes passos tocou a produção nesta rodada.
+
+Price IDs informados: START price_1TunJ2AYtu5nLhAZPd1Ai0hD; PREMIUM price_1TunQhAYtu5nLhAZu5QXWW31; PRO price_1TunTDAYtu5nLhAZDfzTn8Cm. Não criar novos produtos/preços. A landing permanece sem cobranças reais.

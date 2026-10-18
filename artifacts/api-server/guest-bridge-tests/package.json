@@ -1,0 +1,16 @@
+{
+  "name": "iattom-guest-bridge-isolated-postgres-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:postgres": "node --test isolatedPostgresClaims.test.mjs",
+    "test:canonical": "tsx --test virtualCanonicalEndToEnd.test.mjs",
+    "test:http": "tsx --test virtualHttpClaim.test.mjs",
+    "test:migration": "node --test liveMigration.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "drizzle-orm": "0.44.7",
+    "tsx": "4.20.3"
+  }
+}
