@@ -8,6 +8,7 @@ import {planPendingHandoffs} from './pending-handoff.mjs';
 import {prepareOfficialCheckout,createAuthorizedOfficialSession} from './official-checkout-contract.mjs';
 import {fetchOfficialPublicCatalog} from './official-live-catalog.mjs';
 import {openCheckoutIntentStore} from './checkout-intent-store.mjs';
+import {verifyProductionClerkJwt,checkPublicClerkJwks} from './clerk-isolated-verifier.mjs';
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.PRE_SIGNUP_DATA_DIR || '/data';
@@ -396,6 +397,32 @@ const server = http.createServer(async (req, res) => {
      error:'Seleção indisponível ou expirada',code:v.code});
     return send(res,200,v);
    }catch{return send(res,400,{error:'Seleção inválida'})}
+  }
+  // Independent read-only Clerk signature validation. Never an entitlement.
+  if(path==='/api/bridge/clerk-key-status'){
+   if(req.method!=='GET')return send(res,405,{error:'Método não permitido'},{Allow:'GET'});
+   const proof=await checkPublicClerkJwks();
+   return send(res,proof.ok?200:503,proof);
+  }
+  if(path==='/api/bridge/verify-clerk-session'){
+   if(req.method!=='POST')return send(res,405,{error:'Método não permitido'},{Allow:'POST'});
+   try{
+    if(!req.headers.origin||new URL(req.headers.origin).host!==req.headers.host)
+     return send(res,403,{error:'Origem não permitida'});
+   }catch{return send(res,403,{error:'Origem inválida'})}
+   if(throttle('verify-clerk:'+(req.socket.remoteAddress||'unknown')))
+    return send(res,429,{error:'Muitas tentativas'});
+   const authorization=req.headers.authorization;
+   if(typeof authorization!=='string'||!authorization.startsWith('Bearer ')){
+    return send(res,401,{error:'Sessão Clerk necessária'});
+   }
+   const auth=await verifyProductionClerkJwt(authorization.slice(7));
+   if(!auth.ok)return send(res,401,{error:'Sessão Clerk não verificada'});
+   // Do NOT return userId, sid, token, emails or any entitlement here.
+   return send(res,200,{ok:true,code:auth.code,issuer:'https://clerk.iattomassist.com.br',
+    sessionSignatureVerified:true,revocationNotChecked:true,
+    emailVerified:false,paymentConfirmed:false,subscriptionLinked:false,
+    accountActivated:false,creditsGranted:0});
   }
   if (path === '/api/stripe/official-checkout') return officialCheckout(req, res);
   if (path === '/api/stripe/test-checkout') return stripeTestCheckout(req, res);
