@@ -1,0 +1,1 @@
+Production read-only smoke run after 53 official Stripe migrations and API build 30f30ebc. No payment and no writes.
