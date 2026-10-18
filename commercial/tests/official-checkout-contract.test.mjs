@@ -5,6 +5,8 @@ import {OFFICIAL_MONTHLY_PLANS,getOfficialMonthlyPlan,prepareOfficialCheckout,
 const rid='123e4567-e89b-42d3-a456-426614174000';
 const aid='123e4567-e89b-42d3-a456-426614174001';
 const options={plan:'PREMIUM',registrationId:rid,registeredEmail:'usuario@example.com'};
+const mockSigningKey='0123456789abcdef'.repeat(4);
+const mockProofIssuedAt=1792280000;
 const identity=[
  ['START','price_1TunJ2AYtu5nLhAZPd1Ai0hD',6900,'pro'],
  ['PREMIUM','price_1TunQhAYtu5nLhAZu5QXWW31',15900,'business'],
@@ -55,6 +57,8 @@ test('Stripe Price oficial precisa confirmar BRL, valor mensal e livemode',async
   const r=await createAuthorizedOfficialSession({...options,officialCheckoutReleased:true,
    bridgeReconciliationReady:true,authorizedProductionRelease:true,serverRegistrationProofVerified:true,
    callbackOrigin:'https://landing.example.com',attemptId:aid,
+  sharedSigningKey:mockSigningKey,proofIssuedAt:mockProofIssuedAt,
+   sharedSigningKey:mockSigningKey,proofIssuedAt:mockProofIssuedAt,
    officialStripe:{retrievePrice:async()=>price,
     createCheckoutSession:async()=>{checkoutCalls++;return null;}}});
   assert.equal(r.code,'STRIPE_PRICE_DOES_NOT_MATCH');assert.equal(checkoutCalls,0);
@@ -65,6 +69,7 @@ test('sessão sintética usa apenas o Price ID oficial sem customer_email',async
  const input={...options,officialCheckoutReleased:true,bridgeReconciliationReady:true,
   authorizedProductionRelease:true,serverRegistrationProofVerified:true,
   callbackOrigin:'https://landing.example.com',attemptId:aid,
+  sharedSigningKey:mockSigningKey,proofIssuedAt:mockProofIssuedAt,
   officialStripe:{
    retrievePrice:async id=>({id,livemode:true,active:true,
     unit_amount:15900,currency:'brl',type:'recurring',
@@ -77,6 +82,10 @@ test('sessão sintética usa apenas o Price ID oficial sem customer_email',async
  assert.equal(r.code,'STRIPE_CHECKOUT_CREATED');assert.equal(r.accountActivated,false);
  assert.deepEqual(call.fields.line_items,[{price:identity[1][1],quantity:1}]);
  assert.equal(call.fields.subscription_data.metadata.planKey,'business');
+ assert.match(call.fields.metadata.pre_registration_proof,/^[0-9a-f]{64}$/);
+ assert.equal(call.fields.metadata.pre_registration_issued_at,String(mockProofIssuedAt));
+ assert.equal(call.fields.metadata.pre_registration_proof,call.fields.subscription_data.metadata.pre_registration_proof);
+ assert.equal(call.fields.metadata.planKey,'business');
  assert.equal(call.fields.client_reference_id,rid);
  assert.equal(call.fields.customer,undefined);
  assert.equal(call.fields.customer_email,undefined);
@@ -87,9 +96,27 @@ test('sessão Stripe em modo teste jamais serve para produção',async()=>{
   officialCheckoutReleased:true,bridgeReconciliationReady:true,
   authorizedProductionRelease:true,serverRegistrationProofVerified:true,
   callbackOrigin:'https://landing.example.com',attemptId:aid,
+  sharedSigningKey:mockSigningKey,proofIssuedAt:mockProofIssuedAt,
   officialStripe:{retrievePrice:async id=>({id,livemode:true,active:true,
    unit_amount:15900,currency:'brl',type:'recurring',
    recurring:{interval:'month',interval_count:1},product:'prod_real'}),
    createCheckoutSession:async()=>({livemode:false,id:'cs_test_fake',url:'https://checkout.stripe.com/fake'})}});
  assert.equal(r.code,'STRIPE_LIVE_SESSION_INVALID');
+});
+
+
+test('no signing key: checkout blocked before creating a real session',async()=>{
+ let sessionCalls=0;
+ const r=await createAuthorizedOfficialSession({...options,
+  officialCheckoutReleased:true,bridgeReconciliationReady:true,
+  authorizedProductionRelease:true,serverRegistrationProofVerified:true,
+  proofIssuedAt:mockProofIssuedAt,callbackOrigin:'https://landing.example.com',attemptId:aid,
+  officialStripe:{
+    retrievePrice:async id=>({id,livemode:true,active:true,unit_amount:15900,
+      currency:'brl',type:'recurring',recurring:{interval:'month',interval_count:1},
+      product:'prod_signed'}),
+    createCheckoutSession:async()=>{sessionCalls++;return null;}
+  }});
+ assert.equal(r.code,'SIGNED_REGISTRATION_PROOF_REQUIRED');
+ assert.equal(sessionCalls,0);
 });
