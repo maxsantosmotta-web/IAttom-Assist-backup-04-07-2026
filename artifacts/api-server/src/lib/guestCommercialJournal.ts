@@ -5,15 +5,14 @@
  */
 import {randomUUID} from "node:crypto";
 import {sql} from "drizzle-orm";
-import type {GuestAssessment} from "./guestCommercialPolicy.js";
+import {validateGuestRegistrationProof} from "./guestCommercialProof.js";
+import type {VerifiedPaidGuest} from "./guestPaidUnlinkedPolicy.js";
 
 export type JournalDatabase = {
  execute(query:unknown):Promise<{rows:Record<string,unknown>[]}>;
  transaction<T>(run:(tx:JournalDatabase)=>Promise<T>):Promise<T>;
 };
-type PaidProof=Extract<GuestAssessment,{ok:true}> & {
- periodStart:number;periodEnd:number;
-};
+type PaidProof=VerifiedPaidGuest;
 const no=(code:string)=>({ok:false as const,code});
 const yes=(code:string,extra:Record<string,unknown>={})=>({ok:true as const,code,...extra});
 const id=(x:string,p:string)=>typeof x==="string"&&x.startsWith(p)&&x.length>p.length;
@@ -25,15 +24,19 @@ export async function stageServerVerifiedPaidPurchase(db:JournalDatabase,p:PaidP
     !id(p.invoiceId,"in_")||!/^price_[A-Za-z0-9]+$/.test(p.priceId)||
     !["pro","business","agency"].includes(p.planKey)||
     !Number.isSafeInteger(p.credits)||p.credits<1||
+    !Number.isSafeInteger(p.sessionCreated)||!Number.isSafeInteger(p.issuedAt)||
+    !/^[a-f0-9]{64}$/.test(p.hmac)||
     !Number.isSafeInteger(p.periodStart)||!Number.isSafeInteger(p.periodEnd)||
     p.periodEnd<=p.periodStart)return no("PAID_STRIPE_ASSESSMENT_REQUIRED");
  return db.transaction(async tx=>{
   const created=await tx.execute(sql`
    INSERT INTO commercial_guest_claims(checkout_session_id,stripe_subscription_id,
     stripe_customer_id,stripe_invoice_id,registration_id,price_id,plan_key,
+    commercial_plan,checkout_created_at,pre_registration_issued_at,pre_registration_proof,
     general_credit_amount,billing_period_start,billing_period_end)
    VALUES(${p.sessionId},${p.subscriptionId},${p.customerId},${p.invoiceId},
-    ${p.registrationId},${p.priceId},${p.planKey},${p.credits},
+    ${p.registrationId},${p.priceId},${p.planKey},
+    ${p.plan},${p.sessionCreated},${p.issuedAt},${p.hmac},${p.credits},
     ${p.periodStart},${p.periodEnd})
    ON CONFLICT DO NOTHING RETURNING checkout_session_id
   `);
@@ -48,7 +51,12 @@ export async function stageServerVerifiedPaidPurchase(db:JournalDatabase,p:PaidP
     row.stripe_subscription_id!==p.subscriptionId||
     row.stripe_customer_id!==p.customerId||
     row.registration_id!==p.registrationId||row.price_id!==p.priceId||
-    row.plan_key!==p.planKey||Number(row.general_credit_amount)!==p.credits||
+    row.plan_key!==p.planKey||row.commercial_plan!==p.plan||
+    Number(row.checkout_created_at)!==p.sessionCreated||
+    Number(row.pre_registration_issued_at)!==p.issuedAt||
+    row.pre_registration_proof!==p.hmac||
+    row.stripe_invoice_id!==p.invoiceId||
+    Number(row.general_credit_amount)!==p.credits||
     Number(row.billing_period_start)!==p.periodStart||
     Number(row.billing_period_end)!==p.periodEnd)
    return no("PAID_PURCHASE_FINGERPRINT_CONFLICT");
@@ -56,10 +64,10 @@ export async function stageServerVerifiedPaidPurchase(db:JournalDatabase,p:PaidP
  });
 }
 export async function linkVerifiedOwner(db:JournalDatabase,a:{
- sessionId:string;clerkId:string;verifiedClerkEmail:string;registrationEmail:string;
+ sessionId:string;clerkId:string;verifiedClerkEmail:string;
+ sharedSigningKey:string;nowSeconds:number;
 }){
- if(!email(a.verifiedClerkEmail)||email(a.verifiedClerkEmail)!==email(a.registrationEmail))
-  return no("CLERK_EMAIL_NOT_MATCHING_REGISTRATION");
+ if(!email(a.verifiedClerkEmail))return no("VERIFIED_CLERK_EMAIL_REQUIRED");
  if(!id(a.sessionId,"cs_live_")||!id(a.clerkId,"user_"))
   return no("AUTHENTICATED_IDS_REQUIRED");
  return db.transaction(async tx=>{
@@ -67,6 +75,24 @@ export async function linkVerifiedOwner(db:JournalDatabase,a:{
    SELECT * FROM commercial_guest_claims WHERE checkout_session_id=${a.sessionId} FOR UPDATE
   `);
   const p=r.rows[0];if(!p)return no("PAID_PURCHASE_NOT_SAVED");
+  // The registration identity is proved from IMMUTABLE STRIPE-paid journal
+  // values, not an email parameter submitted by the browser.
+  const proof=validateGuestRegistrationProof({
+   metadata:{
+    commercial_source:"landing",
+    plan:String(p.commercial_plan),
+    planKey:String(p.plan_key),
+    pre_registration_id:String(p.registration_id),
+    pre_registration_issued_at:String(p.pre_registration_issued_at),
+    pre_registration_proof:String(p.pre_registration_proof)
+   },
+   clerkPrimaryEmail:a.verifiedClerkEmail,
+   checkoutCreated:Number(p.checkout_created_at),
+   sharedSigningKey:a.sharedSigningKey,
+   nowSeconds:a.nowSeconds
+  });
+  if(!proof.ok||proof.priceId!==p.price_id)
+   return no("CLERK_DOES_NOT_MATCH_SIGNED_REGISTRATION");
   if(p.clerk_user_id&&p.clerk_user_id!==a.clerkId)return no("PURCHASE_OWNED_BY_OTHER");
   if(p.status==="REVIEW")return no("PURCHASE_AWAITING_REVIEW");
   const u=(await tx.execute(sql`
