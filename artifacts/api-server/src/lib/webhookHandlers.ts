@@ -4,6 +4,7 @@ import { db, users, creditsTransactions, videoTransactions } from "@workspace/db
 import { getStripeSync, getUncachableStripeClient } from "./stripeClient.js";
 import { logger } from "./logger.js";
 import { handleCanonicalSubscriptionChange } from "./stripeCanonicalSubscription.js";
+import {captureServerVerifiedGuestPurchase} from "./guestCommercialPaidCapture.js";
 
 const PLAN_CREDITS: Record<string, number> = {
   free: 0,
@@ -481,6 +482,17 @@ export class WebhookHandlers {
           break;
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
+          // Guests must be recorded as PAID_UNLINKED after the authenticated
+          // Stripe webhook, without granting credits to any Stripe payer.
+          // The official product's own subscriptions take their existing path.
+          if(session.mode==="subscription"&&session.metadata?.commercial_source==="landing"){
+            const captured=await captureServerVerifiedGuestPurchase(session.id);
+            if(!captured.ok){
+              logger.warn({sessionId:session.id,code:captured.code},
+                "Guest purchase awaits Stripe confirmation or secure retry");
+            }
+            break;
+          }
           await handlePackagePurchase(session);
           if (session.mode === "subscription" && session.subscription) {
             const stripe = await getUncachableStripeClient();
