@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { cp, readdir, rm } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -130,6 +130,23 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  // stripe-replit-sync resolves its SQL migrations relative to the bundled
+  // runtime file. esbuild bundles its JS but never copies its .sql assets.
+  // Without the SQL files, runMigrations() silently creates an empty "stripe"
+  // schema and returns success, breaking incoming Stripe webhooks.
+  const stripeSyncEntry = globalThis.require.resolve("stripe-replit-sync");
+  const migrationsSource = path.join(path.dirname(stripeSyncEntry), "migrations");
+  const migrationFiles = await readdir(migrationsSource);
+  const requiredMigrations = [
+    "0000_initial_migration.sql",
+    "0052_webhook_url_uniqueness.sql",
+  ];
+  if (!requiredMigrations.every((file) => migrationFiles.includes(file))) {
+    throw new Error("The installed stripe-replit-sync SQL migrations are missing or incomplete");
+  }
+  await cp(migrationsSource, path.join(distDir, "migrations"), { recursive: true });
+  console.info(`Packaged ${migrationFiles.length} official Stripe SQL migration assets in API dist`);
 }
 
 buildAll().catch((err) => {
