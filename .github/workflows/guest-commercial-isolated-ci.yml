@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - release/landing-stripe-clerk-creditos-guardado-20261018
+      - fix/commercial-catalog-credits-isolated-20261018
   workflow_dispatch:
 permissions:
   contents: read
@@ -47,6 +48,11 @@ jobs:
             grep -E 'src/(lib/guestCommercial|lib/guestPaidUnlinkedPolicy|routes/guestCommercial)' /tmp/iattom-backend-ts.log | grep 'error TS'
             exit 1
           fi
+          if grep -F 'src/routes/stripe.ts' /tmp/iattom-backend-ts.log | grep -q 'error TS'; then
+            echo 'Commercial catalog route typecheck failed'
+            grep -F 'src/routes/stripe.ts' /tmp/iattom-backend-ts.log | grep 'error TS'
+            exit 1
+          fi
           echo 'Guest backend additions: no TS diagnostics'
       - name: Typecheck frontend and record known baseline errors
         continue-on-error: true
@@ -87,5 +93,8 @@ jobs:
           grep -Fq 'IATTOM_COMMERCIAL_OPERATOR_APPROVED === "true"' artifacts/api-server/src/lib/guestCommercialPaidCapture.ts
           grep -Fq 'IATTOM_COMMERCIAL_CAPTURE_RELEASED === "true"' artifacts/api-server/src/lib/guestCommercialPaidCapture.ts
           node --input-type=module -e "import('./commercial/release-approval.mjs').then(x=>{if(Object.values(x.officialReleaseFlags({})).some(Boolean))process.exit(1)})"
-          test "$GITHUB_REF_NAME" = 'release/landing-stripe-clerk-creditos-guardado-20261018'
+          case "$GITHUB_REF_NAME" in
+            release/landing-stripe-clerk-creditos-guardado-20261018|fix/commercial-catalog-credits-isolated-20261018) ;;
+            *) echo "Unexpected CI branch"; exit 1 ;;
+          esac
           echo 'PRODUCTION GUARDS CONFIRMED'
