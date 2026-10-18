@@ -5,7 +5,7 @@
  */
 import {OFFICIAL_MONTHLY_PLANS} from './official-checkout-contract.mjs';
 export const LIVE_OFFICIAL_CATALOG_URL=
- 'https://workspaceiattom-assist-production.up.railway.app/api/stripe/plans';
+ 'https://www.iattomassist.com.br/api/stripe/commercial/plans';
 const CREDIT_LIMITS=Object.freeze({START:200,PREMIUM:500,PRO:1000});
 const result=(verified,code,items=[])=>Object.freeze({
  verified,code,source:'official_public_api',readOnly:true,
