@@ -74,7 +74,7 @@ export async function claimCommercialGuestCheckout(input:{
    itemPrices:subscription.items.data.map(i=>({id:i.price.id,currency:i.price.currency,
     amount:i.price.unit_amount,interval:i.price.recurring?.interval??null})),
    invoiceId},
-  invoice:{id:invoice.id,livemode:invoice.livemode,paid:invoice.paid,
+  invoice:{id:invoice.id,livemode:invoice.livemode,paid:invoice.status==='paid',
    status:invoice.status,customer:objectId(invoice.customer),
    subscriptionId:invoiceSubscriptionId,currency:invoice.currency,
    amountPaid:invoice.amount_paid},
