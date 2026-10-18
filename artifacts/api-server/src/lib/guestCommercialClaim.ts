@@ -10,6 +10,8 @@ import { getUncachableStripeClient } from "./stripeClient.js";
 import { handleCanonicalSubscriptionChange } from "./stripeCanonicalSubscription.js";
 import { assessGuestCommercialPurchase } from "./guestCommercialPolicy.js";
 import { normalizeVerifiedEmail } from "./guestCommercialProof.js";
+import {captureServerVerifiedGuestPurchase} from "./guestCommercialPaidCapture.js";
+import {linkVerifiedOwner,leaseForCanonical,finishOnlyIfCanonicalRecorded,releaseForRetry} from "./guestCommercialJournal.js";
 
 export const COMMERCIAL_GUEST_WRITE_RELEASED: boolean = false;
 const denied=(code:string)=>({ok:false as const,code,accountActivated:false,creditsGranted:0});
@@ -90,6 +92,27 @@ export async function claimCommercialGuestCheckout(input:{
   activeSubscriptionsForCustomer:active.data.map(a=>a.id)
  });
  if(!proof.ok)return proof;
+ // Same source-of-truth receipt used by the webhook: purchase is persisted
+ // before any account association or general-credit operation.
+ const captured=await captureServerVerifiedGuestPurchase(checkoutSessionId);
+ if(!captured.ok)return denied("PAID_PURCHASE_NOT_STORED");
+ const linked=await linkVerifiedOwner(db,{
+  sessionId:checkoutSessionId,clerkId:authenticatedClerkId,
+  verifiedClerkEmail:verified,
+  sharedSigningKey:process.env.COMMERCIAL_REGISTRATION_HMAC_KEY,
+  nowSeconds:Math.floor(Date.now()/1000)
+ });
+ if(!linked.ok)return denied("PURCHASE_LINK_NOT_AUTHORIZED");
+ const lease=await leaseForCanonical(db,{
+  sessionId:checkoutSessionId,clerkId:authenticatedClerkId,now:new Date()
+ });
+ if(!lease.ok){
+  if(lease.code==="ALREADY_COMPLETED")
+   return {ok:true as const,code:"ALREADY_RECONCILED",
+    accountActivated:true,creditsGranted:0,subscriptionId,plan:proof.plan};
+  return denied("PURCHASE_NOT_READY_FOR_RECONCILIATION");
+ }
+ const leaseToken=String(lease.leaseToken);
  // Advisory locks + row lock prevent conflicting ownership transfers.
  // This does not replace an idempotent credit ledger in PostgreSQL.
  const ownership=await db.transaction(async(tx)=>{
@@ -112,13 +135,23 @@ export async function claimCommercialGuestCheckout(input:{
     .where(eq(users.clerkId,authenticatedClerkId));
   return true;
  });
- if(!ownership)return denied("OWNERSHIP_CONFLICT_REQUIRES_REVIEW");
+ if(!ownership){
+  await releaseForRetry(db,{sessionId:checkoutSessionId,leaseToken});
+  return denied("OWNERSHIP_CONFLICT_REQUIRES_REVIEW");
+ }
  // Existing official credit routine is the ONLY writer. No invented balances.
  const result=await handleCanonicalSubscriptionChange(subscription);
  if(!result.ok||result.clerkUserId!==authenticatedClerkId||
     result.subscriptionId!==subscriptionId||result.priceId!==proof.priceId||
-    result.targetPlan!==proof.planKey)
+    result.targetPlan!==proof.planKey){
+  await releaseForRetry(db,{sessionId:checkoutSessionId,leaseToken});
   return denied("FINANCIAL_RECONCILIATION_RETRY_REQUIRED");
+ }
+ const final=await finishOnlyIfCanonicalRecorded(db,{
+  sessionId:checkoutSessionId,clerkId:authenticatedClerkId,
+  leaseToken,now:new Date()
+ });
+ if(!final.ok)return denied("FINANCIAL_LEDGER_RECHECK_RETRY_REQUIRED");
  return {ok:true as const,code:"GUEST_SUBSCRIPTION_RECOGNIZED",
   plan:proof.plan,priceId:proof.priceId,subscriptionId,
   creditsGranted:result.generalGranted,alreadyReconciled:result.generalAlreadyGranted,
