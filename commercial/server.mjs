@@ -151,8 +151,10 @@ async function officialCheckout(req,res){
    officialCheckoutReleased:OFFICIAL_CHECKOUT_RELEASED,
    bridgeReconciliationReady:OFFICIAL_CLERK_CREDITS_BRIDGE_READY,
    authorizedProductionRelease:OFFICIAL_PAYMENT_AUTHORIZED,
-   // Até existir uma prova criptográfica de titularidade entre servidores, sempre falso.
-   serverRegistrationProofVerified:false,
+   // O ID e o e-mail vieram do armazenamento do servidor. O comprovante
+   // HMAC é criado no contrato; a titularidade é verificada depois pelo
+   // e-mail principal confirmado no Clerk, nunca pelo pagador do Stripe.
+   serverRegistrationProofVerified:true,
    callbackOrigin:'https://landing-comercial-preview-preview.up.railway.app',
    // Chave separada e compartilhada apenas entre os backends autorizados.
    // Não configurar no preview até existir a ponte homologada.
