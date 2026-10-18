@@ -164,7 +164,10 @@ test("real authenticated guest HTTP route (temporary Stripe and Clerk adapters o
   await t.test(plan+" payer separate, correct Clerk account, single credit grant",async()=>{
    await scenario(plan,async x=>{
     assert.equal((await x.claim("invalid")).status,401);
-    assert.equal((await x.capture()).ok,true);
+    const firstCapture=await x.capture();
+    assert.equal(firstCapture.ok,true,JSON.stringify(firstCapture));
+    const secondCapture=await x.capture();
+    assert.equal(secondCapture.ok,true,JSON.stringify(secondCapture));
     assert.equal((await x.counts()).journal[0].status,"PAID_UNLINKED");
     await x.register();
     assert.equal((await x.claim("virtual-maria")).status,503);
