@@ -208,7 +208,18 @@ plans.forEach(button=>button.addEventListener('click',async()=>{
        throw new Error('Checkout de testes inválido.');
      window.location.assign(result.url);return;
    }
-   if(result.mode!=='official'||result.plan!==plan||result.checkoutEnabled!==false||
+   if(result.mode!=='official'||result.plan!==plan)
+     throw new Error('Resposta de plano incompatível.');
+   // Um checkout somente poderá abrir após o backend autorizar todas as travas.
+   // A URL vem do servidor, nunca de texto informado pelo navegador.
+   if(result.checkoutEnabled===true){
+     const url=typeof result.url==='string'?result.url:'';
+     if(result.realPayments!==true||result.code!=='STRIPE_CHECKOUT_CREATED'||
+        !/^https:\/\/checkout\.stripe\.com\//.test(url))
+       throw new Error('Checkout Stripe não validado.');
+     window.location.assign(url);return;
+   }
+   if(result.checkoutEnabled!==false||
       result.officialCatalogVerified!==true||!Number.isSafeInteger(result.generalCredits))
      throw new Error('Plano não confirmado pela plataforma oficial.');
    const value=(result.amountCents/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
