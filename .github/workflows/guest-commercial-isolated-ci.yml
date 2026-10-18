@@ -35,12 +35,32 @@ jobs:
       - name: Build internal TypeScript workspace references first
         continue-on-error: true
         run: pnpm exec tsc --build
-      - name: Typecheck existing backend and isolated guest additions (baseline may have unrelated errors)
+      - name: Typecheck backend and record known baseline errors
         continue-on-error: true
-        run: pnpm --filter @workspace/api-server typecheck
-      - name: Typecheck front end including guest activation route (baseline may have unrelated errors)
+        run: |
+          set -o pipefail
+          pnpm --filter @workspace/api-server typecheck 2>&1 | tee /tmp/iattom-backend-ts.log
+      - name: Assert isolated guest backend has no TypeScript diagnostics
+        run: |
+          if grep -E 'src/(lib/guestCommercial|lib/guestPaidUnlinkedPolicy|routes/guestCommercial)' /tmp/iattom-backend-ts.log | grep -q 'error TS'; then
+            echo 'New guest backend has type errors'
+            grep -E 'src/(lib/guestCommercial|lib/guestPaidUnlinkedPolicy|routes/guestCommercial)' /tmp/iattom-backend-ts.log | grep 'error TS'
+            exit 1
+          fi
+          echo 'Guest backend additions: no TS diagnostics'
+      - name: Typecheck frontend and record known baseline errors
         continue-on-error: true
-        run: pnpm --filter @workspace/iattom-assist typecheck
+        run: |
+          set -o pipefail
+          pnpm --filter @workspace/iattom-assist typecheck 2>&1 | tee /tmp/iattom-frontend-ts.log
+      - name: Assert isolated purchase activation UI has no TypeScript diagnostics
+        run: |
+          if grep -E 'src/(components/GuestPurchaseActivation|App.tsx)' /tmp/iattom-frontend-ts.log | grep -q 'error TS'; then
+            echo 'Guest purchase activation UI has type errors'
+            grep -E 'src/(components/GuestPurchaseActivation|App.tsx)' /tmp/iattom-frontend-ts.log | grep 'error TS'
+            exit 1
+          fi
+          echo 'Guest UI additions: no TS diagnostics'
       - name: Install isolated virtual PostgreSQL harness only
         run: npm install --prefix artifacts/api-server/guest-bridge-tests --ignore-scripts --no-audit --no-fund
       - name: Run PostgreSQL virtual tests
