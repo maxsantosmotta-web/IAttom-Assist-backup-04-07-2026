@@ -13,7 +13,8 @@ import { normalizeVerifiedEmail } from "./guestCommercialProof.js";
 import {captureServerVerifiedGuestPurchase} from "./guestCommercialPaidCapture.js";
 import {linkVerifiedOwner,leaseForCanonical,finishOnlyIfCanonicalRecorded,releaseForRetry} from "./guestCommercialJournal.js";
 
-export const COMMERCIAL_GUEST_WRITE_RELEASED: boolean = false;
+export const COMMERCIAL_GUEST_WRITE_RELEASED: boolean = process.env.IATTOM_COMMERCIAL_OPERATOR_APPROVED === "true" &&
+  process.env.IATTOM_COMMERCIAL_CLAIM_RELEASED === "true";
 const denied=(code:string)=>({ok:false as const,code,accountActivated:false,creditsGranted:0});
 const objectId=(x:string|{id:string}|null|undefined):string=>
   typeof x==="string"?x:x?.id??"";

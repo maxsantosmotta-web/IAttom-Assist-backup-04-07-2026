@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {officialReleaseFlags,validateCommercialPublicOrigin} from './release-approval.mjs';
 import { readFileSync, appendFileSync, existsSync, mkdirSync, openSync, closeSync, chmodSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -63,9 +64,11 @@ async function getLandingImage(path) {
 /* Checkout Stripe oficial: preparado, MAS IMPOSSÍVEL COBRAR nesta prévia isolada.
    Essas constantes não vêm do Railway e permanecem falsas até aprovação específica.
    A implementação segura Clerk/webhook/créditos é pré-condição adicional. */
-const OFFICIAL_CHECKOUT_RELEASED = false;
-const OFFICIAL_CLERK_CREDITS_BRIDGE_READY = false;
-const OFFICIAL_PAYMENT_AUTHORIZED = false;
+const {
+ officialCheckoutReleased: OFFICIAL_CHECKOUT_RELEASED,
+ bridgeReconciliationReady: OFFICIAL_CLERK_CREDITS_BRIDGE_READY,
+ authorizedProductionRelease: OFFICIAL_PAYMENT_AUTHORIZED
+} = officialReleaseFlags();
 async function officialStripeRequest(path,fields=null,idempotencyKey=null){
  if(!OFFICIAL_CHECKOUT_RELEASED||!OFFICIAL_CLERK_CREDITS_BRIDGE_READY||!OFFICIAL_PAYMENT_AUTHORIZED)
   throw Error('Pagamento oficial não habilitado');
@@ -146,6 +149,11 @@ async function officialCheckout(req,res){
      status:selection.status},
     message:'Seleção gravada com segurança no servidor da landing. Não houve pagamento.'});
   }
+  // Live checkout cannot return to a preview hostname or an unverified landing origin.
+  const officialOrigin=validateCommercialPublicOrigin();
+  if(!officialOrigin||req.headers.origin!==officialOrigin)
+   return send(res,503,{ok:false,code:'OFFICIAL_LANDING_ORIGIN_NOT_CONFIGURED',
+    checkoutEnabled:false,realPayments:false});
   const session=await createAuthorizedOfficialSession({
    plan,registrationId,registeredEmail:storedEmail,
    officialCheckoutReleased:OFFICIAL_CHECKOUT_RELEASED,
@@ -155,7 +163,7 @@ async function officialCheckout(req,res){
    // HMAC é criado no contrato; a titularidade é verificada depois pelo
    // e-mail principal confirmado no Clerk, nunca pelo pagador do Stripe.
    serverRegistrationProofVerified:true,
-   callbackOrigin:'https://landing-comercial-preview-preview.up.railway.app',
+   callbackOrigin:officialOrigin,
    // Chave separada e compartilhada apenas entre os backends autorizados.
    // Não configurar no preview até existir a ponte homologada.
    sharedSigningKey:process.env.COMMERCIAL_REGISTRATION_HMAC_KEY,

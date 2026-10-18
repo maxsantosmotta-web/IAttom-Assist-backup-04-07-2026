@@ -82,7 +82,10 @@ jobs:
           echo 'COMPLETE FRONTEND AND BACKEND BUNDLES BUILT; GUEST RETURN PRESENT'
       - name: Check guard flags and no production release
         run: |
-          grep -q 'COMMERCIAL_GUEST_WRITE_RELEASED: boolean = false' artifacts/api-server/src/lib/guestCommercialClaim.ts
-          grep -q 'COMMERCIAL_GUEST_CAPTURE_RELEASED: boolean = false' artifacts/api-server/src/lib/guestCommercialPaidCapture.ts
+          grep -Fq 'IATTOM_COMMERCIAL_OPERATOR_APPROVED === "true"' artifacts/api-server/src/lib/guestCommercialClaim.ts
+          grep -Fq 'IATTOM_COMMERCIAL_CLAIM_RELEASED === "true"' artifacts/api-server/src/lib/guestCommercialClaim.ts
+          grep -Fq 'IATTOM_COMMERCIAL_OPERATOR_APPROVED === "true"' artifacts/api-server/src/lib/guestCommercialPaidCapture.ts
+          grep -Fq 'IATTOM_COMMERCIAL_CAPTURE_RELEASED === "true"' artifacts/api-server/src/lib/guestCommercialPaidCapture.ts
+          node --input-type=module -e "import('./commercial/release-approval.mjs').then(x=>{if(Object.values(x.officialReleaseFlags({})).some(Boolean))process.exit(1)})"
           test "$GITHUB_REF_NAME" = 'release/landing-stripe-clerk-creditos-guardado-20261018'
           echo 'PRODUCTION GUARDS CONFIRMED'

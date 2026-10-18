@@ -54,7 +54,7 @@ write("capture.ts",copy("lib/guestCommercialPaidCapture.ts",[
 ['from "./stripeClient.js"','from "./fakeStripe.mjs"'],
 ['from "./guestPaidUnlinkedPolicy.js"','from "../../src/lib/guestPaidUnlinkedPolicy.ts"'],
 ['from "./guestCommercialJournal.js"','from "../../src/lib/guestCommercialJournal.ts"'],
-['COMMERCIAL_GUEST_CAPTURE_RELEASED: boolean = false','COMMERCIAL_GUEST_CAPTURE_RELEASED: boolean = true']]));
+["export const COMMERCIAL_GUEST_CAPTURE_RELEASED: boolean = process.env.IATTOM_COMMERCIAL_OPERATOR_APPROVED === \"true\" &&\n  process.env.IATTOM_COMMERCIAL_CAPTURE_RELEASED === \"true\";",'export const COMMERCIAL_GUEST_CAPTURE_RELEASED: boolean = true;']]));
 write("claim.ts",copy("lib/guestCommercialClaim.ts",[
 ['from "@clerk/express"','from "./fakeClerk.mjs"'],
 ['from "@workspace/db"','from "./fakeDb.mjs"'],
@@ -64,7 +64,7 @@ write("claim.ts",copy("lib/guestCommercialClaim.ts",[
 ['from "./guestCommercialProof.js"','from "../../src/lib/guestCommercialProof.ts"'],
 ['from "./guestCommercialPaidCapture.js"','from "./capture.ts"'],
 ['from "./guestCommercialJournal.js"','from "../../src/lib/guestCommercialJournal.ts"'],
-['COMMERCIAL_GUEST_WRITE_RELEASED: boolean = false','COMMERCIAL_GUEST_WRITE_RELEASED: boolean = true']]));
+["export const COMMERCIAL_GUEST_WRITE_RELEASED: boolean = process.env.IATTOM_COMMERCIAL_OPERATOR_APPROVED === \"true\" &&\n  process.env.IATTOM_COMMERCIAL_CLAIM_RELEASED === \"true\";",'export const COMMERCIAL_GUEST_WRITE_RELEASED: boolean = true;']]));
 write("route.ts",copy("routes/guestCommercial.ts",[
 ['from "../middlewares/requireAuth.js"','from "./fakeAuth.mjs"'],
 ['from "../lib/guestCommercialClaim.js"','from "./claim.ts"']]));

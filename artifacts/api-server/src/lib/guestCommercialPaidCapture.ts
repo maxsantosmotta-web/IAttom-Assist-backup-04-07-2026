@@ -17,7 +17,8 @@ type InvoiceRef=Stripe.Invoice & {
 type Period=Stripe.SubscriptionItem&{current_period_start?:number;current_period_end?:number};
 const id=(x:string|{id:string}|null|undefined):string=>
  typeof x==="string"?x:x?.id??"";
-export const COMMERCIAL_GUEST_CAPTURE_RELEASED: boolean = false;
+export const COMMERCIAL_GUEST_CAPTURE_RELEASED: boolean = process.env.IATTOM_COMMERCIAL_OPERATOR_APPROVED === "true" &&
+  process.env.IATTOM_COMMERCIAL_CAPTURE_RELEASED === "true";
 export async function captureServerVerifiedGuestPurchase(sessionId:string){
  if(!COMMERCIAL_GUEST_CAPTURE_RELEASED)
   return {ok:false as const,code:"COMMERCIAL_GUEST_NOT_RELEASED"};
