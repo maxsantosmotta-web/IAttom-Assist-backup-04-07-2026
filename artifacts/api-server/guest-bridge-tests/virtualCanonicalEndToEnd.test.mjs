@@ -6,7 +6,9 @@ import {pathToFileURL} from 'node:url';
 import {PGlite} from '@electric-sql/pglite';
 import {drizzle} from 'drizzle-orm/pglite';
 import {sql} from 'drizzle-orm';
-import {signGuestRegistration,GUEST_MONTHLY} from '../src/lib/guestCommercialProof.ts';
+import {GUEST_MONTHLY} from '../src/lib/guestCommercialProof.ts';
+import {assessGuestCommercialPurchase} from '../src/lib/guestCommercialPolicy.ts';
+import {createAuthorizedOfficialSession} from '../../../.isolated-landing/commercial/official-checkout-contract.mjs';
 import {assessStripePaidGuestWithoutClerk} from '../src/lib/guestPaidUnlinkedPolicy.ts';
 import {stageServerVerifiedPaidPurchase,linkVerifiedOwner,leaseForCanonical,finishOnlyIfCanonicalRecorded} from '../src/lib/guestCommercialJournal.ts';
 
@@ -41,24 +43,70 @@ async function dbTest(fn){
   const db=drizzle(pg);setDb(db);await fn(db);
  }finally{await pg.close()}
 }
-function mockPaid(plan,changes={}){
+async function mockPaid(plan,changes={}){
  const spec=GUEST_MONTHLY[plan],sessionId='cs_live_virtual_'+plan.toLowerCase(),
   subscriptionId='sub_virtual_'+plan.toLowerCase(),customerId='cus_payer_maria',
   invoiceId='in_virtual_'+plan.toLowerCase();
- const meta={commercial_source:'landing',plan,planKey:spec.planKey,
-  pre_registration_id:reg,pre_registration_issued_at:String(stamp),
-  pre_registration_proof:signGuestRegistration({registrationId:reg,plan,
-   verifiedRegistrationEmail:'joao@example.com',issuedAt:stamp,sharedSigningKey:signingKey})};
+
+ // Run actual landing checkout contract with a fake, in-memory Stripe adapter.
+ // All four permission inputs are true ONLY within this function. No API calls.
+ let preparedFields=null,priceReads=0,sessionWrites=0;
+ const checkout=await createAuthorizedOfficialSession({
+  plan,registrationId:reg,registeredEmail:'joao@example.com',
+  officialCheckoutReleased:true,bridgeReconciliationReady:true,
+  authorizedProductionRelease:true,serverRegistrationProofVerified:true,
+  callbackOrigin:'https://landing.example.test',attemptId:reg,
+  sharedSigningKey:signingKey,proofIssuedAt:stamp,
+  officialStripe:{
+   retrievePrice:async id=>{priceReads++;return {
+    id,livemode:true,active:true,currency:'brl',unit_amount:spec.cents,
+    type:'recurring',recurring:{interval:'month',interval_count:1},product:'prod_virtual'
+   }},
+   createCheckoutSession:async fields=>{sessionWrites++;preparedFields=fields;
+    return {livemode:true,id:sessionId,url:'https://checkout.stripe.com/virtual-only'};
+   }
+  }
+ });
+ assert.equal(checkout.ok,true,JSON.stringify(checkout));
+ assert.equal(checkout.sessionId,sessionId);
+ assert.equal(priceReads,1);assert.equal(sessionWrites,1);
+ assert.equal(preparedFields.client_reference_id,reg);
+ assert.ok(preparedFields.success_url.includes('/commercial/activate?session_id='));
+ assert.equal(preparedFields.line_items[0].price,spec.priceId);
+ const meta=preparedFields.metadata;
+ const subscriptionMeta=preparedFields.subscription_data.metadata;
+ assert.equal(meta.pre_registration_proof,subscriptionMeta.pre_registration_proof);
  const session={id:sessionId,livemode:true,status:'complete',paymentStatus:'paid',
   mode:'subscription',customer:customerId,subscriptionId,created:stamp+10,currency:'brl',
   amountTotal:spec.cents,clientReferenceId:reg,metadata:meta,...changes.session};
  const subscription={id:subscriptionId,livemode:true,status:'active',customer:customerId,
-  invoiceId,periodStart:stamp,periodEnd:stamp+2592000,metadata:{...meta},
+  invoiceId,periodStart:stamp,periodEnd:stamp+2592000,metadata:{...subscriptionMeta},
   prices:[{id:spec.priceId,currency:'brl',amount:spec.cents,interval:'month'}],...changes.subscription};
  const invoice={id:invoiceId,livemode:true,status:'paid',customer:customerId,
   subscriptionId,currency:'brl',amountPaid:spec.cents,...changes.invoice};
  setClient({invoices:{retrieve:async()=>({paid:true,status:'paid'})},
   products:{retrieve:async()=>({metadata:{plan:spec.planKey}})}});
+ // Check identical live-shaped, simulated landing data in both backend policies.
+ if(!Object.keys(changes).length){
+  const base={
+   session,subscription:{...subscription,itemPrices:subscription.prices},
+   invoice:{...invoice,paid:true},sharedSigningKey:signingKey,
+   nowSeconds:stamp+100,existingCustomerOwner:null,
+   existingSubscriptionOwner:null,activeSubscriptionsForCustomer:[subscriptionId]
+  };
+  const accepted=assessGuestCommercialPurchase({
+   ...base,clerkId:'user_joao123',verifiedClerkEmail:'joao@example.com',
+   user:{clerkId:'user_joao123',email:'joao@example.com',plan:'free',role:'user',
+    stripeCustomerId:null,stripeSubscriptionId:null}
+  });
+  assert.equal(accepted.ok,true,JSON.stringify(accepted));
+  const other=assessGuestCommercialPurchase({
+   ...base,clerkId:'user_maria123',verifiedClerkEmail:'maria@example.com',
+   user:{clerkId:'user_maria123',email:'maria@example.com',plan:'free',role:'user',
+    stripeCustomerId:null,stripeSubscriptionId:null}
+  });
+  assert.equal(other.ok,false,'payer/customer cannot change signed Clerk owner');
+ }
  const payment=assessStripePaidGuestWithoutClerk({session,subscription,invoice});
  const official={id:subscriptionId,status:'active',customer:customerId,
   metadata:{planKey:spec.planKey},latest_invoice:invoiceId,
@@ -85,9 +133,9 @@ async function snapshot(db){
  const claim=await db.execute(sql`SELECT status FROM commercial_guest_claims`);
  return {users:users.rows,ledger:ledger.rows,claims:claim.rows};
 }
-test('three plans run the real canonical finance routine end-to-end with mocked payment',async()=>{
+test('actual landing checkout contract reaches official finance for all three plans, virtually',async()=>{
  for(const plan of ['START','PREMIUM','PRO'])await dbTest(async db=>{
-  const {payment,official,spec}=mockPaid(plan);
+  const {payment,official,spec}=await mockPaid(plan);
   assert.equal(payment.ok,true);
   assert.equal((await stageServerVerifiedPaidPurchase(db,payment)).ok,true);
   assert.equal((await snapshot(db)).users.length,0);
@@ -106,14 +154,14 @@ test('three plans run the real canonical finance routine end-to-end with mocked 
  });
 });
 test('wrong Clerk verified email cannot claim paid purchase',()=>dbTest(async db=>{
- const {payment}=mockPaid('PREMIUM');await stageServerVerifiedPaidPurchase(db,payment);
+ const {payment}=await mockPaid('PREMIUM');await stageServerVerifiedPaidPurchase(db,payment);
  await db.execute(sql`INSERT INTO users(clerk_id,email) VALUES('user_maria123','maria@example.com')`);
  const wrong=await linkVerifiedOwner(db,{sessionId:payment.sessionId,clerkId:'user_maria123',
  verifiedClerkEmail:'maria@example.com',sharedSigningKey:signingKey,nowSeconds:stamp+100});
  assert.equal(wrong.ok,false);assert.equal((await snapshot(db)).claims[0].status,'PAID_UNLINKED');
 }));
 test('canonical completes but process crashes: safe retry without extra credits',()=>dbTest(async db=>{
- const {payment,official}=mockPaid('PREMIUM');await stageServerVerifiedPaidPurchase(db,payment);
+ const {payment,official}=await mockPaid('PREMIUM');await stageServerVerifiedPaidPurchase(db,payment);
  await register(db);await runClaim(db,payment);
  assert.equal((await canonical.handleCanonicalSubscriptionChange(official)).generalGranted,500);
  const retry=await runClaim(db,payment,stamp+200);
@@ -128,7 +176,7 @@ test('unpaid or forged price never becomes a paid purchase',()=>dbTest(async db=
  for(const changes of [{session:{paymentStatus:'unpaid'}},
    {invoice:{status:'open'}},{subscription:{prices:[{id:'price_wrong',
       currency:'brl',amount:15900,interval:'month'}]}}]){
-  assert.equal(mockPaid('PREMIUM',changes).payment.ok,false);
+  assert.equal((await mockPaid('PREMIUM',changes)).payment.ok,false);
  }
  assert.equal((await snapshot(db)).claims.length,0);
 }));

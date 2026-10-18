@@ -65,6 +65,12 @@ jobs:
         run: npm install --prefix artifacts/api-server/guest-bridge-tests --ignore-scripts --no-audit --no-fund
       - name: Run PostgreSQL virtual tests
         run: npm run test:postgres --prefix artifacts/api-server/guest-bridge-tests
+      - name: Checkout actual isolated landing source for cross-branch contract tests
+        uses: actions/checkout@v4
+        with:
+          ref: feature/landing-vendas-stripe-pre-cadastro
+          path: .isolated-landing
+          persist-credentials: false
       - name: Run copied actual canonical financial function end-to-end
         run: npm run test:canonical --prefix artifacts/api-server/guest-bridge-tests
       - name: Build production-equivalent frontend and backend ONCE in a disposable runner
