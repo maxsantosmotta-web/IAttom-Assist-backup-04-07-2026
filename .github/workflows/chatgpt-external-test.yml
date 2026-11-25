@@ -8,6 +8,20 @@ jobs:
   compile:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci_test
+          POSTGRES_PASSWORD: ci_only_not_real
+          POSTGRES_DB: chatgpt_ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_test -d chatgpt_ci_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -17,6 +31,10 @@ jobs:
         with:
           node-version: '22'
       - run: pnpm install --frozen-lockfile
+      - name: Test debit transactions on disposable localhost PostgreSQL
+        run: pnpm --filter @workspace/db exec node scripts/test-chatgpt-transaction-ci.mjs
+        env:
+          CHATGPT_CI_POSTGRES_URL: postgresql://ci_test:ci_only_not_real@127.0.0.1:5432/chatgpt_ci_test
       - run: pnpm --filter @workspace/api-server exec node scripts/test-chatgpt-sse.mjs
       - run: pnpm --filter @workspace/api-server exec node scripts/test-chatgpt-write-guards.mjs
       - run: pnpm run build:api
