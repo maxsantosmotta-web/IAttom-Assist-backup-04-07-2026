@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { createHash } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { creditsTransactions, db, historyTable, savedItemsTable, users, videoTransactions } from "@workspace/db";
 import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
 import { getImageMotionResult, getImageMotionStatus, submitImageMotion, type ImageMotionFormat } from "../lib/falImageMotionClient.js";
@@ -44,16 +44,39 @@ async function ownedProject(userId: string, id: string) {
 
 router.post("/chatgpt/video/submit", requireExternalAccess, async (req, res): Promise<void> => {
   if (!writesAllowed()) { res.status(503).json({ error: "isolated_external_writes_disabled" }); return; }
-  const body = req.body as { requestId?: unknown; imageDataUrl?: unknown; prompt?: unknown; format?: unknown } | undefined;
+  const body = req.body as { requestId?: unknown; imageDataUrl?: unknown; sourceProjectId?: unknown; conceptIndex?: unknown; prompt?: unknown; format?: unknown } | undefined;
   const requestId = body?.requestId;
-  const image = imageInput(body?.imageDataUrl);
+  const directImage = imageInput(body?.imageDataUrl);
+  const sourceProjectId = body?.sourceProjectId;
+  const conceptIndex = body?.conceptIndex;
   if (typeof requestId !== "string" || !REQUEST_ID.test(requestId) ||
-      !image || typeof body?.prompt !== "string" || body.prompt.trim().length === 0 ||
+      (!directImage && (typeof sourceProjectId !== "string" || !Number.isInteger(conceptIndex) || Number(conceptIndex) < 0)) ||
+      typeof body?.prompt !== "string" || body.prompt.trim().length === 0 ||
       body.prompt.length > 1200 ||
       (body.format !== "vertical" && body.format !== "horizontal" && body.format !== "automatic")) {
     res.status(400).json({ error: "invalid_video_request" }); return;
   }
   const userId = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  let image = directImage;
+  if (!image && typeof sourceProjectId === "string" && Number.isInteger(conceptIndex)) {
+    const [source] = await db.select({ imagesData: savedItemsTable.imagesData })
+      .from(savedItemsTable).where(and(
+        eq(savedItemsTable.id, sourceProjectId), eq(savedItemsTable.clerkUserId, userId),
+        isNull(savedItemsTable.deletedAt),
+      ));
+    if (!source?.imagesData) { res.status(404).json({ error: "source_image_not_found" }); return; }
+    try {
+      const images = JSON.parse(source.imagesData) as Array<{ conceptIndex?: number; base64?: string }>;
+      const asset = images.find(asset => asset.conceptIndex === Number(conceptIndex));
+      const raw = asset?.base64;
+      image = imageInput(typeof raw === "string" && raw.startsWith("data:")
+        ? raw : `data:image/png;base64,${raw ?? ""}`);
+    } catch {
+      image = null;
+    }
+    if (!image) { res.status(400).json({ error: "source_image_invalid" }); return; }
+  }
+  if (!image) { res.status(400).json({ error: "source_image_invalid" }); return; }
   const format = body.format as ImageMotionFormat;
   const prompt = body.prompt.trim();
   const inputHash = createHash("sha256").update(JSON.stringify({ image, prompt, format })).digest("hex");
