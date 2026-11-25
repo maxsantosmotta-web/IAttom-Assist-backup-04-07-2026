@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, desc } from "drizzle-orm";
-import { db, users, projectsTable } from "@workspace/db";
+import { eq, desc, and, isNull } from "drizzle-orm";
+import { db, users, projectsTable, savedPromptsTable } from "@workspace/db";
 import { requireChatGPTAuth } from "../middlewares/requireChatGPTAuth.js";
 import { FEATURE_COSTS } from "../lib/credits.js";
 
@@ -46,6 +46,34 @@ router.get("/chatgpt/projects", async (req, res): Promise<void> => {
     .orderBy(desc(projectsTable.updatedAt))
     .limit(20);
   res.json({ projects });
+});
+
+// The web Create Prompt module is paid. A saved prompt is readable here only
+// for the authenticated owner while their account has the same plan access.
+router.get("/chatgpt/prompts", async (req, res): Promise<void> => {
+  const clerkId = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  const [user] = await db.select({ plan: users.plan, role: users.role })
+    .from(users).where(eq(users.clerkId, clerkId));
+  if (!user) {
+    res.status(404).json({ error: "IAttom account not found" });
+    return;
+  }
+  if (user.role !== "admin" && !["pro", "business", "agency"].includes(user.plan)) {
+    res.status(403).json({ error: "plan_required", currentPlan: user.plan });
+    return;
+  }
+
+  const prompts = await db.select({
+    id: savedPromptsTable.id,
+    title: savedPromptsTable.title,
+    prompt: savedPromptsTable.prompt,
+    module: savedPromptsTable.module,
+    createdAt: savedPromptsTable.createdAt,
+  }).from(savedPromptsTable)
+    .where(and(eq(savedPromptsTable.clerkUserId, clerkId), isNull(savedPromptsTable.deletedAt)))
+    .orderBy(desc(savedPromptsTable.createdAt))
+    .limit(20);
+  res.json({ prompts });
 });
 
 export default router;
