@@ -17,6 +17,7 @@ router.get("/chatgpt/account", async (req, res): Promise<void> => {
     extraCredits: users.extraCredits,
     creativeCredits: users.creativeCredits,
     extraCreativeCredits: users.extraCreativeCredits,
+    videoBalance: users.videoBalance,
   }).from(users).where(eq(users.clerkId, clerkId));
   if (!user) {
     res.status(404).json({ error: "IAttom account not found" });
@@ -26,6 +27,7 @@ router.get("/chatgpt/account", async (req, res): Promise<void> => {
     plan: user.plan,
     balance: user.credits + (user.extraCredits ?? 0),
     creativeBalance: user.creativeCredits + (user.extraCreativeCredits ?? 0),
+    videoBalance: user.videoBalance ?? 0,
     featureCosts: FEATURE_COSTS,
   });
 });
