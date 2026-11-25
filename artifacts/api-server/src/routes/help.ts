@@ -1694,7 +1694,8 @@ router.get("/help/usage", requireAuth, async (req, res): Promise<void> => {
 // ── Help chat ─────────────────────────────────────────────────────────────────
 
 router.post("/help/chat", requireAuth, async (req, res): Promise<void> => {
-  const chatUserId = getAuth(req)?.userId;
+  // Internal external adapter supplies an already OAuth-verified Clerk ID.
+  const chatUserId = (req as typeof req & { __externalChatGPTClerkId?: string }).__externalChatGPTClerkId ?? getAuth(req)?.userId;
   if (!chatUserId) { res.status(401).json({ error: "Não autenticado." }); return; }
 
   // ── Help limit check ──────────────────────────────────────────────────────
