@@ -48,7 +48,7 @@ const successMarker = `  // Increment help usage counter\n  try {`;
 if (!helpRoute.includes(successMarker)) throw new Error("Help success counter marker not found");
 helpRoute = helpRoute.replace(
   successMarker,
-  `  const creditResult = await deductCredits(chatUserId, "iattom_help");\n  if (!creditResult.success) {\n    req.log.warn({ msg: "IAttom Help response completed but credit debit failed", chatUserId, result: creditResult });\n  }\n\n  // Increment help usage counter\n  try {`,
+  `  // Only the isolated ChatGPT adapter performs its own atomic debit + save.\n  if (!(req as typeof req & { __externalChatGPTClerkId?: string }).__externalChatGPTClerkId) {\n    const creditResult = await deductCredits(chatUserId, "iattom_help");\n    if (!creditResult.success) {\n      req.log.warn({ msg: "IAttom Help response completed but credit debit failed", chatUserId, result: creditResult });\n    }\n  }\n\n  // Increment help usage counter\n  if (!(req as typeof req & { __externalChatGPTClerkId?: string }).__externalChatGPTClerkId) try {`,
 );
 
 for (const marker of [
