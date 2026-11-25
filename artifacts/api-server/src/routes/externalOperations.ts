@@ -71,7 +71,7 @@ router.get("/chatgpt/operations/preflight/:feature", requireExternalAccess, asyn
     required,
     sufficientBalance: balance >= required,
     canRequestExecution: planAllowed && balance >= required,
-    executionEnabled: false,
+    executionEnabled: process.env.CHATGPT_EXTERNAL_WRITES_ENABLED === "true" && process.env.CHATGPT_EXTERNAL_ISOLATED_DB === "true",
     reserved: false,
   });
 });
@@ -180,7 +180,7 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
   const userId = (req as typeof req & { clerkUserId: string }).clerkUserId;
   const allowedPlans = PREFLIGHT_PLANS[feature as FeatureKey] ?? [];
   const key = "chatgpt-" + createHash("sha256").update(userId).update(":").update(requestId).digest("hex");
-  const inputHash = createHash("sha256").update(JSON.stringify(body?.input)).digest("hex");
+  const inputHash = createHash("sha256").update(JSON.stringify({ feature, input: body?.input })).digest("hex");
   const cost = FEATURE_COSTS[feature as TextFeature];
 
   try {
