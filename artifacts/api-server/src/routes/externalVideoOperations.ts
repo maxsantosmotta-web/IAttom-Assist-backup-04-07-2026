@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { creditsTransactions, db, historyTable, savedItemsTable, users, videoTransactions } from "@workspace/db";
 import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
+import { isolatedExternalWritesEnabled } from "../lib/chatgpt/isolation.js";
 import { getImageMotionResult, getImageMotionStatus, submitImageMotion, type ImageMotionFormat } from "../lib/falImageMotionClient.js";
 
 const router: IRouter = Router();
@@ -11,10 +12,6 @@ const REQUEST_ID = /^[A-Za-z0-9_-]{16,72}$/;
 const DELIVERY_PREFIX = "Vídeo com Efeito entregue • requestId:";
 const HISTORY_PREFIX = "Vídeo com Efeito gerado • requestId:";
 
-function writesAllowed(): boolean {
-  return process.env.CHATGPT_EXTERNAL_WRITES_ENABLED === "true" &&
-    process.env.CHATGPT_EXTERNAL_ISOLATED_DB === "true";
-}
 function keyFor(user: string, id: string): string {
   return "chatgpt-video-" + createHash("sha256").update(user).update(":").update(id).digest("hex");
 }
@@ -43,7 +40,7 @@ async function ownedProject(userId: string, id: string) {
 }
 
 router.post("/chatgpt/video/submit", requireExternalAccess, async (req, res): Promise<void> => {
-  if (!writesAllowed()) { res.status(503).json({ error: "isolated_external_writes_disabled" }); return; }
+  if (!isolatedExternalWritesEnabled()) { res.status(503).json({ error: "isolated_external_writes_disabled" }); return; }
   const body = req.body as { requestId?: unknown; imageDataUrl?: unknown; sourceProjectId?: unknown; conceptIndex?: unknown; prompt?: unknown; format?: unknown } | undefined;
   const requestId = body?.requestId;
   const directImage = imageInput(body?.imageDataUrl);
@@ -142,7 +139,7 @@ router.get("/chatgpt/video/status/:requestId", requireExternalAccess, async (req
 });
 
 router.post("/chatgpt/video/collect", requireExternalAccess, async (req, res): Promise<void> => {
-  if (!writesAllowed()) { res.status(503).json({ error: "isolated_external_writes_disabled" }); return; }
+  if (!isolatedExternalWritesEnabled()) { res.status(503).json({ error: "isolated_external_writes_disabled" }); return; }
   const requestId = (req.body as { requestId?: unknown } | undefined)?.requestId;
   if (typeof requestId !== "string" || !REQUEST_ID.test(requestId)) {
     res.status(400).json({ error: "invalid_idempotency_key" }); return;
