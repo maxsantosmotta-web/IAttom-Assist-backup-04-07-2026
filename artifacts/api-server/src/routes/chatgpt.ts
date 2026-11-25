@@ -97,4 +97,35 @@ router.get("/chatgpt/library", async (req, res): Promise<void> => {
   res.json({ items });
 });
 
+
+// Canonical IAttom Help access is determined by general credits in the built
+// server, following the pre-existing help consumption build transform.
+// This endpoint only reads balances, never resets counters or debits credits.
+router.get("/chatgpt/help/usage", async (req, res): Promise<void> => {
+  const clerkId = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  const [user] = await db.select({
+    plan: users.plan,
+    credits: users.credits,
+    extraCredits: users.extraCredits,
+    helpMessagesUsed: users.helpMessagesUsed,
+  }).from(users).where(eq(users.clerkId, clerkId));
+  if (!user) { res.status(404).json({ error: "user_not_found" }); return; }
+  const helpCost = (FEATURE_COSTS as Record<string, number>).iattom_help;
+  if (typeof helpCost !== "number" || helpCost <= 0) {
+    res.status(503).json({ error: "help_policy_unavailable" });
+    return;
+  }
+  const availableGeneralCredits = user.credits + (user.extraCredits ?? 0);
+  const canUse = user.plan !== "free" && availableGeneralCredits >= helpCost;
+  res.json({
+    plan: user.plan,
+    used: user.helpMessagesUsed,
+    creditCost: helpCost,
+    availableGeneralCredits,
+    canUse,
+    accessReason: user.plan === "free" ? "FREE_PLAN" :
+      availableGeneralCredits < helpCost ? "INSUFFICIENT_GENERAL_CREDITS" : "ALLOWED",
+  });
+});
+
 export default router;
