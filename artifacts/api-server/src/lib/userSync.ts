@@ -7,6 +7,11 @@ import { clerkClient } from "@clerk/express";
 //   1. ADMIN_EMAIL env var matches (case-insensitive) — works even after other users exist.
 //   2. The database currently has zero users (first-ever sign-up).
 async function shouldAutoPromote(email: string): Promise<boolean> {
+  // The ChatGPT operational sandbox starts with an empty users table. Its
+  // first normal login must not silently become a paid administrator.
+  if (process.env.RAILWAY_PROJECT_ID === "0ded634b-c643-4655-b252-60c438c10b62" &&
+      process.env.RAILWAY_ENVIRONMENT_ID === "32965107-60c2-4259-966b-38f8fed7a00b" &&
+      process.env.RAILWAY_SERVICE_ID === "16a13f32-b8e5-4e0a-b2ed-526164375e82") return false;
   const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   if (adminEmail && email.toLowerCase() === adminEmail) return true;
 
