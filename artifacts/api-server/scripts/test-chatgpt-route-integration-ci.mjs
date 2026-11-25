@@ -5,9 +5,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { build } from "esbuild";
 import express from "express";
-import pg from "pg";
+import { createRequire } from "node:module";
 
-const { Pool } = pg;
+const requireDb = createRequire(new URL("../../../lib/db/package.json", import.meta.url));
+const pgPath = requireDb.resolve("pg");
+const { Pool } = requireDb("pg");
 const target = process.env.CHATGPT_CI_POSTGRES_URL;
 if (process.env.CI !== "true" || !target) throw Error("CI-only localhost PostgreSQL required");
 const u = new URL(target);
@@ -129,6 +131,7 @@ function pluginForCI() {
     [/^\.\/help\.js$/, mockHelp],
   ];
   return {name:"ci-no-provider-and-disposable-db",setup(buildAPI) {
+    buildAPI.onResolve({filter:/^pg$/},()=>({path:pgPath,external:true}));
     for (const [pattern, source] of mapping) {
       buildAPI.onResolve({filter:pattern}, args => ({path:args.path,namespace:"ci-mock"}));
     }
