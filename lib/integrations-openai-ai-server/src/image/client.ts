@@ -25,7 +25,7 @@ export async function generateImageBuffer(
   signal?: AbortSignal,
 ): Promise<Buffer> {
   const response = await openai.images.generate({
-    model: "gpt-image-1",
+    model: "gpt-image-2.5-sunburst",
     prompt,
     size,
     quality: "high",
@@ -42,7 +42,7 @@ export async function editImageFromBuffer(
 ): Promise<Buffer> {
   const imageFile = await toFile(imageBuffer, "reference.png", { type: "image/png" });
   const response = await openai.images.edit({
-    model: "gpt-image-1",
+    model: "gpt-image-2.5-sunburst",
     image: imageFile,
     prompt,
     size,
@@ -65,7 +65,7 @@ export async function editImages(
   );
 
   const response = await openai.images.edit({
-    model: "gpt-image-1",
+    model: "gpt-image-2.5-sunburst",
     image: images,
     prompt,
   });
