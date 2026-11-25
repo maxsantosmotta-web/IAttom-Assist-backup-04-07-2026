@@ -10,6 +10,7 @@ import { streamCreateCampaign } from "../lib/ai/createCampaign.js";
 import { streamCreateContent } from "../lib/ai/createContent.js";
 import { streamVideoScript } from "../lib/ai/videoScript.js";
 import { streamCreativeIdeas } from "../lib/ai/creativeIdeas.js";
+import { GeneratePromptBody, generatePromptForExternal } from "./prompts.js";
 import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
 import { requirePlan } from "../middlewares/requirePlan.js";
 import { FEATURE_COSTS, CREATIVE_FEATURES, type FeatureKey } from "../lib/credits.js";
@@ -30,6 +31,7 @@ const PREFLIGHT_PLANS: Partial<Record<FeatureKey, string[]>> = {
   campaign: ["pro", "business", "agency"],
   content: ["agency"],
   video_script: ["business", "agency"],
+  prompt_creation: ["pro", "business", "agency"],
   creativeImage1: ["pro", "business", "agency"],
   creativeImage2: ["pro", "business", "agency"],
   creativeImage3: ["pro", "business", "agency"],
@@ -83,9 +85,9 @@ export default router;
 // Operational adapter for existing text and image modules. This is never called by
 // the website and is disabled by default even when read-only preflight works.
 // The second flag prevents accidental writes against the official database.
-const EXECUTABLE_MODULES = new Set(["product_discovery", "product_validation", "campaign", "content", "video_script", "creativeImage1", "creativeImage2", "creativeImage3"] as const);
+const EXECUTABLE_MODULES = new Set(["product_discovery", "product_validation", "campaign", "content", "video_script", "prompt_creation", "creativeImage1", "creativeImage2", "creativeImage3"] as const);
 type TextFeature = "product_discovery" | "product_validation" | "campaign" | "content" | "video_script";
-type ExternalFeature = TextFeature | "creativeImage1" | "creativeImage2" | "creativeImage3";
+type ExternalFeature = TextFeature | "prompt_creation" | "creativeImage1" | "creativeImage2" | "creativeImage3";
 const IMAGE_FORMATS: Record<string, string[]> = {
   instagram: ["feed", "stories"], facebook: ["feed", "stories", "banner"],
   tiktok: ["feed", "stories"], mercado_livre: ["produto", "banner"],
@@ -126,6 +128,17 @@ function parseExternalRequest(feature: ExternalFeature, input: unknown):
       return parsed.success
         ? { success: true, run: (res, uid) => streamVideoScript(parsed.data, res, uid), title: parsed.data.product, type: "video_script", imageCount: 0 }
         : { success: false, error: parsed.error.message };
+    }
+    case "prompt_creation": {
+      const parsed = GeneratePromptBody.safeParse(input);
+      if (!parsed.success) return { success: false, error: parsed.error.message };
+      return { success: true, run: async (res) => {
+        res.setHeader("Content-Type", "text/event-stream");
+        const data = await generatePromptForExternal(parsed.data);
+        res.write(`data: ${JSON.stringify({ type: "result", data })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+        res.end();
+      }, title: parsed.data.subject.slice(0, 150), type: "prompt", imageCount: 0 };
     }
     case "creativeImage1":
     case "creativeImage2":
