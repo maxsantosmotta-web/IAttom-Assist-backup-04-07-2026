@@ -123,4 +123,23 @@ router.post("/chatgpt/help/execute", requireExternalAccess, async (req, res): Pr
   }
 });
 
+
+router.get("/chatgpt/help/status/:requestId", requireExternalAccess, async (req, res): Promise<void> => {
+  const requestId = String(req.params.requestId ?? "");
+  if (!REQUEST_ID.test(requestId)) { res.status(400).json({ error: "invalid_idempotency_key" }); return; }
+  const userId = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  const key = "chatgpt-help-" + createHash("sha256").update(userId).update(":").update(requestId).digest("hex");
+  try {
+    const [row] = await db.select({ data: savedItemsTable.data, content: savedItemsTable.content })
+      .from(savedItemsTable).where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId)));
+    if (!row) { res.status(404).json({ error: "operation_not_found" }); return; }
+    const state = row.data ? JSON.parse(row.data) as { status?: string } : {};
+    res.json({ status: state.status ?? "unknown", projectId: key,
+      ...(state.status === "complete" ? { result: JSON.parse(row.content) } : {}) });
+  } catch (error) {
+    req.log.warn({ error }, "External Help status failed");
+    res.status(500).json({ error: "operation_status_unavailable" });
+  }
+});
+
 export default router;
