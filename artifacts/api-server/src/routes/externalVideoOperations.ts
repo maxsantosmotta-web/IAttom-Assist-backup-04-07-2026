@@ -49,7 +49,7 @@ router.post("/chatgpt/video/submit", requireExternalAccess, async (req, res): Pr
   if (typeof requestId !== "string" || !REQUEST_ID.test(requestId) ||
       (!directImage && (typeof sourceProjectId !== "string" || !Number.isInteger(conceptIndex) || Number(conceptIndex) < 0)) ||
       typeof body?.prompt !== "string" || body.prompt.trim().length === 0 ||
-      body.prompt.length > 1200 ||
+      body.prompt.length > 2000 ||
       (body.format !== "vertical" && body.format !== "horizontal" && body.format !== "automatic")) {
     res.status(400).json({ error: "invalid_video_request" }); return;
   }
@@ -98,12 +98,12 @@ router.post("/chatgpt/video/submit", requireExternalAccess, async (req, res): Pr
     }).onConflictDoNothing().returning({ id: savedItemsTable.id });
     if (!created) { res.status(409).json({ error: "operation_already_reserved" }); return; }
     try {
-      const submitted = await submitImageMotion({ imageDataUrl: image, prompt, format, duration: "6s" });
+      const submitted = await submitImageMotion({ imageDataUrl: image, prompt, format, duration: "8s" });
       await db.update(savedItemsTable).set({
         type: "external_video_processing",
         data: JSON.stringify({ status: "processing", inputHash, providerId: submitted.requestId, prompt, format }),
       }).where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId)));
-      res.status(202).json({ status: "processing", projectId: key, duration: 6, charged: 0 });
+      res.status(202).json({ status: "processing", projectId: key, duration: 8, charged: 0 });
     } catch (error) {
       req.log.warn({ error }, "External video provider submit failed");
       await db.update(savedItemsTable).set({
@@ -186,7 +186,7 @@ router.post("/chatgpt/video/collect", requireExternalAccess, async (req, res): P
         data: JSON.stringify({ ...state, status: "complete" }),
         videosData: JSON.stringify([{
           videoUrl: delivered.videoUrl, title: "Vídeo com Efeito",
-          durationSeconds: 6, savedAt: new Date().toISOString(), provider: "fal",
+          durationSeconds: 8, savedAt: new Date().toISOString(), provider: "fal",
         }]),
       }).where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId),
         eq(savedItemsTable.type, "external_video_processing"))).returning({ id: savedItemsTable.id });
