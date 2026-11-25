@@ -1,0 +1,21 @@
+name: ChatGPT integration check
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  compile:
+    if: github.head_ref == 'test/chatgpt-official-integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build:api
