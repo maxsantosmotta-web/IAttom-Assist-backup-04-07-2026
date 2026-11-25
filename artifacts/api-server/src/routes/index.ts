@@ -44,9 +44,12 @@ import imageMotionTrashRouter from "./imageMotionTrash.js";
 import googlePlayBillingRouter from "./googlePlayBilling.js";
 import googlePlaySubscriptionEntitlementsRouter from "./googlePlaySubscriptionEntitlements.js";
 
+import chatgptRouter from "./chatgpt.js";
+
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(chatgptRouter);
 router.use(projectsRouter);
 router.use(historyRouter);
 router.use(dashboardRouter);
