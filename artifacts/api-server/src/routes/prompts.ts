@@ -6,6 +6,7 @@ import { requirePlan } from "../middlewares/requirePlan.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod/v4";
 import { semanticNormalize } from "../lib/ai/semanticNormalize.js";
+import { logAiUsage } from "../lib/ai/logger.js";
 
 const router: IRouter = Router();
 
@@ -214,13 +215,22 @@ PROMPT: prompt completo`;
 }
 
 router.post("/prompts/generate", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
+  const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = GeneratePromptBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Dados inválidos" });
     return;
   }
   try {
-    res.json(await generatePromptForExternal(parsed.data));
+    const generated = await generatePromptForExternal(parsed.data);
+    const generatedTitle = generated.title;
+    await logAiUsage({
+      clerkUserId,
+      action: `Prompt criado: ${generatedTitle}`,
+      module: "prompts",
+      projectName: generatedTitle,
+    });
+    res.json(generated);
   } catch (err) {
     req.log.error({ err }, "prompts/generate: openai error");
     res.status(500).json({ error: "Falha ao gerar prompt. Tente novamente." });
