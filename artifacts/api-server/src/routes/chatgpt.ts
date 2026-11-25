@@ -3,6 +3,7 @@ import { eq, desc, and, isNull } from "drizzle-orm";
 import { db, users, projectsTable, savedPromptsTable, savedItemsTable } from "@workspace/db";
 import { requireChatGPTAuth } from "../middlewares/requireChatGPTAuth.js";
 import { FEATURE_COSTS } from "../lib/credits.js";
+import { HELP_LIMITS } from "../lib/help/helpLimits.js";
 
 const router: IRouter = Router();
 router.use("/chatgpt", requireChatGPTAuth);
@@ -18,16 +19,24 @@ router.get("/chatgpt/account", async (req, res): Promise<void> => {
     creativeCredits: users.creativeCredits,
     extraCreativeCredits: users.extraCreativeCredits,
     videoBalance: users.videoBalance,
+    helpMessagesUsed: users.helpMessagesUsed,
+    helpUsedResetAt: users.helpUsedResetAt,
   }).from(users).where(eq(users.clerkId, clerkId));
   if (!user) {
     res.status(404).json({ error: "IAttom account not found" });
     return;
   }
+  // Same read-only 30-day reset interpretation as GET /help/usage.
+  const resetAt = user.helpUsedResetAt;
+  const cycleExpired = !resetAt || (Date.now() - resetAt.getTime()) > 30 * 24 * 60 * 60 * 1000;
+  const helpUsed = cycleExpired ? 0 : user.helpMessagesUsed;
+  const helpLimit = HELP_LIMITS[user.plan] ?? 0;
   res.json({
     plan: user.plan,
     balance: user.credits + (user.extraCredits ?? 0),
     creativeBalance: user.creativeCredits + (user.extraCreativeCredits ?? 0),
     videoBalance: user.videoBalance ?? 0,
+    helpUsage: { used: helpUsed, limit: helpLimit, remaining: Math.max(0, helpLimit - helpUsed) },
     featureCosts: FEATURE_COSTS,
   });
 });
