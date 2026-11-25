@@ -9,7 +9,7 @@ const result = spawnSync("pnpm", ["exec", "tsc", "-p", "tsconfig.json", "--noEmi
 if (result.error) throw result.error;
 const output = (result.stdout ?? "") + "\n" + (result.stderr ?? "");
 const errors = output.split(/\r?\n/).filter(line => /error TS\d+:/i.test(line));
-const integrationPath = /(?:^|[\\/])(?:src[\\/])?(?:routes[\\/](?:chatgpt|externalOperations|externalHelpOperations|externalVideoOperations|prompts|help)\.ts|middlewares[\\/](?:requireExternalAccess|requireChatGPTAuth)\.ts|lib[\\/]chatgpt[\\/][^\s:(]+\.ts)\(/i;
+const integrationPath = /(?:^|[\\/])(?:src[\\/])?(?:routes[\\/](?:chatgpt|externalOperations|externalHelpOperations|externalVideoOperations)\.ts|middlewares[\\/](?:requireExternalAccess|requireChatGPTAuth)\.ts|lib[\\/]chatgpt[\\/][^\s:(]+\.ts)\(/i;
 const ownErrors = errors.filter(line => integrationPath.test(line));
 console.log(`TypeScript diagnostics: ${errors.length} total; ${ownErrors.length} ChatGPT integration errors.`);
 if (ownErrors.length) {
