@@ -49,6 +49,7 @@ const complete = {
   CHATGPT_EXTERNAL_ISOLATED_DB: "true",
   RAILWAY_PROJECT_ID: "0ded634b-c643-4655-b252-60c438c10b62",
   RAILWAY_ENVIRONMENT_ID: "32965107-60c2-4259-966b-38f8fed7a00b",
+  RAILWAY_SERVICE_ID: "16a13f32-b8e5-4e0a-b2ed-526164375e82",
   DATABASE_URL: sandboxUrl,
   CHATGPT_SANDBOX_DATABASE_URL: sandboxUrl,
 };
@@ -56,6 +57,7 @@ test("external operations require exact Railway test identity and matching priva
   assert.equal(isolatedExternalWritesEnabled(complete), true);
   assert.equal(isolatedExternalWritesEnabled({ ...complete, CHATGPT_EXTERNAL_WRITES_ENABLED: "false" }), false);
   assert.equal(isolatedExternalWritesEnabled({ ...complete, RAILWAY_PROJECT_ID: "other-project" }), false);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, RAILWAY_SERVICE_ID: "wrong-service" }), false);
   assert.equal(isolatedExternalWritesEnabled({ ...complete, RAILWAY_ENVIRONMENT_ID: "08959294-7371-49d2-82b0-471f45166edb" }), false);
   assert.equal(isolatedExternalWritesEnabled({ ...complete, CHATGPT_SANDBOX_DATABASE_URL: undefined }), false);
   assert.equal(isolatedExternalWritesEnabled({ ...complete, DATABASE_URL: "postgresql://tester:fake@production.example:5432/railway" }), false);
