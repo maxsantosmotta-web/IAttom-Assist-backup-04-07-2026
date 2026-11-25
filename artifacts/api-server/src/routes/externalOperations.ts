@@ -280,9 +280,12 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
     // This mirrors the existing deductCredits arithmetic but avoids a nested
     // transaction and prohibits the public arbitrary /credits/refund endpoint.
     const payment = await db.transaction(async tx => {
-      const locked = await tx.execute(sql`SELECT credits, extra_credits, creative_credits, extra_creative_credits FROM users WHERE clerk_id = ${userId} FOR UPDATE`);
-      const row = locked.rows[0] as { credits: number | string; extra_credits: number | string; creative_credits: number | string; extra_creative_credits: number | string } | undefined;
+      const locked = await tx.execute(sql`SELECT credits, extra_credits, creative_credits, extra_creative_credits, plan, role FROM users WHERE clerk_id = ${userId} FOR UPDATE`);
+      const row = locked.rows[0] as { credits: number | string; extra_credits: number | string; creative_credits: number | string; extra_creative_credits: number | string; plan: string; role: string } | undefined;
       if (!row) return { error: "user_not_found" as const };
+      // The plan can change while an external provider is generating. Verify
+      // eligibility again under the same row lock as the final debit.
+      if (row.role !== "admin" && !allowedPlans.includes(row.plan)) return { error: "plan_required" as const };
       const creative = CREATIVE_FEATURES.has(feature as ExternalFeature);
       const plan = Number(creative ? row.creative_credits : row.credits);
       const extra = Number(creative ? row.extra_creative_credits ?? 0 : row.extra_credits ?? 0);
@@ -313,7 +316,7 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
       await db.update(savedItemsTable).set({ type: "external_failed",
         data: JSON.stringify({ status: "failed", feature, inputHash, reason: payment.error }) })
         .where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId)));
-      res.status(payment.error === "insufficient_credits" ? 402 : 404).json({ error: payment.error, charged: 0 });
+      res.status(payment.error === "insufficient_credits" ? 402 : payment.error === "plan_required" ? 403 : 404).json({ error: payment.error, charged: 0 });
       return;
     }
     res.json({ status: "complete", feature, result: safeResult, imageCount: imageAssets.length, ...payment });
