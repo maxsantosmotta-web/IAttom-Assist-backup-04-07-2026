@@ -62,3 +62,21 @@ test("external operations require exact Railway test identity and matching priva
   assert.equal(isolatedExternalWritesEnabled({ ...complete, DATABASE_URL: "postgresql://tester:fake@postgres.railway.internal:5432/other" }), false);
   assert.equal(isolatedExternalWritesEnabled({ ...complete, CHATGPT_PRODUCTION_DATABASE_URL: sandboxUrl }), false);
 });
+
+const creativeSource = readFileSync(new URL("../src/lib/chatgpt/creativeDelivery.ts", import.meta.url), "utf8");
+const compiledCreative = await transform(creativeSource, { loader: "ts", format: "esm" });
+const { deliveredCreativeAssets } = await import("data:text/javascript;base64," +
+  Buffer.from(compiledCreative.code).toString("base64"));
+
+test("creative delivery rejects partial and invalid image batches without debit", () => {
+  const base64 = "aGVsbG8gdGhpcyBpcyBhIHRlc3Q=";
+  const make = (count) => ({ concepts: Array.from({ length: count }, (_, i) => ({ format: "feed", imageBase64: base64, label: String(i) })) });
+  assert.throws(() => deliveredCreativeAssets(make(1), 2), /incomplete_creative_delivery/);
+  assert.throws(() => deliveredCreativeAssets(make(2), 3), /incomplete_creative_delivery/);
+  assert.throws(() => deliveredCreativeAssets({ concepts: [{ format: "feed" }] }, 1), /incomplete_creative_delivery/);
+  assert.throws(() => deliveredCreativeAssets(make(2), 0), /invalid_requested_image_count/);
+  const success = deliveredCreativeAssets(make(2), 2);
+  assert.equal(success.assets.length, 2);
+  assert.equal(success.assets[0].base64, base64);
+  assert.equal("imageBase64" in success.safeResult.concepts[0], false);
+});
