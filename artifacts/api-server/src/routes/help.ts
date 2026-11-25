@@ -13,7 +13,12 @@ import { objectStorageClient } from "../lib/objectStorage.js";
 const router: IRouter = Router();
 
 // ── Help usage limits per plan ────────────────────────────────────────────────
-import { HELP_LIMITS } from "../lib/help/helpLimits.js";
+const HELP_LIMITS: Record<string, number> = {
+  free:     0,
+  pro:    200,
+  business: 350,
+  agency:  700,
+};
 
 // ── GCS helpers for Help image persistence ────────────────────────────────
 
