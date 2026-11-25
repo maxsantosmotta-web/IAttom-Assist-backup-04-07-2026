@@ -171,8 +171,15 @@ router.post("/chatgpt/video/collect", requireExternalAccess, async (req, res): P
       const [oldCharge] = await tx.select({ balanceAfter: videoTransactions.balanceAfter })
         .from(videoTransactions).where(and(eq(videoTransactions.clerkUserId, userId),
           eq(videoTransactions.description, description))).limit(1);
-      const locked = await tx.execute(sql`SELECT video_balance FROM users WHERE clerk_id = ${userId} FOR UPDATE`);
-      const balance = Number((locked.rows[0] as { video_balance?: unknown } | undefined)?.video_balance ?? 0);
+      const locked = await tx.execute(sql`SELECT video_balance, plan, role FROM users WHERE clerk_id = ${userId} FOR UPDATE`);
+      const currentUser = locked.rows[0] as { video_balance?: unknown; plan?: unknown; role?: unknown } | undefined;
+      if (!currentUser) return { error: "user_not_found" as const };
+      // Plan changes between submit and delivery must not bypass entitlements.
+      // An already charged delivery is only ever returned via its original key.
+      if (!oldCharge && currentUser.role !== "admin" && !PAID.has(String(currentUser.plan))) {
+        return { error: "plan_required" as const };
+      }
+      const balance = Number(currentUser.video_balance ?? 0);
       if (!oldCharge && balance <= 0) return { error: "insufficient_video_balance" as const };
       const item = {
         type: "video_effect",
@@ -211,7 +218,7 @@ router.post("/chatgpt/video/collect", requireExternalAccess, async (req, res): P
       return { alreadyCharged: !!oldCharge, result: item };
     });
     if ("error" in charged) {
-      res.status(charged.error === "insufficient_video_balance" ? 402 : 404)
+      res.status(charged.error === "insufficient_video_balance" ? 402 : charged.error === "plan_required" ? 403 : 404)
         .json({ error: charged.error, charged: 0 }); return;
     }
     res.json({ status: "complete", projectId: key, result: charged.result, chargedAgain: !!charged.alreadyCharged });
