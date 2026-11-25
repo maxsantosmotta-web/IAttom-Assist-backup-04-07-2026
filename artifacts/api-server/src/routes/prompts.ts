@@ -145,18 +145,13 @@ Para AUTOMAÇÃO, interprete objetivo, gatilho, público, dados disponíveis e r
 Para PERSONALIZADO, identifique a intenção real do usuário e construa uma instrução especializada, completa, prática e reutilizável para aquela finalidade.`,
 };
 
-const GeneratePromptBody = z.object({
+export const GeneratePromptBody = z.object({
   tipo: z.string().min(1).max(50),
   subject: z.string().min(1).max(3000),
 });
 
-router.post("/prompts/generate", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
-  const parsed = GeneratePromptBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Dados inválidos" });
-    return;
-  }
-  const { tipo, subject: rawSubject } = parsed.data;
+export async function generatePromptForExternal(input: { tipo: string; subject: string }): Promise<{ title: string; prompt: string; module: string }> {
+  const { tipo, subject: rawSubject } = input;
   const subject = semanticNormalize(rawSubject.trim());
   const tipoKey = tipo.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "");
   const module = TIPO_TO_MODULE[tipoKey] ?? "content";
@@ -193,6 +188,7 @@ Responda exatamente neste formato, sem colchetes e sem comentários adicionais:
 TITULO: título específico e profissional
 PROMPT: prompt completo`;
 
+
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5-mini",
@@ -209,16 +205,22 @@ PROMPT: prompt completo`;
     const promptMatch = raw.match(/PROMPT:\s*([\s\S]+)$/m);
 
     if (!titleMatch?.[1] || !promptMatch?.[1]) {
-      req.log.error({ raw }, "prompts/generate: unexpected model output format");
-      res.status(500).json({ error: "Falha ao gerar prompt. Tente novamente." });
-      return;
+      throw new Error("Invalid prompt model response");
     }
+    return { title: titleMatch[1].trim().slice(0, 120), prompt: promptMatch[1].trim(), module };
+  } catch (err) {
+    throw new Error("Prompt generation failed", { cause: err });
+  }
+}
 
-    res.json({
-      title: titleMatch[1].trim().slice(0, 120),
-      prompt: promptMatch[1].trim(),
-      module,
-    });
+router.post("/prompts/generate", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
+  const parsed = GeneratePromptBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Dados inválidos" });
+    return;
+  }
+  try {
+    res.json(await generatePromptForExternal(parsed.data));
   } catch (err) {
     req.log.error({ err }, "prompts/generate: openai error");
     res.status(500).json({ error: "Falha ao gerar prompt. Tente novamente." });
