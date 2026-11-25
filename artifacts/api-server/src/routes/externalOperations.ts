@@ -1,7 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import type { Response } from "express";
 import { db, users, savedItemsTable, creditsTransactions } from "@workspace/db";
 import { AiFindProductsBody, AiValidateProductBody, AiCreateCampaignBody, AiCreateContentBody, AiVideoScriptBody, AiCreativeIdeasBody } from "@workspace/api-zod";
 import { streamFindProducts } from "../lib/ai/findProducts.js";
@@ -10,6 +9,7 @@ import { streamCreateCampaign } from "../lib/ai/createCampaign.js";
 import { streamCreateContent } from "../lib/ai/createContent.js";
 import { streamVideoScript } from "../lib/ai/videoScript.js";
 import { streamCreativeIdeas } from "../lib/ai/creativeIdeas.js";
+import { captureExistingStream } from "../lib/chatgpt/captureExistingStream.js";
 import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
 import { requirePlan } from "../middlewares/requirePlan.js";
 import { FEATURE_COSTS, CREATIVE_FEATURES, type FeatureKey } from "../lib/credits.js";
@@ -144,38 +144,6 @@ function parseExternalRequest(feature: ExternalFeature, input: unknown):
         title: parsed.data.prompt.slice(0, 150), type: "creative", imageCount };
     }
   }
-}
-
-// Compatibility sink for pre-existing SSE generators. We reuse their actual
-// model logic, but never expose a partial response before debit + save commit.
-async function captureExistingStream(run: (res: Response) => Promise<void>, maxBytes = 3_000_000): Promise<unknown> {
-  const events: Array<Record<string, unknown>> = [];
-  let bytes = 0;
-  let ended = false;
-  const sink = {
-    setHeader: () => sink,
-    write(chunk: unknown) {
-      if (ended) throw new Error("Stream already ended");
-      const text = String(chunk);
-      bytes += Buffer.byteLength(text);
-      if (bytes > maxBytes) throw new Error("Generated response too large");
-      for (const event of text.split("\n\n")) {
-        if (!event.startsWith("data: ")) continue;
-        const parsed = JSON.parse(event.slice(6)) as Record<string, unknown>;
-        if (parsed.type === "result" || parsed.type === "done" || parsed.type === "error") events.push(parsed);
-      }
-      return true;
-    },
-    end() { ended = true; return sink; },
-  };
-  await run(sink as unknown as Response);
-  const failure = events.find(event => event.type === "error");
-  if (failure) throw new Error("Existing generator returned an error");
-  const result = events.find(event => event.type === "result");
-  if (!ended || !events.some(event => event.type === "done") || !result || result.data === undefined) {
-    throw new Error("Existing generator did not finish successfully");
-  }
-  return result.data;
 }
 
 // Request key is mandatory and owned by an authenticated Clerk identity.
