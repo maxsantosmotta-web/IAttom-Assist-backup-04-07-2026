@@ -11,6 +11,7 @@ import { streamVideoScript } from "../lib/ai/videoScript.js";
 import { streamCreativeIdeas } from "../lib/ai/creativeIdeas.js";
 import { captureExistingStream } from "../lib/chatgpt/captureExistingStream.js";
 import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
+import { isolatedExternalWritesEnabled } from "../lib/chatgpt/isolation.js";
 import { requirePlan } from "../middlewares/requirePlan.js";
 import { FEATURE_COSTS, CREATIVE_FEATURES, type FeatureKey } from "../lib/credits.js";
 
@@ -72,7 +73,7 @@ router.get("/chatgpt/operations/preflight/:feature", requireExternalAccess, asyn
     required,
     sufficientBalance: balance >= required,
     canRequestExecution: planAllowed && balance >= required,
-    executionEnabled: process.env.CHATGPT_EXTERNAL_WRITES_ENABLED === "true" && process.env.CHATGPT_EXTERNAL_ISOLATED_DB === "true",
+    executionEnabled: isolatedExternalWritesEnabled(),
     reserved: false,
   });
 });
@@ -151,8 +152,7 @@ function parseExternalRequest(feature: ExternalFeature, input: unknown):
 // new table/migration; pending requests never charge. Failed requests cannot
 // silently regenerate under the same key.
 router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, res): Promise<void> => {
-  if (process.env.CHATGPT_EXTERNAL_WRITES_ENABLED !== "true" ||
-      process.env.CHATGPT_EXTERNAL_ISOLATED_DB !== "true") {
+  if (!isolatedExternalWritesEnabled()) {
     res.status(503).json({ error: "isolated_external_writes_disabled" });
     return;
   }
