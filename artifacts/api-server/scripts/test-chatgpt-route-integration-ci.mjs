@@ -21,7 +21,7 @@ const outputFiles = [];
 let server;
 let baseUrl;
 
-const mockDatabase = String.raw\`
+const mockDatabase = String.raw`
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { pgTable, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
@@ -47,8 +47,8 @@ export const creditsTransactions = pgTable("credits_transactions", {
   description: text("description").notNull(), balanceBefore: integer("balance_before").notNull(),
   balanceAfter: integer("balance_after").notNull(),
 });
-\`;
-const mockAuth = \`
+`;
+const mockAuth = `
 export const requireExternalAccess = (req,res,next) => {
   const value = req.get("authorization");
   if (!value || !/^Bearer (test-user|free-user|other-user)$/.test(value)) {
@@ -58,13 +58,13 @@ export const requireExternalAccess = (req,res,next) => {
   req.log = {error(){},warn(){},info(){}};
   next();
 };
-\`;
-const mockIsolated = \`
+`;
+const mockIsolated = `
 export const isolatedExternalWritesEnabled = () =>
   process.env.CI === "true" &&
   new URL(process.env.CHATGPT_CI_POSTGRES_URL).hostname === "127.0.0.1";
-\`;
-const mockSchemas = \`
+`;
+const mockSchemas = `
 const parse = field => ({safeParse(input) {
   if (!input || typeof input[field] !== "string" || !input[field].trim()) {
     return {success:false,error:{message:"invalid_input"}};
@@ -83,8 +83,8 @@ export const AiCreativeIdeasBody = {safeParse(input) {
   }
   return {success:true,data:input};
 }};
-\`;
-const mockGenerators = \`
+`;
+const mockGenerators = `
 export async function run(input,res) {
   res.setHeader("Content-Type","text/event-stream");
   res.write('data: {"type":"start"}\\\\n\\\\n');
@@ -99,22 +99,22 @@ export async function run(input,res) {
 }
 export const streamFindProducts=run,streamValidateProduct=run,streamCreateCampaign=run,
 streamCreateContent=run,streamVideoScript=run,streamCreativeIdeas=run;
-\`;
-const mockCosts = \`
+`;
+const mockCosts = `
 export const FEATURE_COSTS = {
  product_discovery:5,product_validation:5,campaign:10,content:10,
  video_script:10,prompt_creation:5,creativeImage1:10,creativeImage2:20,
  creativeImage3:30,iattom_help:1
 };
 export const CREATIVE_FEATURES = new Set(["creativeImage1","creativeImage2","creativeImage3"]);
-\`;
-const mockPrompts = \`export async function invokeExistingPromptGenerator(userId,input) {
+`;
+const mockPrompts = `export async function invokeExistingPromptGenerator(userId,input) {
   return { title:input.subject,prompt:"simulated prompt",module:"content" };
-}\`;
-const mockHelp = \`export async function invokeExistingHelpForChatGPT(userId,message) {
+}`;
+const mockHelp = `export async function invokeExistingHelpForChatGPT(userId,message) {
   if (message === "ERROR") throw new Error("simulated help error");
   return "Simulated IAttom Help response";
-}\`;
+}`;
 
 function pluginForCI() {
   const mapping = [
@@ -151,7 +151,7 @@ async function bundleRoute(name) {
 }
 
 before(async () => {
-  await pool.query(\`
+  await pool.query(`
     CREATE TABLE users (
       clerk_id text PRIMARY KEY, plan text NOT NULL, role text NOT NULL DEFAULT 'user',
       credits integer NOT NULL DEFAULT 0 CHECK(credits >= 0),
@@ -175,7 +175,7 @@ before(async () => {
       VALUES ('test-user','agency','user',75,10,50),
              ('free-user','free','user',0,0,0),
              ('other-user','agency','user',80,0,50);
-  \`);
+  `);
   const app=express();
   app.use(express.json({limit:"5mb"}));
   app.use(await bundleRoute("externalOperations"));
