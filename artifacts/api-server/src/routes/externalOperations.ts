@@ -310,3 +310,30 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
     res.status(500).json({ error: "external_operation_failed" });
   }
 });
+
+// Safe recovery for network timeouts: do not issue a new generation key.
+router.get("/chatgpt/operations/status/:requestId", requireExternalAccess, async (req, res): Promise<void> => {
+  const requestId = String(req.params.requestId ?? "");
+  if (!/^[A-Za-z0-9_-]{16,72}$/.test(requestId)) {
+    res.status(400).json({ error: "invalid_idempotency_key" }); return;
+  }
+  const userId = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  const key = "chatgpt-" + createHash("sha256").update(userId).update(":").update(requestId).digest("hex");
+  try {
+    const [item] = await db.select({
+      clerkUserId: savedItemsTable.clerkUserId, type: savedItemsTable.type,
+      content: savedItemsTable.content, data: savedItemsTable.data,
+      hasImages: savedItemsTable.hasImages,
+    }).from(savedItemsTable).where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId)));
+    if (!item) { res.status(404).json({ error: "operation_not_found" }); return; }
+    const state = item.data ? JSON.parse(item.data) as { status?: string; feature?: string } : {};
+    res.json({
+      status: state.status ?? "unknown", feature: state.feature, projectId: key,
+      hasImages: item.hasImages,
+      ...(state.status === "complete" ? { result: JSON.parse(item.content) } : {}),
+    });
+  } catch (error) {
+    req.log.error({ error }, "External status lookup failed");
+    res.status(500).json({ error: "operation_status_unavailable" });
+  }
+});
