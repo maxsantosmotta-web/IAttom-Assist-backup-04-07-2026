@@ -140,8 +140,8 @@ function parseExternalRequest(feature: ExternalFeature, input: unknown):
       return { success: true, run: async (res, userId) => {
         res.setHeader("Content-Type", "text/event-stream");
         const data = await invokeExistingPromptGenerator(userId, checked);
-        res.write(`data: ${JSON.stringify({ type: "result", data })}\\n\\n`);
-        res.write(`data: ${JSON.stringify({ type: "done" })}\\n\\n`);
+        res.write(`data: ${JSON.stringify({ type: "result", data })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
         res.end();
       }, title: checked.subject.slice(0, 150), type: "prompt", imageCount: 0 };
     }
