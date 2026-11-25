@@ -52,7 +52,7 @@ async function loadRoute(path) {
   `;
   // The module itself declares a router variable; remove that one declaration
   // so it uses the instrumented Router() once, without changing handlers.
-  const compiled = await transform(stub.replace("const router = {", "const mockRouter = {").replace("return router;", "return mockRouter;") +
+  const compiled = await transform(stub.replace("const router = {", "const mockRouter = {").replace("() => router;", "() => mockRouter;") +
     noImports, { loader: "ts", format: "esm" });
   return import("data:text/javascript;base64," + Buffer.from(compiled.code).toString("base64"));
 }
