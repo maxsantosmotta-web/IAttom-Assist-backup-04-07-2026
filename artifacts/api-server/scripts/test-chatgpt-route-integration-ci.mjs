@@ -236,8 +236,11 @@ test("real campaign route persists result, debits once, and restores same key",a
 test("two concurrent requests with same id generate/charge just once",async()=>{
   const body={feature:"campaign",input:{product:"simultaneous"},requestId:"campaign-concurrent-12345"};
   const results=await Promise.all([call("/chatgpt/operations/execute",body),call("/chatgpt/operations/execute",body)]);
-  assert.equal(results.filter(r=>r.status===200).length,1,JSON.stringify(results));
-  assert.equal(results.filter(r=>r.status===409).length,1,JSON.stringify(results));
+  // A racing duplicate may return 409 while the first is pending, or 200
+  // with chargedAgain=false if the first commit has already completed.
+  assert.equal(results.filter(r=>r.status===200 && r.data.charged===10).length,1,JSON.stringify(results));
+  assert.equal(results.filter(r=>r.status===409 ||
+    (r.status===200 && r.data.chargedAgain===false)).length,1,JSON.stringify(results));
   assert.equal((await ledgers()).filter(t=>t.feature==="campaign").length,2);
 });
 
