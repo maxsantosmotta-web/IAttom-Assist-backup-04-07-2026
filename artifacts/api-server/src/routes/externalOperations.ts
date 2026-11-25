@@ -9,6 +9,7 @@ import { streamCreateCampaign } from "../lib/ai/createCampaign.js";
 import { streamCreateContent } from "../lib/ai/createContent.js";
 import { streamVideoScript } from "../lib/ai/videoScript.js";
 import { streamCreativeIdeas } from "../lib/ai/creativeIdeas.js";
+import { invokeExistingPromptGenerator } from "./prompts.js";
 import { captureExistingStream } from "../lib/chatgpt/captureExistingStream.js";
 import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
 import { isolatedExternalWritesEnabled } from "../lib/chatgpt/isolation.js";
@@ -31,6 +32,7 @@ const PREFLIGHT_PLANS: Partial<Record<FeatureKey, string[]>> = {
   campaign: ["pro", "business", "agency"],
   content: ["agency"],
   video_script: ["business", "agency"],
+  prompt_creation: ["pro", "business", "agency"],
   creativeImage1: ["pro", "business", "agency"],
   creativeImage2: ["pro", "business", "agency"],
   creativeImage3: ["pro", "business", "agency"],
@@ -84,9 +86,9 @@ export default router;
 // Operational adapter for existing text and image modules. This is never called by
 // the website and is disabled by default even when read-only preflight works.
 // The second flag prevents accidental writes against the official database.
-const EXECUTABLE_MODULES = new Set(["product_discovery", "product_validation", "campaign", "content", "video_script", "creativeImage1", "creativeImage2", "creativeImage3"] as const);
+const EXECUTABLE_MODULES = new Set(["product_discovery", "product_validation", "campaign", "content", "video_script", "prompt_creation", "creativeImage1", "creativeImage2", "creativeImage3"] as const);
 type TextFeature = "product_discovery" | "product_validation" | "campaign" | "content" | "video_script";
-type ExternalFeature = TextFeature | "creativeImage1" | "creativeImage2" | "creativeImage3";
+type ExternalFeature = TextFeature | "prompt_creation" | "creativeImage1" | "creativeImage2" | "creativeImage3";
 const IMAGE_FORMATS: Record<string, string[]> = {
   instagram: ["feed", "stories"], facebook: ["feed", "stories", "banner"],
   tiktok: ["feed", "stories"], mercado_livre: ["produto", "banner"],
@@ -127,6 +129,21 @@ function parseExternalRequest(feature: ExternalFeature, input: unknown):
       return parsed.success
         ? { success: true, run: (res, uid) => streamVideoScript(parsed.data, res, uid), title: parsed.data.product, type: "video_script", imageCount: 0 }
         : { success: false, error: parsed.error.message };
+    }
+    case "prompt_creation": {
+      const params = input as { tipo?: unknown; subject?: unknown } | null;
+      if (!params || typeof params.tipo !== "string" || typeof params.subject !== "string" ||
+          !params.tipo.trim() || !params.subject.trim() || params.tipo.length > 50 || params.subject.length > 3000) {
+        return { success: false, error: "invalid_prompt_request" };
+      }
+      const checked = { tipo: params.tipo, subject: params.subject };
+      return { success: true, run: async (res, userId) => {
+        res.setHeader("Content-Type", "text/event-stream");
+        const data = await invokeExistingPromptGenerator(userId, checked);
+        res.write(`data: ${JSON.stringify({ type: "result", data })}\\n\\n`);
+        res.write(`data: ${JSON.stringify({ type: "done" })}\\n\\n`);
+        res.end();
+      }, title: checked.subject.slice(0, 150), type: "prompt", imageCount: 0 };
     }
     case "creativeImage1":
     case "creativeImage2":
