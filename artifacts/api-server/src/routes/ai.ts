@@ -57,7 +57,8 @@ const aiRateLimiter = rateLimit({
   },
 });
 
-router.use(aiRateLimiter);
+// Keep the AI rate limit scoped to AI routes; this router is mounted before billing.
+router.use("/ai", aiRateLimiter);
 
 // PRO only
 router.post("/ai/find-products", requireAuth, requirePlan(["agency"]), async (req, res): Promise<void> => {
