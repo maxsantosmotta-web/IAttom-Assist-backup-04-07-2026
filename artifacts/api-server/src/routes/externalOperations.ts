@@ -135,7 +135,7 @@ async function captureExistingStream(run: (res: Response) => Promise<void>): Pro
       const text = String(chunk);
       bytes += Buffer.byteLength(text);
       if (bytes > 3_000_000) throw new Error("Generated response too large");
-      for (const event of text.split("\\n\\n")) {
+      for (const event of text.split("\n\n")) {
         if (!event.startsWith("data: ")) continue;
         const parsed = JSON.parse(event.slice(6)) as Record<string, unknown>;
         if (parsed.type === "result" || parsed.type === "done" || parsed.type === "error") events.push(parsed);
