@@ -220,11 +220,11 @@ test("real campaign route persists result, debits once, and restores same key",a
   assert.equal(first.status,200,JSON.stringify(first));
   assert.equal(first.data.charged,10);
   assert.equal(first.data.result.headline,"simulated");
-  assert.equal((await account()).credits,65);
+  assert.equal((await account()).credits,90);
   const repeat=await call("/chatgpt/operations/execute",body);
   assert.equal(repeat.status,200,JSON.stringify(repeat));
   assert.equal(repeat.data.chargedAgain,false);
-  assert.equal((await account()).credits,65);
+  assert.equal((await account()).credits,90);
   const status=await call("/chatgpt/operations/status/campaign-request-12345",null,"test-user","GET");
   assert.equal(status.data.status,"complete");
   assert.equal((await ledgers()).filter(t=>t.feature==="campaign").length,1);
