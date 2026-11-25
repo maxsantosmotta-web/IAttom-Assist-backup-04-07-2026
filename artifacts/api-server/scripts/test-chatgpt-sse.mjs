@@ -42,20 +42,23 @@ const compiledIsolation = await transform(isolationSource, { loader: "ts", forma
 const { isolatedExternalWritesEnabled } = await import("data:text/javascript;base64," +
   Buffer.from(compiledIsolation.code).toString("base64"));
 
-const sandboxUrl = "postgresql://tester:fake@localhost:5432/iattom_chatgpt_test";
+const sandboxUrl = "postgresql://tester:fake@postgres.railway.internal:5432/railway";
 const complete = {
   CHATGPT_OPERATIONS_ENABLED: "true",
   CHATGPT_EXTERNAL_WRITES_ENABLED: "true",
   CHATGPT_EXTERNAL_ISOLATED_DB: "true",
+  RAILWAY_PROJECT_ID: "0ded634b-c643-4655-b252-60c438c10b62",
+  RAILWAY_ENVIRONMENT_ID: "32965107-60c2-4259-966b-38f8fed7a00b",
   DATABASE_URL: sandboxUrl,
   CHATGPT_SANDBOX_DATABASE_URL: sandboxUrl,
 };
-test("isolated write guard requires separate matching sandbox URL and explicit flags", () => {
+test("external operations require exact Railway test identity and matching private database", () => {
   assert.equal(isolatedExternalWritesEnabled(complete), true);
   assert.equal(isolatedExternalWritesEnabled({ ...complete, CHATGPT_EXTERNAL_WRITES_ENABLED: "false" }), false);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, RAILWAY_PROJECT_ID: "other-project" }), false);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, RAILWAY_ENVIRONMENT_ID: "08959294-7371-49d2-82b0-471f45166edb" }), false);
   assert.equal(isolatedExternalWritesEnabled({ ...complete, CHATGPT_SANDBOX_DATABASE_URL: undefined }), false);
-  assert.equal(isolatedExternalWritesEnabled({ ...complete, DATABASE_URL: "postgresql://tester:fake@localhost:5432/iattom_prod" }), false);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, DATABASE_URL: "postgresql://tester:fake@production.example:5432/railway" }), false);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, DATABASE_URL: "postgresql://tester:fake@postgres.railway.internal:5432/other" }), false);
   assert.equal(isolatedExternalWritesEnabled({ ...complete, CHATGPT_PRODUCTION_DATABASE_URL: sandboxUrl }), false);
-  assert.equal(isolatedExternalWritesEnabled({ ...complete, DATABASE_URL: "postgresql://tester:fake@localhost:5432/iattom_test_other" }), false);
-  assert.equal(isolatedExternalWritesEnabled({ ...complete, DATABASE_URL: "postgresql://tester:fake@localhost:5432/iattom_sandbox" }), false);
 });
