@@ -30,7 +30,7 @@ test("rejects provider errors without returning any partial result", async () =>
 });
 test("rejects missing termination, truncated frames and duplicate output", async () => {
   await assert.rejects(captureExistingStream(runEvents([start, good, done], { terminate: false })), /did not finish/);
-  await assert.rejects(captureExistingStream(runEvents([start, good, 'data: {"type":"don']), /incomplete SSE frame/);
+  await assert.rejects(captureExistingStream(runEvents([start, good, 'data: {"type":"don'])), /incomplete SSE frame/);
   await assert.rejects(captureExistingStream(runEvents([start, good, good, done])), /duplicate results/);
 });
 test("enforces output byte ceiling", async () => {
