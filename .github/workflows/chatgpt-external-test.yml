@@ -19,6 +19,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @workspace/api-server exec node scripts/test-chatgpt-sse.mjs
       - run: pnpm run build:api
+      - run: pnpm --filter @workspace/api-server exec node scripts/check-chatgpt-compiled-policy.mjs
       - run: pnpm run typecheck:libs
       # The legacy API currently has unrelated TypeScript errors; keep visibility
       # without hiding the successful isolated adapter build.
