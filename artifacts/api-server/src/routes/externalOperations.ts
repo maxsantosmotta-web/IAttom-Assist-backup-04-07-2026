@@ -15,6 +15,7 @@ import { deliveredCreativeAssets } from "../lib/chatgpt/creativeDelivery.js";
 import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
 import { isolatedExternalWritesEnabled } from "../lib/chatgpt/isolation.js";
 import { requirePlan } from "../middlewares/requirePlan.js";
+import { getOrCreateUserFromClerk } from "../lib/userSync.js";
 import { FEATURE_COSTS, CREATIVE_FEATURES, type FeatureKey } from "../lib/credits.js";
 
 const router: IRouter = Router();
@@ -49,7 +50,7 @@ router.get("/chatgpt/operations/preflight/:feature", requireExternalAccess, asyn
     return;
   }
   const clerkId = (req as typeof req & { clerkUserId: string }).clerkUserId;
-  const [user] = await db.select({
+  let [user] = await db.select({
     plan: users.plan,
     role: users.role,
     credits: users.credits,
@@ -58,8 +59,17 @@ router.get("/chatgpt/operations/preflight/:feature", requireExternalAccess, asyn
     extraCreativeCredits: users.extraCreativeCredits,
   }).from(users).where(eq(users.clerkId, clerkId));
   if (!user) {
-    res.status(404).json({ error: "user_not_found" });
-    return;
+    // The website may be connected to a different environment. Resolve the
+    // verified Clerk identity in this sandbox without copying an official
+    // subscription or allocating credits. The sandbox userSync guard disables
+    // the legacy first-user administrator promotion here.
+    if (!isolatedExternalWritesEnabled()) {
+      res.status(404).json({ error: "user_not_found" });
+      return;
+    }
+    const created = await getOrCreateUserFromClerk(clerkId);
+    if (!created) { res.status(404).json({ error: "user_not_found" }); return; }
+    user = created;
   }
   const planAllowed = user.role === "admin" || allowedPlans.includes(user.plan);
   const isCreative = CREATIVE_FEATURES.has(feature);
