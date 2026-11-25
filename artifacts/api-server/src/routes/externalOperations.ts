@@ -21,7 +21,7 @@ const router: IRouter = Router();
 // Read-only readiness check. No generation, debit, refund or database mutation.
 router.get("/chatgpt/operations/readiness", requireExternalAccess,
   requirePlan(["pro", "business", "agency"]), (_req, res) => {
-    res.json({ authenticated: true, paidPlanAccess: true, executionEnabled: false });
+    res.json({ authenticated: true, paidPlanAccess: true, executionEnabled: isolatedExternalWritesEnabled() });
   });
 
 // These gates are identical to the existing /ai module route guards. Do not
