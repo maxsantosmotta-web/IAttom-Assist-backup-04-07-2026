@@ -11,6 +11,7 @@ import { streamVideoScript } from "../lib/ai/videoScript.js";
 import { streamCreativeIdeas } from "../lib/ai/creativeIdeas.js";
 import { invokeExistingPromptGenerator } from "./prompts.js";
 import { captureExistingStream } from "../lib/chatgpt/captureExistingStream.js";
+import { deliveredCreativeAssets } from "../lib/chatgpt/creativeDelivery.js";
 import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
 import { isolatedExternalWritesEnabled } from "../lib/chatgpt/isolation.js";
 import { requirePlan } from "../middlewares/requirePlan.js";
@@ -257,19 +258,23 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
       res.status(502).json({ error: "generation_failed_no_charge" }); return;
     }
 
-    // Keep generated image bytes in the existing image library asset field.
-    const concepts = parsed.imageCount ? (result as { concepts?: Array<{ imageBase64?: string; format?: string; label?: string }> })?.concepts : undefined;
-    if (parsed.imageCount && (!Array.isArray(concepts) || !concepts.some(v => typeof v.imageBase64 === "string" && v.imageBase64.length > 0))) {
-      await db.update(savedItemsTable).set({ type: "external_failed", data: JSON.stringify({ status: "failed", feature, inputHash }) })
-        .where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId)));
-      res.status(502).json({ error: "no_images_generated_no_charge" }); return;
+    // Never charge the price of multiple images for a partial delivery.
+    let imageAssets: ReturnType<typeof deliveredCreativeAssets>["assets"] = [];
+    let safeResult: unknown = result;
+    if (parsed.imageCount) {
+      try {
+        const validated = deliveredCreativeAssets(result, parsed.imageCount);
+        imageAssets = validated.assets;
+        safeResult = validated.safeResult;
+      } catch (error) {
+        await db.update(savedItemsTable).set({
+          type: "external_failed", data: JSON.stringify({ status: "failed", feature, inputHash }),
+        }).where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId)));
+        req.log.warn({ error, feature }, "Partial creative delivery rejected without debit");
+        res.status(502).json({ error: "incomplete_images_no_charge" });
+        return;
+      }
     }
-    const imageAssets = (concepts ?? []).filter(v => typeof v.imageBase64 === "string" && v.imageBase64.length > 0)
-      .map((v, index) => ({ conceptIndex: index, base64: v.imageBase64, label: v.label ?? "", format: v.format ?? "" }));
-    const safeResult = parsed.imageCount ? {
-      ...(result as Record<string, unknown>),
-      concepts: (concepts ?? []).map(({ imageBase64: _imageBase64, ...rest }) => rest),
-    } : result;
 
     // The balance check, debit ledger and library result commit together.
     // This mirrors the existing deductCredits arithmetic but avoids a nested
