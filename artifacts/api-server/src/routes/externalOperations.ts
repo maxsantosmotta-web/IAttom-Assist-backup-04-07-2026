@@ -36,7 +36,7 @@ const PREFLIGHT_PLANS: Partial<Record<FeatureKey, string[]>> = {
 };
 
 // Preflight is explicitly read-only. A positive response is never a payment
-// authorization and does not reserve credits; real execution stays disabled.
+// authorization and does not reserve credits.
 router.get("/chatgpt/operations/preflight/:feature", requireExternalAccess, async (req, res): Promise<void> => {
   const feature = String(req.params.feature ?? "") as FeatureKey;
   const allowedPlans = PREFLIGHT_PLANS[feature];
@@ -80,7 +80,7 @@ router.get("/chatgpt/operations/preflight/:feature", requireExternalAccess, asyn
 export default router;
 
 
-// Operational adapter for existing text modules only. This is never called by
+// Operational adapter for existing text and image modules. This is never called by
 // the website and is disabled by default even when read-only preflight works.
 // The second flag prevents accidental writes against the official database.
 const EXECUTABLE_MODULES = new Set(["product_discovery", "product_validation", "campaign", "content", "video_script", "creativeImage1", "creativeImage2", "creativeImage3"] as const);
@@ -211,12 +211,17 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
     // Reserve the operation in the user's existing library, without debit.
     // The unique PK prevents a concurrent duplicate from generating twice.
     const [existingUser] = await db.select({ plan: users.plan, role: users.role,
-      credits: users.credits, extraCredits: users.extraCredits }).from(users).where(eq(users.clerkId, userId));
+      credits: users.credits, extraCredits: users.extraCredits,
+      creativeCredits: users.creativeCredits, extraCreativeCredits: users.extraCreativeCredits })
+      .from(users).where(eq(users.clerkId, userId));
     if (!existingUser) { res.status(404).json({ error: "user_not_found" }); return; }
     if (existingUser.role !== "admin" && !allowedPlans.includes(existingUser.plan)) {
       res.status(403).json({ error: "plan_required" }); return;
     }
-    if (existingUser.credits + (existingUser.extraCredits ?? 0) < cost) {
+    const preflightBalance = CREATIVE_FEATURES.has(feature as ExternalFeature)
+      ? existingUser.creativeCredits + (existingUser.extraCreativeCredits ?? 0)
+      : existingUser.credits + (existingUser.extraCredits ?? 0);
+    if (preflightBalance < cost) {
       res.status(402).json({ error: "insufficient_credits", required: cost }); return;
     }
     const [reserved] = await db.insert(savedItemsTable).values({
