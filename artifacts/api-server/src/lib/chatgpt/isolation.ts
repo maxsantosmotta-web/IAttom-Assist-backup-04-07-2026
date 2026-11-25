@@ -9,6 +9,7 @@
  */
 const TEST_PROJECT = "0ded634b-c643-4655-b252-60c438c10b62";
 const TEST_ENVIRONMENT = "32965107-60c2-4259-966b-38f8fed7a00b";
+const TEST_SERVICE = "16a13f32-b8e5-4e0a-b2ed-526164375e82";
 
 export function isolatedExternalWritesEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   if (env.CHATGPT_OPERATIONS_ENABLED !== "true" ||
@@ -16,7 +17,8 @@ export function isolatedExternalWritesEnabled(env: NodeJS.ProcessEnv = process.e
       env.CHATGPT_EXTERNAL_ISOLATED_DB !== "true") return false;
 
   if (env.RAILWAY_PROJECT_ID !== TEST_PROJECT ||
-      env.RAILWAY_ENVIRONMENT_ID !== TEST_ENVIRONMENT) return false;
+      env.RAILWAY_ENVIRONMENT_ID !== TEST_ENVIRONMENT ||
+      env.RAILWAY_SERVICE_ID !== TEST_SERVICE) return false;
 
   if (!env.DATABASE_URL || !env.CHATGPT_SANDBOX_DATABASE_URL) return false;
   try {
