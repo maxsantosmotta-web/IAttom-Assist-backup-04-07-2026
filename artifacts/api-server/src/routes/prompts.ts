@@ -286,3 +286,42 @@ router.delete("/prompts/:id/permanent", requireAuth, async (req, res): Promise<v
 });
 
 export default router;
+
+/**
+ * Isolated external entry point for the SAME existing prompt route handler.
+ * The website's middleware and build-time prompt refinements remain unchanged.
+ * The caller performs independent OAuth, plan verification, atomic debit and
+ * persistence; this function never skips the handler's Zod input validation.
+ */
+export async function invokeExistingPromptGenerator(
+  clerkUserId: string,
+  input: { tipo: string; subject: string },
+): Promise<{ title: string; prompt: string; module: string }> {
+  type RouteLayer = { route?: { path?: string; stack?: Array<{ method?: string; handle?: (...args: unknown[]) => unknown }> } };
+  const layers = (router as unknown as { stack?: RouteLayer[] }).stack ?? [];
+  const matched = layers.find(layer => layer.route?.path === "/prompts/generate");
+  const handler = matched?.route?.stack?.filter(layer => layer.method === "post").at(-1)?.handle;
+  if (!handler) throw new Error("Canonical prompt generator unavailable");
+  let status = 200;
+  let payload: unknown;
+  let finished = false;
+  const response = {
+    status(code: number) { status = code; return response; },
+    json(value: unknown) { payload = value; finished = true; return response; },
+  };
+  const request = {
+    body: input,
+    clerkUserId,
+    log: { error: () => undefined },
+  };
+  await handler(request, response);
+  if (!finished || status >= 400 || !payload || typeof payload !== "object") {
+    throw new Error("Existing prompt generator failed");
+  }
+  const value = payload as { title?: unknown; prompt?: unknown; module?: unknown };
+  if (typeof value.title !== "string" || typeof value.prompt !== "string" || typeof value.module !== "string") {
+    throw new Error("Canonical prompt response invalid");
+  }
+  return { title: value.title, prompt: value.prompt, module: value.module };
+}
+
