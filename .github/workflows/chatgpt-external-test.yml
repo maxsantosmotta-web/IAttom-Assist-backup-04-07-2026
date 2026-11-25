@@ -18,3 +18,4 @@ jobs:
           node-version: '22'
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build:api
+      - run: pnpm --filter @workspace/api-server typecheck
