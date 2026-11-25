@@ -47,6 +47,7 @@ import googlePlaySubscriptionEntitlementsRouter from "./googlePlaySubscriptionEn
 import chatgptRouter from "./chatgpt.js";
 import externalOperationsRouter from "./externalOperations.js";
 import externalVideoOperationsRouter from "./externalVideoOperations.js";
+import externalHelpOperationsRouter from "./externalHelpOperations.js";
 
 const router: IRouter = Router();
 
@@ -54,6 +55,7 @@ router.use(healthRouter);
 router.use(chatgptRouter);
 router.use(externalOperationsRouter);
 router.use(externalVideoOperationsRouter);
+router.use(externalHelpOperationsRouter);
 router.use(projectsRouter);
 router.use(historyRouter);
 router.use(dashboardRouter);
