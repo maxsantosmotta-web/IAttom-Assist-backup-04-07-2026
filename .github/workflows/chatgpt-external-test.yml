@@ -17,6 +17,7 @@ jobs:
         with:
           node-version: '22'
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @workspace/api-server exec node scripts/test-chatgpt-sse.mjs
       - run: pnpm run build:api
       - run: pnpm run typecheck:libs
       # The legacy API currently has unrelated TypeScript errors; keep visibility
