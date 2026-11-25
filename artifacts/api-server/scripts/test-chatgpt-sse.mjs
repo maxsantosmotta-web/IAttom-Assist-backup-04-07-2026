@@ -36,3 +36,26 @@ test("rejects missing termination, truncated frames and duplicate output", async
 test("enforces output byte ceiling", async () => {
   await assert.rejects(captureExistingStream(runEvents([start, good, done]), 15), /too large/);
 });
+
+const isolationSource = readFileSync(new URL("../src/lib/chatgpt/isolation.ts", import.meta.url), "utf8");
+const compiledIsolation = await transform(isolationSource, { loader: "ts", format: "esm" });
+const { isolatedExternalWritesEnabled } = await import("data:text/javascript;base64," +
+  Buffer.from(compiledIsolation.code).toString("base64"));
+
+const sandboxUrl = "postgresql://tester:fake@localhost:5432/iattom_chatgpt_test";
+const complete = {
+  CHATGPT_OPERATIONS_ENABLED: "true",
+  CHATGPT_EXTERNAL_WRITES_ENABLED: "true",
+  CHATGPT_EXTERNAL_ISOLATED_DB: "true",
+  DATABASE_URL: sandboxUrl,
+  CHATGPT_SANDBOX_DATABASE_URL: sandboxUrl,
+};
+test("isolated write guard requires separate matching sandbox URL and explicit flags", () => {
+  assert.equal(isolatedExternalWritesEnabled(complete), true);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, CHATGPT_EXTERNAL_WRITES_ENABLED: "false" }), false);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, CHATGPT_SANDBOX_DATABASE_URL: undefined }), false);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, DATABASE_URL: "postgresql://tester:fake@localhost:5432/iattom_prod" }), false);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, CHATGPT_PRODUCTION_DATABASE_URL: sandboxUrl }), false);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, DATABASE_URL: "postgresql://tester:fake@localhost:5432/iattom_test_other" }), false);
+  assert.equal(isolatedExternalWritesEnabled({ ...complete, DATABASE_URL: "postgresql://tester:fake@localhost:5432/iattom_sandbox" }), false);
+});
