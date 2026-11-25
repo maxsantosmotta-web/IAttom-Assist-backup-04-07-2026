@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, users } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { db, users, projectsTable } from "@workspace/db";
 import { requireChatGPTAuth } from "../middlewares/requireChatGPTAuth.js";
 import { FEATURE_COSTS } from "../lib/credits.js";
 
@@ -28,6 +28,24 @@ router.get("/chatgpt/account", async (req, res): Promise<void> => {
     creativeBalance: user.creativeCredits + (user.extraCreativeCredits ?? 0),
     featureCosts: FEATURE_COSTS,
   });
+});
+
+// Read only, scoped to the Clerk user from the verified OAuth token. This does
+// not invoke a module, create a project, or debit credits.
+router.get("/chatgpt/projects", async (req, res): Promise<void> => {
+  const clerkId = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  const projects = await db.select({
+    id: projectsTable.id,
+    name: projectsTable.name,
+    type: projectsTable.type,
+    status: projectsTable.status,
+    description: projectsTable.description,
+    updatedAt: projectsTable.updatedAt,
+  }).from(projectsTable)
+    .where(eq(projectsTable.clerkUserId, clerkId))
+    .orderBy(desc(projectsTable.updatedAt))
+    .limit(20);
+  res.json({ projects });
 });
 
 export default router;
