@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, and, isNull } from "drizzle-orm";
-import { db, users, projectsTable, savedPromptsTable } from "@workspace/db";
+import { db, users, projectsTable, savedPromptsTable, savedItemsTable } from "@workspace/db";
 import { requireChatGPTAuth } from "../middlewares/requireChatGPTAuth.js";
 import { FEATURE_COSTS } from "../lib/credits.js";
 
@@ -76,6 +76,25 @@ router.get("/chatgpt/prompts", async (req, res): Promise<void> => {
     .orderBy(desc(savedPromptsTable.createdAt))
     .limit(20);
   res.json({ prompts });
+});
+
+
+// Existing global library, read-only and restricted to the OAuth account owner.
+// Never return binary image/video payloads or deleted items through the MCP.
+router.get("/chatgpt/library", async (req, res): Promise<void> => {
+  const clerkId = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  const items = await db.select({
+    id: savedItemsTable.id,
+    title: savedItemsTable.title,
+    type: savedItemsTable.type,
+    platform: savedItemsTable.platform,
+    content: savedItemsTable.content,
+    createdAt: savedItemsTable.createdAt,
+  }).from(savedItemsTable)
+    .where(and(eq(savedItemsTable.clerkUserId, clerkId), isNull(savedItemsTable.deletedAt)))
+    .orderBy(desc(savedItemsTable.createdAt))
+    .limit(20);
+  res.json({ items });
 });
 
 export default router;
