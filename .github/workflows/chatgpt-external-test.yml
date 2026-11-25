@@ -40,7 +40,6 @@ jobs:
       - run: pnpm run build:api
       - run: pnpm --filter @workspace/api-server exec node scripts/check-chatgpt-compiled-policy.mjs
       - run: pnpm run typecheck:libs
-      # The legacy API currently has unrelated TypeScript errors; keep visibility
-      # without hiding the successful isolated adapter build.
-      - run: pnpm --filter @workspace/api-server typecheck
-        continue-on-error: true
+      # Legacy backend errors are reported, but newly added ChatGPT files
+      # must pass TypeScript validation or this workflow fails.
+      - run: pnpm --filter @workspace/api-server exec node scripts/check-chatgpt-typecheck.mjs
