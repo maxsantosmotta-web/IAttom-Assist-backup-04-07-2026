@@ -210,6 +210,25 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
   try {
     // Reserve the operation in the user's existing library, without debit.
     // The unique PK prevents a concurrent duplicate from generating twice.
+    // A retry must return the original completed result before checking the
+    // now-reduced balance. Never generate or debit twice for the same key.
+    const [previousOperation] = await db.select({
+      clerkUserId: savedItemsTable.clerkUserId,
+      data: savedItemsTable.data,
+      content: savedItemsTable.content,
+    }).from(savedItemsTable).where(eq(savedItemsTable.id, key));
+    if (previousOperation) {
+      const state = previousOperation.data ? JSON.parse(previousOperation.data) as { inputHash?: string; status?: string } : {};
+      if (previousOperation.clerkUserId !== userId || state.inputHash !== inputHash) {
+        res.status(409).json({ error: "operation_conflict" }); return;
+      }
+      if (state.status === "complete") {
+        res.json({ status: "complete", projectId: key, result: JSON.parse(previousOperation.content), chargedAgain: false });
+        return;
+      }
+      res.status(409).json({ error: "operation_already_reserved", status: state.status ?? "unknown" });
+      return;
+    }
     const [existingUser] = await db.select({ plan: users.plan, role: users.role,
       credits: users.credits, extraCredits: users.extraCredits,
       creativeCredits: users.creativeCredits, extraCreativeCredits: users.extraCreativeCredits })
@@ -229,14 +248,17 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
       type: "external_pending", content: "", data: JSON.stringify({ status: "pending", feature, inputHash }),
     }).onConflictDoNothing().returning({ id: savedItemsTable.id });
     if (!reserved) {
-      const [previous] = await db.select({ clerkUserId: savedItemsTable.clerkUserId, data: savedItemsTable.data })
-        .from(savedItemsTable).where(eq(savedItemsTable.id, key));
-      if (!previous || previous.clerkUserId !== userId) { res.status(409).json({ error: "operation_conflict" }); return; }
-      const state = previous.data ? JSON.parse(previous.data) as { inputHash?: string; status?: string } : {};
-      if (state.inputHash !== inputHash || state.status !== "complete") {
+      const [previous] = await db.select({
+        clerkUserId: savedItemsTable.clerkUserId, data: savedItemsTable.data, content: savedItemsTable.content,
+      }).from(savedItemsTable).where(eq(savedItemsTable.id, key));
+      const state = previous?.data ? JSON.parse(previous.data) as { inputHash?: string; status?: string } : {};
+      if (!previous || previous.clerkUserId !== userId || state.inputHash !== inputHash) {
+        res.status(409).json({ error: "operation_conflict" }); return;
+      }
+      if (state.status !== "complete") {
         res.status(409).json({ error: "operation_already_reserved", status: state.status ?? "unknown" }); return;
       }
-      res.json({ status: "complete", projectId: key, chargedAgain: false }); return;
+      res.json({ status: "complete", projectId: key, result: JSON.parse(previous.content), chargedAgain: false }); return;
     }
 
     let result: unknown;
