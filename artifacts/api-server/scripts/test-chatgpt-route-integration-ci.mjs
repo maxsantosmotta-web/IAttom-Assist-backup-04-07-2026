@@ -175,7 +175,7 @@ before(async () => {
       balance_before integer NOT NULL, balance_after integer NOT NULL
     );
     INSERT INTO users (clerk_id,plan,role,credits,extra_credits,creative_credits)
-      VALUES ('test-user','agency','user',75,10,50),
+      VALUES ('test-user','agency','user',100,10,100),
              ('free-user','free','user',0,0,0),
              ('other-user','agency','user',80,0,50);
   `);
@@ -311,4 +311,52 @@ test("owner isolation: no status or data visibility across user tokens",async()=
   const other=await call("/chatgpt/operations/status/campaign-request-12345",null,"other-user","GET");
   assert.equal(other.status,404);
   assert.equal((await ledgers("other-user")).length,0);
+});
+
+test("all remaining operational modules respond and record their own exact credit debit", async()=>{
+  const scenarios=[
+    ["product_discovery",{query:"mock products"},5],
+    ["product_validation",{productName:"mock product"},5],
+    ["content",{topic:"mock topic"},10],
+    ["video_script",{product:"mock product"},10],
+    ["prompt_creation",{tipo:"conteudo",subject:"mock product"},5],
+  ];
+  for(const [feature,input,cost] of scenarios){
+    const previous=(await account()).credits;
+    const requestId="coverage-"+feature.replaceAll("_","-")+"-123456";
+    const result=await call("/chatgpt/operations/execute",{feature,input,requestId});
+    assert.equal(result.status,200,feature+": "+JSON.stringify(result));
+    assert.equal(result.data.charged,cost);
+    assert.equal((await account()).credits,previous-cost);
+    const status=await call("/chatgpt/operations/status/"+requestId,null,"test-user","GET");
+    assert.equal(status.data.status,"complete");
+    assert.equal((await ledgers()).filter(row=>row.feature===feature).length,1);
+  }
+});
+
+test("2 and 3 image requests save all formats and debit their correct separate creative balance",async()=>{
+  for(const [count,formats,cost] of [
+    [2,["feed","stories"],20],
+    [3,["feed","stories","banner"],30],
+  ]){
+    const balance=(await account()).creative_credits;
+    const requestId="creative-coverage-"+count+"-123456789";
+    const response=await call("/chatgpt/operations/execute",{
+      feature:"creativeImage"+count,
+      input:{platform:"facebook",selectedFormats:formats,prompt:"mock collection"},
+      requestId
+    });
+    assert.equal(response.status,200,JSON.stringify(response));
+    assert.equal(response.data.imageCount,count);
+    assert.equal(response.data.charged,cost);
+    assert.equal((await account()).creative_credits,balance-cost);
+    const row=await pool.query("SELECT images_data FROM saved_items_v2 WHERE id=$1",[response.data.projectId]);
+    const assets=JSON.parse(row.rows[0].images_data);
+    assert.deepEqual(assets.map(asset=>asset.format),formats);
+    const replay=await call("/chatgpt/operations/execute",{
+      feature:"creativeImage"+count,input:{platform:"facebook",selectedFormats:formats,prompt:"mock collection"},requestId
+    });
+    assert.equal(replay.status,200);
+    assert.equal(replay.data.chargedAgain,false);
+  }
 });
