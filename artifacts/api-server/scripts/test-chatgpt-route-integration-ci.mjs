@@ -89,14 +89,14 @@ export const AiCreativeIdeasBody = {safeParse(input) {
 const mockGenerators = `
 export async function run(input,res) {
   res.setHeader("Content-Type","text/event-stream");
-  res.write('data: {"type":"start"}\\\\n\\\\n');
-  if (input.fail) {res.write('data: {"type":"error","message":"mock failure"}\\\\n\\\\n');res.end();return;}
+  res.write('data: {"type":"start"}\\n\\n');
+  if (input.fail) {res.write('data: {"type":"error","message":"mock failure"}\\n\\n');res.end();return;}
   const concepts = (input.selectedFormats ?? []).map((format,i) => ({
     format,label: "mock-"+i,imageBase64: input.partial && i===0 ? undefined : "aGVsbG8gdGhpcyBpcyBhIHRlc3Q="
   }));
   const result = input.selectedFormats ? {concepts} : {headline:"simulated",product:input.product ?? input.query ?? ""};
-  res.write("data: "+JSON.stringify({type:"result",data:result})+"\\\\n\\\\n");
-  res.write('data: {"type":"done"}\\\\n\\\\n');
+  res.write("data: "+JSON.stringify({type:"result",data:result})+"\\n\\n");
+  res.write('data: {"type":"done"}\\n\\n');
   res.end();
 }
 export const streamFindProducts=run,streamValidateProduct=run,streamCreateCampaign=run,
