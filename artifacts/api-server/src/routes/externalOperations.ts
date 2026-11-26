@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Response } from "express";
 import { and, eq, sql } from "drizzle-orm";
-import { createHash } from "node:crypto";
-import { db, users, savedItemsTable } from "@workspace/db";
+import { createHash, randomUUID } from "node:crypto";
+import { db, users, savedItemsTable, creditsTransactions } from "@workspace/db";
 import { AiFindProductsBody, AiValidateProductBody, AiCreateCampaignBody, AiCreateContentBody, AiVideoScriptBody, AiCreativeIdeasBody } from "@workspace/api-zod";
 import { streamFindProducts } from "../lib/ai/findProducts.js";
 import { streamValidateProduct } from "../lib/ai/validateProduct.js";
@@ -396,3 +396,57 @@ router.post("/chatgpt/operations/save", requireExternalAccess, async (req, res):
     res.status(500).json({ error: "external_save_failed" });
   }
 });
+
+// Internal startup integration checks. No HTTP endpoint, no provider calls,
+// no real identities; all fixture rows and ledger writes are rolled back.
+async function runSandboxStage8Checks() {
+  if (!isolatedExternalWritesEnabled()) return;
+  const prefix = "sandbox-stage8-" + randomUUID();
+  const rollback = new Error("stage8_fixture_rollback");
+  const checks: string[] = [];
+  const assert = (condition: boolean, name: string) => {
+    if (!condition) throw new Error("Stage8 failed: " + name);
+    checks.push(name);
+  };
+  await ensureOperationsTable();
+  try {
+    await db.transaction(async tx => {
+      const a = prefix + "-a", b = prefix + "-b";
+      await tx.insert(users).values([
+        { clerkId: a, email: a + "@example.invalid", plan: "pro", credits: 0 },
+        { clerkId: b, email: b + "@example.invalid", plan: "free", credits: 20 },
+      ]);
+      const insufficient = await deductCreditsInTransaction(tx, a, "prompt_creation");
+      assert(!insufficient.success && insufficient.error === "insufficient_credits", "insufficient_balance");
+      const [restricted] = await tx.select().from(users).where(eq(users.clerkId, b));
+      assert(restricted.role !== "admin" && !PREFLIGHT_PLANS.prompt_creation!.includes(restricted.plan), "free_plan_restricted");
+      for (const plan of ["free", "pro", "business", "agency"] as const) {
+        assert(Object.values(PREFLIGHT_PLANS).every(list => Array.isArray(list) && (plan !== "free" || !list.includes(plan))), "plan_matrix_" + plan);
+      }
+      const requestId = prefix;
+      const keyFor = (uid: string) => "chatgpt-" + createHash("sha256").update(uid).update(":").update(requestId).digest("hex");
+      await tx.insert(operationsTable).values({ id: keyFor(a), clerkUserId: a, title: "fixture", type: "external_pending" });
+      const foreign = await tx.select().from(operationsTable).where(and(eq(operationsTable.id, keyFor(b)), eq(operationsTable.clerkUserId, b)));
+      assert(foreign.length === 0 && keyFor(a) !== keyFor(b), "operation_owner_isolation");
+      await tx.update(users).set({ credits: 20 }).where(eq(users.clerkId, a));
+      const failure = new Error("stage8_forced_failure");
+      try {
+        await tx.transaction(async nested => {
+          const debit = await deductCreditsInTransaction(nested, a, "prompt_creation");
+          assert(debit.success && debit.newBalance === 15, "canonical_debit");
+          throw failure;
+        });
+      } catch (error) { if (error !== failure) throw error; }
+      const [after] = await tx.select().from(users).where(eq(users.clerkId, a));
+      const ledger = await tx.select().from(creditsTransactions).where(eq(creditsTransactions.clerkUserId, a));
+      assert(after.credits === 20 && ledger.length === 0, "atomic_rollback_no_debit");
+      throw rollback;
+    });
+  } catch (error) { if (error !== rollback) throw error; }
+  const remaining = await db.select().from(users).where(eq(users.clerkId, prefix + "-a"));
+  assert(remaining.length === 0, "fixture_cleanup");
+  console.info("STAGE8_SANDBOX_PASS " + JSON.stringify(checks));
+}
+if (isolatedExternalWritesEnabled()) {
+  void runSandboxStage8Checks().catch(error => console.error("STAGE8_SANDBOX_FAIL", error));
+}
