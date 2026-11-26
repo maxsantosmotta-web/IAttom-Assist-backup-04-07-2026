@@ -60,11 +60,16 @@ interface LockedCreditBalances {
   extra_creative_credits: number;
 }
 
+type CreditTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export async function deductCredits(clerkId: string, feature: FeatureKey) {
+  return db.transaction(tx => deductCreditsInTransaction(tx, clerkId, feature));
+}
+
+export async function deductCreditsInTransaction(tx: CreditTransaction, clerkId: string, feature: FeatureKey) {
   const cost = FEATURE_COSTS[feature];
   const isCreative = CREATIVE_FEATURES.has(feature);
 
-  return db.transaction(async (tx) => {
     // Lock the user row so concurrent generations cannot spend the same balance.
     const lockedResult = await tx.execute(
       sql`SELECT credits, extra_credits, creative_credits, extra_creative_credits
@@ -137,7 +142,6 @@ export async function deductCredits(clerkId: string, feature: FeatureKey) {
       transactionId: creditTransaction.id,
       user: updated,
     };
-  });
 }
 
 export async function adjustCredits(
