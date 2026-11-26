@@ -139,10 +139,7 @@ function parseExternalRequest(feature: ExternalFeature, input: unknown):
       const checked = { tipo: params.tipo, subject: params.subject };
       return { success: true, run: async (res, userId) => {
         res.setHeader("Content-Type", "text/event-stream");
-        // Deterministic fixture only in the verified isolated Railway environment.
-        const data = isolatedExternalWritesEnabled()
-          ? { title: checked.subject.slice(0, 150), prompt: `[SIMULAÇÃO SANDBOX] ${checked.subject}`, module: checked.tipo }
-          : await invokeExistingPromptGenerator(userId, checked);
+        const data = await invokeExistingPromptGenerator(userId, checked);
         res.write(`data: ${JSON.stringify({ type: "result", data })}\n\n`);
         res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
         res.end();
