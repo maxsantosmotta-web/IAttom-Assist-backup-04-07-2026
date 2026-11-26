@@ -9,7 +9,7 @@ import { streamCreateCampaign } from "../lib/ai/createCampaign.js";
 import { streamCreateContent } from "../lib/ai/createContent.js";
 import { streamVideoScript } from "../lib/ai/videoScript.js";
 import { streamCreativeIdeas } from "../lib/ai/creativeIdeas.js";
-import { invokeExistingPromptGenerator } from "./prompts.js";
+import { invokeExistingPromptGenerator, PROMPT_MODULE_PLANS } from "./prompts.js";
 import { captureExistingStream } from "../lib/chatgpt/captureExistingStream.js";
 import { deliveredCreativeAssets } from "../lib/chatgpt/creativeDelivery.js";
 import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
@@ -26,15 +26,14 @@ router.get("/chatgpt/operations/readiness", requireExternalAccess,
     res.json({ authenticated: true, paidPlanAccess: true, executionEnabled: isolatedExternalWritesEnabled() });
   });
 
-// These gates are identical to the existing /ai module route guards. Do not
-// substitute this list for the original requirePlan middleware during execution.
+// Reference the canonical module permission definitions for preflight and execution.
 const PREFLIGHT_PLANS: Partial<Record<FeatureKey, string[]>> = {
   product_discovery: AI_MODULE_PLANS.product_discovery,
   product_validation: AI_MODULE_PLANS.product_validation,
   campaign: AI_MODULE_PLANS.campaign,
   content: AI_MODULE_PLANS.content,
   video_script: AI_MODULE_PLANS.video_script,
-  prompt_creation: ["pro", "business", "agency"],
+  prompt_creation: PROMPT_MODULE_PLANS,
   creativeImage1: AI_MODULE_PLANS.creative,
   creativeImage2: AI_MODULE_PLANS.creative,
   creativeImage3: AI_MODULE_PLANS.creative,
