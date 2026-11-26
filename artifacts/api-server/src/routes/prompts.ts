@@ -7,6 +7,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod/v4";
 import { semanticNormalize } from "../lib/ai/semanticNormalize.js";
 
+export const PROMPT_MODULE_PLANS = ["pro", "business", "agency"];
 const router: IRouter = Router();
 
 const TRASH_TTL_MS = 48 * 60 * 60 * 1000;
@@ -74,7 +75,7 @@ router.get("/prompts/trash", requireAuth, async (req, res): Promise<void> => {
 });
 
 // ── POST /prompts ─────────────────────────────────────────────────────────────
-router.post("/prompts", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
+router.post("/prompts", requireAuth, requirePlan(PROMPT_MODULE_PLANS), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = CreatePromptBody.safeParse(req.body);
   if (!parsed.success) {
@@ -150,7 +151,7 @@ const GeneratePromptBody = z.object({
   subject: z.string().min(1).max(3000),
 });
 
-router.post("/prompts/generate", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
+router.post("/prompts/generate", requireAuth, requirePlan(PROMPT_MODULE_PLANS), async (req, res): Promise<void> => {
   const parsed = GeneratePromptBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Dados inválidos" });
