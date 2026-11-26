@@ -313,11 +313,17 @@ export async function invokeExistingPromptGenerator(
   const request = {
     body: input,
     clerkUserId,
-    log: { error: () => undefined },
+    log: { error: (details: unknown, message: string) => {
+      const d = details as { err?: { status?: number; code?: string; name?: string }; raw?: string };
+      console.warn("SANDBOX_PROMPT_DIAGNOSTIC", JSON.stringify({
+        stage: message, status: d?.err?.status, code: d?.err?.code,
+        name: d?.err?.name, outputLength: typeof d?.raw === "string" ? d.raw.length : undefined,
+      }));
+    } },
   };
   await handler(request, response);
   if (!finished || status >= 400 || !payload || typeof payload !== "object") {
-    throw new Error("Existing prompt generator failed");
+    throw new Error("Existing prompt generator failed: HTTP " + status);
   }
   const value = payload as { title?: unknown; prompt?: unknown; module?: unknown };
   if (typeof value.title !== "string" || typeof value.prompt !== "string" || typeof value.module !== "string") {
