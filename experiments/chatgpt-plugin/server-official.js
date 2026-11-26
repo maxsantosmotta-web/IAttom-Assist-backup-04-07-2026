@@ -57,20 +57,20 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
     downloads.delete(ticket);
     res.send(entry.bytes);
   });
-  function createServer() {
+  function createServer(publicMode = false) {
     const server = new McpServer({ name: "iattom-assist", version: "1.0.0" });
     server.registerTool("conhecer_iattom", {
       title: "Conhecer o IAttom Assist",
       description: "Mostra informações públicas do IAttom Assist. Não acessa contas ou funções pagas.",
       inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
       _meta: { securitySchemes: [{ type: "noauth" }] },
     }, async () => ({ content: [{ type: "text", text: JSON.stringify(publicCatalog) }] }));
     server.registerTool("consultar_minha_conta", {
       title: "Consultar minha conta IAttom",
       description: "Consulta o plano e o saldo da conta IAttom conectada. Somente leitura; não consome créditos.",
       inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     }, async (_args, { authInfo }) => {
       if (!isClerkAuthInfo(authInfo)) {
         return { content: [{ type: "text", text: "Conecte sua conta IAttom para consultar o plano." }], isError: true };
@@ -101,7 +101,7 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
       title: "Listar meus projetos IAttom",
       description: "Lista até 20 projetos recentes da conta IAttom conectada. Somente leitura; não consome créditos.",
       inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     }, async (_args, { authInfo }) => {
       if (!isClerkAuthInfo(authInfo)) {
         return { content: [{ type: "text", text: "Conecte sua conta IAttom para consultar os projetos." }], isError: true };
@@ -125,7 +125,7 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
       title: "Listar meus prompts salvos IAttom",
       description: "Lista até 20 prompts salvos da conta conectada. Exige acesso ao módulo Criar Prompt. Somente leitura; não consome créditos.",
       inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     }, async (_args, { authInfo }) => {
       if (!isClerkAuthInfo(authInfo)) {
         return { content: [{ type: "text", text: "Conecte sua conta IAttom para consultar os prompts." }], isError: true };
@@ -150,7 +150,7 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
       title: "Consultar uso do IAttom Help",
       description: "Consulta elegibilidade e custo em créditos gerais do IAttom Help sem enviar mensagens ou consumir créditos.",
       inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     }, async (_args, { authInfo }) => {
       if (!isClerkAuthInfo(authInfo)) {
         return { content: [{ type: "text", text: "Conecte sua conta IAttom." }], isError: true };
@@ -171,7 +171,7 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
       title: "Consultar minha biblioteca IAttom",
       description: "Lista até 20 materiais salvos na biblioteca da conta conectada. Somente leitura, sem consumo de créditos.",
       inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     }, async (_args, { authInfo }) => {
       if (!isClerkAuthInfo(authInfo)) {
         return { content: [{ type: "text", text: "Conecte sua conta IAttom para consultar a biblioteca." }], isError: true };
@@ -194,7 +194,7 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
       title: "Consultar disponibilidade de módulo IAttom",
       description: "Verifica sem executar se plano e saldo permitem solicitar um módulo. É uma prévia, não reserva créditos nem garante geração.",
       inputSchema: { feature: z.enum(["product_discovery", "product_validation", "campaign", "content", "video_script", "prompt_creation", "creativeImage1", "creativeImage2", "creativeImage3"]) },
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     }, async ({ feature }, { authInfo }) => {
       if (!isClerkAuthInfo(authInfo)) {
         return { content: [{ type: "text", text: "Conecte sua conta IAttom para verificar a disponibilidade." }], isError: true };
@@ -234,7 +234,7 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
         title: "Consultar resposta anterior do IAttom Help",
         description: "Recupera a resposta de uma solicitação anterior do IAttom Help sem gerar novamente nem cobrar créditos.",
         inputSchema: { requestId: z.string().regex(/^[A-Za-z0-9_-]{16,72}$/) },
-        annotations: { readOnlyHint: true, openWorldHint: false },
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
       }, async ({ requestId }, { authInfo }) => {
         if (!isClerkAuthInfo(authInfo)) {
           return { content: [{ type: "text", text: "Conecte sua conta IAttom." }], isError: true };
@@ -297,7 +297,7 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
         title: "Consultar processamento de Vídeo com Efeito",
         description: "Consulta a geração pela chave original sem criar novo vídeo ou consumir créditos.",
         inputSchema: { requestId: z.string().regex(/^[A-Za-z0-9_-]{16,72}$/) },
-        annotations: { readOnlyHint: true, openWorldHint: false },
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
       }, async ({ requestId }, { authInfo }) => {
         if (!isClerkAuthInfo(authInfo)) {
           return { content: [{ type: "text", text: "Conecte sua conta IAttom." }], isError: true };
@@ -357,7 +357,7 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
         title:"Recuperar imagens IAttom",
         description:"Recupera imagens de um material existente pelo ID da biblioteca, sem gerar ou cobrar novamente.",
         inputSchema:{id:z.string().regex(/^chatgpt-[a-f0-9]{64}$/)},
-        annotations:{readOnlyHint:true,openWorldHint:false},
+        annotations:{readOnlyHint: true, destructiveHint: false, openWorldHint: false},
       }, async ({id},{authInfo}) => {
         if (!isClerkAuthInfo(authInfo)) return {content:[{type:"text",text:"Conecte sua conta IAttom."}],isError:true};
         try {return await deliverOperationAssets({projectId:id},authInfo.token,id);}
@@ -367,7 +367,7 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
         title: "Consultar status de operação IAttom",
         description: "Recupera o resultado de uma solicitação de geração pela mesma chave, sem regenerar nem descontar créditos adicionais.",
         inputSchema: { requestId: z.string().regex(/^[A-Za-z0-9_-]{16,72}$/) },
-        annotations: { readOnlyHint: true, openWorldHint: false },
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
       }, async ({ requestId }, { authInfo }) => {
         if (!isClerkAuthInfo(authInfo)) {
           return { content: [{ type: "text", text: "Conecte sua conta IAttom para consultar a operação." }], isError: true };
@@ -399,16 +399,7 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
           return { content: [{ type: "text", text: "Não foi possível confirmar o salvamento. Use a mesma chave para consultar ou repetir o salvamento." }], isError: true };
         }
       });
-      server.registerTool("executar_modulo_iattom", {
-        title: "Executar módulo IAttom",
-        description: "Executa um módulo existente no IAttom com pedido explícito e chave única. input por feature: product_discovery {query,niche?,priceRange?,targetMarket?}; product_validation {productName,description?,targetMarket?,pricePoint?}; campaign {product,audience?,goal?,mode?,platforms?,budget?,productType?}; content {topic,tone?,contentTypes?,additionalContext?}; video_script {product,format?,duration?,hook?,style?}; prompt_creation {tipo,subject}; creativeImage1/2/3 {prompt,platform,selectedFormats}, com respectivamente 1/2/3 formatos distintos compatíveis com a plataforma. A API original valida os dados, permissões e créditos. Entregue o resultado ao usuário; não salve sem solicitação explícita.",
-        inputSchema: {
-          feature: z.enum(["product_discovery", "product_validation", "campaign", "content", "video_script", "prompt_creation", "creativeImage1", "creativeImage2", "creativeImage3"]),
-          input: moduleInput,
-          requestId: z.string().regex(/^[A-Za-z0-9_-]{16,72}$/),
-        },
-        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-      }, async ({ feature, input, requestId }, { authInfo }) => {
+      const executeModule = async ({ feature, input, requestId }, { authInfo }) => {
         if (!isClerkAuthInfo(authInfo)) {
           return { content: [{ type: "text", text: "Conecte sua conta IAttom para executar o módulo." }], isError: true };
         }
@@ -423,12 +414,85 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
         } catch {
           return { content: [{ type: "text", text: "Falha na comunicação com a API operacional isolada. Não repita automaticamente a mesma operação com outra chave." }], isError: true };
         }
-      });
+      };
+      if (!publicMode) {
+        server.registerTool("executar_modulo_iattom", {
+        title: "Executar módulo IAttom",
+        description: "Executa um módulo existente no IAttom com pedido explícito e chave única. input por feature: product_discovery {query,niche?,priceRange?,targetMarket?}; product_validation {productName,description?,targetMarket?,pricePoint?}; campaign {product,audience?,goal?,mode?,platforms?,budget?,productType?}; content {topic,tone?,contentTypes?,additionalContext?}; video_script {product,format?,duration?,hook?,style?}; prompt_creation {tipo,subject}; creativeImage1/2/3 {prompt,platform,selectedFormats}, com respectivamente 1/2/3 formatos distintos compatíveis com a plataforma. A API original valida os dados, permissões e créditos. Entregue o resultado ao usuário; não salve sem solicitação explícita.",
+        inputSchema: {
+          feature: z.enum(["product_discovery", "product_validation", "campaign", "content", "video_script", "prompt_creation", "creativeImage1", "creativeImage2", "creativeImage3"]),
+          input: moduleInput,
+          requestId: z.string().regex(/^[A-Za-z0-9_-]{16,72}$/),
+        },
+        annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      }, executeModule);
+      } else {
+        const required = z.string().trim().min(1);
+        const optional = z.string().optional();
+        const requestId = z.string().regex(/^[A-Za-z0-9_-]{16,72}$/);
+        server.registerTool("buscar_produtos_iattom", {
+          title: "Buscar produtos",
+          description: "Pesquisa ideias de produtos. Consome créditos do IAttom na entrega bem-sucedida. Execute somente após pedido explícito e confirmação do custo consultado. Não salve sem solicitação. Reutilize a chave original em tentativas de recuperação.",
+          inputSchema: {input: z.object({query: required, niche: optional, priceRange: optional, targetMarket: optional}).strict(), requestId},
+          annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true},
+        }, (args, context) => executeModule({...args, feature: "product_discovery"}, context));
+        server.registerTool("validar_produto_iattom", {
+          title: "Validar produto",
+          description: "Analisa uma ideia de produto. Consome créditos do IAttom na entrega bem-sucedida. Execute somente após pedido explícito e confirmação do custo consultado. Não salve sem solicitação. Reutilize a chave original em tentativas de recuperação.",
+          inputSchema: {input: z.object({productName: required, description: optional, targetMarket: optional, pricePoint: optional}).strict(), requestId},
+          annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true},
+        }, (args, context) => executeModule({...args, feature: "product_validation"}, context));
+        server.registerTool("criar_campanha_iattom", {
+          title: "Criar campanha",
+          description: "Gera campanha de marketing, sem publicar. Consome créditos do IAttom na entrega bem-sucedida. Execute somente após pedido explícito e confirmação do custo consultado. Não salve sem solicitação. Reutilize a chave original em tentativas de recuperação.",
+          inputSchema: {input: z.object({product: required, audience: optional, goal: optional, mode: optional, platforms: z.array(z.string()).optional(), budget: optional, productType: z.enum(['Digital','Físico','Serviço']).optional()}).strict(), requestId},
+          annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true},
+        }, (args, context) => executeModule({...args, feature: "campaign"}, context));
+        server.registerTool("criar_conteudo_iattom", {
+          title: "Criar conteúdo",
+          description: "Gera conteúdo de marketing. Consome créditos do IAttom na entrega bem-sucedida. Execute somente após pedido explícito e confirmação do custo consultado. Não salve sem solicitação. Reutilize a chave original em tentativas de recuperação.",
+          inputSchema: {input: z.object({topic: required, tone: optional, contentTypes: z.array(z.enum(['blog','social','email','tweetThread','smsText','seoTitle','seoDescription'])).min(1).optional(), additionalContext: optional}).strict(), requestId},
+          annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true},
+        }, (args, context) => executeModule({...args, feature: "content"}, context));
+        server.registerTool("criar_roteiro_iattom", {
+          title: "Criar roteiro",
+          description: "Gera roteiro de vídeo, sem gerar vídeo. Consome créditos do IAttom na entrega bem-sucedida. Execute somente após pedido explícito e confirmação do custo consultado. Não salve sem solicitação. Reutilize a chave original em tentativas de recuperação.",
+          inputSchema: {input: z.object({product: required, format: optional, duration: optional, hook: optional, style: optional}).strict(), requestId},
+          annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true},
+        }, (args, context) => executeModule({...args, feature: "video_script"}, context));
+        server.registerTool("criar_prompt_iattom", {
+          title: "Criar prompt",
+          description: "Gera prompt. Consome créditos do IAttom na entrega bem-sucedida. Execute somente após pedido explícito e confirmação do custo consultado. Não salve sem solicitação. Reutilize a chave original em tentativas de recuperação.",
+          inputSchema: {input: z.object({tipo: required.max(50), subject: required.max(3000)}).strict(), requestId},
+          annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true},
+        }, (args, context) => executeModule({...args, feature: "prompt_creation"}, context));
+        server.registerTool("criar_1_imagens_iattom", {
+          title: "Criar 1 imagem(ns)",
+          description: "Gera 1 imagem(ns) em formatos distintos compatíveis com a plataforma. Consome créditos do IAttom na entrega bem-sucedida. Execute somente após pedido explícito e confirmação do custo consultado. Não salve sem solicitação. Reutilize a chave original em tentativas de recuperação.",
+          inputSchema: {input: z.object({prompt: required, platform: z.enum(['instagram','facebook','tiktok','mercado_livre','shopee','hotmart','kiwify','perfil']), selectedFormats: z.array(z.enum(['feed','stories','banner','produto','capa','perfil'])).length(1)}).strict(), requestId},
+          annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true},
+        }, (args, context) => executeModule({...args, feature: "creativeImage1"}, context));
+        server.registerTool("criar_2_imagens_iattom", {
+          title: "Criar 2 imagem(ns)",
+          description: "Gera 2 imagem(ns) em formatos distintos compatíveis com a plataforma. Consome créditos do IAttom na entrega bem-sucedida. Execute somente após pedido explícito e confirmação do custo consultado. Não salve sem solicitação. Reutilize a chave original em tentativas de recuperação.",
+          inputSchema: {input: z.object({prompt: required, platform: z.enum(['instagram','facebook','tiktok','mercado_livre','shopee','hotmart','kiwify','perfil']), selectedFormats: z.array(z.enum(['feed','stories','banner','produto','capa','perfil'])).length(2)}).strict(), requestId},
+          annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true},
+        }, (args, context) => executeModule({...args, feature: "creativeImage2"}, context));
+        server.registerTool("criar_3_imagens_iattom", {
+          title: "Criar 3 imagem(ns)",
+          description: "Gera 3 imagem(ns) em formatos distintos compatíveis com a plataforma. Consome créditos do IAttom na entrega bem-sucedida. Execute somente após pedido explícito e confirmação do custo consultado. Não salve sem solicitação. Reutilize a chave original em tentativas de recuperação.",
+          inputSchema: {input: z.object({prompt: required, platform: z.enum(['instagram','facebook','tiktok','mercado_livre','shopee','hotmart','kiwify','perfil']), selectedFormats: z.array(z.enum(['feed','stories','banner','produto','capa','perfil'])).length(3)}).strict(), requestId},
+          annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: true},
+        }, (args, context) => executeModule({...args, feature: "creativeImage3"}, context));
+      }
     }
     return server;
   }
 
-  app.all("/mcp", mcpAuth(authOptions), streamableHttpHandler(createServer, StreamableHTTPServerTransport));
+  app.all("/mcp", mcpAuth(authOptions), streamableHttpHandler(() => createServer(false), StreamableHTTPServerTransport));
+  const publicAuthOptions = {...authOptions, resourceUrl: new URL("/mcp-public", resourceUrl).href};
+  app.all("/mcp-public", mcpAuth(publicAuthOptions), streamableHttpHandler(() => createServer(true), StreamableHTTPServerTransport));
+  app.all("/.well-known/oauth-protected-resource/mcp-public", protectedResourceMetadataHandler(publicAuthOptions));
   app.all("/.well-known/oauth-protected-resource/mcp", protectedResourceMetadataHandler(authOptions));
   const server = app.listen(port, host);
   if (new URL(resourceUrl).hostname === "iattom-mcp-preview-test.up.railway.app") {
