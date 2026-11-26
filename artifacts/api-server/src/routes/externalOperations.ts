@@ -120,6 +120,9 @@ function parseExternalRequest(feature: ExternalFeature, input: unknown):
     }
     case "content": {
       const parsed = AiCreateContentBody.safeParse(input);
+      if (parsed.success && parsed.data.contentTypes?.some(type => !["blog","social","email","tweetThread","smsText","seoTitle","seoDescription"].includes(type))) {
+        return { success: false, error: "Invalid contentTypes; use blog, social, email, tweetThread, smsText, seoTitle or seoDescription" };
+      }
       return parsed.success
         ? { success: true, run: (res, uid) => streamCreateContent(parsed.data, res, uid), title: parsed.data.topic, type: "content", imageCount: 0 }
         : { success: false, error: parsed.error.message };
@@ -302,6 +305,15 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
         res.status(502).json({ error: "incomplete_images_no_charge" });
         return;
       }
+    }
+
+    // Reject empty textual delivery before any debit.
+    const hasText = (value: unknown): boolean => typeof value === "string" ? value.trim().length > 0 : Array.isArray(value) ? value.some(hasText) : value !== null && typeof value === "object" ? Object.values(value).some(hasText) : false;
+    const requestedTypes = (body?.input as { contentTypes?: string[] } | undefined)?.contentTypes;
+    const contentFields = feature === "content" ? (requestedTypes?.length ? requestedTypes : ["blog","social","email","seoTitle","seoDescription"]) : [];
+    if (!parsed.imageCount && (!hasText(safeResult) || (feature === "content" && (!safeResult || typeof safeResult !== "object" || contentFields.some(field => { const value = (safeResult as Record<string, unknown>)[field]; return typeof value !== "string" || !value.trim(); }))))) {
+      await db.update(operationsTable).set({ type: "external_failed", data: JSON.stringify({ status: "failed", feature, inputHash, reason: "empty_delivery" }) }).where(and(eq(operationsTable.id, key), eq(operationsTable.clerkUserId, userId)));
+      res.status(502).json({ error: "empty_delivery_no_charge", charged: 0 }); return;
     }
 
     // The balance check, debit ledger and library result commit together.
