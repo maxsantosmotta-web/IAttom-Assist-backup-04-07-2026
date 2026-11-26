@@ -45,11 +45,17 @@ import googlePlayBillingRouter from "./googlePlayBilling.js";
 import googlePlaySubscriptionEntitlementsRouter from "./googlePlaySubscriptionEntitlements.js";
 
 import chatgptRouter from "./chatgpt.js";
+import externalOperationsRouter from "./externalOperations.js";
+import externalHelpOperationsRouter from "./externalHelpOperations.js";
+import externalVideoOperationsRouter from "./externalVideoOperations.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(chatgptRouter);
+router.use(externalOperationsRouter);
+router.use(externalHelpOperationsRouter);
+router.use(externalVideoOperationsRouter);
 router.use(projectsRouter);
 router.use(historyRouter);
 router.use(dashboardRouter);
