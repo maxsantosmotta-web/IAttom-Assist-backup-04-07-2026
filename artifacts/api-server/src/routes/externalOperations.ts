@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Response } from "express";
 import { and, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import { db, users, savedItemsTable, creditsTransactions } from "@workspace/db";
+import { db, users, savedItemsTable } from "@workspace/db";
 import { AiFindProductsBody, AiValidateProductBody, AiCreateCampaignBody, AiCreateContentBody, AiVideoScriptBody, AiCreativeIdeasBody } from "@workspace/api-zod";
 import { streamFindProducts } from "../lib/ai/findProducts.js";
 import { streamValidateProduct } from "../lib/ai/validateProduct.js";
@@ -16,7 +16,7 @@ import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
 import { isolatedExternalWritesEnabled } from "../lib/chatgpt/isolation.js";
 import { requirePlan } from "../middlewares/requirePlan.js";
 import { getOrCreateUserFromClerk } from "../lib/userSync.js";
-import { FEATURE_COSTS, CREATIVE_FEATURES, type FeatureKey } from "../lib/credits.js";
+import { FEATURE_COSTS, CREATIVE_FEATURES, deductCreditsInTransaction, type FeatureKey } from "../lib/credits.js";
 
 const router: IRouter = Router();
 
@@ -287,8 +287,7 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
     }
 
     // The balance check, debit ledger and library result commit together.
-    // This mirrors the existing deductCredits arithmetic but avoids a nested
-    // transaction and prohibits the public arbitrary /credits/refund endpoint.
+    // Use the canonical debit inside the same transaction as the result.
     const payment = await db.transaction(async tx => {
       const locked = await tx.execute(sql`SELECT credits, extra_credits, creative_credits, extra_creative_credits, plan, role FROM users WHERE clerk_id = ${userId} FOR UPDATE`);
       const row = locked.rows[0] as { credits: number | string; extra_credits: number | string; creative_credits: number | string; extra_creative_credits: number | string; plan: string; role: string } | undefined;
@@ -296,12 +295,8 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
       // The plan can change while an external provider is generating. Verify
       // eligibility again under the same row lock as the final debit.
       if (row.role !== "admin" && !allowedPlans.includes(row.plan)) return { error: "plan_required" as const };
-      const creative = CREATIVE_FEATURES.has(feature as ExternalFeature);
-      const plan = Number(creative ? row.creative_credits : row.credits);
-      const extra = Number(creative ? row.extra_creative_credits ?? 0 : row.extra_credits ?? 0);
-      const balance = plan + extra;
-      if (balance < cost) return { error: "insufficient_credits" as const };
-      const fromPlan = Math.min(cost, plan);
+      const debit = await deductCreditsInTransaction(tx, userId, feature as ExternalFeature);
+      if (!debit.success) return { error: debit.error };
       const [saved] = await tx.update(savedItemsTable).set({
         title: parsed.title.slice(0, 150), type: parsed.type,
         content: JSON.stringify(safeResult),
@@ -311,16 +306,7 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
       }).where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId), eq(savedItemsTable.type, "external_pending")))
         .returning({ id: savedItemsTable.id });
       if (!saved) throw new Error("Reservation lost before charge");
-      await tx.update(users).set(creative
-        ? { creativeCredits: plan - fromPlan, extraCreativeCredits: extra - (cost - fromPlan), updatedAt: new Date() }
-        : { credits: plan - fromPlan, extraCredits: extra - (cost - fromPlan), updatedAt: new Date() })
-        .where(eq(users.clerkId, userId));
-      await tx.insert(creditsTransactions).values({
-        clerkUserId: userId, amount: -cost, type: "debit", feature,
-        balanceType: CREATIVE_FEATURES.has(feature as ExternalFeature) ? "creative" : "general", description: `Uso via ChatGPT: ${feature}`,
-        balanceBefore: balance, balanceAfter: balance - cost,
-      });
-      return { projectId: saved.id, charged: cost, balance: balance - cost };
+      return { projectId: saved.id, charged: debit.creditsUsed, balance: debit.newBalance };
     });
     if ("error" in payment) {
       await db.update(savedItemsTable).set({ type: "external_failed",
