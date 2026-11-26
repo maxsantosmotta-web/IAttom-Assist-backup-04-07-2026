@@ -152,6 +152,7 @@ const GeneratePromptBody = z.object({
 });
 
 router.post("/prompts/generate", requireAuth, requirePlan(PROMPT_MODULE_PLANS), async (req, res): Promise<void> => {
+  const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = GeneratePromptBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Dados inválidos" });
