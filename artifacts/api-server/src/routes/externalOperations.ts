@@ -15,7 +15,7 @@ import { deliveredCreativeAssets } from "../lib/chatgpt/creativeDelivery.js";
 import { requireExternalAccess } from "../middlewares/requireExternalAccess.js";
 import { isolatedExternalWritesEnabled } from "../lib/chatgpt/isolation.js";
 import { requirePlan } from "../middlewares/requirePlan.js";
-import { getOrCreateUserFromClerk } from "../lib/userSync.js";
+import { AI_MODULE_PLANS, compactCreativePrompt } from "./ai.js";
 import { FEATURE_COSTS, CREATIVE_FEATURES, deductCreditsInTransaction, type FeatureKey } from "../lib/credits.js";
 
 const router: IRouter = Router();
@@ -29,15 +29,15 @@ router.get("/chatgpt/operations/readiness", requireExternalAccess,
 // These gates are identical to the existing /ai module route guards. Do not
 // substitute this list for the original requirePlan middleware during execution.
 const PREFLIGHT_PLANS: Partial<Record<FeatureKey, string[]>> = {
-  product_discovery: ["agency"],
-  product_validation: ["business", "agency"],
-  campaign: ["pro", "business", "agency"],
-  content: ["agency"],
-  video_script: ["business", "agency"],
+  product_discovery: AI_MODULE_PLANS.product_discovery,
+  product_validation: AI_MODULE_PLANS.product_validation,
+  campaign: AI_MODULE_PLANS.campaign,
+  content: AI_MODULE_PLANS.content,
+  video_script: AI_MODULE_PLANS.video_script,
   prompt_creation: ["pro", "business", "agency"],
-  creativeImage1: ["pro", "business", "agency"],
-  creativeImage2: ["pro", "business", "agency"],
-  creativeImage3: ["pro", "business", "agency"],
+  creativeImage1: AI_MODULE_PLANS.creative,
+  creativeImage2: AI_MODULE_PLANS.creative,
+  creativeImage3: AI_MODULE_PLANS.creative,
 };
 
 // Preflight is explicitly read-only. A positive response is never a payment
@@ -50,7 +50,7 @@ router.get("/chatgpt/operations/preflight/:feature", requireExternalAccess, asyn
     return;
   }
   const clerkId = (req as typeof req & { clerkUserId: string }).clerkUserId;
-  let [user] = await db.select({
+  const [user] = await db.select({
     plan: users.plan,
     role: users.role,
     credits: users.credits,
@@ -59,17 +59,7 @@ router.get("/chatgpt/operations/preflight/:feature", requireExternalAccess, asyn
     extraCreativeCredits: users.extraCreativeCredits,
   }).from(users).where(eq(users.clerkId, clerkId));
   if (!user) {
-    // The website may be connected to a different environment. Resolve the
-    // verified Clerk identity in this sandbox without copying an official
-    // subscription or allocating credits. The sandbox userSync guard disables
-    // the legacy first-user administrator promotion here.
-    if (!isolatedExternalWritesEnabled()) {
-      res.status(404).json({ error: "user_not_found" });
-      return;
-    }
-    const created = await getOrCreateUserFromClerk(clerkId);
-    if (!created) { res.status(404).json({ error: "user_not_found" }); return; }
-    user = created;
+    res.status(404).json({ error: "user_not_found" }); return;
   }
   const planAllowed = user.role === "admin" || allowedPlans.includes(user.plan);
   const isCreative = CREATIVE_FEATURES.has(feature);
@@ -166,10 +156,10 @@ function parseExternalRequest(feature: ExternalFeature, input: unknown):
       const supported = IMAGE_FORMATS[parsed.data.platform] ?? [];
       if (formats.length !== imageCount || new Set(formats).size !== formats.length ||
           formats.some(format => !supported.includes(format)) ||
-          !parsed.data.prompt.trim() || parsed.data.prompt.length > 1800) {
+          !parsed.data.prompt.trim()) {
         return { success: false, error: "invalid_image_format_or_quantity" };
       }
-      return { success: true, run: (res, uid) => streamCreativeIdeas(parsed.data, res, uid),
+      return { success: true, run: (res, uid) => streamCreativeIdeas({ ...parsed.data, prompt: compactCreativePrompt(parsed.data.prompt) }, res, uid),
         title: parsed.data.prompt.slice(0, 150), type: "creative", imageCount };
     }
   }
