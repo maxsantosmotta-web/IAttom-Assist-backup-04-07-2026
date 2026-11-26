@@ -210,6 +210,18 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
 
   try {
     await ensureOperationsTable();
+    // Legacy keys remain reserved: never regenerate or charge an old request.
+    const [legacy] = await db.select().from(savedItemsTable).where(eq(savedItemsTable.id, key));
+    if (legacy) {
+      const state = legacy.data ? JSON.parse(legacy.data) : {};
+      if (legacy.clerkUserId !== userId || state.inputHash !== inputHash) {
+        res.status(409).json({ error: "operation_conflict" }); return;
+      }
+      if (state.status === "complete") {
+        res.json({ status: "complete", projectId: key, result: JSON.parse(legacy.content), chargedAgain: false }); return;
+      }
+      res.status(409).json({ error: "operation_already_reserved", status: state.status ?? "unknown" }); return;
+    }
     // Reserve the operation in dedicated technical storage, without debit.
     // The unique PK prevents a concurrent duplicate from generating twice.
     // A retry must return the original completed result before checking the
