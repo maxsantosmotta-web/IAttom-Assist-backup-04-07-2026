@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, and, isNull } from "drizzle-orm";
-import { db, users, projectsTable, savedPromptsTable } from "@workspace/db";
+import { eq, desc, and, isNull, notLike } from "drizzle-orm";
+import { db, users, projectsTable, savedPromptsTable, savedItemsTable } from "@workspace/db";
 import { requireChatGPTAuth } from "../middlewares/requireChatGPTAuth.js";
 import { FEATURE_COSTS } from "../lib/credits.js";
 
@@ -17,6 +17,7 @@ router.get("/chatgpt/account", async (req, res): Promise<void> => {
     extraCredits: users.extraCredits,
     creativeCredits: users.creativeCredits,
     extraCreativeCredits: users.extraCreativeCredits,
+    videoBalance: users.videoBalance,
   }).from(users).where(eq(users.clerkId, clerkId));
   if (!user) {
     res.status(404).json({ error: "IAttom account not found" });
@@ -26,6 +27,7 @@ router.get("/chatgpt/account", async (req, res): Promise<void> => {
     plan: user.plan,
     balance: user.credits + (user.extraCredits ?? 0),
     creativeBalance: user.creativeCredits + (user.extraCreativeCredits ?? 0),
+    videoBalance: user.videoBalance ?? 0,
     featureCosts: FEATURE_COSTS,
   });
 });
@@ -74,6 +76,56 @@ router.get("/chatgpt/prompts", async (req, res): Promise<void> => {
     .orderBy(desc(savedPromptsTable.createdAt))
     .limit(20);
   res.json({ prompts });
+});
+
+
+// Existing global library, read-only and restricted to the OAuth account owner.
+// Never return binary image/video payloads or deleted items through the MCP.
+router.get("/chatgpt/library", async (req, res): Promise<void> => {
+  const clerkId = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  const items = await db.select({
+    id: savedItemsTable.id,
+    title: savedItemsTable.title,
+    type: savedItemsTable.type,
+    platform: savedItemsTable.platform,
+    content: savedItemsTable.content,
+    createdAt: savedItemsTable.createdAt,
+  }).from(savedItemsTable)
+    .where(and(eq(savedItemsTable.clerkUserId, clerkId), isNull(savedItemsTable.deletedAt), notLike(savedItemsTable.type, "external_%")))
+    .orderBy(desc(savedItemsTable.createdAt))
+    .limit(20);
+  res.json({ items });
+});
+
+
+// Canonical IAttom Help access is determined by general credits in the built
+// server, following the pre-existing help consumption build transform.
+// This endpoint only reads balances, never resets counters or debits credits.
+router.get("/chatgpt/help/usage", async (req, res): Promise<void> => {
+  const clerkId = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  const [user] = await db.select({
+    plan: users.plan,
+    credits: users.credits,
+    extraCredits: users.extraCredits,
+    helpMessagesUsed: users.helpMessagesUsed,
+  }).from(users).where(eq(users.clerkId, clerkId));
+  if (!user) { res.status(404).json({ error: "user_not_found" }); return; }
+  const helpCost = (FEATURE_COSTS as Record<string, number>).iattom_help;
+  if (typeof helpCost !== "number" || helpCost <= 0) {
+    res.status(503).json({ error: "help_policy_unavailable" });
+    return;
+  }
+  const availableGeneralCredits = user.credits + (user.extraCredits ?? 0);
+  const canUse = user.plan !== "free" && availableGeneralCredits >= helpCost;
+  res.json({
+    plan: user.plan,
+    used: user.helpMessagesUsed,
+    creditCost: helpCost,
+    availableGeneralCredits,
+    canUse,
+    accessReason: user.plan === "free" ? "FREE_PLAN" :
+      availableGeneralCredits < helpCost ? "INSUFFICIENT_GENERAL_CREDITS" : "ALLOWED",
+  });
 });
 
 export default router;
