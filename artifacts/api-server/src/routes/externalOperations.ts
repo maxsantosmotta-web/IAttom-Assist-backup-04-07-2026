@@ -371,6 +371,32 @@ router.get("/chatgpt/operations/status/:requestId", requireExternalAccess, async
   }
 });
 
+// Read only, owner-scoped image retrieval; no generation or debit.
+router.get("/chatgpt/operations/assets/:id", requireExternalAccess, async (req, res): Promise<void> => {
+  if (!isolatedExternalWritesEnabled()) { res.status(503).json({error:"isolated_external_writes_disabled"}); return; }
+  const id = String(req.params.id);
+  if (!/^chatgpt-[a-f0-9]{64}$/.test(id)) { res.status(400).json({error:"invalid_asset_id"}); return; }
+  const uid = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  await ensureOperationsTable();
+  const [operation] = await db.select().from(operationsTable).where(and(eq(operationsTable.id,id),eq(operationsTable.clerkUserId,uid)));
+  const [saved] = await db.select().from(savedItemsTable).where(and(eq(savedItemsTable.id,id),eq(savedItemsTable.clerkUserId,uid)));
+  const item = operation ?? (saved && !saved.deletedAt ? saved : undefined);
+  if (!item || item.type !== "creative" || !item.hasImages || !item.imagesData) { res.status(404).json({error:"assets_not_found"}); return; }
+  try {
+    const raw = JSON.parse(item.imagesData);
+    if (!Array.isArray(raw) || raw.length < 1 || raw.length > 3) throw new Error("invalid_assets");
+    const assets = raw.map(asset => {
+      const base64 = asset.base64 ?? asset.imageBase64;
+      if (typeof base64 !== "string" || base64.length > 20000000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) throw new Error("invalid_asset");
+      const bytes = Buffer.from(base64,"base64");
+      const mimeType = bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) ? "image/png" : bytes[0] === 255 && bytes[1] === 216 ? "image/jpeg" : bytes.toString("ascii",0,4) === "RIFF" && bytes.toString("ascii",8,12) === "WEBP" ? "image/webp" : null;
+      if (!mimeType) throw new Error("invalid_image_signature");
+      return {base64,mimeType,format:asset.format ?? "",label:asset.label ?? ""};
+    });
+    res.json({id,assets});
+  } catch { res.status(422).json({error:"invalid_stored_assets"}); }
+});
+
 router.post("/chatgpt/operations/save", requireExternalAccess, async (req, res): Promise<void> => {
   if (!isolatedExternalWritesEnabled()) { res.status(503).json({ error: "isolated_external_writes_disabled" }); return; }
   const requestId = req.body?.requestId;
