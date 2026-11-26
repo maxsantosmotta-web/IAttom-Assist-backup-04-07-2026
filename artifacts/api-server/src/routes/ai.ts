@@ -22,13 +22,22 @@ import { streamVideoGeneration } from "../lib/ai/videoGeneration.js";
 import { getVideoStatus, HEYGEN_CONFIGURED } from "../lib/heygenClient.js";
 import { analyzeReference } from "../lib/ai/analyzeReference.js";
 
+export const AI_MODULE_PLANS = {
+  product_discovery: ["agency"],
+  product_validation: ["business", "agency"],
+  campaign: ["pro", "business", "agency"],
+  content: ["agency"],
+  creative: ["pro", "business", "agency"],
+  video_script: ["business", "agency"],
+};
+
 const router: IRouter = Router();
 
 // Protege a geração de imagens contra briefings excessivamente longos sem alterar o texto salvo pelo usuário.
 const MAX_CREATIVE_PROMPT_LENGTH = 1800;
 const CREATIVE_PROMPT_END_LENGTH = 350;
 
-function compactCreativePrompt(prompt: string): string {
+export function compactCreativePrompt(prompt: string): string {
   const normalized = prompt
     .replace(/```[a-z]*\s*/gi, "")
     .replace(/```/g, "")
@@ -61,7 +70,7 @@ const aiRateLimiter = rateLimit({
 router.use("/ai", aiRateLimiter);
 
 // PRO only
-router.post("/ai/find-products", requireAuth, requirePlan(["agency"]), async (req, res): Promise<void> => {
+router.post("/ai/find-products", requireAuth, requirePlan(AI_MODULE_PLANS.product_discovery), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiFindProductsBody.safeParse(req.body);
   if (!parsed.success) {
@@ -74,7 +83,7 @@ router.post("/ai/find-products", requireAuth, requirePlan(["agency"]), async (re
 });
 
 // PREMIUM + PRO
-router.post("/ai/validate-product", requireAuth, requirePlan(["business", "agency"]), async (req, res): Promise<void> => {
+router.post("/ai/validate-product", requireAuth, requirePlan(AI_MODULE_PLANS.product_validation), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiValidateProductBody.safeParse(req.body);
   if (!parsed.success) {
@@ -87,7 +96,7 @@ router.post("/ai/validate-product", requireAuth, requirePlan(["business", "agenc
 });
 
 // START + PREMIUM + PRO
-router.post("/ai/create-campaign", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
+router.post("/ai/create-campaign", requireAuth, requirePlan(AI_MODULE_PLANS.campaign), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiCreateCampaignBody.safeParse(req.body);
   if (!parsed.success) {
@@ -117,7 +126,7 @@ router.post("/ai/refine-campaign-block", requireAuth, requirePlan(["pro", "busin
 });
 
 // PRO only
-router.post("/ai/create-content", requireAuth, requirePlan(["agency"]), async (req, res): Promise<void> => {
+router.post("/ai/create-content", requireAuth, requirePlan(AI_MODULE_PLANS.content), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiCreateContentBody.safeParse(req.body);
   if (!parsed.success) {
@@ -130,7 +139,7 @@ router.post("/ai/create-content", requireAuth, requirePlan(["agency"]), async (r
 });
 
 // START + PREMIUM + PRO
-router.post("/ai/creative-ideas", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
+router.post("/ai/creative-ideas", requireAuth, requirePlan(AI_MODULE_PLANS.creative), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiCreativeIdeasBody.safeParse(req.body);
   if (!parsed.success) {
@@ -148,7 +157,7 @@ router.post("/ai/creative-ideas", requireAuth, requirePlan(["pro", "business", "
 });
 
 // PREMIUM + PRO
-router.post("/ai/video-script", requireAuth, requirePlan(["business", "agency"]), async (req, res): Promise<void> => {
+router.post("/ai/video-script", requireAuth, requirePlan(AI_MODULE_PLANS.video_script), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = AiVideoScriptBody.safeParse(req.body);
   if (!parsed.success) {
