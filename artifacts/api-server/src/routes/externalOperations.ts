@@ -164,8 +164,24 @@ function parseExternalRequest(feature: ExternalFeature, input: unknown):
   }
 }
 
+// Dedicated technical storage, initialized only inside the verified sandbox.
+import { pgTable, text, boolean } from "drizzle-orm/pg-core";
+const operationsTable = pgTable("chatgpt_external_operations", {
+  id: text("id").primaryKey(), clerkUserId: text("clerk_user_id").notNull(),
+  title: text("title").notNull(), type: text("type").notNull(),
+  content: text("content").notNull().default(""), data: text("data"),
+  imagesData: text("images_data"), hasImages: boolean("has_images").notNull().default(false),
+});
+async function ensureOperationsTable() {
+  if (!isolatedExternalWritesEnabled()) throw new Error("Isolated writes disabled");
+  await db.execute(sql`CREATE TABLE IF NOT EXISTS chatgpt_external_operations (
+    id text PRIMARY KEY, clerk_user_id text NOT NULL, title text NOT NULL,
+    type text NOT NULL, content text NOT NULL DEFAULT '', data text,
+    images_data text, has_images boolean NOT NULL DEFAULT false
+  )`);
+}
 // Request key is mandatory and owned by an authenticated Clerk identity.
-// saved_items_v2 primary key provides durable duplicate suppression without a
+// Technical operation primary key provides durable duplicate suppression without a
 // new table/migration; pending requests never charge. Failed requests cannot
 // silently regenerate under the same key.
 router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, res): Promise<void> => {
@@ -193,22 +209,23 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
   const cost = FEATURE_COSTS[feature as ExternalFeature];
 
   try {
-    // Reserve the operation in the user's existing library, without debit.
+    await ensureOperationsTable();
+    // Reserve the operation in dedicated technical storage, without debit.
     // The unique PK prevents a concurrent duplicate from generating twice.
     // A retry must return the original completed result before checking the
     // now-reduced balance. Never generate or debit twice for the same key.
     const [previousOperation] = await db.select({
-      clerkUserId: savedItemsTable.clerkUserId,
-      data: savedItemsTable.data,
-      content: savedItemsTable.content,
-    }).from(savedItemsTable).where(eq(savedItemsTable.id, key));
+      clerkUserId: operationsTable.clerkUserId,
+      data: operationsTable.data,
+      content: operationsTable.content,
+    }).from(operationsTable).where(eq(operationsTable.id, key));
     if (previousOperation) {
       const state = previousOperation.data ? JSON.parse(previousOperation.data) as { inputHash?: string; status?: string } : {};
       if (previousOperation.clerkUserId !== userId || state.inputHash !== inputHash) {
         res.status(409).json({ error: "operation_conflict" }); return;
       }
       if (state.status === "complete") {
-        res.json({ status: "complete", projectId: key, result: JSON.parse(previousOperation.content), chargedAgain: false });
+        res.json({ status: "complete", operationId: key, result: JSON.parse(previousOperation.content), chargedAgain: false });
         return;
       }
       res.status(409).json({ error: "operation_already_reserved", status: state.status ?? "unknown" });
@@ -228,14 +245,14 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
     if (preflightBalance < cost) {
       res.status(402).json({ error: "insufficient_credits", required: cost }); return;
     }
-    const [reserved] = await db.insert(savedItemsTable).values({
+    const [reserved] = await db.insert(operationsTable).values({
       id: key, clerkUserId: userId, title: parsed.title.slice(0, 150),
       type: "external_pending", content: "", data: JSON.stringify({ status: "pending", feature, inputHash }),
-    }).onConflictDoNothing().returning({ id: savedItemsTable.id });
+    }).onConflictDoNothing().returning({ id: operationsTable.id });
     if (!reserved) {
       const [previous] = await db.select({
-        clerkUserId: savedItemsTable.clerkUserId, data: savedItemsTable.data, content: savedItemsTable.content,
-      }).from(savedItemsTable).where(eq(savedItemsTable.id, key));
+        clerkUserId: operationsTable.clerkUserId, data: operationsTable.data, content: operationsTable.content,
+      }).from(operationsTable).where(eq(operationsTable.id, key));
       const state = previous?.data ? JSON.parse(previous.data) as { inputHash?: string; status?: string } : {};
       if (!previous || previous.clerkUserId !== userId || state.inputHash !== inputHash) {
         res.status(409).json({ error: "operation_conflict" }); return;
@@ -250,9 +267,9 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
     try {
       result = await captureExistingStream(sink => parsed.run(sink, userId), parsed.imageCount ? 60_000_000 : 3_000_000);
     } catch (error) {
-      await db.update(savedItemsTable)
+      await db.update(operationsTable)
         .set({ type: "external_failed", data: JSON.stringify({ status: "failed", feature, inputHash }) })
-        .where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId)));
+        .where(and(eq(operationsTable.id, key), eq(operationsTable.clerkUserId, userId)));
       req.log.warn({ error, feature }, "External generator failed without credit debit");
       res.status(502).json({ error: "generation_failed_no_charge" }); return;
     }
@@ -266,9 +283,9 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
         imageAssets = validated.assets;
         safeResult = validated.safeResult;
       } catch (error) {
-        await db.update(savedItemsTable).set({
+        await db.update(operationsTable).set({
           type: "external_failed", data: JSON.stringify({ status: "failed", feature, inputHash }),
-        }).where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId)));
+        }).where(and(eq(operationsTable.id, key), eq(operationsTable.clerkUserId, userId)));
         req.log.warn({ error, feature }, "Partial creative delivery rejected without debit");
         res.status(502).json({ error: "incomplete_images_no_charge" });
         return;
@@ -286,21 +303,21 @@ router.post("/chatgpt/operations/execute", requireExternalAccess, async (req, re
       if (row.role !== "admin" && !allowedPlans.includes(row.plan)) return { error: "plan_required" as const };
       const debit = await deductCreditsInTransaction(tx, userId, feature as ExternalFeature);
       if (!debit.success) return { error: debit.error };
-      const [saved] = await tx.update(savedItemsTable).set({
+      const [saved] = await tx.update(operationsTable).set({
         title: parsed.title.slice(0, 150), type: parsed.type,
         content: JSON.stringify(safeResult),
         imagesData: parsed.imageCount ? JSON.stringify(imageAssets) : null,
         hasImages: imageAssets.length > 0,
         data: JSON.stringify({ status: "complete", feature, inputHash, source: "chatgpt" }),
-      }).where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId), eq(savedItemsTable.type, "external_pending")))
-        .returning({ id: savedItemsTable.id });
+      }).where(and(eq(operationsTable.id, key), eq(operationsTable.clerkUserId, userId), eq(operationsTable.type, "external_pending")))
+        .returning({ id: operationsTable.id });
       if (!saved) throw new Error("Reservation lost before charge");
-      return { projectId: saved.id, charged: debit.creditsUsed, balance: debit.newBalance };
+      return { operationId: saved.id, charged: debit.creditsUsed, balance: debit.newBalance };
     });
     if ("error" in payment) {
-      await db.update(savedItemsTable).set({ type: "external_failed",
+      await db.update(operationsTable).set({ type: "external_failed",
         data: JSON.stringify({ status: "failed", feature, inputHash, reason: payment.error }) })
-        .where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId)));
+        .where(and(eq(operationsTable.id, key), eq(operationsTable.clerkUserId, userId)));
       res.status(payment.error === "insufficient_credits" ? 402 : payment.error === "plan_required" ? 403 : 404).json({ error: payment.error, charged: 0 });
       return;
     }
@@ -320,11 +337,12 @@ router.get("/chatgpt/operations/status/:requestId", requireExternalAccess, async
   const userId = (req as typeof req & { clerkUserId: string }).clerkUserId;
   const key = "chatgpt-" + createHash("sha256").update(userId).update(":").update(requestId).digest("hex");
   try {
+    await ensureOperationsTable();
     const [item] = await db.select({
-      clerkUserId: savedItemsTable.clerkUserId, type: savedItemsTable.type,
-      content: savedItemsTable.content, data: savedItemsTable.data,
-      hasImages: savedItemsTable.hasImages,
-    }).from(savedItemsTable).where(and(eq(savedItemsTable.id, key), eq(savedItemsTable.clerkUserId, userId)));
+      clerkUserId: operationsTable.clerkUserId, type: operationsTable.type,
+      content: operationsTable.content, data: operationsTable.data,
+      hasImages: operationsTable.hasImages,
+    }).from(operationsTable).where(and(eq(operationsTable.id, key), eq(operationsTable.clerkUserId, userId)));
     if (!item) { res.status(404).json({ error: "operation_not_found" }); return; }
     const state = item.data ? JSON.parse(item.data) as { status?: string; feature?: string } : {};
     res.json({
@@ -335,5 +353,31 @@ router.get("/chatgpt/operations/status/:requestId", requireExternalAccess, async
   } catch (error) {
     req.log.error({ error }, "External status lookup failed");
     res.status(500).json({ error: "operation_status_unavailable" });
+  }
+});
+
+router.post("/chatgpt/operations/save", requireExternalAccess, async (req, res): Promise<void> => {
+  if (!isolatedExternalWritesEnabled()) { res.status(503).json({ error: "isolated_external_writes_disabled" }); return; }
+  const requestId = req.body?.requestId;
+  if (typeof requestId !== "string" || !/^[A-Za-z0-9_-]{16,72}$/.test(requestId)) {
+    res.status(400).json({ error: "invalid_idempotency_key" }); return;
+  }
+  const userId = (req as typeof req & { clerkUserId: string }).clerkUserId;
+  const key = "chatgpt-" + createHash("sha256").update(userId).update(":").update(requestId).digest("hex");
+  try {
+    await ensureOperationsTable();
+    const outcome = await db.transaction(async tx => {
+      const [item] = await tx.select().from(operationsTable).where(and(eq(operationsTable.id, key), eq(operationsTable.clerkUserId, userId))).for("update");
+      if (!item || !item.data || JSON.parse(item.data).status !== "complete") return "not_complete";
+      const [existing] = await tx.select().from(savedItemsTable).where(eq(savedItemsTable.id, key));
+      if (existing) return existing.clerkUserId === userId && !existing.deletedAt ? "saved" : "conflict";
+      await tx.insert(savedItemsTable).values({ id: key, clerkUserId: userId, title: item.title, type: item.type, content: item.content, data: item.data, imagesData: item.imagesData, hasImages: item.hasImages });
+      return "saved";
+    });
+    if (outcome !== "saved") { res.status(outcome === "conflict" ? 409 : 404).json({ error: outcome }); return; }
+    res.json({ status: "saved", projectId: key, charged: 0 });
+  } catch (error) {
+    req.log.error({ error }, "External save failed");
+    res.status(500).json({ error: "external_save_failed" });
   }
 });
