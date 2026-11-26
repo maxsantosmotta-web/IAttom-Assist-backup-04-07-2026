@@ -473,3 +473,40 @@ async function runSandboxStage8Checks() {
 if (isolatedExternalWritesEnabled()) {
   void runSandboxStage8Checks().catch(error => console.error("STAGE8_SANDBOX_FAIL", error));
 }
+
+ // Sandbox-only handler-level checks with synthetic identities; no OAuth bypass exposed.
+ async function runSandboxStage10Isolation() {
+   const a = "sandbox-stage10-" + randomUUID(), b = a + "-other";
+   const requestId = a;
+   const id = "chatgpt-" + createHash("sha256").update(a).update(":").update(requestId).digest("hex");
+   const checks: string[] = [];
+   const call = async (path: string, uid: string, params: object, body: object = {}) => {
+     const layer = router.stack.find(l => l.route?.path === path);
+     if (!layer?.route) throw new Error("missing route");
+     let status = 200; let payload: any;
+     const response = {status(n: number) {status=n;return this;},json(v: unknown){payload=v;return this;}};
+     await (layer.route.stack.at(-1)!.handle as any)({clerkUserId:uid,params,body,log:{error(){},warn(){}}},response);
+     return {status,payload};
+   };
+   const assert = (ok: boolean, name: string) => {if (!ok) throw new Error(name); checks.push(name);};
+   await ensureOperationsTable();
+   try {
+     await db.insert(operationsTable).values({id,clerkUserId:a,title:"sandbox fixture",type:"creative",content:"{}",data:JSON.stringify({status:"complete",feature:"creativeImage1"}),hasImages:true,imagesData:JSON.stringify([{base64:"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII="}])});
+     for (const [path,params,body,name] of [
+       ["/chatgpt/operations/status/:requestId",{requestId},{},"status"],
+       ["/chatgpt/operations/save",{},{requestId},"save"],
+       ["/chatgpt/operations/assets/:id",{id},{},"assets"]
+     ] as const) {
+       assert((await call(path,b,params,body)).status===404,"foreign_"+name);
+       assert((await call(path,a,params,body)).status===200,"owner_"+name);
+     }
+     const foreign = await db.select().from(savedItemsTable).where(and(eq(savedItemsTable.id,id),eq(savedItemsTable.clerkUserId,b)));
+     assert(foreign.length===0,"foreign_library");
+   } finally {
+     await db.delete(savedItemsTable).where(and(eq(savedItemsTable.id,id),eq(savedItemsTable.clerkUserId,a)));
+     await db.delete(operationsTable).where(and(eq(operationsTable.id,id),eq(operationsTable.clerkUserId,a)));
+   }
+   assert((await db.select().from(operationsTable).where(eq(operationsTable.id,id))).length===0 && (await db.select().from(savedItemsTable).where(eq(savedItemsTable.id,id))).length===0,"cleanup");
+   console.info("STAGE10_ISOLATION_PASS "+JSON.stringify(checks));
+ }
+ if (isolatedExternalWritesEnabled()) void runSandboxStage10Isolation().catch(error=>console.error("STAGE10_ISOLATION_FAIL",error));
