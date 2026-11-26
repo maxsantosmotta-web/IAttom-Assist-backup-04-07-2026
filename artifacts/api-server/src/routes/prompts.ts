@@ -317,7 +317,7 @@ export async function invokeExistingPromptGenerator(
       const d = details as { err?: { status?: number; code?: string; name?: string }; raw?: string };
       console.warn("SANDBOX_PROMPT_DIAGNOSTIC", JSON.stringify({
         stage: message, status: d?.err?.status, code: d?.err?.code,
-        name: d?.err?.name, outputLength: typeof d?.raw === "string" ? d.raw.length : undefined,
+        name: d?.err?.name, reference: d?.err instanceof ReferenceError ? (d.err.message.match(/^[A-Za-z_$][\w$]* is not defined$/)?.[0] ?? "other_reference_error") : undefined, outputLength: typeof d?.raw === "string" ? d.raw.length : undefined,
       }));
     } },
   };
