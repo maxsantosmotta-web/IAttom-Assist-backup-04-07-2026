@@ -7,6 +7,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod/v4";
 import { semanticNormalize } from "../lib/ai/semanticNormalize.js";
 
+export const PROMPT_MODULE_PLANS = ["pro", "business", "agency"];
 const router: IRouter = Router();
 
 const TRASH_TTL_MS = 48 * 60 * 60 * 1000;
@@ -74,7 +75,7 @@ router.get("/prompts/trash", requireAuth, async (req, res): Promise<void> => {
 });
 
 // ── POST /prompts ─────────────────────────────────────────────────────────────
-router.post("/prompts", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
+router.post("/prompts", requireAuth, requirePlan(PROMPT_MODULE_PLANS), async (req, res): Promise<void> => {
   const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = CreatePromptBody.safeParse(req.body);
   if (!parsed.success) {
@@ -150,7 +151,8 @@ const GeneratePromptBody = z.object({
   subject: z.string().min(1).max(3000),
 });
 
-router.post("/prompts/generate", requireAuth, requirePlan(["pro", "business", "agency"]), async (req, res): Promise<void> => {
+router.post("/prompts/generate", requireAuth, requirePlan(PROMPT_MODULE_PLANS), async (req, res): Promise<void> => {
+  const { clerkUserId } = req as AuthenticatedRequest;
   const parsed = GeneratePromptBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Dados inválidos" });
@@ -286,3 +288,48 @@ router.delete("/prompts/:id/permanent", requireAuth, async (req, res): Promise<v
 });
 
 export default router;
+
+/**
+ * Isolated external entry point for the SAME existing prompt route handler.
+ * The website's middleware and build-time prompt refinements remain unchanged.
+ * The caller performs independent OAuth, plan verification, atomic debit and
+ * persistence; this function never skips the handler's Zod input validation.
+ */
+export async function invokeExistingPromptGenerator(
+  clerkUserId: string,
+  input: { tipo: string; subject: string },
+): Promise<{ title: string; prompt: string; module: string }> {
+  type RouteLayer = { route?: { path?: string; stack?: Array<{ method?: string; handle?: (...args: unknown[]) => unknown }> } };
+  const layers = (router as unknown as { stack?: RouteLayer[] }).stack ?? [];
+  const matched = layers.find(layer => layer.route?.path === "/prompts/generate");
+  const handler = matched?.route?.stack?.filter(layer => layer.method === "post").at(-1)?.handle;
+  if (!handler) throw new Error("Canonical prompt generator unavailable");
+  let status = 200;
+  let payload: unknown;
+  let finished = false;
+  const response = {
+    status(code: number) { status = code; return response; },
+    json(value: unknown) { payload = value; finished = true; return response; },
+  };
+  const request = {
+    body: input,
+    clerkUserId,
+    log: { error: (details: unknown, message: string) => {
+      const d = details as { err?: { status?: number; code?: string; name?: string }; raw?: string };
+      console.warn("SANDBOX_PROMPT_DIAGNOSTIC", JSON.stringify({
+        stage: message, status: d?.err?.status, code: d?.err?.code,
+        name: d?.err?.name, reference: d?.err instanceof ReferenceError ? (d.err.message.match(/^[A-Za-z_$][\w$]* is not defined$/)?.[0] ?? "other_reference_error") : undefined, outputLength: typeof d?.raw === "string" ? d.raw.length : undefined,
+      }));
+    } },
+  };
+  await handler(request, response);
+  if (!finished || status >= 400 || !payload || typeof payload !== "object") {
+    throw new Error("Existing prompt generator failed: HTTP " + status);
+  }
+  const value = payload as { title?: unknown; prompt?: unknown; module?: unknown };
+  if (typeof value.title !== "string" || typeof value.prompt !== "string" || typeof value.module !== "string") {
+    throw new Error("Canonical prompt response invalid");
+  }
+  return { title: value.title, prompt: value.prompt, module: value.module };
+}
+
