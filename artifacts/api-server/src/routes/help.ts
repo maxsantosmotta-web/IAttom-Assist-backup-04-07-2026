@@ -1694,7 +1694,7 @@ router.get("/help/usage", requireAuth, async (req, res): Promise<void> => {
 // ── Help chat ─────────────────────────────────────────────────────────────────
 
 router.post("/help/chat", requireAuth, async (req, res): Promise<void> => {
-  const chatUserId = getAuth(req)?.userId;
+  const chatUserId = (req as typeof req & { __externalChatGPTClerkId?: string }).__externalChatGPTClerkId ?? getAuth(req)?.userId;
   if (!chatUserId) { res.status(401).json({ error: "Não autenticado." }); return; }
 
   // ── Help limit check ──────────────────────────────────────────────────────
@@ -2149,3 +2149,62 @@ router.delete("/help/messages/:id", requireAuth, async (req, res): Promise<void>
 });
 
 export default router;
+
+/**
+ * Reuses the existing IAttom Help chat engine, knowledge and response policy.
+ * The external caller verifies OAuth, plan, idempotency and later atomically
+ * commits its credit debit. The build patch skips normal Help billing only
+ * for this internal, server-created request marker.
+ */
+export async function invokeExistingHelpForChatGPT(
+  clerkUserId: string,
+  message: string,
+): Promise<string> {
+  type RouteLayer = { route?: { path?: string; stack?: Array<{ method?: string; handle?: (...args: unknown[]) => unknown }> } };
+  const layers = (router as unknown as { stack?: RouteLayer[] }).stack ?? [];
+  const entry = layers.find(layer => layer.route?.path === "/help/chat");
+  const handler = entry?.route?.stack?.filter(layer => layer.method === "post").at(-1)?.handle;
+  if (!handler) throw new Error("Canonical IAttom Help unavailable");
+
+  let status = 200;
+  let raw = "";
+  let ended = false;
+  const response = {
+    status(code: number) { status = code; return response; },
+    json(value: unknown) { raw = JSON.stringify(value); ended = true; return response; },
+    setHeader() { return response; },
+    write(part: unknown) {
+      raw += String(part);
+      if (Buffer.byteLength(raw) > 300_000) throw new Error("Help response too large");
+      return true;
+    },
+    end() { ended = true; return response; },
+  };
+  const noop = () => undefined;
+  const request = {
+    __externalChatGPTClerkId: clerkUserId,
+    clerkUserId,
+    body: { message, history: [], images: [] },
+    path: "/help/chat",
+    on: noop,
+    log: { info: noop, warn: noop, error: noop, debug: noop },
+  };
+  await handler(request, response);
+  if (!ended || status >= 400) throw new Error("Canonical Help request failed");
+
+  let done = false;
+  let failed = false;
+  const chunks: string[] = [];
+  for (const frame of raw.replace(/\r\n/g, "\n").split("\n\n")) {
+    const line = frame.split("\n").find(row => row.startsWith("data: "));
+    if (!line) continue;
+    const event = JSON.parse(line.slice(6)) as { type?: string; content?: unknown };
+    if (event.type === "error") failed = true;
+    if (event.type === "done") done = true;
+    if (event.type === "chunk" && typeof event.content === "string") chunks.push(event.content);
+  }
+  const answer = chunks.join("");
+  if (failed || !done || !answer.trim()) throw new Error("Canonical Help did not complete");
+  return answer;
+}
+
