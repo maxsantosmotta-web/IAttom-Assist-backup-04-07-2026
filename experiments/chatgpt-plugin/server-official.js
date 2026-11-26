@@ -33,6 +33,11 @@ export function startOfficial(port = Number(process.env.PORT ?? 8787), host = "1
   app.disable("x-powered-by");
   app.use(cors({ exposedHeaders: ["WWW-Authenticate", "Mcp-Session-Id"] }));
   app.use(express.json());
+  app.get("/.well-known/openai-apps-challenge", (_req, res) => {
+    const token = process.env.OPENAI_APPS_CHALLENGE;
+    if (!token) return res.sendStatus(404);
+    return res.type("text/plain").set("Cache-Control", "no-store").send(token);
+  });
 
   // Short-lived, unguessable download capabilities, issued only after authenticated owner retrieval.
   const downloads = new Map();
