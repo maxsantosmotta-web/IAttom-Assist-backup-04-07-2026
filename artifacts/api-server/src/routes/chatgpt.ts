@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, and, isNull } from "drizzle-orm";
+import { eq, desc, and, isNull, notLike } from "drizzle-orm";
 import { db, users, projectsTable, savedPromptsTable, savedItemsTable } from "@workspace/db";
 import { requireChatGPTAuth } from "../middlewares/requireChatGPTAuth.js";
 import { FEATURE_COSTS } from "../lib/credits.js";
@@ -91,7 +91,7 @@ router.get("/chatgpt/library", async (req, res): Promise<void> => {
     content: savedItemsTable.content,
     createdAt: savedItemsTable.createdAt,
   }).from(savedItemsTable)
-    .where(and(eq(savedItemsTable.clerkUserId, clerkId), isNull(savedItemsTable.deletedAt)))
+    .where(and(eq(savedItemsTable.clerkUserId, clerkId), isNull(savedItemsTable.deletedAt), notLike(savedItemsTable.type, "external_%")))
     .orderBy(desc(savedItemsTable.createdAt))
     .limit(20);
   res.json({ items });
